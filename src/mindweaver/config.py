@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     db_name: str = 'mindweaver'
     db_user: str | None = None
     db_pass: str | None = None
+    enable_db_reset: bool = False
     model_config  = SettingsConfigDict(env_file='.env', env_prefix='mindweaver_', extra='allow')
 
     @property

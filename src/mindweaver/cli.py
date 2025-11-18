@@ -7,6 +7,7 @@ from mindweaver.config import settings
 import mindweaver.db.base
 import mindweaver.db.data_source
 import asyncio
+import sqlalchemy as sa
 from .config import logger
 
 class RunArgs(argparse.Namespace):
@@ -23,6 +24,17 @@ def handle_migrate(args: MigrateArgs):
     config.set_main_option('sqlalchemy.url', settings.db_uri)
     upgrade(config, revision='heads') 
     logger.info('Update completed successfully.')
+
+def handle_reset(args: argparse.Namespace):
+    confirm = input('This will drop all tables in the database. Are you sure? (N/y) > ')
+    if confirm.lower().strip() != 'y':
+        logger.info('Aborted')
+    engine = sa.create_engine(settings.db_uri)
+    with engine.connect() as conn:
+        conn.execute(sa.text('drop schema public cascade'))
+        conn.execute(sa.text('create schema public'))
+        conn.commit()
+    logger.info('Database have been emptied')
 
 class RevisionArgs(argparse.Namespace):
     autogenerate: bool
@@ -65,6 +77,11 @@ def get_parser() -> argparse.ArgumentParser:
     db_revision_cmd.add_argument('-a', '--autogenerate', dest='autogenerate', action='store_true', default=False)
     db_revision_cmd.set_defaults(handler=handle_revision)
 
+    # db reset
+    if settings.enable_db_reset:
+        db_reset_cmd = db_cmd_subparser.add_parser('reset', help='Drop and reset database')
+        db_reset_cmd.set_defaults(handler=handle_reset)
+
     return parser
 
 class MainArgs(argparse.Namespace):
@@ -73,4 +90,7 @@ class MainArgs(argparse.Namespace):
 def main():
     parser = get_parser()
     args: MainArgs = parser.parse_args()
-    args.handler(args)
+    if hasattr(args, 'handler'):
+        args.handler(args)
+    else:
+        parser.print_help()
