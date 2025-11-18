@@ -4,17 +4,20 @@ from alembic.config import Config as AlembicConfig
 from alembic.command import revision, upgrade
 from typing import Callable
 from mindweaver.config import settings
-import mindweaver.db.base
-import mindweaver.db.data_source
+from mindweaver.app import app
+from sqlmodel import SQLModel
+import mindweaver.fw.db
+import mindweaver.service.data_source
 import asyncio
 import sqlalchemy as sa
+import uvicorn
 from .config import logger
 
 class RunArgs(argparse.Namespace):
     pass
 
 def handle_run(args: RunArgs):
-    pass
+    uvicorn.run('mindweaver.app:app', reload=True, reload_delay=5)
 
 class MigrateArgs(argparse.Namespace):
     config: str
