@@ -12,6 +12,7 @@ from typing import Generic, TypeVar, Any, Literal, Annotated, Union, List
 import abc
 import jinja2 as j2
 from .exc import NotFoundError
+from .util import camel_to_snake
 
 T = TypeVar("T", bound=NamedBase)
 S = TypeVar("S", bound=SQLModel)
@@ -58,10 +59,18 @@ class Service(Generic[S], abc.ABC):
     @classmethod
     @abc.abstractmethod
     def model_class(cls) -> type[S]:
+        """
+        Provide SQLModel class for this service to interact with
+        """
         raise NotImplementedError("model_class must be implemented")
     
     @classmethod
     def createmodel_class(cls) -> type[BaseModel]:
+        """
+        This function provide a Pydantic model based on schema class, 
+        with internal fields and immutable fields removed
+        for use in create view/operation
+        """
         model_class = cls.model_class()
         schema_class = cls.schema_class()
         return redefine_model(f'Create {model_class.__name__}', schema_class, 
@@ -69,6 +78,11 @@ class Service(Generic[S], abc.ABC):
     
     @classmethod
     def updatemodel_class(cls) -> type[BaseModel]:
+        """
+        This function provide a Pydantic model based on schema class, 
+        with internal fields and immutable fields removed
+        for use in update view/operation
+        """
         model_class = cls.model_class()
         schema_class = cls.schema_class()
         return redefine_model(f'Update {model_class.__name__}', schema_class,
@@ -76,17 +90,20 @@ class Service(Generic[S], abc.ABC):
 
 
     @classmethod
-    @abc.abstractmethod
     def schema_class(cls) -> type[NamedBase]:
-        raise NotImplementedError("schema_class must be implemented")
+        """
+        This function provide schema class for use in forms. By default it will use model class.
+        Override this if you need to use a different schema in forms
+        """
+        return cls.model_class()
 
     @classmethod
     def service_path(cls) -> str:
-        return f'/{cls.urn_entity_type()}s'
+        return f'/{cls.entity_type()}s'
 
     @classmethod
     def model_path(cls) -> str:
-        return f'{cls.service_path()}/{{model_id}}'
+        return f'{cls.service_path()}/{{id}}'
 
     @classmethod
     def internal_fields(cls) -> list[str]:
@@ -111,9 +128,9 @@ class Service(Generic[S], abc.ABC):
         return model_class.__module__.split('.')[0]
 
     @classmethod
-    def urn_entity_type(cls) -> str:
+    def entity_type(cls) -> str:
         model_class = cls.model_class()
-        return model_class.__name__.lower()
+        return camel_to_snake(model_class.__name__)
 
     def __init__(self, request: fastapi.Request, session: AsyncSession):
         self.request = request
@@ -121,7 +138,7 @@ class Service(Generic[S], abc.ABC):
 
     def urn(self, model: NamedBase):
         namespace = self.urn_namespace()
-        entity_type = self.urn_entity_type()
+        entity_type = self.entity_type()
         urn = f'urn:{namespace}:{entity_type}:uuid:{model.uuid}'
         return urn
 
@@ -160,20 +177,17 @@ class Service(Generic[S], abc.ABC):
         data = await self.validate_data(data)
         model = await self.get(model_id)
         model_class = self.model_class()
-        # delete old record
-        model.sqlmodel_update({'deleted': ts_now(), 'active': False})
-        # create new record
         newdata = model.model_dump(exclude=self.noninheritable_fields())
         newdata.update(data.model_dump(exclude_unset=True))
-        new = model_class(**newdata)
-        self.session.add(new)
+        newdata['modified'] = ts_now()
+        model.sqlmodel_update(newdata)
         await self.session.flush()
         await self.session.refresh(model)
         return model
 
-    async def delete(self, model_id: str | UUID):
+    async def delete(self, model_id: int):
         model = await self.get(model_id)
-        self.session.delete(model)
+        await self.session.delete(model)
         await self.session.flush()
 
     async def search(self, *, offset=0, limit=10, sa_filters=None, **filters):
@@ -193,9 +207,9 @@ class Service(Generic[S], abc.ABC):
         return data
 
     @classmethod
-    async def get_model(cls, request: fastapi.Request, db: AsyncSession, model_id: int) -> S:
+    async def get_model(cls, request: fastapi.Request, db: AsyncSession, id: int) -> S:
         svc = await cls.get_service(request, db)
-        return await svc.get(model_id)
+        return await svc.get(id)
 
     @classmethod
     async def get_service(cls, request: fastapi.Request, db: AsyncSession):
@@ -217,7 +231,7 @@ class Service(Generic[S], abc.ABC):
         # Implement view registration logic here
 
         model_class = cls.model_class()
-        entity_type = cls.urn_entity_type()
+        entity_type = cls.entity_type()
 
         CreateModel = cls.createmodel_class()
         UpdateModel = cls.updatemodel_class()

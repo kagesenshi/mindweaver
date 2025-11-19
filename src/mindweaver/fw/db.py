@@ -22,8 +22,8 @@ def ts_now():
 def is_valid_name(name: str) -> str:
     if not name:
         raise ValueError("Name cannot be empty")
-    if not re.match("^[a-z0-9_]+$", name):
-        raise ValueError("Name can only contain lowercase letters, numbers, and underscores")
+    if not re.match("^[a-z0-9\-]+$", name):
+        raise ValueError("Name can only contain lowercase letters, numbers, and dash")
     if len(name) > 128:
         raise ValueError("Name cannot be longer than 128 characters")
     return name

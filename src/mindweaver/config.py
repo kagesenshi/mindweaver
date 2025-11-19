@@ -17,14 +17,24 @@ class Settings(BaseSettings):
 
     @property
     def db_uri(self):
-        if self.db_user and self.db_pass:
-            return f'{self.db_driver}://{urlquote(self.db_user)}:{urlquote(self.db_pass)}@{self.db_host}:{self.db_port}/{self.db_name}'
+        login = None
+        if self.db_user:
+            login = urlquote(self.db_user)
+            if self.db_pass:
+                login = f'{login}:{urlquote(self.db_pass)}'
+        if login:
+            return f'{self.db_driver}://{login}@{self.db_host}:{self.db_port}/{self.db_name}'
         return f'{self.db_driver}://{self.db_host}:{self.db_port}/{self.db_name}'
     
     @property
     def db_async_uri(self):
-        if self.db_user and self.db_pass:
-            return f'{self.db_async_driver}://{urlquote(self.db_user)}:{urlquote(self.db_pass)}@{self.db_host}:{self.db_port}/{self.db_name}'
+        login = None
+        if self.db_user:
+            login = urlquote(self.db_user)
+            if self.db_pass:
+                login = f'{login}:{urlquote(self.db_pass)}'
+        if login:
+            return f'{self.db_async_driver}://{login}@{self.db_host}:{self.db_port}/{self.db_name}'
         return f'{self.db_async_driver}://{self.db_host}:{self.db_port}/{self.db_name}'
 
 logger = logging.getLogger('mindweaver')
