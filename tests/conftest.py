@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from mindweaver.app import app
 from mindweaver.config import settings
 from mindweaver.fw.service import Service
-from mindweaver.fw.db import NamedBase
+from mindweaver.fw.model import NamedBase
 from sqlmodel import SQLModel, create_engine
 
 @pytest.fixture(scope='function')

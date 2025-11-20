@@ -6,7 +6,7 @@ from uuid import UUID
 from sqlmodel import SQLModel, Session, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 import sqlalchemy.exc as saexc
-from .db import AsyncSession, ts_now, NamedBase
+from .model import AsyncSession, ts_now, NamedBase
 from .exc import ModelValidationError, AlreadyExistError
 from typing import Generic, TypeVar, Any, Literal, Annotated, Union, List
 import abc

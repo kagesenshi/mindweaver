@@ -6,7 +6,7 @@ from typing import Callable
 from mindweaver.config import settings
 from mindweaver.app import app
 from sqlmodel import SQLModel
-import mindweaver.fw.db
+import mindweaver.fw.model
 import mindweaver.service.data_source
 import asyncio
 import sqlalchemy as sa
