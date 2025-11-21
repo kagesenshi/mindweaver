@@ -108,7 +108,7 @@ def api_form_fields() -> rx.Component:
                 "Base URL", class_name="text-sm font-medium text-gray-700 mb-1 block"
             ),
             rx.el.input(
-                name="config.base_url",
+                name="parameters.base_url",
                 default_value=util.default(
                     DataSourcesState.form_data["parameters"]["base_url"], ""
                 ),
@@ -122,7 +122,7 @@ def api_form_fields() -> rx.Component:
                 "API Key", class_name="text-sm font-medium text-gray-700 mb-1 block"
             ),
             rx.el.input(
-                name="config.api_key",
+                name="parameters.api_key",
                 default_value=util.default(
                     DataSourcesState.form_data["parameters"]["api_key"], ""
                 ),
@@ -145,11 +145,10 @@ def db_form_fields() -> rx.Component:
             rx.el.select(
                 rx.el.option("PostgreSQL", value="postgresql"),
                 rx.el.option("MySQL", value="mysql"),
-                rx.el.option("SQLite", value="sqlite"),
                 rx.el.option("MongoDB", value="mongodb"),
                 rx.el.option("MS SQL Server", value="mssql"),
                 rx.el.option("Oracle", value="oracle"),
-                name="config.database_type",
+                name="parameters.database_type",
                 default_value=util.default(
                     DataSourcesState.form_data["parameters"]["database_type"],
                     "postgresql",
@@ -163,7 +162,7 @@ def db_form_fields() -> rx.Component:
                 "Host", class_name="text-sm font-medium text-gray-700 mb-1 block"
             ),
             rx.el.input(
-                name="config.host",
+                name="parameters.host",
                 default_value=util.default(
                     DataSourcesState.form_data["parameters"]["host"], ""
                 ),
@@ -177,7 +176,7 @@ def db_form_fields() -> rx.Component:
                 "Port", class_name="text-sm font-medium text-gray-700 mb-1 block"
             ),
             rx.el.input(
-                name="config.port",
+                name="parameters.port",
                 default_value=DataSourcesState.form_data["parameters"][
                     "port"
                 ].to_string(),
@@ -192,7 +191,7 @@ def db_form_fields() -> rx.Component:
                 "Username", class_name="text-sm font-medium text-gray-700 mb-1 block"
             ),
             rx.el.input(
-                name="config.username",
+                name="parameters.username",
                 default_value=util.default(
                     DataSourcesState.form_data["parameters"]["username"], ""
                 ),
@@ -206,7 +205,7 @@ def db_form_fields() -> rx.Component:
                 "Password", class_name="text-sm font-medium text-gray-700 mb-1 block"
             ),
             rx.el.input(
-                name="config.password",
+                name="parameters.password",
                 default_value=util.default(
                     DataSourcesState.form_data["parameters"]["password"], ""
                 ),
@@ -238,7 +237,7 @@ def web_scraper_form_fields() -> rx.Component:
             "Start URL", class_name="text-sm font-medium text-gray-700 mb-1 block"
         ),
         rx.el.input(
-            name="config.start_url",
+            name="parameters.start_url",
             default_value=util.default(
                 DataSourcesState.form_data["parameters"]["start_url"], ""
             ),
@@ -375,13 +374,19 @@ def source_modal() -> rx.Component:
                     ),
                     base_button(
                         "Test Connection",
-                        on_click=DataSourcesState.test_connection,
+                        type="submit",
+                        form="source-form",
+                        on_click=DataSourcesState.set_submit_action("test"),
                         icon="plug-zap",
                         is_loading=DataSourcesState.is_testing_connection,
                         class_name="bg-blue-500 text-white hover:bg-blue-600 focus:ring-blue-500",
                     ),
                     base_button(
-                        "Save Source", type="submit", form="source-form", icon="save"
+                        "Save Source",
+                        type="submit",
+                        form="source-form",
+                        on_click=DataSourcesState.set_submit_action("save"),
+                        icon="save",
                     ),
                     class_name="flex justify-end gap-3 pt-4 border-t border-gray-200",
                 ),

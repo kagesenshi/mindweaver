@@ -6,6 +6,7 @@ import asyncio
 import logging
 from mindweaver_fe.states.knowledge_db_state import KnowledgeDB, KnowledgeDBState
 from mindweaver_fe.api_client import data_source_client
+import httpx
 
 SourceType = Literal["API", "Database", "File Upload", "Web Scraper"]
 SourceStatus = Literal["Connected", "Disconnected", "Error"]
@@ -210,6 +211,12 @@ class DataSourcesState(rx.State):
         self.source_to_edit = None
         self.form_errors = {}
 
+    submit_action: str = "save"
+
+    @rx.event
+    def set_submit_action(self, action: str):
+        self.submit_action = action
+
     @rx.event
     def set_form_data_field(self, field: str, value: str):
         if field == "source_type":
@@ -224,6 +231,11 @@ class DataSourcesState(rx.State):
         # Clear previous errors
         self.form_errors = {}
         self.error_message = ""
+        # If testing connection, we handle it differently
+        if self.submit_action == "test":
+            async for i in self._handle_test_connection(form_data):
+                yield i
+            return
 
         submitted_name = form_data.get("name", "")
         submitted_title = form_data.get("title", "")
@@ -239,7 +251,7 @@ class DataSourcesState(rx.State):
         parameters = {}
         for k, v in form_data.items():
             if k.startswith("parameters."):
-                key = k.split(".")[-1]
+                key = k.split(".", 1)[1]
                 if key == "port":
                     try:
                         parameters[key] = int(v)
@@ -277,10 +289,50 @@ class DataSourcesState(rx.State):
                 new_source = await data_source_client.create(api_data)
                 self.all_sources.append(new_source)
 
-            return DataSourcesState.close_source_modal
+            yield DataSourcesState.close_source_modal
+        except httpx.HTTPStatusError as e:
+            self.error_message = f"Failed to save data source: {str(e.response.json())}"
+
+    async def _handle_test_connection(self, form_data: dict):
+        self.is_testing_connection = True
+        self.error_message = ""
+
+        try:
+            # Extract parameters from form data
+            parameters = {}
+            for k, v in form_data.items():
+                if k.startswith("parameters."):
+                    key = k.split(".", 1)[1]
+                    if key == "port":
+                        try:
+                            parameters[key] = int(v)
+                        except (ValueError, TypeError):
+                            parameters[key] = 0
+                    else:
+                        parameters[key] = v
+
+            # Use current source type from state (it's controlled)
+            source_type = self.form_data.get("source_type")
+
+            test_payload = {"type": source_type, "parameters": parameters}
+
+            result = await data_source_client.test_connection(test_payload)
+
+            if result.get("status") == "success":
+                yield rx.toast.success(
+                    result.get("message", "Connection successful"),
+                )
+            else:
+                # Show error in the modal error area
+                self.error_message = result.get("message", "Connection failed")
+                yield rx.toast.error("Connection failed")
+
         except Exception as e:
-            self.error_message = f"Failed to save data source: {str(e)}"
-        print("baa")
+            self.error_message = f"Connection test error: {str(e)}"
+            yield rx.toast.error("Connection test error")
+
+        finally:
+            self.is_testing_connection = False
 
     @rx.event
     def open_delete_dialog(self, source: DataSource):
@@ -320,14 +372,6 @@ class DataSourcesState(rx.State):
             self.error_message = f"Failed to delete data source: {str(e)}"
 
         return DataSourcesState.close_delete_dialog
-
-    @rx.event
-    async def test_connection(self):
-        self.is_testing_connection = True
-        yield
-        await asyncio.sleep(2)
-        self.is_testing_connection = False
-        yield rx.toast("Connection test successful!", duration=3000)
 
     @rx.event
     def open_import_dialog(self, source: DataSource):
