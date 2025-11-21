@@ -233,18 +233,33 @@ class DataSourceService(Service[DataSource]):
             else dict(data)
         )
 
-        # If type is being updated, validate it
-        source_type = data_dict.get("type")
+        # Fetch existing record to get current values
+        existing = await self.get(model_id)
+        if not existing:
+            raise HTTPException(status_code=404, detail="Data source not found")
 
-        # If type is not in the update data, fetch the existing record to get the type
-        if not source_type:
-            existing = await self.get(model_id)
-            if existing:
-                source_type = existing.type
+        # If type is being updated, validate it
+        source_type = data_dict.get("type", existing.type)
 
         # If parameters are being updated, validate them
         if "parameters" in data_dict and source_type:
             parameters = data_dict.get("parameters", {})
+
+            # Special handling for Database type to manage password retention
+            if source_type == "Database":
+                # Check if password field exists in the update
+                password = parameters.get("password")
+
+                # If password is the special marker, clear it
+                if password == "__CLEAR_PASSWORD__":
+                    parameters["password"] = ""
+                # If password is empty or not provided, retain existing password
+                elif not password:
+                    # Get existing password from stored parameters
+                    existing_password = existing.parameters.get("password", "")
+                    parameters["password"] = existing_password
+                # Otherwise, password is being updated (will be encrypted in validation)
+
             validated_parameters = self._validate_parameters(source_type, parameters)
             # Update the data object with validated parameters
             if hasattr(data, "parameters"):
@@ -260,21 +275,35 @@ router = DataSourceService.router()
 class TestConnectionRequest(BaseModel):
     type: SourceType
     parameters: dict[str, Any]
+    source_id: Optional[int] = None  # Optional ID to fetch stored password
 
 
 @router.post(f"{DataSourceService.service_path()}/test_connection")
 async def test_connection(data: TestConnectionRequest):
     """
     Test connection to a data source.
+    If source_id is provided and password is missing, use stored password.
     """
     source_type = data.type
-    parameters = data.parameters
+    parameters = data.parameters.copy()  # Make a copy to avoid mutating original
 
-    # Validate parameters first (reuse existing validation logic if possible,
-    # but here we might need a slightly different approach or just manual validation for now
-    # since _validate_parameters is an instance method and we are in a classmethod/router context.
-    # Actually, we can instantiate the service or make _validate_parameters static/class method.
-    # For simplicity, let's just do basic checks here or rely on the try-except blocks.
+    # If source_id is provided and this is a Database type, check for stored password
+    if data.source_id and source_type == "Database":
+        password = parameters.get("password")
+        # If no password provided, fetch from database
+        if not password:
+            service = DataSourceService()
+            existing = await service.get(data.source_id)
+            if existing and existing.parameters.get("password"):
+                # Use the stored encrypted password
+                stored_password = existing.parameters.get("password")
+                # Decrypt it for testing
+                try:
+                    decrypted_password = decrypt_password(stored_password)
+                    parameters["password"] = decrypted_password
+                except EncryptionError:
+                    # If decryption fails, continue without password
+                    pass
 
     try:
         if source_type == "API":

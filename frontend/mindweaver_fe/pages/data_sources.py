@@ -210,8 +210,40 @@ def db_form_fields() -> rx.Component:
                     DataSourcesState.form_data["parameters"]["password"], ""
                 ),
                 type="password",
-                placeholder="Enter database password",
+                placeholder=rx.cond(
+                    DataSourcesState.is_editing,
+                    "Leave empty to keep existing password",
+                    "Enter database password",
+                ),
                 class_name="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500",
+            ),
+            # Show help text in edit mode
+            rx.cond(
+                DataSourcesState.is_editing,
+                rx.el.p(
+                    "Password is encrypted and hidden. Leave empty to keep the existing password.",
+                    class_name="text-xs text-gray-500 mt-1",
+                ),
+            ),
+            # Show clear password checkbox in edit mode
+            rx.cond(
+                DataSourcesState.is_editing,
+                rx.el.div(
+                    rx.el.label(
+                        rx.el.input(
+                            type="checkbox",
+                            checked=DataSourcesState.clear_password,
+                            on_change=DataSourcesState.toggle_clear_password,
+                            class_name="mr-2 h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded",
+                        ),
+                        rx.el.span(
+                            "Clear password (remove stored password)",
+                            class_name="text-sm text-gray-700",
+                        ),
+                        class_name="flex items-center cursor-pointer",
+                    ),
+                    class_name="mt-2",
+                ),
             ),
             class_name="mb-4",
         ),

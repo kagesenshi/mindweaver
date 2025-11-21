@@ -93,6 +93,7 @@ class DataSourcesState(rx.State):
     import_kb_id: str = ""
     is_loading: bool = False
     error_message: str = ""
+    clear_password: bool = False  # Flag to clear password in edit mode
 
     def _get_default_form_data(
         self, source_type: SourceType = "API"
@@ -200,9 +201,14 @@ class DataSourcesState(rx.State):
         self.form_data["source_type"] = source_type
         for key in self.form_data["parameters"]:
             if key in typed_source["parameters"]:
-                self.form_data["parameters"][key] = typed_source["parameters"][key]
+                # Don't populate password field in edit mode for security
+                if key == "password":
+                    self.form_data["parameters"][key] = ""
+                else:
+                    self.form_data["parameters"][key] = typed_source["parameters"][key]
         self.form_errors = {}
         self.error_message = ""
+        self.clear_password = False
         self.show_source_modal = True
 
     @rx.event
@@ -210,12 +216,18 @@ class DataSourcesState(rx.State):
         self.show_source_modal = False
         self.source_to_edit = None
         self.form_errors = {}
+        self.clear_password = False
 
     submit_action: str = "save"
 
     @rx.event
     def set_submit_action(self, action: str):
         self.submit_action = action
+
+    @rx.event
+    def toggle_clear_password(self):
+        """Toggle the clear password flag."""
+        self.clear_password = not self.clear_password
 
     @rx.event
     def set_form_data_field(self, field: str, value: str):
@@ -260,6 +272,10 @@ class DataSourcesState(rx.State):
                         parameters[key] = 0
                 else:
                     parameters[key] = v
+
+        # Handle password clearing in edit mode
+        if self.is_editing and self.clear_password:
+            parameters["password"] = "__CLEAR_PASSWORD__"
 
         current_form_data = self.form_data.copy()
         current_form_data["name"] = submitted_name
@@ -315,6 +331,10 @@ class DataSourcesState(rx.State):
             source_type = self.form_data.get("source_type")
 
             test_payload = {"type": source_type, "parameters": parameters}
+
+            # If editing, include source_id so backend can use stored password if needed
+            if self.is_editing and self.source_to_edit:
+                test_payload["source_id"] = self.source_to_edit["id"]
 
             result = await data_source_client.test_connection(test_payload)
 
