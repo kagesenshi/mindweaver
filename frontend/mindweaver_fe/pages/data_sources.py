@@ -1,8 +1,13 @@
 import reflex as rx
 from mindweaver_fe.components.layout import base_layout
 from mindweaver_fe.components.reusables import card, base_button
-from mindweaver_fe.states.data_sources_state import DataSourcesState, DataSource, ImportJob
+from mindweaver_fe.states.data_sources_state import (
+    DataSourcesState,
+    DataSource,
+    ImportJob,
+)
 import mindweaver_fe.util as util
+
 
 def type_badge(source_type: rx.Var[str]) -> rx.Component:
     """A badge component to display the data source type."""
@@ -52,11 +57,11 @@ def source_card(source: DataSource) -> rx.Component:
         rx.el.div(
             rx.el.div(
                 rx.el.h3(source["name"], class_name="text-lg font-bold text-gray-900"),
-                type_badge(source["source_type"]),
+                type_badge(source["type"]),
                 class_name="flex justify-between items-start mb-2",
             ),
             rx.el.p(
-                f"Syncs data via {source['source_type']}",
+                f"Syncs data via {source['type']}",
                 class_name="text-sm text-gray-600 mb-4 h-10 overflow-hidden",
             ),
             rx.el.div(
@@ -104,7 +109,9 @@ def api_form_fields() -> rx.Component:
             ),
             rx.el.input(
                 name="config.base_url",
-                default_value=util.default(DataSourcesState.form_data["config"]['base_url'], ''),
+                default_value=util.default(
+                    DataSourcesState.form_data["parameters"]["base_url"], ""
+                ),
                 placeholder="https://api.example.com/v1",
                 class_name="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500",
             ),
@@ -116,7 +123,9 @@ def api_form_fields() -> rx.Component:
             ),
             rx.el.input(
                 name="config.api_key",
-                default_value=util.default(DataSourcesState.form_data["config"]["api_key"], ''),
+                default_value=util.default(
+                    DataSourcesState.form_data["parameters"]["api_key"], ""
+                ),
                 type="password",
                 placeholder="**********",
                 class_name="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500",
@@ -134,7 +143,9 @@ def db_form_fields() -> rx.Component:
             ),
             rx.el.input(
                 name="config.host",
-                default_value=util.default(DataSourcesState.form_data["config"]["host"], ''),
+                default_value=util.default(
+                    DataSourcesState.form_data["parameters"]["host"], ""
+                ),
                 placeholder="localhost",
                 class_name="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500",
             ),
@@ -146,7 +157,9 @@ def db_form_fields() -> rx.Component:
             ),
             rx.el.input(
                 name="config.port",
-                default_value=DataSourcesState.form_data["config"]["port"].to_string(),
+                default_value=DataSourcesState.form_data["parameters"][
+                    "port"
+                ].to_string(),
                 placeholder="5432",
                 type="number",
                 class_name="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500",
@@ -159,7 +172,9 @@ def db_form_fields() -> rx.Component:
             ),
             rx.el.input(
                 name="config.username",
-                default_value=util.default(DataSourcesState.form_data["config"]["username"], ''),
+                default_value=util.default(
+                    DataSourcesState.form_data["parameters"]["username"], ""
+                ),
                 placeholder="admin",
                 class_name="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500",
             ),
@@ -188,7 +203,9 @@ def web_scraper_form_fields() -> rx.Component:
         ),
         rx.el.input(
             name="config.start_url",
-            default_value=util.default(DataSourcesState.form_data["config"]["start_url"], ''),
+            default_value=util.default(
+                DataSourcesState.form_data["parameters"]["start_url"], ""
+            ),
             placeholder="https://example.com",
             class_name="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500",
         ),

@@ -25,7 +25,7 @@ def db_card(db: KnowledgeDB) -> rx.Component:
         rx.el.div(
             rx.el.div(
                 rx.el.h3(db["name"], class_name="text-lg font-bold text-gray-900"),
-                type_badge(db["db_type"]),
+                type_badge(db["type"]),
                 class_name="flex justify-between items-start mb-2",
             ),
             rx.el.p(
@@ -44,7 +44,7 @@ def db_card(db: KnowledgeDB) -> rx.Component:
                 rx.el.div(
                     rx.icon("calendar", class_name="h-4 w-4 text-gray-400"),
                     rx.el.span(
-                        f"Created: {db['created_at']}",
+                        f"Created: {db['created']}",
                         class_name="text-sm text-gray-500 ml-2",
                     ),
                     class_name="flex items-center",

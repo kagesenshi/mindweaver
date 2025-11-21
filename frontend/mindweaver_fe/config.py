@@ -5,7 +5,7 @@ class Settings(BaseSettings):
     """Frontend application settings."""
     
     model_config = SettingsConfigDict(
-        env_prefix="MINDWEAVER_",
+        env_prefix="MINDWEAVER_FE_",
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore"

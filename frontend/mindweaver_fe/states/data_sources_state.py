@@ -11,6 +11,7 @@ SourceType = Literal["API", "Database", "File Upload", "Web Scraper"]
 SourceStatus = Literal["Connected", "Disconnected", "Error"]
 ImportStatus = Literal["Running", "Completed", "Failed"]
 
+
 class APIConfig(TypedDict):
     base_url: str
     api_key: str
@@ -46,6 +47,8 @@ class DataSource(TypedDict):
     parameters: dict[str, Any]
     created: str
     modified: str
+    status: str
+    last_sync: str
 
 
 class ImportJob(TypedDict):
@@ -100,8 +103,13 @@ class DataSourcesState(rx.State):
             parameters = {"start_url": "http://www.google.com"}
         else:
             parameters = {}
-        return {"name": "", "title": "", "source_type": source_type, "parameters": parameters}
-    
+        return {
+            "name": "",
+            "title": "",
+            "source_type": source_type,
+            "parameters": parameters,
+        }
+
     @rx.event
     async def set_search_query(self, value):
         self.search_query = value
@@ -119,7 +127,7 @@ class DataSourcesState(rx.State):
             kdb_state = await self.get_state(KnowledgeDBState)
             await kdb_state.load_databases()
             self.all_knowledge_dbs = kdb_state.all_databases
-            
+
             # Load sources from API
             sources = await data_source_client.list_all()
             self.all_sources = sources
@@ -200,7 +208,7 @@ class DataSourcesState(rx.State):
             return
         self.form_errors = {}
         self.error_message = ""
-        
+
         parameters = {}
         for k, v in form_data.items():
             if k.startswith("parameters."):
@@ -213,24 +221,26 @@ class DataSourcesState(rx.State):
                         parameters[key] = 0
                 else:
                     parameters[key] = v
-        
+
         current_form_data = self.form_data.copy()
         current_form_data["name"] = submitted_name
         current_form_data["title"] = submitted_title
-        current_form_data["parameters"] = {**current_form_data["parameters"], **parameters}
-        
+        current_form_data["parameters"] = {
+            **current_form_data["parameters"],
+            **parameters,
+        }
+
         try:
             api_data = {
                 "name": current_form_data["name"],
                 "title": current_form_data["title"],
                 "type": current_form_data["source_type"],
-                "parameters": current_form_data["parameters"]
+                "parameters": current_form_data["parameters"],
             }
-            
+
             if self.is_editing and self.source_to_edit:
                 updated_source = await data_source_client.update(
-                    self.source_to_edit["id"],
-                    api_data
+                    self.source_to_edit["id"], api_data
                 )
                 for i, s in enumerate(self.all_sources):
                     if s["id"] == self.source_to_edit["id"]:
@@ -239,7 +249,7 @@ class DataSourcesState(rx.State):
             else:
                 new_source = await data_source_client.create(api_data)
                 self.all_sources.append(new_source)
-            
+
             return DataSourcesState.close_source_modal
         except Exception as e:
             self.error_message = f"Failed to save data source: {str(e)}"
@@ -258,7 +268,7 @@ class DataSourcesState(rx.State):
     async def confirm_delete(self):
         if not self.source_to_delete:
             return DataSourcesState.close_delete_dialog
-        
+
         self.error_message = ""
         try:
             await data_source_client.delete(self.source_to_delete["id"])
@@ -267,7 +277,7 @@ class DataSourcesState(rx.State):
             ]
         except Exception as e:
             self.error_message = f"Failed to delete data source: {str(e)}"
-        
+
         return DataSourcesState.close_delete_dialog
 
     @rx.event
@@ -327,7 +337,7 @@ class DataSourcesState(rx.State):
             )
             if job_index != -1:
                 self.import_jobs[job_index]["status"] = "Completed"
-                self.import_jobs[job_index]["completed_at"] = (
-                    datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-                )
+                self.import_jobs[job_index][
+                    "completed_at"
+                ] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
             self.is_importing = False

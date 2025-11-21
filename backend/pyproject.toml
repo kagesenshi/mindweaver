@@ -1,0 +1,33 @@
+[project]
+name = "mindweaver"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Izhar Firdaus", email = "kagesenshi.87@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "alembic>=1.17.2",
+    "asyncpg>=0.30.0",
+    "fastapi[standard]>=0.121.2",
+    "kopf>=1.38.0",
+    "neo4j>=6.0.3",
+    "pendulum>=3.1.0",
+    "psycopg2-binary>=2.9.11",
+    "pydantic-settings>=2.12.0",
+    "pytest>=9.0.1",
+    "pytest-coverage>=0.0",
+    "pytest-postgresql>=7.0.2",
+    "sqlalchemy-utils>=0.42.0",
+    "sqlmodel>=0.0.27",
+    "uuid7>=0.1.0",
+]
+
+[project.scripts]
+mindweaver = "mindweaver.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.9.5,<0.10.0"]
+build-backend = "uv_build"
+
