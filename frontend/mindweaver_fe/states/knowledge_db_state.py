@@ -96,12 +96,25 @@ class KnowledgeDBState(rx.State):
     def open_edit_modal(self, db: KnowledgeDB):
         """Opens the modal to edit an existing database."""
         self.is_editing = True
-        self.db_to_edit = db
-        self.form_data = {
-            "name": db["name"],
+        # Construct a properly typed KnowledgeDB to avoid type mismatch
+        typed_db: KnowledgeDB = {
+            "id": db.get("id", 0),
+            "uuid": db.get("uuid", ""),
+            "name": db.get("name", ""),
             "title": db.get("title", ""),
             "description": db.get("description", ""),
             "type": db.get("type", "Vector"),
+            "parameters": db.get("parameters", {}),
+            "created": db.get("created", ""),
+            "modified": db.get("modified", ""),
+            "entry_count": db.get("entry_count", 0),
+        }
+        self.db_to_edit = typed_db
+        self.form_data = {
+            "name": typed_db["name"],
+            "title": typed_db["title"],
+            "description": typed_db["description"],
+            "type": typed_db["type"],
         }
         self.form_errors = {}
         self.error_message = ""
@@ -166,7 +179,20 @@ class KnowledgeDBState(rx.State):
     @rx.event
     def open_delete_dialog(self, db: KnowledgeDB):
         """Opens the confirmation dialog for deleting a database."""
-        self.db_to_delete = db
+        # Construct a properly typed KnowledgeDB to avoid type mismatch
+        typed_db: KnowledgeDB = {
+            "id": db.get("id", 0),
+            "uuid": db.get("uuid", ""),
+            "name": db.get("name", ""),
+            "title": db.get("title", ""),
+            "description": db.get("description", ""),
+            "type": db.get("type", "Vector"),
+            "parameters": db.get("parameters", {}),
+            "created": db.get("created", ""),
+            "modified": db.get("modified", ""),
+            "entry_count": db.get("entry_count", 0),
+        }
+        self.db_to_delete = typed_db
         self.show_delete_dialog = True
 
     @rx.event

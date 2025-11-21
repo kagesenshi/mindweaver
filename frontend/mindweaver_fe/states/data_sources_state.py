@@ -170,15 +170,28 @@ class DataSourcesState(rx.State):
     @rx.event
     def open_edit_modal(self, source: DataSource):
         self.is_editing = True
-        self.source_to_edit = source
-        source_type = source.get("type", "API")
+        # Construct a properly typed DataSource to avoid type mismatch
+        typed_source: DataSource = {
+            "id": source.get("id", 0),
+            "uuid": source.get("uuid", ""),
+            "name": source.get("name", ""),
+            "title": source.get("title", ""),
+            "type": source.get("type", "API"),
+            "parameters": source.get("parameters", {}),
+            "created": source.get("created", ""),
+            "modified": source.get("modified", ""),
+            "status": source.get("status", "Disconnected"),
+            "last_sync": source.get("last_sync", "Never"),
+        }
+        self.source_to_edit = typed_source
+        source_type = typed_source["type"]
         self.form_data = self._get_default_form_data(source_type)
-        self.form_data["name"] = source.get("name", "")
-        self.form_data["title"] = source.get("title", "")
+        self.form_data["name"] = typed_source["name"]
+        self.form_data["title"] = typed_source["title"]
         self.form_data["source_type"] = source_type
         for key in self.form_data["parameters"]:
-            if key in source.get("parameters", {}):
-                self.form_data["parameters"][key] = source["parameters"][key]
+            if key in typed_source["parameters"]:
+                self.form_data["parameters"][key] = typed_source["parameters"][key]
         self.form_errors = {}
         self.error_message = ""
         self.show_source_modal = True
@@ -263,7 +276,20 @@ class DataSourcesState(rx.State):
 
     @rx.event
     def open_delete_dialog(self, source: DataSource):
-        self.source_to_delete = source
+        # Construct a properly typed DataSource to avoid type mismatch
+        typed_source: DataSource = {
+            "id": source.get("id", 0),
+            "uuid": source.get("uuid", ""),
+            "name": source.get("name", ""),
+            "title": source.get("title", ""),
+            "type": source.get("type", "API"),
+            "parameters": source.get("parameters", {}),
+            "created": source.get("created", ""),
+            "modified": source.get("modified", ""),
+            "status": source.get("status", "Disconnected"),
+            "last_sync": source.get("last_sync", "Never"),
+        }
+        self.source_to_delete = typed_source
         self.show_delete_dialog = True
 
     @rx.event
@@ -297,7 +323,20 @@ class DataSourcesState(rx.State):
 
     @rx.event
     def open_import_dialog(self, source: DataSource):
-        self.source_to_import = source
+        # Construct a properly typed DataSource to avoid type mismatch
+        typed_source: DataSource = {
+            "id": source.get("id", 0),
+            "uuid": source.get("uuid", ""),
+            "name": source.get("name", ""),
+            "title": source.get("title", ""),
+            "type": source.get("type", "API"),
+            "parameters": source.get("parameters", {}),
+            "created": source.get("created", ""),
+            "modified": source.get("modified", ""),
+            "status": source.get("status", "Disconnected"),
+            "last_sync": source.get("last_sync", "Never"),
+        }
+        self.source_to_import = typed_source
         self.import_kb_id = ""
         self.show_import_dialog = True
 

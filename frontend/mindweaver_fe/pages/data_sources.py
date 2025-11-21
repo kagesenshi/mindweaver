@@ -233,7 +233,7 @@ def source_modal() -> rx.Component:
                     rx.cond(
                         DataSourcesState.error_message != "",
                         rx.el.div(
-                            rx.icon("alert-circle", class_name="h-5 w-5 text-red-500"),
+                            rx.icon("circle-alert", class_name="h-5 w-5 text-red-500"),
                             rx.el.span(
                                 DataSourcesState.error_message,
                                 class_name="text-sm text-red-700",

@@ -122,16 +122,30 @@ class AIAgentsState(rx.State):
     def open_edit_modal(self, agent: AIAgent):
         """Opens the modal to edit an existing agent."""
         self.is_editing = True
-        self.agent_to_edit = agent
-        self.form_data = {
-            "name": agent["name"],
+        # Construct a properly typed AIAgent to avoid type mismatch
+        typed_agent: AIAgent = {
+            "id": agent.get("id", 0),
+            "uuid": agent.get("uuid", ""),
+            "name": agent.get("name", ""),
             "title": agent.get("title", ""),
-            "system_prompt": agent["system_prompt"],
-            "model": agent["model"],
-            "temperature": float(agent["temperature"]),
+            "model": agent.get("model", "gpt-4-turbo"),
+            "temperature": agent.get("temperature", 0.7),
+            "system_prompt": agent.get("system_prompt", ""),
+            "status": agent.get("status", "Inactive"),
+            "knowledge_db_ids": agent.get("knowledge_db_ids", []),
+            "created": agent.get("created", ""),
+            "modified": agent.get("modified", ""),
+        }
+        self.agent_to_edit = typed_agent
+        self.form_data = {
+            "name": typed_agent["name"],
+            "title": typed_agent["title"],
+            "system_prompt": typed_agent["system_prompt"],
+            "model": typed_agent["model"],
+            "temperature": float(typed_agent["temperature"]),
             "knowledge_db_ids": (
-                agent.get("knowledge_db_ids", []).copy()
-                if agent.get("knowledge_db_ids")
+                typed_agent["knowledge_db_ids"].copy()
+                if typed_agent["knowledge_db_ids"]
                 else []
             ),
         }
@@ -212,7 +226,21 @@ class AIAgentsState(rx.State):
     @rx.event
     def open_delete_dialog(self, agent: AIAgent):
         """Opens the confirmation dialog for deleting an agent."""
-        self.agent_to_delete = agent
+        # Construct a properly typed AIAgent to avoid type mismatch
+        typed_agent: AIAgent = {
+            "id": agent.get("id", 0),
+            "uuid": agent.get("uuid", ""),
+            "name": agent.get("name", ""),
+            "title": agent.get("title", ""),
+            "model": agent.get("model", "gpt-4-turbo"),
+            "temperature": agent.get("temperature", 0.7),
+            "system_prompt": agent.get("system_prompt", ""),
+            "status": agent.get("status", "Inactive"),
+            "knowledge_db_ids": agent.get("knowledge_db_ids", []),
+            "created": agent.get("created", ""),
+            "modified": agent.get("modified", ""),
+        }
+        self.agent_to_delete = typed_agent
         self.show_delete_dialog = True
 
     @rx.event
