@@ -89,6 +89,7 @@ class KnowledgeDBState(rx.State):
         self.is_editing = False
         self.form_data = {"name": "", "title": "", "description": "", "type": "Vector"}
         self.form_errors = {}
+        self.error_message = ""
         self.show_db_modal = True
 
     @rx.event
@@ -103,6 +104,7 @@ class KnowledgeDBState(rx.State):
             "type": db.get("type", "Vector"),
         }
         self.form_errors = {}
+        self.error_message = ""
         self.show_db_modal = True
 
     @rx.event
@@ -121,14 +123,17 @@ class KnowledgeDBState(rx.State):
     @rx.event
     async def handle_submit(self, form_data: dict):
         """Handles the form submission for creating or editing a database."""
+        # Clear previous errors
+        self.form_errors = {}
+        self.error_message = ""
+
         self.form_data["name"] = form_data.get("name", "")
         self.form_data["title"] = form_data.get("title", "")
         self.form_data["description"] = form_data.get("description", "")
 
+        # Validate form
         if not self._validate_form():
             return
-
-        self.error_message = ""
         try:
             # Prepare data for API
             api_data = {

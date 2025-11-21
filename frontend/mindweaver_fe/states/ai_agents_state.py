@@ -80,7 +80,9 @@ class AIAgentsState(rx.State):
             agent
             for agent in self.all_agents
             if self.search_query.lower() in agent.get("name", "").lower()
-            and (self.filter_status == "All" or agent.get("status") == self.filter_status)
+            and (
+                self.filter_status == "All" or agent.get("status") == self.filter_status
+            )
         ]
 
     @rx.event
@@ -113,6 +115,7 @@ class AIAgentsState(rx.State):
             "knowledge_db_ids": [],
         }
         self.form_errors = {}
+        self.error_message = ""
         self.show_agent_modal = True
 
     @rx.event
@@ -126,9 +129,14 @@ class AIAgentsState(rx.State):
             "system_prompt": agent["system_prompt"],
             "model": agent["model"],
             "temperature": float(agent["temperature"]),
-            "knowledge_db_ids": agent.get("knowledge_db_ids", []).copy() if agent.get("knowledge_db_ids") else [],
+            "knowledge_db_ids": (
+                agent.get("knowledge_db_ids", []).copy()
+                if agent.get("knowledge_db_ids")
+                else []
+            ),
         }
         self.form_errors = {}
+        self.error_message = ""
         self.show_agent_modal = True
 
     @rx.event
@@ -158,14 +166,17 @@ class AIAgentsState(rx.State):
     @rx.event
     async def handle_submit(self, form_data: dict):
         """Handles form submission for creating or editing an agent."""
+        # Clear previous errors
+        self.form_errors = {}
+        self.error_message = ""
+
         self.form_data["name"] = form_data.get("name", "")
         self.form_data["title"] = form_data.get("title", "")
         self.form_data["system_prompt"] = form_data.get("system_prompt", "")
-        
+
+        # Validate form
         if not self._validate_form():
             return
-        
-        self.error_message = ""
         try:
             # Prepare data for API
             api_data = {
@@ -177,13 +188,12 @@ class AIAgentsState(rx.State):
                 "status": "Inactive",
                 "knowledge_db_ids": self.form_data["knowledge_db_ids"],
             }
-            
+
             if self.is_editing and self.agent_to_edit:
                 # Update existing agent
                 api_data["status"] = self.agent_to_edit.get("status", "Inactive")
                 updated_agent = await ai_agent_client.update(
-                    self.agent_to_edit["id"], 
-                    api_data
+                    self.agent_to_edit["id"], api_data
                 )
                 # Update in local state
                 for i, agent in enumerate(self.all_agents):
@@ -194,7 +204,7 @@ class AIAgentsState(rx.State):
                 # Create new agent
                 new_agent = await ai_agent_client.create(api_data)
                 self.all_agents.append(new_agent)
-            
+
             return AIAgentsState.close_agent_modal
         except Exception as e:
             self.error_message = f"Failed to save agent: {str(e)}"
@@ -216,7 +226,7 @@ class AIAgentsState(rx.State):
         """Deletes the selected agent."""
         if not self.agent_to_delete:
             return AIAgentsState.close_delete_dialog
-        
+
         self.error_message = ""
         try:
             await ai_agent_client.delete(self.agent_to_delete["id"])
@@ -228,5 +238,5 @@ class AIAgentsState(rx.State):
             ]
         except Exception as e:
             self.error_message = f"Failed to delete agent: {str(e)}"
-        
+
         return AIAgentsState.close_delete_dialog

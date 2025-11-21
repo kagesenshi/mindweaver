@@ -164,6 +164,7 @@ class DataSourcesState(rx.State):
         self.is_editing = False
         self.form_data = self._get_default_form_data()
         self.form_errors = {}
+        self.error_message = ""
         self.show_source_modal = True
 
     @rx.event
@@ -179,6 +180,7 @@ class DataSourcesState(rx.State):
             if key in source.get("parameters", {}):
                 self.form_data["parameters"][key] = source["parameters"][key]
         self.form_errors = {}
+        self.error_message = ""
         self.show_source_modal = True
 
     @rx.event
@@ -198,16 +200,20 @@ class DataSourcesState(rx.State):
 
     @rx.event
     async def handle_submit(self, form_data: dict):
+        # Clear previous errors
+        self.form_errors = {}
+        self.error_message = ""
+
         submitted_name = form_data.get("name", "")
         submitted_title = form_data.get("title", "")
+
+        # Validate required fields
         if not submitted_name.strip():
             self.form_errors = {"name": "Name is required."}
             return
         if not submitted_title.strip():
             self.form_errors = {"title": "Title is required."}
             return
-        self.form_errors = {}
-        self.error_message = ""
 
         parameters = {}
         for k, v in form_data.items():
@@ -253,6 +259,7 @@ class DataSourcesState(rx.State):
             return DataSourcesState.close_source_modal
         except Exception as e:
             self.error_message = f"Failed to save data source: {str(e)}"
+        print("baa")
 
     @rx.event
     def open_delete_dialog(self, source: DataSource):

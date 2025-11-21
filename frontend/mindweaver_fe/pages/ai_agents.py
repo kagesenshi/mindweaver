@@ -90,6 +90,18 @@ def agent_modal() -> rx.Component:
                     class_name="text-xl font-semibold text-gray-800 mb-4",
                 ),
                 rx.el.form(
+                    # General error message display
+                    rx.cond(
+                        AIAgentsState.error_message != "",
+                        rx.el.div(
+                            rx.icon("alert-circle", class_name="h-5 w-5 text-red-500"),
+                            rx.el.span(
+                                AIAgentsState.error_message,
+                                class_name="text-sm text-red-700",
+                            ),
+                            class_name="flex items-center gap-2 p-3 mb-4 bg-red-50 border border-red-200 rounded-lg",
+                        ),
+                    ),
                     rx.el.div(
                         rx.el.label(
                             "Name",
@@ -99,15 +111,42 @@ def agent_modal() -> rx.Component:
                             placeholder="e.g., Customer Support Bot",
                             name="name",
                             default_value=AIAgentsState.form_data["name"],
-                            class_name="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500",
+                            class_name=rx.cond(
+                                AIAgentsState.form_errors.get("name") != None,
+                                "w-full px-3 py-2 border border-red-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500",
+                                "w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500",
+                            ),
                         ),
                         rx.cond(
-                            AIAgentsState.form_errors.contains("name"),
+                            AIAgentsState.form_errors.get("name") != None,
                             rx.el.p(
-                                AIAgentsState.form_errors["name"],
-                                class_name="text-red-500 text-xs mt-1",
+                                AIAgentsState.form_errors.get("name"),
+                                class_name="text-sm text-red-600 mt-1",
                             ),
-                            None,
+                        ),
+                        class_name="mb-4",
+                    ),
+                    rx.el.div(
+                        rx.el.label(
+                            "Title",
+                            class_name="text-sm font-medium text-gray-700 mb-1 block",
+                        ),
+                        rx.el.input(
+                            placeholder="e.g., Customer Support Assistant",
+                            name="title",
+                            default_value=AIAgentsState.form_data["title"],
+                            class_name=rx.cond(
+                                AIAgentsState.form_errors.get("title") != None,
+                                "w-full px-3 py-2 border border-red-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500",
+                                "w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500",
+                            ),
+                        ),
+                        rx.cond(
+                            AIAgentsState.form_errors.get("title") != None,
+                            rx.el.p(
+                                AIAgentsState.form_errors.get("title"),
+                                class_name="text-sm text-red-600 mt-1",
+                            ),
                         ),
                         class_name="mb-4",
                     ),
