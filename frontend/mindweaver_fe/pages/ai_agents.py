@@ -90,6 +90,14 @@ def agent_modal() -> rx.Component:
                     ),
                     class_name="text-xl font-semibold text-gray-800 mb-4",
                 ),
+                rx.radix.primitives.dialog.description(
+                    rx.cond(
+                        AIAgentsState.is_editing,
+                        "Update the configuration for your AI agent.",
+                        "Configure a new AI agent with custom settings and knowledge bases.",
+                    ),
+                    class_name="text-sm text-gray-600 mb-4",
+                ),
                 rx.el.form(
                     # General error message display
                     rx.cond(

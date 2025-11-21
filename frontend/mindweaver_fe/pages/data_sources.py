@@ -296,6 +296,14 @@ def source_modal() -> rx.Component:
                     ),
                     class_name="text-xl font-semibold text-gray-800 mb-4",
                 ),
+                rx.radix.primitives.dialog.description(
+                    rx.cond(
+                        DataSourcesState.is_editing,
+                        "Update the configuration for your data source.",
+                        "Configure a new data source to sync data from external systems.",
+                    ),
+                    class_name="text-sm text-gray-600 mb-4",
+                ),
                 rx.el.form(
                     # General error message display
                     rx.cond(
@@ -503,7 +511,7 @@ def import_dialog() -> rx.Component:
                 rx.radix.primitives.dialog.title(
                     "Import Data", class_name="text-xl font-semibold text-gray-800"
                 ),
-                rx.el.p(
+                rx.radix.primitives.dialog.description(
                     f"Select a Knowledge Database to import data from {DataSourcesState.source_to_import['name']}.",
                     class_name="text-gray-600 my-4",
                 ),
