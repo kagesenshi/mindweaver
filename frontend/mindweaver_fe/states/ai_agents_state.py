@@ -1,44 +1,30 @@
 import reflex as rx
-from typing import TypedDict, Literal
+from typing import TypedDict, Literal, Any
 import uuid
 from mindweaver_fe.states.knowledge_db_state import KnowledgeDBState, KnowledgeDB
+from mindweaver_fe.api_client import ai_agent_client
 
 AgentStatus = Literal["Active", "Inactive"]
 
 
 class AIAgent(TypedDict):
-    id: str
+    id: int
+    uuid: str
     name: str
+    title: str
     model: str
     temperature: float
     system_prompt: str
     status: AgentStatus
     knowledge_db_ids: list[str]
+    created: str
+    modified: str
 
 
 class AIAgentsState(rx.State):
     """Manages the state for the AI agents page."""
 
-    all_agents: list[AIAgent] = [
-        {
-            "id": str(uuid.uuid4()),
-            "name": "Support Agent v1",
-            "model": "gpt-4-turbo",
-            "temperature": 0.7,
-            "system_prompt": "You are a friendly and helpful customer support agent. Use the provided knowledge base to answer questions.",
-            "status": "Active",
-            "knowledge_db_ids": [],
-        },
-        {
-            "id": str(uuid.uuid4()),
-            "name": "Documentation Writer",
-            "model": "claude-3-opus-20240229",
-            "temperature": 0.5,
-            "system_prompt": "You are a technical writer. You write clear, concise documentation based on the provided data.",
-            "status": "Inactive",
-            "knowledge_db_ids": [],
-        },
-    ]
+    all_agents: list[AIAgent] = []
     show_agent_modal: bool = False
     show_delete_dialog: bool = False
     is_editing: bool = False
@@ -46,6 +32,7 @@ class AIAgentsState(rx.State):
     agent_to_delete: AIAgent | None = None
     form_data: dict = {
         "name": "",
+        "title": "",
         "system_prompt": "",
         "model": "gpt-4-turbo",
         "temperature": 0.7,
@@ -62,6 +49,21 @@ class AIAgentsState(rx.State):
         "claude-3-sonnet-20240229",
     ]
     all_knowledge_dbs: list[KnowledgeDB] = []
+    is_loading: bool = False
+    error_message: str = ""
+
+    @rx.event
+    async def load_agents(self):
+        """Load agents from the API."""
+        self.is_loading = True
+        self.error_message = ""
+        try:
+            agents = await ai_agent_client.list_all()
+            self.all_agents = agents
+        except Exception as e:
+            self.error_message = f"Failed to load agents: {str(e)}"
+        finally:
+            self.is_loading = False
 
     @rx.event
     async def set_search_query(self, value):
@@ -77,26 +79,24 @@ class AIAgentsState(rx.State):
         return [
             agent
             for agent in self.all_agents
-            if self.search_query.lower() in agent["name"].lower()
-            and (self.filter_status == "All" or agent["status"] == self.filter_status)
+            if self.search_query.lower() in agent.get("name", "").lower()
+            and (self.filter_status == "All" or agent.get("status") == self.filter_status)
         ]
 
     @rx.event
     async def load_knowledge_dbs(self):
         """Loads knowledge databases from the KnowledgeDBState."""
         kdb_state = await self.get_state(KnowledgeDBState)
+        await kdb_state.load_databases()
         self.all_knowledge_dbs = kdb_state.all_databases
-        if self.all_knowledge_dbs and self.all_agents:
-            if not self.all_agents[0]["knowledge_db_ids"]:
-                self.all_agents[0]["knowledge_db_ids"].append(
-                    self.all_knowledge_dbs[0]["id"]
-                )
 
     def _validate_form(self) -> bool:
         """Validates the agent form data."""
         errors = {}
         if not self.form_data["name"].strip():
             errors["name"] = "Name is required."
+        if not self.form_data.get("title", "").strip():
+            errors["title"] = "Title is required."
         self.form_errors = errors
         return not errors
 
@@ -106,6 +106,7 @@ class AIAgentsState(rx.State):
         self.is_editing = False
         self.form_data = {
             "name": "",
+            "title": "",
             "system_prompt": "You are a helpful assistant.",
             "model": "gpt-4-turbo",
             "temperature": 0.7,
@@ -121,10 +122,11 @@ class AIAgentsState(rx.State):
         self.agent_to_edit = agent
         self.form_data = {
             "name": agent["name"],
+            "title": agent.get("title", ""),
             "system_prompt": agent["system_prompt"],
             "model": agent["model"],
             "temperature": float(agent["temperature"]),
-            "knowledge_db_ids": agent["knowledge_db_ids"].copy(),
+            "knowledge_db_ids": agent.get("knowledge_db_ids", []).copy() if agent.get("knowledge_db_ids") else [],
         }
         self.form_errors = {}
         self.show_agent_modal = True
@@ -154,41 +156,48 @@ class AIAgentsState(rx.State):
             self.form_data["knowledge_db_ids"].remove(db_id)
 
     @rx.event
-    def handle_submit(self, form_data: dict):
+    async def handle_submit(self, form_data: dict):
         """Handles form submission for creating or editing an agent."""
         self.form_data["name"] = form_data.get("name", "")
+        self.form_data["title"] = form_data.get("title", "")
         self.form_data["system_prompt"] = form_data.get("system_prompt", "")
-        if self._validate_form():
+        
+        if not self._validate_form():
+            return
+        
+        self.error_message = ""
+        try:
+            # Prepare data for API
+            api_data = {
+                "name": self.form_data["name"],
+                "title": self.form_data["title"],
+                "system_prompt": self.form_data.get("system_prompt", ""),
+                "model": self.form_data["model"],
+                "temperature": self.form_data["temperature"],
+                "status": "Inactive",
+                "knowledge_db_ids": self.form_data["knowledge_db_ids"],
+            }
+            
             if self.is_editing and self.agent_to_edit:
-                index_to_update = -1
+                # Update existing agent
+                api_data["status"] = self.agent_to_edit.get("status", "Inactive")
+                updated_agent = await ai_agent_client.update(
+                    self.agent_to_edit["id"], 
+                    api_data
+                )
+                # Update in local state
                 for i, agent in enumerate(self.all_agents):
                     if agent["id"] == self.agent_to_edit["id"]:
-                        index_to_update = i
+                        self.all_agents[i] = updated_agent
                         break
-                if index_to_update != -1:
-                    self.all_agents[index_to_update]["name"] = self.form_data["name"]
-                    self.all_agents[index_to_update]["system_prompt"] = self.form_data[
-                        "system_prompt"
-                    ]
-                    self.all_agents[index_to_update]["model"] = self.form_data["model"]
-                    self.all_agents[index_to_update]["temperature"] = self.form_data[
-                        "temperature"
-                    ]
-                    self.all_agents[index_to_update]["knowledge_db_ids"] = (
-                        self.form_data["knowledge_db_ids"]
-                    )
             else:
-                new_agent: AIAgent = {
-                    "id": str(uuid.uuid4()),
-                    "name": self.form_data["name"],
-                    "system_prompt": self.form_data.get("system_prompt", ""),
-                    "model": self.form_data["model"],
-                    "temperature": self.form_data["temperature"],
-                    "status": "Inactive",
-                    "knowledge_db_ids": self.form_data["knowledge_db_ids"],
-                }
+                # Create new agent
+                new_agent = await ai_agent_client.create(api_data)
                 self.all_agents.append(new_agent)
+            
             return AIAgentsState.close_agent_modal
+        except Exception as e:
+            self.error_message = f"Failed to save agent: {str(e)}"
 
     @rx.event
     def open_delete_dialog(self, agent: AIAgent):
@@ -203,12 +212,21 @@ class AIAgentsState(rx.State):
         self.agent_to_delete = None
 
     @rx.event
-    def confirm_delete(self):
+    async def confirm_delete(self):
         """Deletes the selected agent."""
-        if self.agent_to_delete:
+        if not self.agent_to_delete:
+            return AIAgentsState.close_delete_dialog
+        
+        self.error_message = ""
+        try:
+            await ai_agent_client.delete(self.agent_to_delete["id"])
+            # Remove from local state
             self.all_agents = [
                 agent
                 for agent in self.all_agents
                 if agent["id"] != self.agent_to_delete["id"]
             ]
+        except Exception as e:
+            self.error_message = f"Failed to delete agent: {str(e)}"
+        
         return AIAgentsState.close_delete_dialog

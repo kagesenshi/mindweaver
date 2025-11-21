@@ -1,10 +1,11 @@
 import reflex as rx
-from typing import TypedDict, Literal, Union, Optional
+from typing import TypedDict, Literal, Union, Optional, Any
 import uuid
 import datetime
 import asyncio
 import logging
 from mindweaver_fe.states.knowledge_db_state import KnowledgeDB, KnowledgeDBState
+from mindweaver_fe.api_client import data_source_client
 
 SourceType = Literal["API", "Database", "File Upload", "Web Scraper"]
 SourceStatus = Literal["Connected", "Disconnected", "Error"]
@@ -31,18 +32,20 @@ class FileUploadConfig(TypedDict):
 
 class DataSourceFormData(TypedDict):
     name: str
+    title: str
     source_type: SourceType
-    config: Union[APIConfig, DBConfig, WebScraperConfig, FileUploadConfig]
+    parameters: Union[APIConfig, DBConfig, WebScraperConfig, FileUploadConfig]
 
 
 class DataSource(TypedDict):
-    id: str
+    id: int
+    uuid: str
     name: str
-    source_type: SourceType
-    config: dict
-    status: SourceStatus
-    last_sync: str
-    created_at: str
+    title: str
+    type: str
+    parameters: dict[str, Any]
+    created: str
+    modified: str
 
 
 class ImportJob(TypedDict):
@@ -69,9 +72,10 @@ class DataSourcesState(rx.State):
     source_to_delete: DataSource | None = None
     source_to_import: DataSource | None = None
     form_data: DataSourceFormData = {
-        "name": "asdf",
+        "name": "",
+        "title": "",
         "source_type": "API",
-        "config": {"base_url": "http://www.google.com", "api_key": "..."},
+        "parameters": {"base_url": "http://www.google.com", "api_key": "..."},
     }
     form_errors: dict = {}
     search_query: str = ""
@@ -81,20 +85,22 @@ class DataSourcesState(rx.State):
     is_testing_connection: bool = False
     is_importing: bool = False
     import_kb_id: str = ""
+    is_loading: bool = False
+    error_message: str = ""
 
     def _get_default_form_data(
         self, source_type: SourceType = "API"
     ) -> DataSourceFormData:
-        config: Union[APIConfig, DBConfig, WebScraperConfig, FileUploadConfig]
+        parameters: Union[APIConfig, DBConfig, WebScraperConfig, FileUploadConfig]
         if source_type == "API":
-            config = {"base_url": "http://www.google.com", "api_key": "asfsadfsadf"}
+            parameters = {"base_url": "http://www.google.com", "api_key": "asfsadfsadf"}
         elif source_type == "Database":
-            config = {"host": "192.168.0.1", "port": 5432, "username": "asd"}
+            parameters = {"host": "192.168.0.1", "port": 5432, "username": "asd"}
         elif source_type == "Web Scraper":
-            config = {"start_url": "http://www.google.com"}
+            parameters = {"start_url": "http://www.google.com"}
         else:
-            config = {}
-        return {"name": "", "source_type": source_type, "config": config}
+            parameters = {}
+        return {"name": "", "title": "", "source_type": source_type, "parameters": parameters}
     
     @rx.event
     async def set_search_query(self, value):
@@ -106,51 +112,29 @@ class DataSourcesState(rx.State):
 
     @rx.event
     async def load_initial_data(self):
-        """Load knowledge bases and mock data on page mount."""
-        kdb_state = await self.get_state(KnowledgeDBState)
-        self.all_knowledge_dbs = kdb_state.all_databases
-        if not self.all_sources:
-            self.all_sources = [
-                {
-                    "id": str(uuid.uuid4()),
-                    "name": "Stripe Prod API",
-                    "source_type": "API",
-                    "config": {"base_url": "https://api.stripe.com", "api_key": "..."},
-                    "status": "Connected",
-                    "last_sync": "2 hours ago",
-                    "created_at": "2023-11-01",
-                },
-                {
-                    "id": str(uuid.uuid4()),
-                    "name": "Main Postgres DB",
-                    "source_type": "Database",
-                    "config": {
-                        "host": "db.prod.internal",
-                        "port": 5432,
-                        "username": "readonly",
-                    },
-                    "status": "Connected",
-                    "last_sync": "1 day ago",
-                    "created_at": "2023-10-15",
-                },
-                {
-                    "id": str(uuid.uuid4()),
-                    "name": "Failing Scraper",
-                    "source_type": "Web Scraper",
-                    "config": {"start_url": "https://broken-site.com"},
-                    "status": "Error",
-                    "last_sync": "3 days ago",
-                    "created_at": "2023-10-28",
-                },
-            ]
+        """Load knowledge bases and data sources from API."""
+        self.is_loading = True
+        self.error_message = ""
+        try:
+            kdb_state = await self.get_state(KnowledgeDBState)
+            await kdb_state.load_databases()
+            self.all_knowledge_dbs = kdb_state.all_databases
+            
+            # Load sources from API
+            sources = await data_source_client.list_all()
+            self.all_sources = sources
+        except Exception as e:
+            self.error_message = f"Failed to load data: {str(e)}"
+        finally:
+            self.is_loading = False
 
     @rx.var
     def filtered_sources(self) -> list[DataSource]:
         return [
             source
             for source in self.all_sources
-            if self.search_query.lower() in source["name"].lower()
-            and (self.filter_type == "All" or source["source_type"] == self.filter_type)
+            if self.search_query.lower() in source.get("name", "").lower()
+            and (self.filter_type == "All" or source.get("type") == self.filter_type)
         ]
 
     @rx.var
@@ -160,12 +144,12 @@ class DataSourcesState(rx.State):
         )
 
     @rx.var
-    def source_names(self) -> dict[str, str]:
-        return {s["id"]: s["name"] for s in self.all_sources}
+    def source_names(self) -> dict[int, str]:
+        return {s["id"]: s.get("name", "") for s in self.all_sources}
 
     @rx.var
-    def kb_names(self) -> dict[str, str]:
-        return {db["id"]: db["name"] for db in self.all_knowledge_dbs}
+    def kb_names(self) -> dict[int, str]:
+        return {db["id"]: db.get("name", "") for db in self.all_knowledge_dbs}
 
     @rx.event
     def open_create_modal(self):
@@ -178,12 +162,14 @@ class DataSourcesState(rx.State):
     def open_edit_modal(self, source: DataSource):
         self.is_editing = True
         self.source_to_edit = source
-        self.form_data = self._get_default_form_data(source["source_type"])
-        self.form_data["name"] = source["name"]
-        self.form_data["source_type"] = source["source_type"]
-        for key in self.form_data["config"]:
-            if key in source["config"]:
-                self.form_data["config"][key] = source["config"][key]
+        source_type = source.get("type", "API")
+        self.form_data = self._get_default_form_data(source_type)
+        self.form_data["name"] = source.get("name", "")
+        self.form_data["title"] = source.get("title", "")
+        self.form_data["source_type"] = source_type
+        for key in self.form_data["parameters"]:
+            if key in source.get("parameters", {}):
+                self.form_data["parameters"][key] = source["parameters"][key]
         self.form_errors = {}
         self.show_source_modal = True
 
@@ -198,55 +184,65 @@ class DataSourcesState(rx.State):
         if field == "source_type":
             self.form_data = self._get_default_form_data(value)
             self.form_data["name"] = self.form_data.get("name", "")
+            self.form_data["title"] = self.form_data.get("title", "")
         else:
             self.form_data[field] = value
 
     @rx.event
-    def handle_submit(self, form_data: dict):
+    async def handle_submit(self, form_data: dict):
         submitted_name = form_data.get("name", "")
+        submitted_title = form_data.get("title", "")
         if not submitted_name.strip():
             self.form_errors = {"name": "Name is required."}
             return
+        if not submitted_title.strip():
+            self.form_errors = {"title": "Title is required."}
+            return
         self.form_errors = {}
-        config = {}
+        self.error_message = ""
+        
+        parameters = {}
         for k, v in form_data.items():
-            if k.startswith("config."):
+            if k.startswith("parameters."):
                 key = k.split(".")[-1]
                 if key == "port":
                     try:
-                        config[key] = int(v)
+                        parameters[key] = int(v)
                     except (ValueError, TypeError) as e:
                         logging.exception(f"Error converting port to int: {e}")
-                        config[key] = 0
+                        parameters[key] = 0
                 else:
-                    config[key] = v
+                    parameters[key] = v
+        
         current_form_data = self.form_data.copy()
         current_form_data["name"] = submitted_name
-        current_form_data["config"] = {**current_form_data["config"], **config}
-        if self.is_editing and self.source_to_edit:
-            index = next(
-                (
-                    i
-                    for i, s in enumerate(self.all_sources)
-                    if s["id"] == self.source_to_edit["id"]
-                ),
-                -1,
-            )
-            if index != -1:
-                self.all_sources[index]["name"] = current_form_data["name"]
-                self.all_sources[index]["config"] = current_form_data["config"]
-        else:
-            new_source: DataSource = {
-                "id": str(uuid.uuid4()),
+        current_form_data["title"] = submitted_title
+        current_form_data["parameters"] = {**current_form_data["parameters"], **parameters}
+        
+        try:
+            api_data = {
                 "name": current_form_data["name"],
-                "source_type": current_form_data["source_type"],
-                "config": current_form_data["config"],
-                "status": "Disconnected",
-                "last_sync": "Never",
-                "created_at": datetime.date.today().isoformat(),
+                "title": current_form_data["title"],
+                "type": current_form_data["source_type"],
+                "parameters": current_form_data["parameters"]
             }
-            self.all_sources.append(new_source)
-        return DataSourcesState.close_source_modal
+            
+            if self.is_editing and self.source_to_edit:
+                updated_source = await data_source_client.update(
+                    self.source_to_edit["id"],
+                    api_data
+                )
+                for i, s in enumerate(self.all_sources):
+                    if s["id"] == self.source_to_edit["id"]:
+                        self.all_sources[i] = updated_source
+                        break
+            else:
+                new_source = await data_source_client.create(api_data)
+                self.all_sources.append(new_source)
+            
+            return DataSourcesState.close_source_modal
+        except Exception as e:
+            self.error_message = f"Failed to save data source: {str(e)}"
 
     @rx.event
     def open_delete_dialog(self, source: DataSource):
@@ -259,11 +255,19 @@ class DataSourcesState(rx.State):
         self.source_to_delete = None
 
     @rx.event
-    def confirm_delete(self):
-        if self.source_to_delete:
+    async def confirm_delete(self):
+        if not self.source_to_delete:
+            return DataSourcesState.close_delete_dialog
+        
+        self.error_message = ""
+        try:
+            await data_source_client.delete(self.source_to_delete["id"])
             self.all_sources = [
                 s for s in self.all_sources if s["id"] != self.source_to_delete["id"]
             ]
+        except Exception as e:
+            self.error_message = f"Failed to delete data source: {str(e)}"
+        
         return DataSourcesState.close_delete_dialog
 
     @rx.event

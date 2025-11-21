@@ -1,10 +1,11 @@
 import reflex as rx
-from typing import TypedDict, Literal
+from typing import TypedDict, Literal, Any
 import uuid
 import datetime
 import asyncio
 from mindweaver_fe.states.ai_agents_state import AIAgentsState, AIAgent
 from mindweaver_fe.states.knowledge_db_state import KnowledgeDB, KnowledgeDBState
+from mindweaver_fe.api_client import chat_client
 
 
 class Message(TypedDict):
@@ -13,8 +14,19 @@ class Message(TypedDict):
     timestamp: str
 
 
+class Chat(TypedDict):
+    id: int
+    uuid: str
+    name: str
+    title: str
+    messages: list[dict[str, Any]]
+    agent_id: str | None
+    created: str
+    modified: str
+
+
 class ConversationInfo(TypedDict):
-    id: str
+    id: int
     title: str
 
 
@@ -23,12 +35,13 @@ class ChatState(rx.State):
 
     all_agents: list[AIAgent] = []
     all_dbs: list[KnowledgeDB] = []
+    all_chats: list[Chat] = []
     selected_agent_id: str = ""
-    conversations: dict[str, list[Message]] = {}
-    conversation_history: list[ConversationInfo] = []
-    current_conversation_id: str | None = None
+    current_conversation_id: int | None = None
     input_message: str = ""
     is_streaming: bool = False
+    is_loading: bool = False
+    error_message: str = ""
 
     @rx.event
     def set_input_message(self, value):
@@ -36,18 +49,32 @@ class ChatState(rx.State):
 
     @rx.event
     async def load_initial_data(self):
-        """Load agents and knowledge bases on page mount."""
-        agent_state = await self.get_state(AIAgentsState)
-        self.all_agents = agent_state.all_agents
-        kdb_state = await self.get_state(KnowledgeDBState)
-        self.all_dbs = kdb_state.all_databases
+        """Load agents, knowledge bases, and chats on page mount."""
+        self.is_loading = True
+        self.error_message = ""
+        try:
+            agent_state = await self.get_state(AIAgentsState)
+            await agent_state.load_agents()
+            self.all_agents = agent_state.all_agents
+            
+            kdb_state = await self.get_state(KnowledgeDBState)
+            await kdb_state.load_databases()
+            self.all_dbs = kdb_state.all_databases
+            
+            # Load chats from API
+            chats = await chat_client.list_all()
+            self.all_chats = chats
+        except Exception as e:
+            self.error_message = f"Failed to load data: {str(e)}"
+        finally:
+            self.is_loading = False
 
     @rx.var
     def selected_agent(self) -> AIAgent | None:
         """The currently selected AI agent."""
         if self.selected_agent_id and self.all_agents:
             for agent in self.all_agents:
-                if agent["id"] == self.selected_agent_id:
+                if str(agent["id"]) == self.selected_agent_id:
                     return agent
         return None
 
@@ -55,36 +82,52 @@ class ChatState(rx.State):
     def connected_dbs(self) -> list[KnowledgeDB]:
         """List of knowledge DBs connected to the selected agent."""
         if self.selected_agent and self.all_dbs:
-            connected_ids = self.selected_agent["knowledge_db_ids"]
-            return [db for db in self.all_dbs if db["id"] in connected_ids]
+            connected_ids = self.selected_agent.get("knowledge_db_ids", [])
+            return [db for db in self.all_dbs if str(db["id"]) in connected_ids]
         return []
 
     @rx.var
     def current_conversation_messages(self) -> list[Message]:
         """The messages for the currently selected conversation."""
-        if (
-            self.current_conversation_id
-            and self.current_conversation_id in self.conversations
-        ):
-            return self.conversations[self.current_conversation_id]
+        if self.current_conversation_id:
+            for chat in self.all_chats:
+                if chat["id"] == self.current_conversation_id:
+                    return chat.get("messages", [])
         return []
 
+    @rx.var
+    def conversation_history(self) -> list[ConversationInfo]:
+        """List of conversation info for the sidebar."""
+        return [
+            {
+                "id": chat["id"],
+                "title": chat.get("title", chat.get("name", f"Chat {chat['id']}"))
+            }
+            for chat in self.all_chats
+        ]
+
     @rx.event
-    def select_conversation(self, conv_id: str):
+    def select_conversation(self, conv_id: int):
         """Select an existing conversation from the history."""
         self.current_conversation_id = conv_id
 
     @rx.event
-    def create_new_conversation(self):
+    async def create_new_conversation(self):
         """Start a new conversation."""
-        new_id = str(uuid.uuid4())
-        self.current_conversation_id = new_id
-        self.conversations[new_id] = []
-        new_conv_info: ConversationInfo = {
-            "id": new_id,
-            "title": f"Conversation {len(self.conversation_history) + 1}",
-        }
-        self.conversation_history.insert(0, new_conv_info)
+        self.error_message = ""
+        try:
+            # Create new chat in backend
+            new_chat_data = {
+                "name": f"chat-{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}",
+                "title": f"Conversation {len(self.all_chats) + 1}",
+                "messages": [],
+                "agent_id": self.selected_agent_id if self.selected_agent_id else None
+            }
+            new_chat = await chat_client.create(new_chat_data)
+            self.all_chats.insert(0, new_chat)
+            self.current_conversation_id = new_chat["id"]
+        except Exception as e:
+            self.error_message = f"Failed to create conversation: {str(e)}"
 
     @rx.event
     def set_agent_and_start_chat(self, agent_id: str):
@@ -103,34 +146,66 @@ class ChatState(rx.State):
             or (not self.selected_agent)
         ):
             return
+        
         self.input_message = ""
+        self.error_message = ""
+        
+        # Find current chat
+        current_chat = None
+        chat_index = -1
+        for i, chat in enumerate(self.all_chats):
+            if chat["id"] == self.current_conversation_id:
+                current_chat = chat
+                chat_index = i
+                break
+        
+        if not current_chat:
+            return
+        
+        # Add user message
         user_message: Message = {
             "role": "user",
             "content": message_content,
             "timestamp": datetime.datetime.now().strftime("%H:%M"),
         }
-        self.conversations[self.current_conversation_id].append(user_message)
-        if len(self.conversations[self.current_conversation_id]) == 1:
-            for i, conv in enumerate(self.conversation_history):
-                if conv["id"] == self.current_conversation_id:
-                    title = message_content[:25] + (
-                        "..." if len(message_content) > 25 else ""
-                    )
-                    self.conversation_history[i]["title"] = title
-                    break
+        
+        messages = current_chat.get("messages", []).copy()
+        messages.append(user_message)
+        
+        # Update title if first message
+        title = current_chat.get("title", "")
+        if len(messages) == 1:
+            title = message_content[:25] + ("..." if len(message_content) > 25 else "")
+        
+        # Simulate streaming response
         self.is_streaming = True
         yield
+        
         assistant_response = f"This is a streamed response about '{message_content[:20]}...'. I am {self.selected_agent['name']}."
         assistant_message: Message = {
             "role": "assistant",
             "content": "",
             "timestamp": datetime.datetime.now().strftime("%H:%M"),
         }
-        self.conversations[self.current_conversation_id].append(assistant_message)
+        messages.append(assistant_message)
+        
+        # Update local state with streaming
         for chunk in assistant_response.split():
-            self.conversations[self.current_conversation_id][-1]["content"] += (
-                chunk + " "
-            )
+            messages[-1]["content"] += chunk + " "
+            self.all_chats[chat_index]["messages"] = messages
             await asyncio.sleep(0.05)
             yield
+        
         self.is_streaming = False
+        
+        # Save to backend
+        try:
+            update_data = {
+                "title": title,
+                "messages": messages,
+                "agent_id": self.selected_agent_id
+            }
+            updated_chat = await chat_client.update(self.current_conversation_id, update_data)
+            self.all_chats[chat_index] = updated_chat
+        except Exception as e:
+            self.error_message = f"Failed to save message: {str(e)}"

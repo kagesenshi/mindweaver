@@ -1,59 +1,58 @@
 import reflex as rx
-from typing import TypedDict, Literal
+from typing import TypedDict, Literal, Any
 import datetime
 import uuid
+from mindweaver_fe.api_client import knowledge_db_client
 
 DBType = Literal["Vector", "Graph", "Hybrid"]
 
 
 class KnowledgeDB(TypedDict):
-    id: str
+    id: int
+    uuid: str
     name: str
+    title: str
     description: str
-    db_type: DBType
-    entry_count: int
-    created_at: str
+    type: str
+    parameters: dict[str, Any]
+    created: str
+    modified: str
 
 
 class KnowledgeDBState(rx.State):
     """Manages the state for the knowledge database page."""
 
-    all_databases: list[KnowledgeDB] = [
-        {
-            "id": str(uuid.uuid4()),
-            "name": "Project Phoenix Docs",
-            "description": "Internal documentation for Project Phoenix, focusing on architecture and design patterns.",
-            "db_type": "Vector",
-            "entry_count": 1250,
-            "created_at": "2023-10-26",
-        },
-        {
-            "id": str(uuid.uuid4()),
-            "name": "Customer Support Tickets",
-            "description": "A graph-based knowledge base of interconnected customer issues and resolutions.",
-            "db_type": "Graph",
-            "entry_count": 5400,
-            "created_at": "2023-09-15",
-        },
-        {
-            "id": str(uuid.uuid4()),
-            "name": "Q3 Financial Reports",
-            "description": "Hybrid database containing both vector embeddings of reports and a graph of financial entities.",
-            "db_type": "Hybrid",
-            "entry_count": 350,
-            "created_at": "2023-10-02",
-        },
-    ]
+    all_databases: list[KnowledgeDB] = []
     show_db_modal: bool = False
     show_delete_dialog: bool = False
     is_editing: bool = False
     db_to_edit: KnowledgeDB | None = None
     db_to_delete: KnowledgeDB | None = None
-    form_data: dict = {"name": "", "description": "", "db_type": "Vector"}
+    form_data: dict = {
+        "name": "",
+        "title": "",
+        "description": "",
+        "type": "Vector"
+    }
     form_errors: dict = {}
     search_query: str = ""
     filter_type: str = "All"
     db_types: list[str] = ["All", "Vector", "Graph", "Hybrid"]
+    is_loading: bool = False
+    error_message: str = ""
+
+    @rx.event
+    async def load_databases(self):
+        """Load databases from the API."""
+        self.is_loading = True
+        self.error_message = ""
+        try:
+            databases = await knowledge_db_client.list_all()
+            self.all_databases = databases
+        except Exception as e:
+            self.error_message = f"Failed to load databases: {str(e)}"
+        finally:
+            self.is_loading = False
 
     @rx.event
     def set_search_query(self, value):
@@ -74,8 +73,8 @@ class KnowledgeDBState(rx.State):
         return [
             db
             for db in self.all_databases
-            if self.search_query.lower() in db["name"].lower()
-            and (self.filter_type == "All" or db["db_type"] == self.filter_type)
+            if self.search_query.lower() in db.get("name", "").lower()
+            and (self.filter_type == "All" or db.get("type") == self.filter_type)
         ]
 
     def _validate_form(self) -> bool:
@@ -83,6 +82,8 @@ class KnowledgeDBState(rx.State):
         errors = {}
         if not self.form_data["name"].strip():
             errors["name"] = "Name is required."
+        if not self.form_data.get("title", "").strip():
+            errors["title"] = "Title is required."
         self.form_errors = errors
         return not errors
 
@@ -90,7 +91,12 @@ class KnowledgeDBState(rx.State):
     def open_create_modal(self):
         """Opens the modal to create a new database."""
         self.is_editing = False
-        self.form_data = {"name": "", "description": "", "db_type": "Vector"}
+        self.form_data = {
+            "name": "",
+            "title": "",
+            "description": "",
+            "type": "Vector"
+        }
         self.form_errors = {}
         self.show_db_modal = True
 
@@ -101,8 +107,9 @@ class KnowledgeDBState(rx.State):
         self.db_to_edit = db
         self.form_data = {
             "name": db["name"],
-            "description": db["description"],
-            "db_type": db["db_type"],
+            "title": db.get("title", ""),
+            "description": db.get("description", ""),
+            "type": db.get("type", "Vector"),
         }
         self.form_errors = {}
         self.show_db_modal = True
@@ -112,7 +119,12 @@ class KnowledgeDBState(rx.State):
         """Closes the create/edit modal."""
         self.show_db_modal = False
         self.db_to_edit = None
-        self.form_data = {"name": "", "description": "", "db_type": "Vector"}
+        self.form_data = {
+            "name": "",
+            "title": "",
+            "description": "",
+            "type": "Vector"
+        }
         self.form_errors = {}
 
     @rx.event
@@ -121,36 +133,45 @@ class KnowledgeDBState(rx.State):
         self.form_data[field] = value
 
     @rx.event
-    def handle_submit(self, form_data: dict):
+    async def handle_submit(self, form_data: dict):
         """Handles the form submission for creating or editing a database."""
         self.form_data["name"] = form_data.get("name", "")
+        self.form_data["title"] = form_data.get("title", "")
         self.form_data["description"] = form_data.get("description", "")
-        if self._validate_form():
+        
+        if not self._validate_form():
+            return
+        
+        self.error_message = ""
+        try:
+            # Prepare data for API
+            api_data = {
+                "name": self.form_data["name"],
+                "title": self.form_data["title"],
+                "description": self.form_data.get("description", ""),
+                "type": self.form_data["type"],
+                "parameters": {}
+            }
+            
             if self.is_editing and self.db_to_edit:
-                index_to_update = -1
+                # Update existing database
+                updated_db = await knowledge_db_client.update(
+                    self.db_to_edit["id"],
+                    api_data
+                )
+                # Update in local state
                 for i, db in enumerate(self.all_databases):
                     if db["id"] == self.db_to_edit["id"]:
-                        index_to_update = i
+                        self.all_databases[i] = updated_db
                         break
-                if index_to_update != -1:
-                    self.all_databases[index_to_update]["name"] = self.form_data["name"]
-                    self.all_databases[index_to_update]["description"] = self.form_data[
-                        "description"
-                    ]
-                    self.all_databases[index_to_update]["db_type"] = self.form_data[
-                        "db_type"
-                    ]
             else:
-                new_db: KnowledgeDB = {
-                    "id": str(uuid.uuid4()),
-                    "name": self.form_data["name"],
-                    "description": self.form_data.get("description", ""),
-                    "db_type": self.form_data["db_type"],
-                    "entry_count": 0,
-                    "created_at": datetime.date.today().isoformat(),
-                }
+                # Create new database
+                new_db = await knowledge_db_client.create(api_data)
                 self.all_databases.append(new_db)
+            
             return KnowledgeDBState.close_db_modal
+        except Exception as e:
+            self.error_message = f"Failed to save database: {str(e)}"
 
     @rx.event
     def open_delete_dialog(self, db: KnowledgeDB):
@@ -165,10 +186,19 @@ class KnowledgeDBState(rx.State):
         self.db_to_delete = None
 
     @rx.event
-    def confirm_delete(self):
+    async def confirm_delete(self):
         """Deletes the selected database."""
-        if self.db_to_delete:
+        if not self.db_to_delete:
+            return KnowledgeDBState.close_delete_dialog
+        
+        self.error_message = ""
+        try:
+            await knowledge_db_client.delete(self.db_to_delete["id"])
+            # Remove from local state
             self.all_databases = [
                 db for db in self.all_databases if db["id"] != self.db_to_delete["id"]
             ]
+        except Exception as e:
+            self.error_message = f"Failed to delete database: {str(e)}"
+        
         return KnowledgeDBState.close_delete_dialog
