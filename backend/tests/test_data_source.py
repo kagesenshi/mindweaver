@@ -365,3 +365,200 @@ def test_update_data_source_invalid_parameters(client: TestClient):
     assert resp.status_code == 422
     error = resp.json()
     assert "detail" in error
+
+
+# ============================================================================
+# Type Change Rejection Tests
+# ============================================================================
+
+
+def test_update_data_source_reject_type_change_api_to_database(client: TestClient):
+    """Test that changing data source type from API to Database is rejected."""
+    # Create an API data source
+    create_resp = client.post(
+        "/data_sources",
+        json={
+            "name": "api-source",
+            "title": "API Source",
+            "type": "API",
+            "parameters": {
+                "base_url": "https://api.example.com",
+                "api_key": "test_key",
+            },
+        },
+    )
+    assert create_resp.status_code == 200
+    source_id = create_resp.json()["record"]["id"]
+
+    # Try to change type to Database
+    update_resp = client.put(
+        f"/data_sources/{source_id}",
+        json={
+            "name": "api-source",
+            "title": "API Source",
+            "type": "Database",
+            "parameters": {"host": "localhost", "port": 5432, "username": "admin"},
+        },
+    )
+
+    assert update_resp.status_code == 422
+    error = update_resp.json()
+    assert "detail" in error
+    detail = error["detail"]
+    # Handle both string and list formats
+    detail_str = detail if isinstance(detail, str) else str(detail)
+    assert "cannot change data source type" in detail_str.lower()
+    assert "API" in detail_str
+    assert "Database" in detail_str
+
+
+def test_update_data_source_reject_type_change_database_to_web_scraper(
+    client: TestClient,
+):
+    """Test that changing data source type from Database to Web Scraper is rejected."""
+    # Create a Database data source
+    create_resp = client.post(
+        "/data_sources",
+        json={
+            "name": "db-source",
+            "title": "Database Source",
+            "type": "Database",
+            "parameters": {"host": "localhost", "port": 5432, "username": "admin"},
+        },
+    )
+    assert create_resp.status_code == 200
+    source_id = create_resp.json()["record"]["id"]
+
+    # Try to change type to Web Scraper
+    update_resp = client.put(
+        f"/data_sources/{source_id}",
+        json={
+            "name": "db-source",
+            "title": "Database Source",
+            "type": "Web Scraper",
+            "parameters": {"start_url": "https://example.com"},
+        },
+    )
+
+    assert update_resp.status_code == 422
+    error = update_resp.json()
+    assert "detail" in error
+    detail = error["detail"]
+    # Handle both string and list formats
+    detail_str = detail if isinstance(detail, str) else str(detail)
+    assert "cannot change data source type" in detail_str.lower()
+    assert "Database" in detail_str
+    assert "Web Scraper" in detail_str
+
+
+def test_update_data_source_reject_type_change_web_scraper_to_file_upload(
+    client: TestClient,
+):
+    """Test that changing data source type from Web Scraper to File Upload is rejected."""
+    # Create a Web Scraper data source
+    create_resp = client.post(
+        "/data_sources",
+        json={
+            "name": "scraper-source",
+            "title": "Scraper Source",
+            "type": "Web Scraper",
+            "parameters": {"start_url": "https://example.com"},
+        },
+    )
+    assert create_resp.status_code == 200
+    source_id = create_resp.json()["record"]["id"]
+
+    # Try to change type to File Upload
+    update_resp = client.put(
+        f"/data_sources/{source_id}",
+        json={
+            "name": "scraper-source",
+            "title": "Scraper Source",
+            "type": "File Upload",
+            "parameters": {},
+        },
+    )
+
+    assert update_resp.status_code == 422
+    error = update_resp.json()
+    assert "detail" in error
+    detail = error["detail"]
+    # Handle both string and list formats
+    detail_str = detail if isinstance(detail, str) else str(detail)
+    assert "cannot change data source type" in detail_str.lower()
+    assert "Web Scraper" in detail_str
+    assert "File Upload" in detail_str
+
+
+def test_update_data_source_same_type_allowed(client: TestClient):
+    """Test that updating a data source with the same type is allowed."""
+    # Create an API data source
+    create_resp = client.post(
+        "/data_sources",
+        json={
+            "name": "api-source",
+            "title": "API Source",
+            "type": "API",
+            "parameters": {"base_url": "https://api.example.com", "api_key": "old_key"},
+        },
+    )
+    assert create_resp.status_code == 200
+    source_id = create_resp.json()["record"]["id"]
+
+    # Update with the same type but different parameters
+    update_resp = client.put(
+        f"/data_sources/{source_id}",
+        json={
+            "name": "api-source",
+            "title": "API Source",
+            "type": "API",
+            "parameters": {
+                "base_url": "https://api.newexample.com",
+                "api_key": "new_key",
+            },
+        },
+    )
+
+    assert update_resp.status_code == 200
+    data = update_resp.json()
+    assert data["record"]["type"] == "API"
+    assert data["record"]["parameters"]["base_url"] == "https://api.newexample.com"
+    assert data["record"]["parameters"]["api_key"] == "new_key"
+
+
+def test_update_data_source_without_type_field(client: TestClient):
+    """Test that updating a data source without specifying type field works."""
+    # Create an API data source
+    create_resp = client.post(
+        "/data_sources",
+        json={
+            "name": "api-source",
+            "title": "API Source",
+            "type": "API",
+            "parameters": {
+                "base_url": "https://api.example.com",
+                "api_key": "test_key",
+            },
+        },
+    )
+    assert create_resp.status_code == 200
+    source_id = create_resp.json()["record"]["id"]
+
+    # Update only the title without specifying type
+    update_resp = client.put(
+        f"/data_sources/{source_id}",
+        json={
+            "name": "api-source",
+            "title": "Updated API Source",
+            "type": "API",
+            "parameters": {
+                "base_url": "https://api.example.com",
+                "api_key": "test_key",
+            },
+        },
+    )
+
+    assert update_resp.status_code == 200
+    data = update_resp.json()
+    assert data["record"]["type"] == "API"  # Type should remain unchanged
+    assert data["record"]["title"] == "Updated API Source"

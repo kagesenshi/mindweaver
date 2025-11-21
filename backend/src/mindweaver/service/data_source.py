@@ -238,6 +238,13 @@ class DataSourceService(Service[DataSource]):
         if not existing:
             raise HTTPException(status_code=404, detail="Data source not found")
 
+        # Reject changing data source type for existing data sources
+        if "type" in data_dict and data_dict["type"] != existing.type:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Cannot change data source type from '{existing.type}' to '{data_dict['type']}'. Create a new data source instead.",
+            )
+
         # If type is being updated, validate it
         source_type = data_dict.get("type", existing.type)
 
