@@ -1,6 +1,7 @@
 import reflex as rx
 from mindweaver_fe.components.layout import base_layout
 from mindweaver_fe.components.reusables import base_button
+from mindweaver_fe.components.loading_spinner import loading_spinner
 from mindweaver_fe.states.chat_state import ChatState
 
 
@@ -195,15 +196,19 @@ def message_input() -> rx.Component:
 def chat_page() -> rx.Component:
     """The Chat page content."""
     return base_layout(
-        rx.el.div(
-            conversation_sidebar(),
+        rx.cond(
+            ChatState.is_loading,
+            loading_spinner(),
             rx.el.div(
-                chat_header(),
-                chat_area(),
-                message_input(),
-                class_name="flex-1 flex flex-col bg-gray-50",
+                conversation_sidebar(),
+                rx.el.div(
+                    chat_header(),
+                    chat_area(),
+                    message_input(),
+                    class_name="flex-1 flex flex-col bg-gray-50",
+                ),
+                class_name="flex h-full w-full",
             ),
-            class_name="flex h-full w-full",
         ),
         on_mount=ChatState.load_initial_data,
     )

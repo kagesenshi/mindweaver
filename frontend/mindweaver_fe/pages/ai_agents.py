@@ -1,6 +1,7 @@
 import reflex as rx
 from mindweaver_fe.components.layout import base_layout
 from mindweaver_fe.components.reusables import card, base_button
+from mindweaver_fe.components.loading_spinner import loading_spinner
 from mindweaver_fe.states.ai_agents_state import AIAgentsState, AIAgent
 
 
@@ -336,48 +337,54 @@ def ai_agents_page() -> rx.Component:
         rx.el.div(
             agent_modal(),
             delete_dialog(),
-            rx.el.div(
+            rx.cond(
+                AIAgentsState.is_loading,
+                loading_spinner(),
                 rx.el.div(
                     rx.el.div(
-                        rx.icon("search", class_name="h-5 w-5 text-gray-400"),
-                        class_name="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none",
-                    ),
-                    rx.el.input(
-                        placeholder="Search agents...",
-                        on_change=AIAgentsState.set_search_query,
-                        class_name="w-full max-w-xs pl-10 pr-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500",
-                        default_value=AIAgentsState.search_query,
-                    ),
-                    class_name="relative",
-                ),
-                rx.el.div(
-                    rx.el.select(
-                        rx.foreach(
-                            AIAgentsState.status_options,
-                            lambda status: rx.el.option(status, value=status),
+                        rx.el.div(
+                            rx.el.div(
+                                rx.icon("search", class_name="h-5 w-5 text-gray-400"),
+                                class_name="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none",
+                            ),
+                            rx.el.input(
+                                placeholder="Search agents...",
+                                on_change=AIAgentsState.set_search_query,
+                                class_name="w-full max-w-xs pl-10 pr-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500",
+                                default_value=AIAgentsState.search_query,
+                            ),
+                            class_name="relative",
                         ),
-                        value=AIAgentsState.filter_status,
-                        on_change=AIAgentsState.set_filter_status,
-                        class_name="py-2 pl-3 pr-8 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500",
+                        rx.el.div(
+                            rx.el.select(
+                                rx.foreach(
+                                    AIAgentsState.status_options,
+                                    lambda status: rx.el.option(status, value=status),
+                                ),
+                                value=AIAgentsState.filter_status,
+                                on_change=AIAgentsState.set_filter_status,
+                                class_name="py-2 pl-3 pr-8 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500",
+                            ),
+                            base_button(
+                                "Create New Agent",
+                                icon="message-circle-plus",
+                                on_click=AIAgentsState.open_create_modal,
+                            ),
+                            class_name="flex items-center gap-4",
+                        ),
+                        class_name="flex justify-between items-center mb-6",
                     ),
-                    base_button(
-                        "Create New Agent",
-                        icon="message-circle-plus",
-                        on_click=AIAgentsState.open_create_modal,
+                    rx.cond(
+                        AIAgentsState.filtered_agents.length() > 0,
+                        rx.el.div(
+                            rx.foreach(AIAgentsState.filtered_agents, agent_card),
+                            class_name="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6",
+                        ),
+                        empty_state(),
                     ),
-                    class_name="flex items-center gap-4",
+                    class_name="h-full",
                 ),
-                class_name="flex justify-between items-center mb-6",
             ),
-            rx.cond(
-                AIAgentsState.filtered_agents.length() > 0,
-                rx.el.div(
-                    rx.foreach(AIAgentsState.filtered_agents, agent_card),
-                    class_name="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6",
-                ),
-                empty_state(),
-            ),
-            class_name="h-full",
         ),
-        on_mount=AIAgentsState.load_knowledge_dbs,
+        on_mount=AIAgentsState.load_agents,
     )

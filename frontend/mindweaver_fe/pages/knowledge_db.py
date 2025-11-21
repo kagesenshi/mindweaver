@@ -1,6 +1,7 @@
 import reflex as rx
 from mindweaver_fe.components.layout import base_layout
 from mindweaver_fe.components.reusables import card, base_button
+from mindweaver_fe.components.loading_spinner import loading_spinner
 from mindweaver_fe.states.knowledge_db_state import KnowledgeDBState, KnowledgeDB
 
 
@@ -275,47 +276,54 @@ def knowledge_db_page() -> rx.Component:
         rx.el.div(
             db_modal(),
             delete_dialog(),
-            rx.el.div(
+            rx.cond(
+                KnowledgeDBState.is_loading,
+                loading_spinner(),
                 rx.el.div(
                     rx.el.div(
-                        rx.icon("search", class_name="h-5 w-5 text-gray-400"),
-                        class_name="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none",
-                    ),
-                    rx.el.input(
-                        placeholder="Search databases...",
-                        on_change=KnowledgeDBState.set_search_query,
-                        class_name="w-full max-w-xs pl-10 pr-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500",
-                        default_value=KnowledgeDBState.search_query,
-                    ),
-                    class_name="relative",
-                ),
-                rx.el.div(
-                    rx.el.select(
-                        rx.foreach(
-                            KnowledgeDBState.db_types,
-                            lambda type: rx.el.option(type, value=type),
+                        rx.el.div(
+                            rx.el.div(
+                                rx.icon("search", class_name="h-5 w-5 text-gray-400"),
+                                class_name="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none",
+                            ),
+                            rx.el.input(
+                                placeholder="Search databases...",
+                                on_change=KnowledgeDBState.set_search_query,
+                                class_name="w-full max-w-xs pl-10 pr-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500",
+                                default_value=KnowledgeDBState.search_query,
+                            ),
+                            class_name="relative",
                         ),
-                        value=KnowledgeDBState.filter_type,
-                        on_change=KnowledgeDBState.set_filter_type,
-                        class_name="py-2 pl-3 pr-8 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500",
+                        rx.el.div(
+                            rx.el.select(
+                                rx.foreach(
+                                    KnowledgeDBState.db_types,
+                                    lambda type: rx.el.option(type, value=type),
+                                ),
+                                value=KnowledgeDBState.filter_type,
+                                on_change=KnowledgeDBState.set_filter_type,
+                                class_name="py-2 pl-3 pr-8 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500",
+                            ),
+                            base_button(
+                                "Create New DB",
+                                icon="message-circle-plus",
+                                on_click=KnowledgeDBState.open_create_modal,
+                            ),
+                            class_name="flex items-center gap-4",
+                        ),
+                        class_name="flex justify-between items-center mb-6",
                     ),
-                    base_button(
-                        "Create New DB",
-                        icon="message-circle-plus",
-                        on_click=KnowledgeDBState.open_create_modal,
+                    rx.cond(
+                        KnowledgeDBState.filtered_databases.length() > 0,
+                        rx.el.div(
+                            rx.foreach(KnowledgeDBState.filtered_databases, db_card),
+                            class_name="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6",
+                        ),
+                        empty_state(),
                     ),
-                    class_name="flex items-center gap-4",
+                    class_name="h-full",
                 ),
-                class_name="flex justify-between items-center mb-6",
             ),
-            rx.cond(
-                KnowledgeDBState.filtered_databases.length() > 0,
-                rx.el.div(
-                    rx.foreach(KnowledgeDBState.filtered_databases, db_card),
-                    class_name="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6",
-                ),
-                empty_state(),
-            ),
-            class_name="h-full",
-        )
+        ),
+        on_mount=KnowledgeDBState.load_databases,
     )

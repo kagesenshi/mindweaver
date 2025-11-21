@@ -1,6 +1,7 @@
 import reflex as rx
 from mindweaver_fe.components.layout import base_layout
 from mindweaver_fe.components.reusables import card, base_button
+from mindweaver_fe.components.loading_spinner import loading_spinner
 from mindweaver_fe.states.data_sources_state import (
     DataSourcesState,
     DataSource,
@@ -629,49 +630,55 @@ def data_sources_page() -> rx.Component:
             source_modal(),
             delete_dialog(),
             import_dialog(),
-            rx.el.div(
+            rx.cond(
+                DataSourcesState.is_loading,
+                loading_spinner(),
                 rx.el.div(
                     rx.el.div(
-                        rx.icon("search", class_name="h-5 w-5 text-gray-400"),
-                        class_name="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none",
-                    ),
-                    rx.el.input(
-                        placeholder="Search sources...",
-                        on_change=DataSourcesState.set_search_query,
-                        class_name="w-full max-w-xs pl-10 pr-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500",
-                        default_value=DataSourcesState.search_query,
-                    ),
-                    class_name="relative",
-                ),
-                rx.el.div(
-                    rx.el.select(
-                        rx.foreach(
-                            DataSourcesState.filter_type_options,
-                            lambda type: rx.el.option(type, value=type),
+                        rx.el.div(
+                            rx.el.div(
+                                rx.icon("search", class_name="h-5 w-5 text-gray-400"),
+                                class_name="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none",
+                            ),
+                            rx.el.input(
+                                placeholder="Search sources...",
+                                on_change=DataSourcesState.set_search_query,
+                                class_name="w-full max-w-xs pl-10 pr-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500",
+                                default_value=DataSourcesState.search_query,
+                            ),
+                            class_name="relative",
                         ),
-                        value=DataSourcesState.filter_type,
-                        on_change=DataSourcesState.set_filter_type,
-                        class_name="py-2 pl-3 pr-8 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500",
+                        rx.el.div(
+                            rx.el.select(
+                                rx.foreach(
+                                    DataSourcesState.filter_type_options,
+                                    lambda type: rx.el.option(type, value=type),
+                                ),
+                                value=DataSourcesState.filter_type,
+                                on_change=DataSourcesState.set_filter_type,
+                                class_name="py-2 pl-3 pr-8 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500",
+                            ),
+                            base_button(
+                                "Create New Source",
+                                icon="message-circle-plus",
+                                on_click=DataSourcesState.open_create_modal,
+                            ),
+                            class_name="flex items-center gap-4",
+                        ),
+                        class_name="flex justify-between items-center mb-6",
                     ),
-                    base_button(
-                        "Create New Source",
-                        icon="message-circle-plus",
-                        on_click=DataSourcesState.open_create_modal,
+                    rx.cond(
+                        DataSourcesState.filtered_sources.length() > 0,
+                        rx.el.div(
+                            rx.foreach(DataSourcesState.filtered_sources, source_card),
+                            class_name="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6",
+                        ),
+                        empty_state(),
                     ),
-                    class_name="flex items-center gap-4",
+                    import_history_section(),
+                    class_name="h-full",
                 ),
-                class_name="flex justify-between items-center mb-6",
             ),
-            rx.cond(
-                DataSourcesState.filtered_sources.length() > 0,
-                rx.el.div(
-                    rx.foreach(DataSourcesState.filtered_sources, source_card),
-                    class_name="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6",
-                ),
-                empty_state(),
-            ),
-            import_history_section(),
-            class_name="h-full",
         ),
         on_mount=DataSourcesState.load_initial_data,
     )

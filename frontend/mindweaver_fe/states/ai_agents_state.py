@@ -54,14 +54,20 @@ class AIAgentsState(rx.State):
 
     @rx.event
     async def load_agents(self):
-        """Load agents from the API."""
+        """Load agents and knowledge databases from the API."""
         self.is_loading = True
         self.error_message = ""
         try:
+            # Load knowledge databases first
+            kdb_state = await self.get_state(KnowledgeDBState)
+            await kdb_state.load_databases()
+            self.all_knowledge_dbs = kdb_state.all_databases
+
+            # Load agents
             agents = await ai_agent_client.list_all()
             self.all_agents = agents
         except Exception as e:
-            self.error_message = f"Failed to load agents: {str(e)}"
+            self.error_message = f"Failed to load data: {str(e)}"
         finally:
             self.is_loading = False
 
