@@ -189,7 +189,8 @@ def db_modal() -> rx.Component:
                             "Cancel",
                             on_click=KnowledgeDBState.close_db_modal,
                             class_name="bg-gray-200 text-gray-800 hover:bg-gray-300 focus:ring-gray-300",
-                        )
+                        ),
+                        as_child=True,
                     ),
                     base_button(
                         "Save Database", type="submit", form="db-form", icon="save"
@@ -225,7 +226,8 @@ def delete_dialog() -> rx.Component:
                             "Cancel",
                             on_click=KnowledgeDBState.close_delete_dialog,
                             class_name="bg-gray-200 text-gray-800 hover:bg-gray-300 focus:ring-gray-300",
-                        )
+                        ),
+                        as_child=True,
                     ),
                     base_button(
                         "Delete",

@@ -370,7 +370,8 @@ def source_modal() -> rx.Component:
                             "Cancel",
                             on_click=DataSourcesState.close_source_modal,
                             class_name="bg-gray-200 text-gray-800 hover:bg-gray-300 focus:ring-gray-300",
-                        )
+                        ),
+                        as_child=True,
                     ),
                     base_button(
                         "Test Connection",
@@ -418,7 +419,8 @@ def delete_dialog() -> rx.Component:
                             "Cancel",
                             on_click=DataSourcesState.close_delete_dialog,
                             class_name="bg-gray-200 text-gray-800 hover:bg-gray-300 focus:ring-gray-300",
-                        )
+                        ),
+                        as_child=True,
                     ),
                     base_button(
                         "Delete",
@@ -495,7 +497,8 @@ def import_dialog() -> rx.Component:
                             "Cancel",
                             on_click=DataSourcesState.close_import_dialog,
                             class_name="bg-gray-200 text-gray-800 hover:bg-gray-300 focus:ring-gray-300",
-                        )
+                        ),
+                        as_child=True,
                     ),
                     base_button(
                         "Start Import",

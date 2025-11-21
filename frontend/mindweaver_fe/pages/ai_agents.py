@@ -250,7 +250,8 @@ def agent_modal() -> rx.Component:
                             "Cancel",
                             on_click=AIAgentsState.close_agent_modal,
                             class_name="bg-gray-200 text-gray-800 hover:bg-gray-300 focus:ring-gray-300",
-                        )
+                        ),
+                        as_child=True,
                     ),
                     base_button(
                         "Save Agent", type="submit", form="agent-form", icon="save"
@@ -286,7 +287,8 @@ def delete_dialog() -> rx.Component:
                             "Cancel",
                             on_click=AIAgentsState.close_delete_dialog,
                             class_name="bg-gray-200 text-gray-800 hover:bg-gray-300 focus:ring-gray-300",
-                        )
+                        ),
+                        as_child=True,
                     ),
                     base_button(
                         "Delete",
