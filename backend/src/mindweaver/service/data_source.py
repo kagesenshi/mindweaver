@@ -3,12 +3,14 @@ from . import Service
 from sqlalchemy import String
 from sqlalchemy_utils import JSONType
 from sqlmodel import Field, Relationship
-from typing import Any, Literal, Union
+from typing import Any, Literal, Union, Optional
 from pydantic import BaseModel, HttpUrl, field_validator, ValidationError
 from fastapi import HTTPException
+from mindweaver.crypto import encrypt_password, decrypt_password, EncryptionError
 
 # Source type literal
 SourceType = Literal["API", "Database", "File Upload", "Web Scraper"]
+DatabaseType = Literal["postgresql", "mysql", "sqlite", "mongodb", "mssql", "oracle"]
 
 
 # Parameter schemas for different source types
@@ -42,6 +44,8 @@ class DBConfig(BaseModel):
     host: str
     port: int
     username: str
+    password: Optional[str] = None
+    database_type: str = "postgresql"
 
     @field_validator("host")
     @classmethod
@@ -63,6 +67,14 @@ class DBConfig(BaseModel):
         if not v or not v.strip():
             raise ValueError("Username cannot be empty")
         return v.strip()
+
+    @field_validator("database_type")
+    @classmethod
+    def validate_database_type(cls, v: str) -> str:
+        valid_types = ["postgresql", "mysql", "sqlite", "mongodb", "mssql", "oracle"]
+        if v.lower() not in valid_types:
+            raise ValueError(f"Database type must be one of: {', '.join(valid_types)}")
+        return v.lower()
 
 
 class WebScraperConfig(BaseModel):
@@ -102,7 +114,10 @@ class DataSourceService(Service[DataSource]):
         return DataSource
 
     def _validate_parameters(
-        self, source_type: str, parameters: dict[str, Any]
+        self,
+        source_type: str,
+        parameters: dict[str, Any],
+        encrypt_passwords: bool = True,
     ) -> dict[str, Any]:
         """
         Validate parameters based on source type.
@@ -110,6 +125,7 @@ class DataSourceService(Service[DataSource]):
         Args:
             source_type: The type of data source
             parameters: The parameters to validate
+            encrypt_passwords: Whether to encrypt password fields (default: True)
 
         Returns:
             Validated parameters as a dictionary
@@ -122,6 +138,19 @@ class DataSourceService(Service[DataSource]):
                 config = APIConfig(**parameters)
             elif source_type == "Database":
                 config = DBConfig(**parameters)
+                # Encrypt password if present and encryption is enabled
+                if encrypt_passwords and config.password:
+                    try:
+                        encrypted_password = encrypt_password(config.password)
+                        # Return dict with encrypted password
+                        validated_dict = config.model_dump()
+                        validated_dict["password"] = encrypted_password
+                        return validated_dict
+                    except EncryptionError as e:
+                        raise HTTPException(
+                            status_code=500,
+                            detail=f"Failed to encrypt password: {str(e)}",
+                        )
             elif source_type == "Web Scraper":
                 config = WebScraperConfig(**parameters)
             elif source_type == "File Upload":

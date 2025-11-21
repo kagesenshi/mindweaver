@@ -139,6 +139,27 @@ def db_form_fields() -> rx.Component:
     return rx.el.div(
         rx.el.div(
             rx.el.label(
+                "Database Type",
+                class_name="text-sm font-medium text-gray-700 mb-1 block",
+            ),
+            rx.el.select(
+                rx.el.option("PostgreSQL", value="postgresql"),
+                rx.el.option("MySQL", value="mysql"),
+                rx.el.option("SQLite", value="sqlite"),
+                rx.el.option("MongoDB", value="mongodb"),
+                rx.el.option("MS SQL Server", value="mssql"),
+                rx.el.option("Oracle", value="oracle"),
+                name="config.database_type",
+                default_value=util.default(
+                    DataSourcesState.form_data["parameters"]["database_type"],
+                    "postgresql",
+                ),
+                class_name="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500",
+            ),
+            class_name="mb-4",
+        ),
+        rx.el.div(
+            rx.el.label(
                 "Host", class_name="text-sm font-medium text-gray-700 mb-1 block"
             ),
             rx.el.input(
@@ -176,6 +197,21 @@ def db_form_fields() -> rx.Component:
                     DataSourcesState.form_data["parameters"]["username"], ""
                 ),
                 placeholder="admin",
+                class_name="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500",
+            ),
+            class_name="mb-4",
+        ),
+        rx.el.div(
+            rx.el.label(
+                "Password", class_name="text-sm font-medium text-gray-700 mb-1 block"
+            ),
+            rx.el.input(
+                name="config.password",
+                default_value=util.default(
+                    DataSourcesState.form_data["parameters"]["password"], ""
+                ),
+                type="password",
+                placeholder="Enter database password",
                 class_name="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500",
             ),
             class_name="mb-4",

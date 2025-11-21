@@ -1,5 +1,6 @@
 Some notes for better navigating this repository
 
+- this project uses `uv` to manage dependencies. 
 - `backend/` contains backend code written using `fastapi` framework
 - `frontend/` contains frontend code written using `reflex` framework
 - `backend/src/mindweaver/fw` contains a crud framework for the backend

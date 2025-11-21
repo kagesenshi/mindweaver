@@ -21,6 +21,8 @@ class DBConfig(TypedDict):
     host: str
     port: int
     username: str
+    password: str
+    database_type: str
 
 
 class WebScraperConfig(TypedDict):
@@ -98,7 +100,13 @@ class DataSourcesState(rx.State):
         if source_type == "API":
             parameters = {"base_url": "http://www.google.com", "api_key": "asfsadfsadf"}
         elif source_type == "Database":
-            parameters = {"host": "192.168.0.1", "port": 5432, "username": "asd"}
+            parameters = {
+                "host": "192.168.0.1",
+                "port": 5432,
+                "username": "asd",
+                "password": "",
+                "database_type": "postgresql",
+            }
         elif source_type == "Web Scraper":
             parameters = {"start_url": "http://www.google.com"}
         else:
