@@ -120,14 +120,6 @@ def source_table() -> rx.Component:
                         rx.el.td(
                             rx.el.div(
                                 base_button(
-                                    "Ingest",
-                                    on_click=lambda: DataSourcesState.open_ingest_dialog(
-                                        source
-                                    ),
-                                    icon="database-zap",
-                                    class_name="text-green-600 hover:text-green-900 bg-green-50 hover:bg-green-100 border-none shadow-none px-3 py-1 h-8 text-xs",
-                                ),
-                                base_button(
                                     "Edit",
                                     on_click=lambda: DataSourcesState.open_edit_modal(
                                         source

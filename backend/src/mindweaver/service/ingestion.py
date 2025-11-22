@@ -8,6 +8,7 @@ from pydantic import BaseModel, field_validator, ValidationError
 from fastapi import HTTPException, Depends
 from datetime import datetime, timezone
 import enum
+from croniter import croniter
 
 
 # Enums for ingestion types and statuses
@@ -93,6 +94,31 @@ class IngestionService(Service[Ingestion]):
     def model_class(cls) -> type[Ingestion]:
         return Ingestion
 
+    def _validate_cron_schedule(self, cron_schedule: str) -> None:
+        """
+        Validate that the cron schedule is valid.
+
+        Args:
+            cron_schedule: The cron schedule string to validate
+
+        Raises:
+            HTTPException: If the cron schedule is invalid
+        """
+        if not cron_schedule or not cron_schedule.strip():
+            raise HTTPException(
+                status_code=422,
+                detail="Cron schedule cannot be empty",
+            )
+
+        try:
+            # croniter will raise ValueError if the cron expression is invalid
+            croniter(cron_schedule)
+        except (ValueError, KeyError) as e:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Invalid cron schedule '{cron_schedule}': {str(e)}",
+            )
+
     def _validate_config(
         self,
         data_source_type: str,
@@ -161,6 +187,9 @@ class IngestionService(Service[Ingestion]):
         if not data_dict.get("cron_schedule"):
             raise HTTPException(status_code=422, detail="Cron schedule is required")
 
+        # Validate cron schedule format
+        self._validate_cron_schedule(data_dict["cron_schedule"])
+
         # Fetch the data source to get its type
         from .data_source import DataSourceService
 
@@ -205,6 +234,10 @@ class IngestionService(Service[Ingestion]):
         existing = await self.get(model_id)
         if not existing:
             raise HTTPException(status_code=404, detail="Ingestion not found")
+
+        # Validate cron schedule if it's being updated
+        if "cron_schedule" in data_dict:
+            self._validate_cron_schedule(data_dict["cron_schedule"])
 
         # If config is being updated, validate it
         if "config" in data_dict:

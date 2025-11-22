@@ -13,6 +13,7 @@ from mindweaver_fe.api_client import (
     KnowledgeDBClient,
     DataSourceClient,
     LakehouseStorageClient,
+    IngestionClient,
 )
 
 
@@ -86,4 +87,18 @@ def mock_lakehouse_storage_client(mock_api_client):
     client.update = AsyncMock(return_value={})
     client.delete = AsyncMock(return_value=True)
     client.test_connection = AsyncMock(return_value={"status": "success"})
+    return client
+
+
+@pytest.fixture
+def mock_ingestion_client(mock_api_client):
+    client = MagicMock(spec=IngestionClient)
+    client.client = mock_api_client
+    client.list_all = AsyncMock(return_value=[])
+    client.get = AsyncMock(return_value={})
+    client.create = AsyncMock(return_value={})
+    client.update = AsyncMock(return_value={})
+    client.delete = AsyncMock(return_value=True)
+    client.execute_ingestion = AsyncMock(return_value={"status": "success"})
+    client.list_runs = AsyncMock(return_value=[])
     return client
