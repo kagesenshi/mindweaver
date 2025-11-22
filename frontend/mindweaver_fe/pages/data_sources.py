@@ -52,53 +52,110 @@ def status_indicator(status: rx.Var[str]) -> rx.Component:
     )
 
 
-def source_card(source: DataSource) -> rx.Component:
-    """A card component for a single data source."""
-    return card(
-        rx.el.div(
-            rx.el.div(
-                rx.el.h3(source["name"], class_name="text-lg font-bold text-gray-900"),
-                type_badge(source["type"]),
-                class_name="flex justify-between items-start mb-2",
-            ),
-            rx.el.p(
-                f"Syncs data via {source['type']}",
-                class_name="text-sm text-gray-600 mb-4 h-10 overflow-hidden",
-            ),
-            rx.el.div(
-                status_indicator(source["status"]),
-                rx.el.div(
-                    rx.icon("clock", class_name="h-4 w-4 text-gray-400"),
-                    rx.el.span(
-                        f"Synced: {source['last_sync']}",
-                        class_name="text-sm text-gray-500 ml-2",
+def source_table() -> rx.Component:
+    """A table component to display the list of data sources."""
+    return rx.el.div(
+        rx.el.table(
+            rx.el.thead(
+                rx.el.tr(
+                    rx.el.th(
+                        "Name",
+                        class_name="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider",
                     ),
-                    class_name="flex items-center",
+                    rx.el.th(
+                        "Type",
+                        class_name="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider",
+                    ),
+                    rx.el.th(
+                        "Status",
+                        class_name="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider",
+                    ),
+                    rx.el.th(
+                        "Last Sync",
+                        class_name="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider",
+                    ),
+                    rx.el.th(
+                        "Actions",
+                        class_name="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider",
+                    ),
                 ),
-                class_name="flex justify-between items-center text-sm text-gray-500 border-t border-gray-100 pt-4 mt-4",
+                class_name="bg-gray-50",
             ),
+            rx.el.tbody(
+                rx.foreach(
+                    DataSourcesState.filtered_sources,
+                    lambda source: rx.el.tr(
+                        rx.el.td(
+                            rx.el.div(
+                                rx.el.div(
+                                    source["name"],
+                                    class_name="text-sm font-medium text-gray-900",
+                                ),
+                                rx.el.div(
+                                    source["title"], class_name="text-sm text-gray-500"
+                                ),
+                            ),
+                            class_name="px-6 py-4 whitespace-nowrap",
+                        ),
+                        rx.el.td(
+                            type_badge(source["type"]),
+                            class_name="px-6 py-4 whitespace-nowrap",
+                        ),
+                        rx.el.td(
+                            status_indicator(source["status"]),
+                            class_name="px-6 py-4 whitespace-nowrap",
+                        ),
+                        rx.el.td(
+                            rx.el.div(
+                                rx.icon(
+                                    "clock", class_name="h-4 w-4 text-gray-400 mr-1"
+                                ),
+                                rx.el.span(
+                                    source["last_sync"],
+                                    class_name="text-sm text-gray-500",
+                                ),
+                                class_name="flex items-center",
+                            ),
+                            class_name="px-6 py-4 whitespace-nowrap",
+                        ),
+                        rx.el.td(
+                            rx.el.div(
+                                base_button(
+                                    "Import",
+                                    on_click=lambda: DataSourcesState.open_import_dialog(
+                                        source
+                                    ),
+                                    icon="cloud-upload",
+                                    class_name="text-green-600 hover:text-green-900 bg-green-50 hover:bg-green-100 border-none shadow-none px-3 py-1 h-8 text-xs",
+                                ),
+                                base_button(
+                                    "Edit",
+                                    on_click=lambda: DataSourcesState.open_edit_modal(
+                                        source
+                                    ),
+                                    icon="pencil",
+                                    class_name="text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 border-none shadow-none px-3 py-1 h-8 text-xs",
+                                ),
+                                base_button(
+                                    "Delete",
+                                    on_click=lambda: DataSourcesState.open_delete_dialog(
+                                        source
+                                    ),
+                                    icon="trash-2",
+                                    class_name="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 border-none shadow-none px-3 py-1 h-8 text-xs",
+                                ),
+                                class_name="flex justify-end gap-2",
+                            ),
+                            class_name="px-6 py-4 whitespace-nowrap text-right text-sm font-medium",
+                        ),
+                        class_name="bg-white border-b border-gray-100 hover:bg-gray-50",
+                    ),
+                ),
+                class_name="divide-y divide-gray-200",
+            ),
+            class_name="min-w-full divide-y divide-gray-200",
         ),
-        rx.el.div(
-            base_button(
-                "Import Data",
-                on_click=lambda: DataSourcesState.open_import_dialog(source),
-                icon="cloud-upload",
-                class_name="bg-green-500 text-white hover:bg-green-600 shadow-sm focus:ring-green-500",
-            ),
-            base_button(
-                "Edit",
-                on_click=lambda: DataSourcesState.open_edit_modal(source),
-                icon="pencil",
-                class_name="bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 shadow-sm focus:ring-gray-300",
-            ),
-            base_button(
-                "Delete",
-                on_click=lambda: DataSourcesState.open_delete_dialog(source),
-                icon="trash-2",
-                class_name="bg-red-500 text-white hover:bg-red-600 shadow-sm focus:ring-red-500",
-            ),
-            class_name="flex gap-2 mt-4",
-        ),
+        class_name="overflow-x-auto rounded-lg border border-gray-200 shadow-sm",
     )
 
 
@@ -677,10 +734,7 @@ def data_sources_page() -> rx.Component:
                     ),
                     rx.cond(
                         DataSourcesState.filtered_sources.length() > 0,
-                        rx.el.div(
-                            rx.foreach(DataSourcesState.filtered_sources, source_card),
-                            class_name="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6",
-                        ),
+                        source_table(),
                         empty_state(),
                     ),
                     import_history_section(),
