@@ -13,10 +13,11 @@ class BaseState(rx.State):
 
     nav_items: list[NavItem] = [
         {"name": "Data Sources", "path": "/sources", "icon": "cloud-download"},
+        {"name": "Lakehouse Storage", "path": "/lakehouse", "icon": "warehouse"},
         {"name": "Knowledge DB", "path": "/", "icon": "database"},
         {"name": "AI Agents", "path": "/agents", "icon": "cpu"},
         {"name": "Chat", "path": "/chat", "icon": "messages-square"},
-    #    {"name": "Graph Explorer", "path": "/graph", "icon": "git-fork"},
+        #    {"name": "Graph Explorer", "path": "/graph", "icon": "git-fork"},
     ]
     sidebar_collapsed: bool = False
 

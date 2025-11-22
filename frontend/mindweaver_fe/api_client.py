@@ -243,6 +243,52 @@ class DataSourceClient:
         return response.json()
 
 
+class LakehouseStorageClient:
+    """Client for Lakehouse Storage API endpoints."""
+
+    def __init__(self, client: APIClient = None):
+        self.client = client or APIClient()
+        self.endpoint = "/lakehouse_storages"
+
+    async def list_all(self) -> List[Dict[str, Any]]:
+        return await self.client.list_all(self.endpoint)
+
+    async def get(self, storage_id: int) -> Dict[str, Any]:
+        return await self.client.get(self.endpoint, storage_id)
+
+    async def create(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        return await self.client.create(self.endpoint, data)
+
+    async def update(self, storage_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
+        return await self.client.update(self.endpoint, storage_id, data)
+
+    async def delete(self, storage_id: int) -> bool:
+        return await self.client.delete(self.endpoint, storage_id)
+
+    async def test_connection(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Test connection to lakehouse storage.
+
+        Args:
+            data: Storage configuration to test
+
+        Returns:
+            Test result
+        """
+        client = await self.client._get_client()
+        response = await client.post(f"{self.endpoint}/test_connection", json=data)
+        if response.status_code >= 400:
+            # Return the error detail if possible
+            try:
+                return {
+                    "status": "error",
+                    "message": response.json().get("detail", "Unknown error"),
+                }
+            except:
+                response.raise_for_status()
+
+        return response.json()
+
+
 # Global client instance
 _api_client = APIClient()
 
@@ -251,3 +297,4 @@ ai_agent_client = AIAgentClient(_api_client)
 chat_client = ChatClient(_api_client)
 knowledge_db_client = KnowledgeDBClient(_api_client)
 data_source_client = DataSourceClient(_api_client)
+lakehouse_storage_client = LakehouseStorageClient(_api_client)

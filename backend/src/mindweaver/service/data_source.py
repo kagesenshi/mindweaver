@@ -5,7 +5,7 @@ from sqlalchemy_utils import JSONType
 from sqlmodel import Field, Relationship
 from typing import Any, Literal, Union, Optional
 from pydantic import BaseModel, HttpUrl, field_validator, ValidationError
-from fastapi import HTTPException
+from fastapi import HTTPException, Depends
 from mindweaver.crypto import encrypt_password, decrypt_password, EncryptionError
 import httpx
 from sqlalchemy import create_engine, text
@@ -286,7 +286,10 @@ class TestConnectionRequest(BaseModel):
 
 
 @router.post(f"{DataSourceService.service_path()}/test_connection")
-async def test_connection(data: TestConnectionRequest):
+async def test_connection(
+    data: TestConnectionRequest,
+    svc: DataSourceService = Depends(DataSourceService.get_service),
+):
     """
     Test connection to a data source.
     If source_id is provided and password is missing, use stored password.
@@ -299,8 +302,7 @@ async def test_connection(data: TestConnectionRequest):
         password = parameters.get("password")
         # If no password provided, fetch from database
         if not password:
-            service = DataSourceService()
-            existing = await service.get(data.source_id)
+            existing = await svc.get(data.source_id)
             if existing and existing.parameters.get("password"):
                 # Use the stored encrypted password
                 stored_password = existing.parameters.get("password")

@@ -7,7 +7,8 @@ Some notes for better navigating this repository
 - `backend/` contains backend code written using `fastapi` framework
 - `frontend/` contains frontend code written using `reflex` framework
 - `backend/src/mindweaver/fw` contains a crud framework for the backend
-- To test the backend, use `uv run --package backend pytest backend/tests`
+- To test the backend, use `uv run --package mindweaver pytest backend/tests`
+- To generate database migrations, use `uv run --package mindweaver mindweaver db revision -a -m "some message"`
 - Prefer error 422 for validation issues in backend so that it is consistent with fastapi
 
 
