@@ -6,15 +6,24 @@ import reflex as rx
 
 
 @pytest.mark.asyncio
-async def test_load_initial_data(mock_data_source_client):
+async def test_load_initial_data(mock_data_source_client, mock_project_state):
     state = DataSourcesState()
 
-    # Mock get_state for KnowledgeDBState
+    # Mock get_state for KnowledgeDBState and ProjectState
     mock_kdb_state = MagicMock(spec=KnowledgeDBState)
     mock_kdb_state.load_databases = AsyncMock()
     mock_kdb_state.all_databases = [{"id": 1, "name": "Test DB"}]
 
-    object.__setattr__(state, "get_state", AsyncMock(return_value=mock_kdb_state))
+    async def mock_get_state(state_class):
+        if state_class == KnowledgeDBState:
+            return mock_kdb_state
+        from mindweaver_fe.states.project_state import ProjectState
+
+        if state_class == ProjectState:
+            return mock_project_state
+        return MagicMock()
+
+    object.__setattr__(state, "get_state", mock_get_state)
 
     # Mock api client response
     mock_sources = [{"id": 1, "name": "Test Source", "type": "API"}]
@@ -88,9 +97,19 @@ def test_open_edit_modal():
 
 
 @pytest.mark.asyncio
-async def test_handle_submit_create(mock_data_source_client):
+async def test_handle_submit_create(mock_data_source_client, mock_project_state):
     state = DataSourcesState()
     state.open_create_modal()
+
+    # Mock get_state for ProjectState
+    async def mock_get_state(state_class):
+        from mindweaver_fe.states.project_state import ProjectState
+
+        if state_class == ProjectState:
+            return mock_project_state
+        return MagicMock()
+
+    object.__setattr__(state, "get_state", mock_get_state)
 
     form_data = {
         "name": "New Source",
@@ -124,7 +143,7 @@ async def test_handle_submit_create(mock_data_source_client):
 
 
 @pytest.mark.asyncio
-async def test_handle_submit_update(mock_data_source_client):
+async def test_handle_submit_update(mock_data_source_client, mock_project_state):
     state = DataSourcesState()
     existing_source = {
         "id": 1,
@@ -140,6 +159,16 @@ async def test_handle_submit_update(mock_data_source_client):
     }
     state.all_sources = [existing_source]
     state.open_edit_modal(existing_source)
+
+    # Mock get_state for ProjectState
+    async def mock_get_state(state_class):
+        from mindweaver_fe.states.project_state import ProjectState
+
+        if state_class == ProjectState:
+            return mock_project_state
+        return MagicMock()
+
+    object.__setattr__(state, "get_state", mock_get_state)
 
     form_data = {
         "name": "Updated Name",
@@ -166,10 +195,20 @@ async def test_handle_submit_update(mock_data_source_client):
 
 
 @pytest.mark.asyncio
-async def test_handle_test_connection(mock_data_source_client):
+async def test_handle_test_connection(mock_data_source_client, mock_project_state):
     state = DataSourcesState()
     state.submit_action = "test"
     state.form_data["source_type"] = "API"
+
+    # Mock get_state for ProjectState
+    async def mock_get_state(state_class):
+        from mindweaver_fe.states.project_state import ProjectState
+
+        if state_class == ProjectState:
+            return mock_project_state
+        return MagicMock()
+
+    object.__setattr__(state, "get_state", mock_get_state)
 
     form_data = {"parameters.base_url": "http://test.com"}
 
@@ -190,7 +229,7 @@ async def test_handle_test_connection(mock_data_source_client):
 
 
 @pytest.mark.asyncio
-async def test_confirm_delete(mock_data_source_client):
+async def test_confirm_delete(mock_data_source_client, mock_project_state):
     state = DataSourcesState()
     source_to_delete = {
         "id": 1,
@@ -207,6 +246,16 @@ async def test_confirm_delete(mock_data_source_client):
     state.all_sources = [source_to_delete]
     state.open_delete_dialog(source_to_delete)
 
+    # Mock get_state for ProjectState
+    async def mock_get_state(state_class):
+        from mindweaver_fe.states.project_state import ProjectState
+
+        if state_class == ProjectState:
+            return mock_project_state
+        return MagicMock()
+
+    object.__setattr__(state, "get_state", mock_get_state)
+
     mock_data_source_client.delete.return_value = True
 
     with patch(
@@ -216,4 +265,7 @@ async def test_confirm_delete(mock_data_source_client):
         await state.confirm_delete()
 
     assert len(state.all_sources) == 0
-    mock_data_source_client.delete.assert_called_once_with(1)
+    # The delete call now includes headers parameter
+    assert mock_data_source_client.delete.call_count == 1
+    call_args = mock_data_source_client.delete.call_args
+    assert call_args[0][0] == 1  # First positional arg is the ID

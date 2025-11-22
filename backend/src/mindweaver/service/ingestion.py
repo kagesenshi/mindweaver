@@ -1,5 +1,6 @@
 from . import NamedBase, Base
 from . import Service
+from .base import ProjectScopedNamedBase
 from sqlalchemy import String, Integer, DateTime, Enum as SQLEnum, ForeignKey
 from sqlalchemy_utils import JSONType
 from sqlmodel import Field, Relationship
@@ -56,7 +57,7 @@ class DatabaseIngestionConfig(BaseModel):
 
 
 # Database models
-class Ingestion(NamedBase, table=True):
+class Ingestion(ProjectScopedNamedBase, table=True):
     """Ingestion configuration model."""
 
     __tablename__ = "mw_ingestion"

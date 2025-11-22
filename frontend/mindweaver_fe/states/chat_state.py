@@ -1,11 +1,11 @@
 import reflex as rx
 from typing import TypedDict, Literal, Any
-import uuid
 import datetime
 import asyncio
 from mindweaver_fe.states.ai_agents_state import AIAgentsState, AIAgent
 from mindweaver_fe.states.knowledge_db_state import KnowledgeDB, KnowledgeDBState
 from mindweaver_fe.api_client import chat_client
+from mindweaver_fe.states.project_state import ProjectState
 
 
 class Message(TypedDict):
@@ -47,6 +47,12 @@ class ChatState(rx.State):
     def set_input_message(self, value):
         self.input_message = value
 
+    async def _get_headers(self) -> dict[str, str]:
+        project_state = await self.get_state(ProjectState)
+        if project_state.current_project:
+            return {"X-Project-ID": str(project_state.current_project["id"])}
+        return {}
+
     @rx.event
     async def load_initial_data(self):
         """Load agents, knowledge bases, and chats on page mount."""
@@ -56,13 +62,14 @@ class ChatState(rx.State):
             agent_state = await self.get_state(AIAgentsState)
             await agent_state.load_agents()
             self.all_agents = agent_state.all_agents
-            
+
             kdb_state = await self.get_state(KnowledgeDBState)
             await kdb_state.load_databases()
             self.all_dbs = kdb_state.all_databases
-            
+
             # Load chats from API
-            chats = await chat_client.list_all()
+            headers = await self._get_headers()
+            chats = await chat_client.list_all(headers=headers)
             self.all_chats = chats
         except Exception as e:
             self.error_message = f"Failed to load data: {str(e)}"
@@ -101,7 +108,7 @@ class ChatState(rx.State):
         return [
             {
                 "id": chat["id"],
-                "title": chat.get("title", chat.get("name", f"Chat {chat['id']}"))
+                "title": chat.get("title", chat.get("name", f"Chat {chat['id']}")),
             }
             for chat in self.all_chats
         ]
@@ -121,9 +128,10 @@ class ChatState(rx.State):
                 "name": f"chat-{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}",
                 "title": f"Conversation {len(self.all_chats) + 1}",
                 "messages": [],
-                "agent_id": self.selected_agent_id if self.selected_agent_id else None
+                "agent_id": self.selected_agent_id if self.selected_agent_id else None,
             }
-            new_chat = await chat_client.create(new_chat_data)
+            headers = await self._get_headers()
+            new_chat = await chat_client.create(new_chat_data, headers=headers)
             self.all_chats.insert(0, new_chat)
             self.current_conversation_id = new_chat["id"]
         except Exception as e:
@@ -146,10 +154,10 @@ class ChatState(rx.State):
             or (not self.selected_agent)
         ):
             return
-        
+
         self.input_message = ""
         self.error_message = ""
-        
+
         # Find current chat
         current_chat = None
         chat_index = -1
@@ -158,29 +166,29 @@ class ChatState(rx.State):
                 current_chat = chat
                 chat_index = i
                 break
-        
+
         if not current_chat:
             return
-        
+
         # Add user message
         user_message: Message = {
             "role": "user",
             "content": message_content,
             "timestamp": datetime.datetime.now().strftime("%H:%M"),
         }
-        
+
         messages = current_chat.get("messages", []).copy()
         messages.append(user_message)
-        
+
         # Update title if first message
         title = current_chat.get("title", "")
         if len(messages) == 1:
             title = message_content[:25] + ("..." if len(message_content) > 25 else "")
-        
+
         # Simulate streaming response
         self.is_streaming = True
         yield
-        
+
         assistant_response = f"This is a streamed response about '{message_content[:20]}...'. I am {self.selected_agent['name']}."
         assistant_message: Message = {
             "role": "assistant",
@@ -188,24 +196,27 @@ class ChatState(rx.State):
             "timestamp": datetime.datetime.now().strftime("%H:%M"),
         }
         messages.append(assistant_message)
-        
+
         # Update local state with streaming
         for chunk in assistant_response.split():
             messages[-1]["content"] += chunk + " "
             self.all_chats[chat_index]["messages"] = messages
             await asyncio.sleep(0.05)
             yield
-        
+
         self.is_streaming = False
-        
+
         # Save to backend
         try:
             update_data = {
                 "title": title,
                 "messages": messages,
-                "agent_id": self.selected_agent_id
+                "agent_id": self.selected_agent_id,
             }
-            updated_chat = await chat_client.update(self.current_conversation_id, update_data)
+            headers = await self._get_headers()
+            updated_chat = await chat_client.update(
+                self.current_conversation_id, update_data, headers=headers
+            )
             self.all_chats[chat_index] = updated_chat
         except Exception as e:
             self.error_message = f"Failed to save message: {str(e)}"

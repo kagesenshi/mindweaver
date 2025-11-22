@@ -8,6 +8,7 @@ from .service.ingestion import (
     router as ingestion_router,
     run_router as ingestion_run_router,
 )
+from .service.project import router as project_router
 
 app = fastapi.FastAPI(title="Mindweaver")
 app.include_router(ds_router)
@@ -17,3 +18,4 @@ app.include_router(chat_router)
 app.include_router(lakehouse_router)
 app.include_router(ingestion_router)
 app.include_router(ingestion_run_router)
+app.include_router(project_router)

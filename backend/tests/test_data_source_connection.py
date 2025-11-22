@@ -188,12 +188,15 @@ def test_data_source_test_connection_web_scraper_404(client: TestClient):
         assert "404" in data["detail"]
 
 
-def test_data_source_test_connection_with_stored_password(client: TestClient):
+def test_data_source_test_connection_with_stored_password(
+    client: TestClient, test_project
+):
     """Test database connection using stored encrypted password."""
     # Create a data source with password
     create_resp = client.post(
         "/data_sources",
         json={
+            "project_id": test_project["id"],
             "name": "db-with-password",
             "title": "DB With Password",
             "type": "Database",

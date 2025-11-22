@@ -7,10 +7,10 @@ import reflex as rx
 
 
 @pytest.mark.asyncio
-async def test_load_initial_data(mock_chat_client):
+async def test_load_initial_data(mock_chat_client, mock_project_state):
     state = ChatState()
 
-    # Mock get_state for AIAgentsState and KnowledgeDBState
+    # Mock get_state for AIAgentsState, KnowledgeDBState, and ProjectState
     mock_agent_state = MagicMock(spec=AIAgentsState)
     mock_agent_state.load_agents = AsyncMock()
     mock_agent_state.all_agents = [{"id": 1, "name": "Test Agent"}]
@@ -24,6 +24,10 @@ async def test_load_initial_data(mock_chat_client):
             return mock_agent_state
         elif state_cls == KnowledgeDBState:
             return mock_kdb_state
+        from mindweaver_fe.states.project_state import ProjectState
+
+        if state_cls == ProjectState:
+            return mock_project_state
         return None
 
     object.__setattr__(state, "get_state", AsyncMock(side_effect=mock_get_state))
@@ -47,9 +51,19 @@ async def test_load_initial_data(mock_chat_client):
 
 
 @pytest.mark.asyncio
-async def test_create_new_conversation(mock_chat_client):
+async def test_create_new_conversation(mock_chat_client, mock_project_state):
     state = ChatState()
     state.selected_agent_id = "1"
+
+    # Mock get_state for ProjectState
+    async def mock_get_state(state_class):
+        from mindweaver_fe.states.project_state import ProjectState
+
+        if state_class == ProjectState:
+            return mock_project_state
+        return MagicMock()
+
+    object.__setattr__(state, "get_state", mock_get_state)
 
     # Mock create response
     new_chat = {
@@ -71,7 +85,7 @@ async def test_create_new_conversation(mock_chat_client):
 
 
 @pytest.mark.asyncio
-async def test_handle_send_message(mock_chat_client):
+async def test_handle_send_message(mock_chat_client, mock_project_state):
     state = ChatState()
     state.current_conversation_id = 1
     state.selected_agent_id = "1"
@@ -79,6 +93,16 @@ async def test_handle_send_message(mock_chat_client):
 
     current_chat = {"id": 1, "name": "Test Chat", "messages": [], "agent_id": "1"}
     state.all_chats = [current_chat]
+
+    # Mock get_state for ProjectState
+    async def mock_get_state(state_class):
+        from mindweaver_fe.states.project_state import ProjectState
+
+        if state_class == ProjectState:
+            return mock_project_state
+        return MagicMock()
+
+    object.__setattr__(state, "get_state", mock_get_state)
 
     form_data = {"input_message": "Hello"}
 

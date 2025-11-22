@@ -7,7 +7,9 @@ from botocore.exceptions import ClientError, NoCredentialsError
 
 
 @patch("mindweaver.service.lakehouse_storage.boto3")
-def test_lakehouse_storage_test_connection_success(mock_boto3, client: TestClient):
+def test_lakehouse_storage_test_connection_success(
+    mock_boto3, client: TestClient, test_project
+):
     """Test successful S3 connection test."""
     # Mock boto3 client
     mock_s3_client = MagicMock()
@@ -18,6 +20,7 @@ def test_lakehouse_storage_test_connection_success(mock_boto3, client: TestClien
     create_resp = client.post(
         "/lakehouse_storages",
         json={
+            "project_id": test_project["id"],
             "name": "test-storage",
             "title": "Test Storage",
             "parameters": {
@@ -195,13 +198,14 @@ def test_lakehouse_storage_test_connection_access_denied(
 
 @patch("mindweaver.service.lakehouse_storage.boto3")
 def test_lakehouse_storage_test_connection_with_stored_secret(
-    mock_boto3, client: TestClient
+    mock_boto3, client: TestClient, test_project
 ):
     """Test connection using stored encrypted secret key."""
     # Create a storage with secret key
     create_resp = client.post(
         "/lakehouse_storages",
         json={
+            "project_id": test_project["id"],
             "name": "stored-secret-test",
             "title": "Stored Secret Test",
             "parameters": {

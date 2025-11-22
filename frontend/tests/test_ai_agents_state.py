@@ -5,16 +5,25 @@ from mindweaver_fe.states.knowledge_db_state import KnowledgeDBState
 
 
 @pytest.mark.asyncio
-async def test_load_agents(mock_ai_agent_client):
+async def test_load_agents(mock_ai_agent_client, mock_project_state):
     # Mock the state
     state = AIAgentsState()
 
-    # Mock get_state for KnowledgeDBState
+    # Mock get_state for KnowledgeDBState and ProjectState
     mock_kdb_state = MagicMock(spec=KnowledgeDBState)
     mock_kdb_state.load_databases = AsyncMock()
     mock_kdb_state.all_databases = [{"id": 1, "name": "Test DB"}]
 
-    object.__setattr__(state, "get_state", AsyncMock(return_value=mock_kdb_state))
+    async def mock_get_state(state_class):
+        if state_class == KnowledgeDBState:
+            return mock_kdb_state
+        from mindweaver_fe.states.project_state import ProjectState
+
+        if state_class == ProjectState:
+            return mock_project_state
+        return MagicMock()
+
+    object.__setattr__(state, "get_state", mock_get_state)
 
     # Mock api client response
     mock_agents = [{"id": 1, "name": "Test Agent", "status": "Active"}]
@@ -74,9 +83,19 @@ def test_open_edit_modal():
 
 
 @pytest.mark.asyncio
-async def test_handle_submit_create(mock_ai_agent_client):
+async def test_handle_submit_create(mock_ai_agent_client, mock_project_state):
     state = AIAgentsState()
     state.open_create_modal()
+
+    # Mock get_state for ProjectState
+    async def mock_get_state(state_class):
+        from mindweaver_fe.states.project_state import ProjectState
+
+        if state_class == ProjectState:
+            return mock_project_state
+        return MagicMock()
+
+    object.__setattr__(state, "get_state", mock_get_state)
 
     form_data = {
         "name": "New Agent",
@@ -105,7 +124,7 @@ async def test_handle_submit_create(mock_ai_agent_client):
 
 
 @pytest.mark.asyncio
-async def test_handle_submit_update(mock_ai_agent_client):
+async def test_handle_submit_update(mock_ai_agent_client, mock_project_state):
     state = AIAgentsState()
     existing_agent = {
         "id": 1,
@@ -122,6 +141,16 @@ async def test_handle_submit_update(mock_ai_agent_client):
     }
     state.all_agents = [existing_agent]
     state.open_edit_modal(existing_agent)
+
+    # Mock get_state for ProjectState
+    async def mock_get_state(state_class):
+        from mindweaver_fe.states.project_state import ProjectState
+
+        if state_class == ProjectState:
+            return mock_project_state
+        return MagicMock()
+
+    object.__setattr__(state, "get_state", mock_get_state)
 
     form_data = {
         "name": "Updated Name",
@@ -145,7 +174,7 @@ async def test_handle_submit_update(mock_ai_agent_client):
 
 
 @pytest.mark.asyncio
-async def test_confirm_delete(mock_ai_agent_client):
+async def test_confirm_delete(mock_ai_agent_client, mock_project_state):
     state = AIAgentsState()
     agent_to_delete = {
         "id": 1,
@@ -163,6 +192,16 @@ async def test_confirm_delete(mock_ai_agent_client):
     state.all_agents = [agent_to_delete]
     state.open_delete_dialog(agent_to_delete)
 
+    # Mock get_state for ProjectState
+    async def mock_get_state(state_class):
+        from mindweaver_fe.states.project_state import ProjectState
+
+        if state_class == ProjectState:
+            return mock_project_state
+        return MagicMock()
+
+    object.__setattr__(state, "get_state", mock_get_state)
+
     mock_ai_agent_client.delete.return_value = True
 
     with patch(
@@ -171,4 +210,7 @@ async def test_confirm_delete(mock_ai_agent_client):
         await state.confirm_delete()
 
     assert len(state.all_agents) == 0
-    mock_ai_agent_client.delete.assert_called_once_with(1)
+    # The delete call now includes headers parameter
+    assert mock_ai_agent_client.delete.call_count == 1
+    call_args = mock_ai_agent_client.delete.call_args
+    assert call_args[0][0] == 1  # First positional arg is the ID

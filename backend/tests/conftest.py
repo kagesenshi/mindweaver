@@ -26,6 +26,21 @@ def client(postgresql_proc: PostgreSQLExecutor, postgresql: Connection):
 
 
 @pytest.fixture(scope="function")
+def test_project(client: TestClient):
+    """Create a test project for use in tests."""
+    response = client.post(
+        "/projects",
+        json={
+            "name": "test-project",
+            "title": "Test Project",
+            "description": "A test project for unit tests",
+        },
+    )
+    assert response.status_code == 200
+    return response.json()["record"]
+
+
+@pytest.fixture(scope="function")
 def crud_client(postgresql_proc: PostgreSQLExecutor, postgresql: Connection):
     settings.db_host = postgresql_proc.host
     settings.db_port = postgresql_proc.port

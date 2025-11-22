@@ -3,6 +3,7 @@ from typing import TypedDict, Literal, Any
 import datetime
 import uuid
 from mindweaver_fe.api_client import knowledge_db_client
+from mindweaver_fe.states.project_state import ProjectState
 
 DBType = Literal["Vector", "Graph", "Hybrid"]
 
@@ -37,13 +38,20 @@ class KnowledgeDBState(rx.State):
     is_loading: bool = False
     error_message: str = ""
 
+    async def _get_headers(self) -> dict[str, str]:
+        project_state = await self.get_state(ProjectState)
+        if project_state.current_project:
+            return {"X-Project-ID": str(project_state.current_project["id"])}
+        return {}
+
     @rx.event
     async def load_databases(self):
         """Load databases from the API."""
         self.is_loading = True
         self.error_message = ""
         try:
-            databases = await knowledge_db_client.list_all()
+            headers = await self._get_headers()
+            databases = await knowledge_db_client.list_all(headers=headers)
             self.all_databases = databases
         except Exception as e:
             self.error_message = f"Failed to load databases: {str(e)}"
@@ -157,10 +165,12 @@ class KnowledgeDBState(rx.State):
                 "parameters": {},
             }
 
+            headers = await self._get_headers()
+
             if self.is_editing and self.db_to_edit:
                 # Update existing database
                 updated_db = await knowledge_db_client.update(
-                    self.db_to_edit["id"], api_data
+                    self.db_to_edit["id"], api_data, headers=headers
                 )
                 # Update in local state
                 for i, db in enumerate(self.all_databases):
@@ -169,7 +179,7 @@ class KnowledgeDBState(rx.State):
                         break
             else:
                 # Create new database
-                new_db = await knowledge_db_client.create(api_data)
+                new_db = await knowledge_db_client.create(api_data, headers=headers)
                 self.all_databases.append(new_db)
 
             return KnowledgeDBState.close_db_modal
@@ -209,7 +219,8 @@ class KnowledgeDBState(rx.State):
 
         self.error_message = ""
         try:
-            await knowledge_db_client.delete(self.db_to_delete["id"])
+            headers = await self._get_headers()
+            await knowledge_db_client.delete(self.db_to_delete["id"], headers=headers)
             # Remove from local state
             self.all_databases = [
                 db for db in self.all_databases if db["id"] != self.db_to_delete["id"]

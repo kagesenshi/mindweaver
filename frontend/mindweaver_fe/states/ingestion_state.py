@@ -10,6 +10,7 @@ from mindweaver_fe.states.lakehouse_storage_state import (
     LakehouseStorage,
     LakehouseStorageState,
 )
+from mindweaver_fe.states.project_state import ProjectState
 import httpx
 
 
@@ -138,6 +139,12 @@ class IngestionState(rx.State):
     async def set_search_query(self, value):
         self.search_query = value
 
+    async def _get_headers(self) -> dict[str, str]:
+        project_state = await self.get_state(ProjectState)
+        if project_state.current_project:
+            return {"X-Project-ID": str(project_state.current_project["id"])}
+        return {}
+
     @rx.event
     async def load_initial_data(self):
         """Load ingestions, data sources, and lakehouse storages from API."""
@@ -155,13 +162,16 @@ class IngestionState(rx.State):
             self.all_lakehouse_storages = ls_state.all_storages
 
             # Load ingestions
-            ingestions = await ingestion_client.list_all()
+            headers = await self._get_headers()
+            ingestions = await ingestion_client.list_all(headers=headers)
             self.all_ingestions = ingestions
 
             # Load all runs
             all_runs = []
             for ingestion in ingestions:
-                runs = await ingestion_client.list_runs(ingestion["id"])
+                runs = await ingestion_client.list_runs(
+                    ingestion["id"], headers=headers
+                )
                 all_runs.extend(runs)
             self.all_runs = all_runs
 
@@ -354,16 +364,18 @@ class IngestionState(rx.State):
                 "config": current_form_data["config"],
             }
 
+            headers = await self._get_headers()
+
             if self.is_editing and self.ingestion_to_edit:
                 updated_ingestion = await ingestion_client.update(
-                    self.ingestion_to_edit["id"], api_data
+                    self.ingestion_to_edit["id"], api_data, headers=headers
                 )
                 for i, ing in enumerate(self.all_ingestions):
                     if ing["id"] == self.ingestion_to_edit["id"]:
                         self.all_ingestions[i] = updated_ingestion
                         break
             else:
-                new_ingestion = await ingestion_client.create(api_data)
+                new_ingestion = await ingestion_client.create(api_data, headers=headers)
                 self.all_ingestions.append(new_ingestion)
 
             yield IngestionState.close_ingestion_modal
@@ -404,7 +416,10 @@ class IngestionState(rx.State):
 
         self.error_message = ""
         try:
-            await ingestion_client.delete(self.ingestion_to_delete["id"])
+            headers = await self._get_headers()
+            await ingestion_client.delete(
+                self.ingestion_to_delete["id"], headers=headers
+            )
             self.all_ingestions = [
                 ing
                 for ing in self.all_ingestions
@@ -450,11 +465,14 @@ class IngestionState(rx.State):
         self.is_executing = True
         self.error_message = ""
         try:
+            headers = await self._get_headers()
             result = await ingestion_client.execute_ingestion(
-                self.ingestion_to_execute["id"]
+                self.ingestion_to_execute["id"], headers=headers
             )
             # Reload runs
-            runs = await ingestion_client.list_runs(self.ingestion_to_execute["id"])
+            runs = await ingestion_client.list_runs(
+                self.ingestion_to_execute["id"], headers=headers
+            )
             # Update all_runs
             self.all_runs = [
                 r

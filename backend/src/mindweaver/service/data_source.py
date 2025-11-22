@@ -1,5 +1,6 @@
 from . import NamedBase, Base
 from . import Service
+from .base import ProjectScopedNamedBase
 from sqlalchemy import String
 from sqlalchemy_utils import JSONType
 from sqlmodel import Field, Relationship
@@ -104,7 +105,7 @@ class FileUploadConfig(BaseModel):
 
 
 # Database model
-class DataSource(NamedBase, table=True):
+class DataSource(ProjectScopedNamedBase, table=True):
     __tablename__ = "mw_datasource"
     type: str = Field(index=True)
     parameters: dict[str, Any] = Field(sa_type=JSONType())

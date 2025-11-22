@@ -4,6 +4,7 @@ import uuid
 import datetime
 import asyncio
 import logging
+from mindweaver_fe.states.project_state import ProjectState
 from mindweaver_fe.api_client import lakehouse_storage_client
 import httpx
 
@@ -76,6 +77,12 @@ class LakehouseStorageState(rx.State):
     async def set_search_query(self, value):
         self.search_query = value
 
+    async def _get_headers(self) -> dict[str, str]:
+        project_state = await self.get_state(ProjectState)
+        if project_state.current_project:
+            return {"X-Project-ID": str(project_state.current_project["id"])}
+        return {}
+
     @rx.event
     async def load_initial_data(self):
         """Load lakehouse storages from API."""
@@ -83,7 +90,8 @@ class LakehouseStorageState(rx.State):
         self.error_message = ""
         try:
             # Load storages from API
-            storages = await lakehouse_storage_client.list_all()
+            headers = await self._get_headers()
+            storages = await lakehouse_storage_client.list_all(headers=headers)
             self.all_storages = storages
         except Exception as e:
             self.error_message = f"Failed to load data: {str(e)}"
@@ -200,16 +208,20 @@ class LakehouseStorageState(rx.State):
                 "parameters": current_form_data["parameters"],
             }
 
+            headers = await self._get_headers()
+
             if self.is_editing and self.storage_to_edit:
                 updated_storage = await lakehouse_storage_client.update(
-                    self.storage_to_edit["id"], api_data
+                    self.storage_to_edit["id"], api_data, headers=headers
                 )
                 for i, s in enumerate(self.all_storages):
                     if s["id"] == self.storage_to_edit["id"]:
                         self.all_storages[i] = updated_storage
                         break
             else:
-                new_storage = await lakehouse_storage_client.create(api_data)
+                new_storage = await lakehouse_storage_client.create(
+                    api_data, headers=headers
+                )
                 self.all_storages.append(new_storage)
 
             yield LakehouseStorageState.close_storage_modal
@@ -236,7 +248,10 @@ class LakehouseStorageState(rx.State):
             if self.is_editing and self.storage_to_edit:
                 test_payload["storage_id"] = self.storage_to_edit["id"]
 
-            result = await lakehouse_storage_client.test_connection(test_payload)
+            headers = await self._get_headers()
+            result = await lakehouse_storage_client.test_connection(
+                test_payload, headers=headers
+            )
 
             if result.get("status") == "success":
                 yield rx.toast.success(
@@ -281,7 +296,10 @@ class LakehouseStorageState(rx.State):
 
         self.error_message = ""
         try:
-            await lakehouse_storage_client.delete(self.storage_to_delete["id"])
+            headers = await self._get_headers()
+            await lakehouse_storage_client.delete(
+                self.storage_to_delete["id"], headers=headers
+            )
             self.all_storages = [
                 s for s in self.all_storages if s["id"] != self.storage_to_delete["id"]
             ]

@@ -4,8 +4,18 @@ from mindweaver_fe.states.knowledge_db_state import KnowledgeDBState
 
 
 @pytest.mark.asyncio
-async def test_load_databases(mock_knowledge_db_client):
+async def test_load_databases(mock_knowledge_db_client, mock_project_state):
     state = KnowledgeDBState()
+
+    # Mock get_state for ProjectState
+    async def mock_get_state(state_class):
+        from mindweaver_fe.states.project_state import ProjectState
+
+        if state_class == ProjectState:
+            return mock_project_state
+        return MagicMock()
+
+    object.__setattr__(state, "get_state", mock_get_state)
 
     # Mock api client response
     mock_dbs = [{"id": 1, "name": "Test DB", "type": "Vector"}]
@@ -60,9 +70,19 @@ def test_open_edit_modal():
 
 
 @pytest.mark.asyncio
-async def test_handle_submit_create(mock_knowledge_db_client):
+async def test_handle_submit_create(mock_knowledge_db_client, mock_project_state):
     state = KnowledgeDBState()
     state.open_create_modal()
+
+    # Mock get_state for ProjectState
+    async def mock_get_state(state_class):
+        from mindweaver_fe.states.project_state import ProjectState
+
+        if state_class == ProjectState:
+            return mock_project_state
+        return MagicMock()
+
+    object.__setattr__(state, "get_state", mock_get_state)
 
     form_data = {
         "name": "New DB",
@@ -87,7 +107,7 @@ async def test_handle_submit_create(mock_knowledge_db_client):
 
 
 @pytest.mark.asyncio
-async def test_handle_submit_update(mock_knowledge_db_client):
+async def test_handle_submit_update(mock_knowledge_db_client, mock_project_state):
     state = KnowledgeDBState()
     existing_db = {
         "id": 1,
@@ -103,6 +123,16 @@ async def test_handle_submit_update(mock_knowledge_db_client):
     }
     state.all_databases = [existing_db]
     state.open_edit_modal(existing_db)
+
+    # Mock get_state for ProjectState
+    async def mock_get_state(state_class):
+        from mindweaver_fe.states.project_state import ProjectState
+
+        if state_class == ProjectState:
+            return mock_project_state
+        return MagicMock()
+
+    object.__setattr__(state, "get_state", mock_get_state)
 
     form_data = {
         "name": "Updated Name",
@@ -128,7 +158,7 @@ async def test_handle_submit_update(mock_knowledge_db_client):
 
 
 @pytest.mark.asyncio
-async def test_confirm_delete(mock_knowledge_db_client):
+async def test_confirm_delete(mock_knowledge_db_client, mock_project_state):
     state = KnowledgeDBState()
     db_to_delete = {
         "id": 1,
@@ -145,6 +175,16 @@ async def test_confirm_delete(mock_knowledge_db_client):
     state.all_databases = [db_to_delete]
     state.open_delete_dialog(db_to_delete)
 
+    # Mock get_state for ProjectState
+    async def mock_get_state(state_class):
+        from mindweaver_fe.states.project_state import ProjectState
+
+        if state_class == ProjectState:
+            return mock_project_state
+        return MagicMock()
+
+    object.__setattr__(state, "get_state", mock_get_state)
+
     mock_knowledge_db_client.delete.return_value = True
 
     with patch(
@@ -154,4 +194,7 @@ async def test_confirm_delete(mock_knowledge_db_client):
         await state.confirm_delete()
 
     assert len(state.all_databases) == 0
-    mock_knowledge_db_client.delete.assert_called_once_with(1)
+    # The delete call now includes headers parameter
+    assert mock_knowledge_db_client.delete.call_count == 1
+    call_args = mock_knowledge_db_client.delete.call_args
+    assert call_args[0][0] == 1  # First positional arg is the ID

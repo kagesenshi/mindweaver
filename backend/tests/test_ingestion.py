@@ -2,12 +2,13 @@ from fastapi.testclient import TestClient
 import pytest
 
 
-def test_create_ingestion_full_refresh(client: TestClient):
+def test_create_ingestion_full_refresh(client: TestClient, test_project):
     """Test creating a full refresh ingestion."""
     # First create a data source
     ds_resp = client.post(
         "/data_sources",
         json={
+            "project_id": test_project["id"],
             "name": "test-db",
             "title": "Test Database",
             "type": "Database",
@@ -26,6 +27,7 @@ def test_create_ingestion_full_refresh(client: TestClient):
     ls_resp = client.post(
         "/lakehouse_storages",
         json={
+            "project_id": test_project["id"],
             "name": "test-s3",
             "title": "Test S3 Storage",
             "parameters": {
@@ -43,6 +45,7 @@ def test_create_ingestion_full_refresh(client: TestClient):
     resp = client.post(
         "/ingestions",
         json={
+            "project_id": test_project["id"],
             "name": "daily-users",
             "title": "Daily User Sync",
             "data_source_id": data_source_id,
@@ -65,12 +68,13 @@ def test_create_ingestion_full_refresh(client: TestClient):
     assert data["record"]["config"]["table_name"] == "users"
 
 
-def test_create_ingestion_incremental(client: TestClient):
+def test_create_ingestion_incremental(client: TestClient, test_project):
     """Test creating an incremental ingestion with required fields."""
     # Create data source
     ds_resp = client.post(
         "/data_sources",
         json={
+            "project_id": test_project["id"],
             "name": "test-db-inc",
             "title": "Test Database Incremental",
             "type": "Database",
@@ -89,6 +93,7 @@ def test_create_ingestion_incremental(client: TestClient):
     ls_resp = client.post(
         "/lakehouse_storages",
         json={
+            "project_id": test_project["id"],
             "name": "test-s3-inc",
             "title": "Test S3 Storage Inc",
             "parameters": {
@@ -106,6 +111,7 @@ def test_create_ingestion_incremental(client: TestClient):
     resp = client.post(
         "/ingestions",
         json={
+            "project_id": test_project["id"],
             "name": "incremental-orders",
             "title": "Incremental Order Sync",
             "data_source_id": data_source_id,
@@ -132,12 +138,13 @@ def test_create_ingestion_incremental(client: TestClient):
     assert data["record"]["config"]["primary_keys"] == ["order_id"]
 
 
-def test_create_ingestion_incremental_missing_fields(client: TestClient):
+def test_create_ingestion_incremental_missing_fields(client: TestClient, test_project):
     """Test that incremental ingestion fails without required fields."""
     # Create data source
     ds_resp = client.post(
         "/data_sources",
         json={
+            "project_id": test_project["id"],
             "name": "test-db-fail",
             "title": "Test Database Fail",
             "type": "Database",
@@ -156,6 +163,7 @@ def test_create_ingestion_incremental_missing_fields(client: TestClient):
     ls_resp = client.post(
         "/lakehouse_storages",
         json={
+            "project_id": test_project["id"],
             "name": "test-s3-fail",
             "title": "Test S3 Storage Fail",
             "parameters": {
@@ -173,6 +181,7 @@ def test_create_ingestion_incremental_missing_fields(client: TestClient):
     resp = client.post(
         "/ingestions",
         json={
+            "project_id": test_project["id"],
             "name": "bad-incremental",
             "title": "Bad Incremental Sync",
             "data_source_id": data_source_id,
@@ -199,12 +208,13 @@ def test_create_ingestion_incremental_missing_fields(client: TestClient):
     )
 
 
-def test_execute_ingestion(client: TestClient):
+def test_execute_ingestion(client: TestClient, test_project):
     """Test manual execution of an ingestion."""
     # Create data source
     ds_resp = client.post(
         "/data_sources",
         json={
+            "project_id": test_project["id"],
             "name": "test-db-exec",
             "title": "Test Database Exec",
             "type": "Database",
@@ -223,6 +233,7 @@ def test_execute_ingestion(client: TestClient):
     ls_resp = client.post(
         "/lakehouse_storages",
         json={
+            "project_id": test_project["id"],
             "name": "test-s3-exec",
             "title": "Test S3 Storage Exec",
             "parameters": {
@@ -240,6 +251,7 @@ def test_execute_ingestion(client: TestClient):
     ing_resp = client.post(
         "/ingestions",
         json={
+            "project_id": test_project["id"],
             "name": "exec-test",
             "title": "Execution Test",
             "data_source_id": data_source_id,
@@ -265,12 +277,13 @@ def test_execute_ingestion(client: TestClient):
     assert "record" in data
 
 
-def test_list_ingestion_runs(client: TestClient):
+def test_list_ingestion_runs(client: TestClient, test_project):
     """Test listing execution runs for an ingestion."""
     # Create data source
     ds_resp = client.post(
         "/data_sources",
         json={
+            "project_id": test_project["id"],
             "name": "test-db-runs",
             "title": "Test Database Runs",
             "type": "Database",
@@ -289,6 +302,7 @@ def test_list_ingestion_runs(client: TestClient):
     ls_resp = client.post(
         "/lakehouse_storages",
         json={
+            "project_id": test_project["id"],
             "name": "test-s3-runs",
             "title": "Test S3 Storage Runs",
             "parameters": {
@@ -306,6 +320,7 @@ def test_list_ingestion_runs(client: TestClient):
     ing_resp = client.post(
         "/ingestions",
         json={
+            "project_id": test_project["id"],
             "name": "runs-test",
             "title": "Runs Test",
             "data_source_id": data_source_id,
@@ -335,12 +350,13 @@ def test_list_ingestion_runs(client: TestClient):
     assert data["records"][0]["ingestion_id"] == ingestion_id
 
 
-def test_list_all_ingestions(client: TestClient):
+def test_list_all_ingestions(client: TestClient, test_project):
     """Test listing all ingestions."""
     # Create data source
     ds_resp = client.post(
         "/data_sources",
         json={
+            "project_id": test_project["id"],
             "name": "test-db-list",
             "title": "Test Database List",
             "type": "Database",
@@ -358,6 +374,7 @@ def test_list_all_ingestions(client: TestClient):
     ls_resp = client.post(
         "/lakehouse_storages",
         json={
+            "project_id": test_project["id"],
             "name": "test-s3-list",
             "title": "Test S3 Storage List",
             "parameters": {
@@ -375,6 +392,7 @@ def test_list_all_ingestions(client: TestClient):
         client.post(
             "/ingestions",
             json={
+                "project_id": test_project["id"],
                 "name": f"ingestion-{i}",
                 "title": f"Ingestion {i}",
                 "data_source_id": data_source_id,
@@ -398,12 +416,13 @@ def test_list_all_ingestions(client: TestClient):
     assert len(data["records"]) >= 3
 
 
-def test_get_single_ingestion(client: TestClient):
+def test_get_single_ingestion(client: TestClient, test_project):
     """Test getting a single ingestion by ID."""
     # Create data source
     ds_resp = client.post(
         "/data_sources",
         json={
+            "project_id": test_project["id"],
             "name": "test-db-get",
             "title": "Test Database Get",
             "type": "Database",
@@ -421,6 +440,7 @@ def test_get_single_ingestion(client: TestClient):
     ls_resp = client.post(
         "/lakehouse_storages",
         json={
+            "project_id": test_project["id"],
             "name": "test-s3-get",
             "title": "Test S3 Storage Get",
             "parameters": {
@@ -437,6 +457,7 @@ def test_get_single_ingestion(client: TestClient):
     create_resp = client.post(
         "/ingestions",
         json={
+            "project_id": test_project["id"],
             "name": "get-test",
             "title": "Get Test",
             "data_source_id": data_source_id,
@@ -461,12 +482,13 @@ def test_get_single_ingestion(client: TestClient):
     assert data["record"]["name"] == "get-test"
 
 
-def test_update_ingestion(client: TestClient):
+def test_update_ingestion(client: TestClient, test_project):
     """Test updating an existing ingestion."""
     # Create data source
     ds_resp = client.post(
         "/data_sources",
         json={
+            "project_id": test_project["id"],
             "name": "test-db-update",
             "title": "Test Database Update",
             "type": "Database",
@@ -484,6 +506,7 @@ def test_update_ingestion(client: TestClient):
     ls_resp = client.post(
         "/lakehouse_storages",
         json={
+            "project_id": test_project["id"],
             "name": "test-s3-update",
             "title": "Test S3 Storage Update",
             "parameters": {
@@ -500,6 +523,7 @@ def test_update_ingestion(client: TestClient):
     create_resp = client.post(
         "/ingestions",
         json={
+            "project_id": test_project["id"],
             "name": "update-test",
             "title": "Update Test",
             "data_source_id": data_source_id,
@@ -520,6 +544,7 @@ def test_update_ingestion(client: TestClient):
     update_resp = client.put(
         f"/ingestions/{ingestion_id}",
         json={
+            "project_id": test_project["id"],
             "name": "updated-test",
             "title": "Updated Test",
             "data_source_id": data_source_id,
@@ -543,12 +568,13 @@ def test_update_ingestion(client: TestClient):
     assert data["record"]["timezone"] == "America/New_York"
 
 
-def test_delete_ingestion(client: TestClient):
+def test_delete_ingestion(client: TestClient, test_project):
     """Test deleting an ingestion."""
     # Create data source
     ds_resp = client.post(
         "/data_sources",
         json={
+            "project_id": test_project["id"],
             "name": "test-db-delete",
             "title": "Test Database Delete",
             "type": "Database",
@@ -566,6 +592,7 @@ def test_delete_ingestion(client: TestClient):
     ls_resp = client.post(
         "/lakehouse_storages",
         json={
+            "project_id": test_project["id"],
             "name": "test-s3-delete",
             "title": "Test S3 Storage Delete",
             "parameters": {
@@ -582,6 +609,7 @@ def test_delete_ingestion(client: TestClient):
     create_resp = client.post(
         "/ingestions",
         json={
+            "project_id": test_project["id"],
             "name": "delete-test",
             "title": "Delete Test",
             "data_source_id": data_source_id,
@@ -608,12 +636,13 @@ def test_delete_ingestion(client: TestClient):
     assert get_resp.status_code == 404
 
 
-def test_create_ingestion_with_date_range(client: TestClient):
+def test_create_ingestion_with_date_range(client: TestClient, test_project):
     """Test creating an ingestion with start and end dates."""
     # Create data source
     ds_resp = client.post(
         "/data_sources",
         json={
+            "project_id": test_project["id"],
             "name": "test-db-dates",
             "title": "Test Database Dates",
             "type": "Database",
@@ -631,6 +660,7 @@ def test_create_ingestion_with_date_range(client: TestClient):
     ls_resp = client.post(
         "/lakehouse_storages",
         json={
+            "project_id": test_project["id"],
             "name": "test-s3-dates",
             "title": "Test S3 Storage Dates",
             "parameters": {
@@ -647,6 +677,7 @@ def test_create_ingestion_with_date_range(client: TestClient):
     resp = client.post(
         "/ingestions",
         json={
+            "project_id": test_project["id"],
             "name": "date-range-test",
             "title": "Date Range Test",
             "data_source_id": data_source_id,
@@ -671,12 +702,13 @@ def test_create_ingestion_with_date_range(client: TestClient):
     assert data["record"]["end_date"].startswith("2025-12-31")
 
 
-def test_create_ingestion_with_complex_cron(client: TestClient):
+def test_create_ingestion_with_complex_cron(client: TestClient, test_project):
     """Test creating an ingestion with various cron schedules."""
     # Create data source
     ds_resp = client.post(
         "/data_sources",
         json={
+            "project_id": test_project["id"],
             "name": "test-db-cron",
             "title": "Test Database Cron",
             "type": "Database",
@@ -694,6 +726,7 @@ def test_create_ingestion_with_complex_cron(client: TestClient):
     ls_resp = client.post(
         "/lakehouse_storages",
         json={
+            "project_id": test_project["id"],
             "name": "test-s3-cron",
             "title": "Test S3 Storage Cron",
             "parameters": {
@@ -718,6 +751,7 @@ def test_create_ingestion_with_complex_cron(client: TestClient):
         resp = client.post(
             "/ingestions",
             json={
+                "project_id": test_project["id"],
                 "name": f"cron-test-{i}",
                 "title": f"Cron Test {i}",
                 "data_source_id": data_source_id,
@@ -736,12 +770,13 @@ def test_create_ingestion_with_complex_cron(client: TestClient):
         assert resp.json()["record"]["cron_schedule"] == cron
 
 
-def test_create_ingestion_with_invalid_cron_schedule(client: TestClient):
+def test_create_ingestion_with_invalid_cron_schedule(client: TestClient, test_project):
     """Test creating an ingestion with invalid cron schedules."""
     # Create data source
     ds_resp = client.post(
         "/data_sources",
         json={
+            "project_id": test_project["id"],
             "name": "test-db-invalid-cron",
             "title": "Test Database Invalid Cron",
             "type": "Database",
@@ -759,6 +794,7 @@ def test_create_ingestion_with_invalid_cron_schedule(client: TestClient):
     ls_resp = client.post(
         "/lakehouse_storages",
         json={
+            "project_id": test_project["id"],
             "name": "test-s3-invalid-cron",
             "title": "Test S3 Storage Invalid Cron",
             "parameters": {
@@ -790,6 +826,7 @@ def test_create_ingestion_with_invalid_cron_schedule(client: TestClient):
         resp = client.post(
             "/ingestions",
             json={
+                "project_id": test_project["id"],
                 "name": f"invalid-cron-test-{i}",
                 "title": f"Invalid Cron Test {i}",
                 "data_source_id": data_source_id,
@@ -816,12 +853,13 @@ def test_create_ingestion_with_invalid_cron_schedule(client: TestClient):
         ), f"Error message should mention cron/schedule for '{cron}': {error['detail']}"
 
 
-def test_create_ingestion_with_multiple_primary_keys(client: TestClient):
+def test_create_ingestion_with_multiple_primary_keys(client: TestClient, test_project):
     """Test creating an incremental ingestion with multiple primary keys."""
     # Create data source
     ds_resp = client.post(
         "/data_sources",
         json={
+            "project_id": test_project["id"],
             "name": "test-db-multi-pk",
             "title": "Test Database Multi PK",
             "type": "Database",
@@ -839,6 +877,7 @@ def test_create_ingestion_with_multiple_primary_keys(client: TestClient):
     ls_resp = client.post(
         "/lakehouse_storages",
         json={
+            "project_id": test_project["id"],
             "name": "test-s3-multi-pk",
             "title": "Test S3 Storage Multi PK",
             "parameters": {
@@ -855,6 +894,7 @@ def test_create_ingestion_with_multiple_primary_keys(client: TestClient):
     resp = client.post(
         "/ingestions",
         json={
+            "project_id": test_project["id"],
             "name": "multi-pk-test",
             "title": "Multi PK Test",
             "data_source_id": data_source_id,
@@ -880,12 +920,13 @@ def test_create_ingestion_with_multiple_primary_keys(client: TestClient):
     assert "tenant_id" in data["record"]["config"]["primary_keys"]
 
 
-def test_ingestion_with_different_timezones(client: TestClient):
+def test_ingestion_with_different_timezones(client: TestClient, test_project):
     """Test creating ingestions with different timezones."""
     # Create data source
     ds_resp = client.post(
         "/data_sources",
         json={
+            "project_id": test_project["id"],
             "name": "test-db-tz",
             "title": "Test Database TZ",
             "type": "Database",
@@ -903,6 +944,7 @@ def test_ingestion_with_different_timezones(client: TestClient):
     ls_resp = client.post(
         "/lakehouse_storages",
         json={
+            "project_id": test_project["id"],
             "name": "test-s3-tz",
             "title": "Test S3 Storage TZ",
             "parameters": {
@@ -921,6 +963,7 @@ def test_ingestion_with_different_timezones(client: TestClient):
         resp = client.post(
             "/ingestions",
             json={
+                "project_id": test_project["id"],
                 "name": f"tz-test-{i}",
                 "title": f"TZ Test {i}",
                 "data_source_id": data_source_id,

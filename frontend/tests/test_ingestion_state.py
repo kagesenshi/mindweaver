@@ -7,7 +7,7 @@ import reflex as rx
 
 
 @pytest.mark.asyncio
-async def test_load_initial_data(mock_ingestion_client):
+async def test_load_initial_data(mock_ingestion_client, mock_project_state):
     """Test loading ingestions, data sources, and lakehouse storages."""
     state = IngestionState()
 
@@ -32,6 +32,11 @@ async def test_load_initial_data(mock_ingestion_client):
             return mock_ds_state
         elif state_class == LakehouseStorageState:
             return mock_ls_state
+        from mindweaver_fe.states.project_state import ProjectState
+
+        if state_class == ProjectState:
+            return mock_project_state
+        return MagicMock()
 
     object.__setattr__(state, "get_state", mock_get_state)
 
@@ -89,8 +94,11 @@ async def test_load_initial_data(mock_ingestion_client):
 
     mock_ds_state.load_initial_data.assert_called_once()
     mock_ls_state.load_initial_data.assert_called_once()
-    mock_ingestion_client.list_all.assert_called_once()
-    mock_ingestion_client.list_runs.assert_called_once_with(1)
+    # The list_all and list_runs calls now include headers parameter
+    assert mock_ingestion_client.list_all.call_count == 1
+    assert mock_ingestion_client.list_runs.call_count == 1
+    call_args = mock_ingestion_client.list_runs.call_args
+    assert call_args[0][0] == 1  # First positional arg is the ingestion ID
 
 
 def test_open_create_modal():
@@ -255,10 +263,20 @@ def test_primary_keys_string():
 
 
 @pytest.mark.asyncio
-async def test_handle_submit_create(mock_ingestion_client):
+async def test_handle_submit_create(mock_ingestion_client, mock_project_state):
     """Test creating a new ingestion."""
     state = IngestionState()
     state.open_create_modal()
+
+    # Mock get_state for ProjectState
+    async def mock_get_state(state_class):
+        from mindweaver_fe.states.project_state import ProjectState
+
+        if state_class == ProjectState:
+            return mock_project_state
+        return MagicMock()
+
+    object.__setattr__(state, "get_state", mock_get_state)
 
     form_data = {
         "name": "new-ingestion",
@@ -327,7 +345,7 @@ async def test_handle_submit_create_validation_errors(mock_ingestion_client):
 
 
 @pytest.mark.asyncio
-async def test_handle_submit_update(mock_ingestion_client):
+async def test_handle_submit_update(mock_ingestion_client, mock_project_state):
     """Test updating an existing ingestion."""
     state = IngestionState()
     existing_ingestion = {
@@ -349,6 +367,16 @@ async def test_handle_submit_update(mock_ingestion_client):
     }
     state.all_ingestions = [existing_ingestion]
     state.open_edit_modal(existing_ingestion)
+
+    # Mock get_state for ProjectState
+    async def mock_get_state(state_class):
+        from mindweaver_fe.states.project_state import ProjectState
+
+        if state_class == ProjectState:
+            return mock_project_state
+        return MagicMock()
+
+    object.__setattr__(state, "get_state", mock_get_state)
 
     form_data = {
         "name": "updated-name",
@@ -383,10 +411,22 @@ async def test_handle_submit_update(mock_ingestion_client):
 
 
 @pytest.mark.asyncio
-async def test_handle_submit_incremental_with_primary_keys(mock_ingestion_client):
+async def test_handle_submit_incremental_with_primary_keys(
+    mock_ingestion_client, mock_project_state
+):
     """Test creating an incremental ingestion with primary keys."""
     state = IngestionState()
     state.open_create_modal()
+
+    # Mock get_state for ProjectState
+    async def mock_get_state(state_class):
+        from mindweaver_fe.states.project_state import ProjectState
+
+        if state_class == ProjectState:
+            return mock_project_state
+        return MagicMock()
+
+    object.__setattr__(state, "get_state", mock_get_state)
 
     form_data = {
         "name": "incremental-ingestion",
@@ -444,7 +484,7 @@ async def test_handle_submit_incremental_with_primary_keys(mock_ingestion_client
 
 
 @pytest.mark.asyncio
-async def test_confirm_delete(mock_ingestion_client):
+async def test_confirm_delete(mock_ingestion_client, mock_project_state):
     """Test deleting an ingestion."""
     state = IngestionState()
     ingestion_to_delete = {
@@ -467,6 +507,16 @@ async def test_confirm_delete(mock_ingestion_client):
     state.all_ingestions = [ingestion_to_delete]
     state.open_delete_dialog(ingestion_to_delete)
 
+    # Mock get_state for ProjectState
+    async def mock_get_state(state_class):
+        from mindweaver_fe.states.project_state import ProjectState
+
+        if state_class == ProjectState:
+            return mock_project_state
+        return MagicMock()
+
+    object.__setattr__(state, "get_state", mock_get_state)
+
     mock_ingestion_client.delete.return_value = True
 
     with patch(
@@ -476,11 +526,14 @@ async def test_confirm_delete(mock_ingestion_client):
         await state.confirm_delete()
 
     assert len(state.all_ingestions) == 0
-    mock_ingestion_client.delete.assert_called_once_with(1)
+    # The delete call now includes headers parameter
+    assert mock_ingestion_client.delete.call_count == 1
+    call_args = mock_ingestion_client.delete.call_args
+    assert call_args[0][0] == 1  # First positional arg is the ID
 
 
 @pytest.mark.asyncio
-async def test_confirm_execute(mock_ingestion_client):
+async def test_confirm_execute(mock_ingestion_client, mock_project_state):
     """Test executing an ingestion."""
     state = IngestionState()
     ingestion_to_execute = {
@@ -501,6 +554,16 @@ async def test_confirm_execute(mock_ingestion_client):
         "modified": "2025-01-01T00:00:00",
     }
     state.open_execute_dialog(ingestion_to_execute)
+
+    # Mock get_state for ProjectState
+    async def mock_get_state(state_class):
+        from mindweaver_fe.states.project_state import ProjectState
+
+        if state_class == ProjectState:
+            return mock_project_state
+        return MagicMock()
+
+    object.__setattr__(state, "get_state", mock_get_state)
 
     mock_runs = [
         {
@@ -530,8 +593,13 @@ async def test_confirm_execute(mock_ingestion_client):
 
     assert len(state.all_runs) == 1
     assert state.all_runs[0]["status"] == "running"
-    mock_ingestion_client.execute_ingestion.assert_called_once_with(1)
-    mock_ingestion_client.list_runs.assert_called_once_with(1)
+    # The execute_ingestion and list_runs calls now include headers parameter
+    assert mock_ingestion_client.execute_ingestion.call_count == 1
+    call_args = mock_ingestion_client.execute_ingestion.call_args
+    assert call_args[0][0] == 1  # First positional arg is the ingestion ID
+    assert mock_ingestion_client.list_runs.call_count == 1
+    call_args = mock_ingestion_client.list_runs.call_args
+    assert call_args[0][0] == 1  # First positional arg is the ingestion ID
 
 
 def test_open_delete_dialog():

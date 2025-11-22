@@ -3,6 +3,7 @@ from typing import TypedDict, Literal, Any
 import uuid
 from mindweaver_fe.states.knowledge_db_state import KnowledgeDBState, KnowledgeDB
 from mindweaver_fe.api_client import ai_agent_client
+from mindweaver_fe.states.project_state import ProjectState
 
 AgentStatus = Literal["Active", "Inactive"]
 
@@ -52,6 +53,12 @@ class AIAgentsState(rx.State):
     is_loading: bool = False
     error_message: str = ""
 
+    async def _get_headers(self) -> dict[str, str]:
+        project_state = await self.get_state(ProjectState)
+        if project_state.current_project:
+            return {"X-Project-ID": str(project_state.current_project["id"])}
+        return {}
+
     @rx.event
     async def load_agents(self):
         """Load agents and knowledge databases from the API."""
@@ -64,7 +71,8 @@ class AIAgentsState(rx.State):
             self.all_knowledge_dbs = kdb_state.all_databases
 
             # Load agents
-            agents = await ai_agent_client.list_all()
+            headers = await self._get_headers()
+            agents = await ai_agent_client.list_all(headers=headers)
             self.all_agents = agents
         except Exception as e:
             self.error_message = f"Failed to load data: {str(e)}"
@@ -209,11 +217,13 @@ class AIAgentsState(rx.State):
                 "knowledge_db_ids": self.form_data["knowledge_db_ids"],
             }
 
+            headers = await self._get_headers()
+
             if self.is_editing and self.agent_to_edit:
                 # Update existing agent
                 api_data["status"] = self.agent_to_edit.get("status", "Inactive")
                 updated_agent = await ai_agent_client.update(
-                    self.agent_to_edit["id"], api_data
+                    self.agent_to_edit["id"], api_data, headers=headers
                 )
                 # Update in local state
                 for i, agent in enumerate(self.all_agents):
@@ -222,7 +232,7 @@ class AIAgentsState(rx.State):
                         break
             else:
                 # Create new agent
-                new_agent = await ai_agent_client.create(api_data)
+                new_agent = await ai_agent_client.create(api_data, headers=headers)
                 self.all_agents.append(new_agent)
 
             return AIAgentsState.close_agent_modal
@@ -263,7 +273,8 @@ class AIAgentsState(rx.State):
 
         self.error_message = ""
         try:
-            await ai_agent_client.delete(self.agent_to_delete["id"])
+            headers = await self._get_headers()
+            await ai_agent_client.delete(self.agent_to_delete["id"], headers=headers)
             # Remove from local state
             self.all_agents = [
                 agent

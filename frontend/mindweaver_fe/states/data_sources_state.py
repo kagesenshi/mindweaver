@@ -5,6 +5,7 @@ import datetime
 import asyncio
 import logging
 from mindweaver_fe.states.knowledge_db_state import KnowledgeDB, KnowledgeDBState
+from mindweaver_fe.states.project_state import ProjectState
 from mindweaver_fe.api_client import data_source_client
 import httpx
 
@@ -113,6 +114,12 @@ class DataSourcesState(rx.State):
     async def set_filter_type(self, value):
         self.filter_type = value
 
+    async def _get_headers(self) -> dict[str, str]:
+        project_state = await self.get_state(ProjectState)
+        if project_state.current_project:
+            return {"X-Project-ID": str(project_state.current_project["id"])}
+        return {}
+
     @rx.event
     async def load_initial_data(self):
         """Load knowledge bases and data sources from API."""
@@ -124,7 +131,8 @@ class DataSourcesState(rx.State):
             self.all_knowledge_dbs = kdb_state.all_databases
 
             # Load sources from API
-            sources = await data_source_client.list_all()
+            headers = await self._get_headers()
+            sources = await data_source_client.list_all(headers=headers)
             self.all_sources = sources
         except Exception as e:
             self.error_message = f"Failed to load data: {str(e)}"
@@ -264,16 +272,18 @@ class DataSourcesState(rx.State):
                 "parameters": current_form_data["parameters"],
             }
 
+            headers = await self._get_headers()
+
             if self.is_editing and self.source_to_edit:
                 updated_source = await data_source_client.update(
-                    self.source_to_edit["id"], api_data
+                    self.source_to_edit["id"], api_data, headers=headers
                 )
                 for i, s in enumerate(self.all_sources):
                     if s["id"] == self.source_to_edit["id"]:
                         self.all_sources[i] = updated_source
                         break
             else:
-                new_source = await data_source_client.create(api_data)
+                new_source = await data_source_client.create(api_data, headers=headers)
                 self.all_sources.append(new_source)
 
             yield DataSourcesState.close_source_modal
@@ -307,7 +317,10 @@ class DataSourcesState(rx.State):
             if self.is_editing and self.source_to_edit:
                 test_payload["source_id"] = self.source_to_edit["id"]
 
-            result = await data_source_client.test_connection(test_payload)
+            headers = await self._get_headers()
+            result = await data_source_client.test_connection(
+                test_payload, headers=headers
+            )
 
             if result.get("status") == "success":
                 yield rx.toast.success(
@@ -355,7 +368,10 @@ class DataSourcesState(rx.State):
 
         self.error_message = ""
         try:
-            await data_source_client.delete(self.source_to_delete["id"])
+            headers = await self._get_headers()
+            await data_source_client.delete(
+                self.source_to_delete["id"], headers=headers
+            )
             self.all_sources = [
                 s for s in self.all_sources if s["id"] != self.source_to_delete["id"]
             ]

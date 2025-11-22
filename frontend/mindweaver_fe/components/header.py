@@ -1,23 +1,60 @@
 import reflex as rx
 from mindweaver_fe.states.base_state import BaseState
+from mindweaver_fe.states.project_state import ProjectState
 
 
 def header_component() -> rx.Component:
-    """The header component with breadcrumbs and title."""
+    """The header component with breadcrumbs, title, and project switcher."""
     return rx.el.header(
         rx.el.div(
             rx.el.div(
-                rx.icon("home", class_name="h-4 w-4 text-gray-500"),
-                rx.el.span("/", class_name="mx-2 text-gray-400"),
-                rx.el.span(
-                    BaseState.current_page_name, class_name="font-medium text-gray-700"
+                rx.el.div(
+                    rx.icon("home", class_name="h-4 w-4 text-gray-500"),
+                    rx.el.span("/", class_name="mx-2 text-gray-400"),
+                    rx.el.span(
+                        BaseState.current_page_name,
+                        class_name="font-medium text-gray-700",
+                    ),
+                    class_name="flex items-center text-sm",
                 ),
-                class_name="flex items-center text-sm",
+                rx.el.h1(
+                    BaseState.current_page_name,
+                    class_name="text-2xl font-bold text-gray-900 mt-1",
+                ),
             ),
-            rx.el.h1(
-                BaseState.current_page_name,
-                class_name="text-2xl font-bold text-gray-900 mt-1",
+            rx.el.div(
+                rx.menu.root(
+                    rx.menu.trigger(
+                        rx.button(
+                            rx.cond(
+                                ProjectState.current_project,
+                                ProjectState.current_project["name"],
+                                "Select Project",
+                            ),
+                            rx.icon("chevron-down", class_name="ml-2 h-4 w-4"),
+                            variant="outline",
+                            class_name="flex items-center",
+                        ),
+                    ),
+                    rx.menu.content(
+                        rx.foreach(
+                            ProjectState.projects,
+                            lambda project: rx.menu.item(
+                                project["name"],
+                                on_click=lambda: ProjectState.select_project(project),
+                            ),
+                        ),
+                        rx.menu.separator(),
+                        rx.menu.item(
+                            "Manage Projects",
+                            on_click=rx.redirect("/projects"),
+                        ),
+                    ),
+                ),
+                class_name="flex items-center",
             ),
+            class_name="flex items-center justify-between",
         ),
         class_name="bg-white/80 backdrop-blur-sm sticky top-0 z-10 border-b border-gray-200 px-6 py-4",
+        on_mount=ProjectState.load_projects,
     )

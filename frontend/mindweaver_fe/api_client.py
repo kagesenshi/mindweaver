@@ -40,55 +40,68 @@ class APIClient:
             await self._client.aclose()
             self._client = None
 
-    async def list_all(self, endpoint: str) -> List[Dict[str, Any]]:
+    async def list_all(
+        self, endpoint: str, headers: Dict[str, str] = None
+    ) -> List[Dict[str, Any]]:
         """List all records from an endpoint.
 
         Args:
             endpoint: API endpoint path (e.g., '/ai_agents')
+            headers: Optional headers to include in the request
 
         Returns:
             List of records
         """
         client = await self._get_client()
-        response = await client.get(endpoint)
+        response = await client.get(endpoint, headers=headers)
         response.raise_for_status()
         data = response.json()
         return data.get("records", [])
 
-    async def get(self, endpoint: str, record_id: int) -> Dict[str, Any]:
+    async def get(
+        self, endpoint: str, record_id: int, headers: Dict[str, str] = None
+    ) -> Dict[str, Any]:
         """Get a single record by ID.
 
         Args:
             endpoint: API endpoint path (e.g., '/ai_agents')
             record_id: Record ID
+            headers: Optional headers to include in the request
 
         Returns:
             Record data
         """
         client = await self._get_client()
-        response = await client.get(f"{endpoint}/{record_id}")
+        response = await client.get(f"{endpoint}/{record_id}", headers=headers)
         response.raise_for_status()
         data = response.json()
         return data.get("record", {})
 
-    async def create(self, endpoint: str, data: Dict[str, Any]) -> Dict[str, Any]:
+    async def create(
+        self, endpoint: str, data: Dict[str, Any], headers: Dict[str, str] = None
+    ) -> Dict[str, Any]:
         """Create a new record.
 
         Args:
             endpoint: API endpoint path (e.g., '/ai_agents')
             data: Record data to create
+            headers: Optional headers to include in the request
 
         Returns:
             Created record
         """
         client = await self._get_client()
-        response = await client.post(endpoint, json=data)
+        response = await client.post(endpoint, json=data, headers=headers)
         response.raise_for_status()
         result = response.json()
         return result.get("record", {})
 
     async def update(
-        self, endpoint: str, record_id: int, data: Dict[str, Any]
+        self,
+        endpoint: str,
+        record_id: int,
+        data: Dict[str, Any],
+        headers: Dict[str, str] = None,
     ) -> Dict[str, Any]:
         """Update an existing record.
 
@@ -96,28 +109,34 @@ class APIClient:
             endpoint: API endpoint path (e.g., '/ai_agents')
             record_id: Record ID
             data: Updated record data
+            headers: Optional headers to include in the request
 
         Returns:
             Updated record
         """
         client = await self._get_client()
-        response = await client.put(f"{endpoint}/{record_id}", json=data)
+        response = await client.put(
+            f"{endpoint}/{record_id}", json=data, headers=headers
+        )
         response.raise_for_status()
         result = response.json()
         return result.get("record", {})
 
-    async def delete(self, endpoint: str, record_id: int) -> bool:
+    async def delete(
+        self, endpoint: str, record_id: int, headers: Dict[str, str] = None
+    ) -> bool:
         """Delete a record.
 
         Args:
             endpoint: API endpoint path (e.g., '/ai_agents')
             record_id: Record ID
+            headers: Optional headers to include in the request
 
         Returns:
             True if successful
         """
         client = await self._get_client()
-        response = await client.delete(f"{endpoint}/{record_id}")
+        response = await client.delete(f"{endpoint}/{record_id}", headers=headers)
         response.raise_for_status()
         result = response.json()
         return result.get("status") == "success"
@@ -131,20 +150,26 @@ class AIAgentClient:
         self.client = client or APIClient()
         self.endpoint = "/ai_agents"
 
-    async def list_all(self) -> List[Dict[str, Any]]:
-        return await self.client.list_all(self.endpoint)
+    async def list_all(self, headers: Dict[str, str] = None) -> List[Dict[str, Any]]:
+        return await self.client.list_all(self.endpoint, headers=headers)
 
-    async def get(self, agent_id: int) -> Dict[str, Any]:
-        return await self.client.get(self.endpoint, agent_id)
+    async def get(
+        self, agent_id: int, headers: Dict[str, str] = None
+    ) -> Dict[str, Any]:
+        return await self.client.get(self.endpoint, agent_id, headers=headers)
 
-    async def create(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        return await self.client.create(self.endpoint, data)
+    async def create(
+        self, data: Dict[str, Any], headers: Dict[str, str] = None
+    ) -> Dict[str, Any]:
+        return await self.client.create(self.endpoint, data, headers=headers)
 
-    async def update(self, agent_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
-        return await self.client.update(self.endpoint, agent_id, data)
+    async def update(
+        self, agent_id: int, data: Dict[str, Any], headers: Dict[str, str] = None
+    ) -> Dict[str, Any]:
+        return await self.client.update(self.endpoint, agent_id, data, headers=headers)
 
-    async def delete(self, agent_id: int) -> bool:
-        return await self.client.delete(self.endpoint, agent_id)
+    async def delete(self, agent_id: int, headers: Dict[str, str] = None) -> bool:
+        return await self.client.delete(self.endpoint, agent_id, headers=headers)
 
 
 class ChatClient:
@@ -154,20 +179,24 @@ class ChatClient:
         self.client = client or APIClient()
         self.endpoint = "/chats"
 
-    async def list_all(self) -> List[Dict[str, Any]]:
-        return await self.client.list_all(self.endpoint)
+    async def list_all(self, headers: Dict[str, str] = None) -> List[Dict[str, Any]]:
+        return await self.client.list_all(self.endpoint, headers=headers)
 
-    async def get(self, chat_id: int) -> Dict[str, Any]:
-        return await self.client.get(self.endpoint, chat_id)
+    async def get(self, chat_id: int, headers: Dict[str, str] = None) -> Dict[str, Any]:
+        return await self.client.get(self.endpoint, chat_id, headers=headers)
 
-    async def create(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        return await self.client.create(self.endpoint, data)
+    async def create(
+        self, data: Dict[str, Any], headers: Dict[str, str] = None
+    ) -> Dict[str, Any]:
+        return await self.client.create(self.endpoint, data, headers=headers)
 
-    async def update(self, chat_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
-        return await self.client.update(self.endpoint, chat_id, data)
+    async def update(
+        self, chat_id: int, data: Dict[str, Any], headers: Dict[str, str] = None
+    ) -> Dict[str, Any]:
+        return await self.client.update(self.endpoint, chat_id, data, headers=headers)
 
-    async def delete(self, chat_id: int) -> bool:
-        return await self.client.delete(self.endpoint, chat_id)
+    async def delete(self, chat_id: int, headers: Dict[str, str] = None) -> bool:
+        return await self.client.delete(self.endpoint, chat_id, headers=headers)
 
 
 class KnowledgeDBClient:
@@ -177,20 +206,24 @@ class KnowledgeDBClient:
         self.client = client or APIClient()
         self.endpoint = "/knowledge_dbs"
 
-    async def list_all(self) -> List[Dict[str, Any]]:
-        return await self.client.list_all(self.endpoint)
+    async def list_all(self, headers: Dict[str, str] = None) -> List[Dict[str, Any]]:
+        return await self.client.list_all(self.endpoint, headers=headers)
 
-    async def get(self, db_id: int) -> Dict[str, Any]:
-        return await self.client.get(self.endpoint, db_id)
+    async def get(self, db_id: int, headers: Dict[str, str] = None) -> Dict[str, Any]:
+        return await self.client.get(self.endpoint, db_id, headers=headers)
 
-    async def create(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        return await self.client.create(self.endpoint, data)
+    async def create(
+        self, data: Dict[str, Any], headers: Dict[str, str] = None
+    ) -> Dict[str, Any]:
+        return await self.client.create(self.endpoint, data, headers=headers)
 
-    async def update(self, db_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
-        return await self.client.update(self.endpoint, db_id, data)
+    async def update(
+        self, db_id: int, data: Dict[str, Any], headers: Dict[str, str] = None
+    ) -> Dict[str, Any]:
+        return await self.client.update(self.endpoint, db_id, data, headers=headers)
 
-    async def delete(self, db_id: int) -> bool:
-        return await self.client.delete(self.endpoint, db_id)
+    async def delete(self, db_id: int, headers: Dict[str, str] = None) -> bool:
+        return await self.client.delete(self.endpoint, db_id, headers=headers)
 
 
 class DataSourceClient:
@@ -200,32 +233,43 @@ class DataSourceClient:
         self.client = client or APIClient()
         self.endpoint = "/data_sources"
 
-    async def list_all(self) -> List[Dict[str, Any]]:
-        return await self.client.list_all(self.endpoint)
+    async def list_all(self, headers: Dict[str, str] = None) -> List[Dict[str, Any]]:
+        return await self.client.list_all(self.endpoint, headers=headers)
 
-    async def get(self, source_id: int) -> Dict[str, Any]:
-        return await self.client.get(self.endpoint, source_id)
+    async def get(
+        self, source_id: int, headers: Dict[str, str] = None
+    ) -> Dict[str, Any]:
+        return await self.client.get(self.endpoint, source_id, headers=headers)
 
-    async def create(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        return await self.client.create(self.endpoint, data)
+    async def create(
+        self, data: Dict[str, Any], headers: Dict[str, str] = None
+    ) -> Dict[str, Any]:
+        return await self.client.create(self.endpoint, data, headers=headers)
 
-    async def update(self, source_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
-        return await self.client.update(self.endpoint, source_id, data)
+    async def update(
+        self, source_id: int, data: Dict[str, Any], headers: Dict[str, str] = None
+    ) -> Dict[str, Any]:
+        return await self.client.update(self.endpoint, source_id, data, headers=headers)
 
-    async def delete(self, source_id: int) -> bool:
-        return await self.client.delete(self.endpoint, source_id)
+    async def delete(self, source_id: int, headers: Dict[str, str] = None) -> bool:
+        return await self.client.delete(self.endpoint, source_id, headers=headers)
 
-    async def test_connection(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    async def test_connection(
+        self, data: Dict[str, Any], headers: Dict[str, str] = None
+    ) -> Dict[str, Any]:
         """Test connection to a data source.
 
         Args:
             data: Data source configuration to test
+            headers: Optional headers
 
         Returns:
             Test result
         """
         client = await self.client._get_client()
-        response = await client.post(f"{self.endpoint}/test_connection", json=data)
+        response = await client.post(
+            f"{self.endpoint}/test_connection", json=data, headers=headers
+        )
         # We don't raise for status here immediately because we want to handle errors gracefully in the UI
         # But the backend raises 400 for connection failures, so we might want to catch that.
         # Actually, let's raise so the caller catches it, or return the error response.
@@ -250,32 +294,45 @@ class LakehouseStorageClient:
         self.client = client or APIClient()
         self.endpoint = "/lakehouse_storages"
 
-    async def list_all(self) -> List[Dict[str, Any]]:
-        return await self.client.list_all(self.endpoint)
+    async def list_all(self, headers: Dict[str, str] = None) -> List[Dict[str, Any]]:
+        return await self.client.list_all(self.endpoint, headers=headers)
 
-    async def get(self, storage_id: int) -> Dict[str, Any]:
-        return await self.client.get(self.endpoint, storage_id)
+    async def get(
+        self, storage_id: int, headers: Dict[str, str] = None
+    ) -> Dict[str, Any]:
+        return await self.client.get(self.endpoint, storage_id, headers=headers)
 
-    async def create(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        return await self.client.create(self.endpoint, data)
+    async def create(
+        self, data: Dict[str, Any], headers: Dict[str, str] = None
+    ) -> Dict[str, Any]:
+        return await self.client.create(self.endpoint, data, headers=headers)
 
-    async def update(self, storage_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
-        return await self.client.update(self.endpoint, storage_id, data)
+    async def update(
+        self, storage_id: int, data: Dict[str, Any], headers: Dict[str, str] = None
+    ) -> Dict[str, Any]:
+        return await self.client.update(
+            self.endpoint, storage_id, data, headers=headers
+        )
 
-    async def delete(self, storage_id: int) -> bool:
-        return await self.client.delete(self.endpoint, storage_id)
+    async def delete(self, storage_id: int, headers: Dict[str, str] = None) -> bool:
+        return await self.client.delete(self.endpoint, storage_id, headers=headers)
 
-    async def test_connection(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    async def test_connection(
+        self, data: Dict[str, Any], headers: Dict[str, str] = None
+    ) -> Dict[str, Any]:
         """Test connection to lakehouse storage.
 
         Args:
             data: Storage configuration to test
+            headers: Optional headers
 
         Returns:
             Test result
         """
         client = await self.client._get_client()
-        response = await client.post(f"{self.endpoint}/test_connection", json=data)
+        response = await client.post(
+            f"{self.endpoint}/test_connection", json=data, headers=headers
+        )
         if response.status_code >= 400:
             # Return the error detail if possible
             try:
@@ -296,49 +353,98 @@ class IngestionClient:
         self.client = client or APIClient()
         self.endpoint = "/ingestions"
 
-    async def list_all(self) -> List[Dict[str, Any]]:
-        return await self.client.list_all(self.endpoint)
+    async def list_all(self, headers: Dict[str, str] = None) -> List[Dict[str, Any]]:
+        return await self.client.list_all(self.endpoint, headers=headers)
 
-    async def get(self, ingestion_id: int) -> Dict[str, Any]:
-        return await self.client.get(self.endpoint, ingestion_id)
+    async def get(
+        self, ingestion_id: int, headers: Dict[str, str] = None
+    ) -> Dict[str, Any]:
+        return await self.client.get(self.endpoint, ingestion_id, headers=headers)
 
-    async def create(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        return await self.client.create(self.endpoint, data)
+    async def create(
+        self, data: Dict[str, Any], headers: Dict[str, str] = None
+    ) -> Dict[str, Any]:
+        return await self.client.create(self.endpoint, data, headers=headers)
 
-    async def update(self, ingestion_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
-        return await self.client.update(self.endpoint, ingestion_id, data)
+    async def update(
+        self, ingestion_id: int, data: Dict[str, Any], headers: Dict[str, str] = None
+    ) -> Dict[str, Any]:
+        return await self.client.update(
+            self.endpoint, ingestion_id, data, headers=headers
+        )
 
-    async def delete(self, ingestion_id: int) -> bool:
-        return await self.client.delete(self.endpoint, ingestion_id)
+    async def delete(self, ingestion_id: int, headers: Dict[str, str] = None) -> bool:
+        return await self.client.delete(self.endpoint, ingestion_id, headers=headers)
 
-    async def execute_ingestion(self, ingestion_id: int) -> Dict[str, Any]:
+    async def execute_ingestion(
+        self, ingestion_id: int, headers: Dict[str, str] = None
+    ) -> Dict[str, Any]:
         """Execute an ingestion manually.
 
         Args:
             ingestion_id: ID of the ingestion to execute
+            headers: Optional headers
 
         Returns:
             Execution result
         """
         client = await self.client._get_client()
-        response = await client.post(f"{self.endpoint}/{ingestion_id}/execute")
+        response = await client.post(
+            f"{self.endpoint}/{ingestion_id}/execute", headers=headers
+        )
         response.raise_for_status()
         return response.json()
 
-    async def list_runs(self, ingestion_id: int) -> List[Dict[str, Any]]:
+    async def list_runs(
+        self, ingestion_id: int, headers: Dict[str, str] = None
+    ) -> List[Dict[str, Any]]:
         """List execution runs for an ingestion.
 
         Args:
             ingestion_id: ID of the ingestion
+            headers: Optional headers
 
         Returns:
             List of runs
         """
         client = await self.client._get_client()
-        response = await client.get(f"{self.endpoint}/{ingestion_id}/runs")
+        response = await client.get(
+            f"{self.endpoint}/{ingestion_id}/runs", headers=headers
+        )
         response.raise_for_status()
         data = response.json()
         return data.get("records", [])
+
+
+class ProjectClient:
+    """Client for Project API endpoints."""
+
+    def __init__(self, client: APIClient = None):
+        self.client = client or APIClient()
+        self.endpoint = "/projects"
+
+    async def list_all(self, headers: Dict[str, str] = None) -> List[Dict[str, Any]]:
+        return await self.client.list_all(self.endpoint, headers=headers)
+
+    async def get(
+        self, project_id: int, headers: Dict[str, str] = None
+    ) -> Dict[str, Any]:
+        return await self.client.get(self.endpoint, project_id, headers=headers)
+
+    async def create(
+        self, data: Dict[str, Any], headers: Dict[str, str] = None
+    ) -> Dict[str, Any]:
+        return await self.client.create(self.endpoint, data, headers=headers)
+
+    async def update(
+        self, project_id: int, data: Dict[str, Any], headers: Dict[str, str] = None
+    ) -> Dict[str, Any]:
+        return await self.client.update(
+            self.endpoint, project_id, data, headers=headers
+        )
+
+    async def delete(self, project_id: int, headers: Dict[str, str] = None) -> bool:
+        return await self.client.delete(self.endpoint, project_id, headers=headers)
 
 
 # Global client instance
@@ -351,3 +457,4 @@ knowledge_db_client = KnowledgeDBClient(_api_client)
 data_source_client = DataSourceClient(_api_client)
 lakehouse_storage_client = LakehouseStorageClient(_api_client)
 ingestion_client = IngestionClient(_api_client)
+project_client = ProjectClient(_api_client)

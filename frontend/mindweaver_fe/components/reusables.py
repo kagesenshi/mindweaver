@@ -25,8 +25,10 @@ def base_button(
 
 def card(*children, **props) -> rx.Component:
     """A reusable card component with modern styling."""
+    custom_class = props.pop("class_name", "")
+    base_class = "bg-white rounded-xl border border-gray-200 shadow-sm p-6 transition-all duration-300 hover:shadow-lg"
     return rx.el.div(
         *children,
-        class_name="bg-white rounded-xl border border-gray-200 shadow-sm p-6 transition-all duration-300 hover:shadow-lg",
+        class_name=f"{base_class} {custom_class}",
         **props,
     )

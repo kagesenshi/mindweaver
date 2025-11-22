@@ -1,5 +1,6 @@
 from . import NamedBase, Base
 from . import Service
+from .base import ProjectScopedNamedBase
 from sqlalchemy import String
 from sqlalchemy_utils import JSONType
 from sqlmodel import Field, Relationship
@@ -60,7 +61,7 @@ class S3Config(BaseModel):
 
 
 # Database model
-class LakehouseStorage(NamedBase, table=True):
+class LakehouseStorage(ProjectScopedNamedBase, table=True):
     __tablename__ = "mw_lakehouse_storage"
     parameters: dict[str, Any] = Field(sa_type=JSONType())
 

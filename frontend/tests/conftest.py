@@ -102,3 +102,18 @@ def mock_ingestion_client(mock_api_client):
     client.execute_ingestion = AsyncMock(return_value={"status": "success"})
     client.list_runs = AsyncMock(return_value=[])
     return client
+
+
+@pytest.fixture
+def mock_project_state():
+    """Mock ProjectState with a test project."""
+    from mindweaver_fe.states.project_state import ProjectState
+
+    mock_state = MagicMock(spec=ProjectState)
+    mock_state.current_project = {
+        "id": 1,
+        "name": "Test Project",
+        "title": "Test Project",
+        "description": "Test project for unit tests",
+    }
+    return mock_state
