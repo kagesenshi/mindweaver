@@ -54,29 +54,16 @@ class DataSource(TypedDict):
     last_sync: str
 
 
-class ImportJob(TypedDict):
-    id: str
-    source_id: str
-    kb_id: str
-    status: ImportStatus
-    records_imported: int
-    started_at: str
-    completed_at: str
-
-
 class DataSourcesState(rx.State):
     """Manages the state for the data sources page."""
 
     all_sources: list[DataSource] = []
-    import_jobs: list[ImportJob] = []
     all_knowledge_dbs: list[KnowledgeDB] = []
     show_source_modal: bool = False
     show_delete_dialog: bool = False
-    show_import_dialog: bool = False
     is_editing: bool = False
     source_to_edit: DataSource | None = None
     source_to_delete: DataSource | None = None
-    source_to_import: DataSource | None = None
     form_data: DataSourceFormData = {
         "name": "",
         "title": "",
@@ -89,8 +76,6 @@ class DataSourcesState(rx.State):
     source_type_options: list[str] = ["API", "Database", "File Upload", "Web Scraper"]
     filter_type_options: list[str] = ["All"] + source_type_options
     is_testing_connection: bool = False
-    is_importing: bool = False
-    import_kb_id: str = ""
     is_loading: bool = False
     error_message: str = ""
     clear_password: bool = False  # Flag to clear password in edit mode
@@ -154,20 +139,6 @@ class DataSourcesState(rx.State):
             if self.search_query.lower() in source.get("name", "").lower()
             and (self.filter_type == "All" or source.get("type") == self.filter_type)
         ]
-
-    @rx.var
-    def sorted_import_jobs(self) -> list[ImportJob]:
-        return sorted(
-            self.import_jobs, key=lambda job: job.get("completed_at", ""), reverse=True
-        )
-
-    @rx.var
-    def source_names(self) -> dict[int, str]:
-        return {s["id"]: s.get("name", "") for s in self.all_sources}
-
-    @rx.var
-    def kb_names(self) -> dict[int, str]:
-        return {db["id"]: db.get("name", "") for db in self.all_knowledge_dbs}
 
     @rx.event
     def open_create_modal(self):
@@ -394,68 +365,10 @@ class DataSourcesState(rx.State):
         return DataSourcesState.close_delete_dialog
 
     @rx.event
-    def open_import_dialog(self, source: DataSource):
-        # Construct a properly typed DataSource to avoid type mismatch
-        typed_source: DataSource = {
-            "id": source.get("id", 0),
-            "uuid": source.get("uuid", ""),
-            "name": source.get("name", ""),
-            "title": source.get("title", ""),
-            "type": source.get("type", "API"),
-            "parameters": source.get("parameters", {}),
-            "created": source.get("created", ""),
-            "modified": source.get("modified", ""),
-            "status": source.get("status", "Disconnected"),
-            "last_sync": source.get("last_sync", "Never"),
-        }
-        self.source_to_import = typed_source
-        self.import_kb_id = ""
-        self.show_import_dialog = True
+    def open_ingest_dialog(self, source: DataSource):
+        """Navigate to ingestion page with pre-selected data source."""
+        # Set the preselected data source ID in ingestion state
+        from mindweaver_fe.states.ingestion_state import IngestionState
 
-    @rx.event
-    def close_import_dialog(self):
-        self.show_import_dialog = False
-        self.source_to_import = None
-
-    @rx.event
-    def set_import_kb_id(self, kb_id: str):
-        self.import_kb_id = kb_id
-
-    @rx.event(background=True)
-    async def start_import(self):
-        if not self.import_kb_id or not self.source_to_import:
-            return
-        async with self:
-            self.is_importing = True
-            job_id = str(uuid.uuid4())
-            new_job: ImportJob = {
-                "id": job_id,
-                "source_id": self.source_to_import["id"],
-                "kb_id": self.import_kb_id,
-                "status": "Running",
-                "records_imported": 0,
-                "started_at": datetime.datetime.now().isoformat(),
-                "completed_at": "",
-            }
-            self.import_jobs.insert(0, new_job)
-        yield DataSourcesState.close_import_dialog
-        records_to_import = 1000
-        for i in range(records_to_import // 100):
-            await asyncio.sleep(0.5)
-            async with self:
-                job_index = next(
-                    (i for i, j in enumerate(self.import_jobs) if j["id"] == job_id), -1
-                )
-                if job_index != -1:
-                    self.import_jobs[job_index]["records_imported"] += 100
-            yield
-        async with self:
-            job_index = next(
-                (i for i, j in enumerate(self.import_jobs) if j["id"] == job_id), -1
-            )
-            if job_index != -1:
-                self.import_jobs[job_index]["status"] = "Completed"
-                self.import_jobs[job_index][
-                    "completed_at"
-                ] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-            self.is_importing = False
+        # This will be picked up when the ingestion page loads
+        return rx.redirect("/ingestion")

@@ -5,7 +5,6 @@ from mindweaver_fe.components.loading_spinner import loading_spinner
 from mindweaver_fe.states.data_sources_state import (
     DataSourcesState,
     DataSource,
-    ImportJob,
 )
 import mindweaver_fe.util as util
 
@@ -121,11 +120,11 @@ def source_table() -> rx.Component:
                         rx.el.td(
                             rx.el.div(
                                 base_button(
-                                    "Import",
-                                    on_click=lambda: DataSourcesState.open_import_dialog(
+                                    "Ingest",
+                                    on_click=lambda: DataSourcesState.open_ingest_dialog(
                                         source
                                     ),
-                                    icon="cloud-upload",
+                                    icon="database-zap",
                                     class_name="text-green-600 hover:text-green-900 bg-green-50 hover:bg-green-100 border-none shadow-none px-3 py-1 h-8 text-xs",
                                 ),
                                 base_button(
@@ -535,136 +534,6 @@ def delete_dialog() -> rx.Component:
     )
 
 
-def import_status_badge(status: rx.Var[str]) -> rx.Component:
-    """Badge for import job status."""
-    base_class = (
-        " text-xs font-medium px-2.5 py-1 rounded-full w-fit flex items-center gap-1.5"
-    )
-    return rx.el.span(
-        rx.cond(
-            status == "Running",
-            rx.el.div(class_name="h-2 w-2 rounded-full bg-blue-500 animate-pulse"),
-            None,
-        ),
-        status,
-        class_name=rx.match(
-            status,
-            ("Running", "bg-blue-100 text-blue-800" + base_class),
-            ("Completed", "bg-green-100 text-green-800" + base_class),
-            ("Failed", "bg-red-100 text-red-800" + base_class),
-            "bg-gray-100 text-gray-800" + base_class,
-        ),
-    )
-
-
-def import_dialog() -> rx.Component:
-    """Dialog to trigger a data import."""
-    return rx.radix.primitives.dialog.root(
-        rx.radix.primitives.dialog.portal(
-            rx.radix.primitives.dialog.overlay(
-                class_name="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
-            ),
-            rx.radix.primitives.dialog.content(
-                rx.radix.primitives.dialog.title(
-                    "Import Data", class_name="text-xl font-semibold text-gray-800"
-                ),
-                rx.radix.primitives.dialog.description(
-                    f"Select a Knowledge Database to import data from {DataSourcesState.source_to_import['name']}.",
-                    class_name="text-gray-600 my-4",
-                ),
-                rx.el.div(
-                    rx.el.label(
-                        "Destination Knowledge DB",
-                        class_name="text-sm font-medium text-gray-700 mb-1 block",
-                    ),
-                    rx.el.select(
-                        rx.foreach(
-                            DataSourcesState.all_knowledge_dbs,
-                            lambda db: rx.el.option(db["name"], value=db["id"]),
-                        ),
-                        value=DataSourcesState.import_kb_id,
-                        on_change=DataSourcesState.set_import_kb_id,
-                        class_name="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500",
-                        placeholder="Select a destination...",
-                    ),
-                    class_name="mb-6",
-                ),
-                rx.el.div(
-                    rx.radix.primitives.dialog.close(
-                        base_button(
-                            "Cancel",
-                            on_click=DataSourcesState.close_import_dialog,
-                            class_name="bg-gray-200 text-gray-800 hover:bg-gray-300 focus:ring-gray-300",
-                        ),
-                        as_child=True,
-                    ),
-                    base_button(
-                        "Start Import",
-                        on_click=DataSourcesState.start_import,
-                        icon="play",
-                        is_loading=DataSourcesState.is_importing,
-                        disabled=DataSourcesState.import_kb_id == "",
-                    ),
-                    class_name="flex justify-end gap-3 pt-4 border-t border-gray-200",
-                ),
-                class_name="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg z-50",
-            ),
-        ),
-        open=DataSourcesState.show_import_dialog,
-        on_open_change=DataSourcesState.close_import_dialog,
-    )
-
-
-def import_history_section() -> rx.Component:
-    return rx.el.div(
-        rx.el.h2(
-            "Import History", class_name="text-xl font-semibold text-gray-800 mb-4"
-        ),
-        rx.cond(
-            DataSourcesState.import_jobs.length() > 0,
-            card(
-                rx.el.table(
-                    rx.el.thead(
-                        rx.el.tr(
-                            rx.el.th("Source"),
-                            rx.el.th("Destination KB"),
-                            rx.el.th("Status"),
-                            rx.el.th("Records"),
-                            rx.el.th("Timestamp"),
-                            class_name="text-left text-xs font-medium text-gray-500 uppercase tracking-wider",
-                        )
-                    ),
-                    rx.el.tbody(
-                        rx.foreach(
-                            DataSourcesState.sorted_import_jobs,
-                            lambda job: rx.el.tr(
-                                rx.el.td(
-                                    DataSourcesState.source_names[job["source_id"]]
-                                ),
-                                rx.el.td(DataSourcesState.kb_names[job["kb_id"]]),
-                                rx.el.td(import_status_badge(job["status"])),
-                                rx.el.td(job["records_imported"]),
-                                rx.el.td(job["completed_at"]),
-                                class_name="border-t border-gray-100",
-                            ),
-                        ),
-                        class_name="divide-y divide-gray-100 bg-white text-sm text-gray-700",
-                    ),
-                    class_name="w-full table-auto",
-                )
-            ),
-            rx.el.div(
-                rx.el.p(
-                    "No import jobs have been run yet.",
-                    class_name="text-center text-gray-500",
-                ),
-                class_name="py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200",
-            ),
-        ),
-        class_name="mt-12",
-    )
-
-
 def empty_state() -> rx.Component:
     return rx.el.div(
         rx.el.div(
@@ -694,7 +563,6 @@ def data_sources_page() -> rx.Component:
         rx.el.div(
             source_modal(),
             delete_dialog(),
-            import_dialog(),
             rx.cond(
                 DataSourcesState.is_loading,
                 loading_spinner(),
@@ -737,7 +605,6 @@ def data_sources_page() -> rx.Component:
                         source_table(),
                         empty_state(),
                     ),
-                    import_history_section(),
                     class_name="h-full",
                 ),
             ),

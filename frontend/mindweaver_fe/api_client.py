@@ -289,6 +289,58 @@ class LakehouseStorageClient:
         return response.json()
 
 
+class IngestionClient:
+    """Client for Ingestion API endpoints."""
+
+    def __init__(self, client: APIClient = None):
+        self.client = client or APIClient()
+        self.endpoint = "/ingestions"
+
+    async def list_all(self) -> List[Dict[str, Any]]:
+        return await self.client.list_all(self.endpoint)
+
+    async def get(self, ingestion_id: int) -> Dict[str, Any]:
+        return await self.client.get(self.endpoint, ingestion_id)
+
+    async def create(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        return await self.client.create(self.endpoint, data)
+
+    async def update(self, ingestion_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
+        return await self.client.update(self.endpoint, ingestion_id, data)
+
+    async def delete(self, ingestion_id: int) -> bool:
+        return await self.client.delete(self.endpoint, ingestion_id)
+
+    async def execute_ingestion(self, ingestion_id: int) -> Dict[str, Any]:
+        """Execute an ingestion manually.
+
+        Args:
+            ingestion_id: ID of the ingestion to execute
+
+        Returns:
+            Execution result
+        """
+        client = await self.client._get_client()
+        response = await client.post(f"{self.endpoint}/{ingestion_id}/execute")
+        response.raise_for_status()
+        return response.json()
+
+    async def list_runs(self, ingestion_id: int) -> List[Dict[str, Any]]:
+        """List execution runs for an ingestion.
+
+        Args:
+            ingestion_id: ID of the ingestion
+
+        Returns:
+            List of runs
+        """
+        client = await self.client._get_client()
+        response = await client.get(f"{self.endpoint}/{ingestion_id}/runs")
+        response.raise_for_status()
+        data = response.json()
+        return data.get("records", [])
+
+
 # Global client instance
 _api_client = APIClient()
 
@@ -298,3 +350,4 @@ chat_client = ChatClient(_api_client)
 knowledge_db_client = KnowledgeDBClient(_api_client)
 data_source_client = DataSourceClient(_api_client)
 lakehouse_storage_client = LakehouseStorageClient(_api_client)
+ingestion_client = IngestionClient(_api_client)

@@ -14,6 +14,7 @@ class BaseState(rx.State):
     nav_items: list[NavItem] = [
         {"name": "Data Sources", "path": "/sources", "icon": "cloud-download"},
         {"name": "Lakehouse Storage", "path": "/lakehouse", "icon": "warehouse"},
+        {"name": "Ingestion", "path": "/ingestion", "icon": "database-zap"},
         {"name": "Knowledge DB", "path": "/", "icon": "database"},
         {"name": "AI Agents", "path": "/agents", "icon": "cpu"},
         {"name": "Chat", "path": "/chat", "icon": "messages-square"},
