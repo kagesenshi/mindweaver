@@ -87,7 +87,7 @@ class ProjectState(BaseState):
         # Allow access to the projects page itself to avoid infinite redirect loop
         # Note: router.url.path causes a VarAttributeError in Reflex 0.6.x/0.8.x, so we use router.page.path
         # despite the deprecation warning until a proper fix is found.
-        if self.router.page.path == "/projects":
+        if self.router.url.path == "/projects":
             return
 
         # If no project is selected, redirect to projects page

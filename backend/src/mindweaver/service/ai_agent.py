@@ -1,6 +1,5 @@
 from . import NamedBase, Base
-from . import Service
-from .base import ProjectScopedNamedBase
+from .base import ProjectScopedNamedBase, ProjectScopedService
 from sqlalchemy import String
 from sqlalchemy_utils import JSONType
 from sqlmodel import Field, Relationship
@@ -16,7 +15,7 @@ class AIAgent(ProjectScopedNamedBase, table=True):
     knowledge_db_ids: list[str] = Field(default=[], sa_type=JSONType())
 
 
-class AIAgentService(Service[AIAgent]):
+class AIAgentService(ProjectScopedService[AIAgent]):
     @classmethod
     def model_class(cls) -> type[AIAgent]:
         return AIAgent

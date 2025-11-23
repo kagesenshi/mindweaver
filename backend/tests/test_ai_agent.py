@@ -5,7 +5,6 @@ def test_ai_agent(client: TestClient, test_project):
     resp = client.post(
         "/ai_agents",
         json={
-            "project_id": test_project["id"],
             "name": "support-agent",
             "title": "Support Agent",
             "model": "gpt-4",
@@ -14,6 +13,7 @@ def test_ai_agent(client: TestClient, test_project):
             "status": "Active",
             "knowledge_db_ids": ["db-1", "db-2"],
         },
+        headers={"X-Project-Id": str(test_project["id"])},
     )
     resp.raise_for_status()
     data = resp.json()

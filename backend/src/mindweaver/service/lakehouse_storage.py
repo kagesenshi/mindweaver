@@ -1,6 +1,5 @@
 from . import NamedBase, Base
-from . import Service
-from .base import ProjectScopedNamedBase
+from .base import ProjectScopedNamedBase, ProjectScopedService
 from sqlalchemy import String
 from sqlalchemy_utils import JSONType
 from sqlmodel import Field, Relationship
@@ -66,7 +65,7 @@ class LakehouseStorage(ProjectScopedNamedBase, table=True):
     parameters: dict[str, Any] = Field(sa_type=JSONType())
 
 
-class LakehouseStorageService(Service[LakehouseStorage]):
+class LakehouseStorageService(ProjectScopedService[LakehouseStorage]):
 
     @classmethod
     def model_class(cls) -> type[LakehouseStorage]:

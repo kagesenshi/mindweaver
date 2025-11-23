@@ -1,6 +1,5 @@
 from . import NamedBase, Base
-from . import Service
-from .base import ProjectScopedNamedBase
+from .base import ProjectScopedNamedBase, ProjectScopedService
 from sqlalchemy import String
 from sqlalchemy_utils import JSONType
 from sqlmodel import Field, Relationship
@@ -14,7 +13,7 @@ class KnowledgeDB(ProjectScopedNamedBase, table=True):
     parameters: dict[str, Any] = Field(sa_type=JSONType())
 
 
-class KnowledgeDBService(Service[KnowledgeDB]):
+class KnowledgeDBService(ProjectScopedService[KnowledgeDB]):
     @classmethod
     def model_class(cls) -> type[KnowledgeDB]:
         return KnowledgeDB

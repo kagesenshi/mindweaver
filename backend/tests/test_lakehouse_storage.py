@@ -6,8 +6,8 @@ def test_lakehouse_storage_create_valid(client: TestClient, test_project):
     """Test creating a valid lakehouse storage."""
     resp = client.post(
         "/lakehouse_storages",
+        headers={"X-Project-Id": str(test_project["id"])},
         json={
-            "project_id": test_project["id"],
             "name": "production-lakehouse",
             "title": "Production Lakehouse Storage",
             "parameters": {
@@ -37,8 +37,8 @@ def test_lakehouse_storage_create_with_endpoint(client: TestClient, test_project
     """Test creating lakehouse storage with custom endpoint."""
     resp = client.post(
         "/lakehouse_storages",
+        headers={"X-Project-Id": str(test_project["id"])},
         json={
-            "project_id": test_project["id"],
             "name": "minio-lakehouse",
             "title": "MinIO Lakehouse Storage",
             "parameters": {
@@ -65,8 +65,8 @@ def test_lakehouse_storage_invalid_bucket_empty(client: TestClient, test_project
     """Test lakehouse storage with empty bucket name."""
     resp = client.post(
         "/lakehouse_storages",
+        headers={"X-Project-Id": str(test_project["id"])},
         json={
-            "project_id": test_project["id"],
             "name": "invalid-storage",
             "title": "Invalid Storage",
             "parameters": {
@@ -83,12 +83,14 @@ def test_lakehouse_storage_invalid_bucket_empty(client: TestClient, test_project
     assert "bucket" in error["detail"].lower()
 
 
-def test_lakehouse_storage_invalid_bucket_special_chars(client: TestClient, test_project):
+def test_lakehouse_storage_invalid_bucket_special_chars(
+    client: TestClient, test_project
+):
     """Test lakehouse storage with invalid bucket name (special characters)."""
     resp = client.post(
         "/lakehouse_storages",
+        headers={"X-Project-Id": str(test_project["id"])},
         json={
-            "project_id": test_project["id"],
             "name": "invalid-storage",
             "title": "Invalid Storage",
             "parameters": {
@@ -109,8 +111,8 @@ def test_lakehouse_storage_empty_region(client: TestClient, test_project):
     """Test lakehouse storage with empty region."""
     resp = client.post(
         "/lakehouse_storages",
+        headers={"X-Project-Id": str(test_project["id"])},
         json={
-            "project_id": test_project["id"],
             "name": "invalid-storage",
             "title": "Invalid Storage",
             "parameters": {
@@ -131,8 +133,8 @@ def test_lakehouse_storage_empty_access_key(client: TestClient, test_project):
     """Test lakehouse storage with empty access key."""
     resp = client.post(
         "/lakehouse_storages",
+        headers={"X-Project-Id": str(test_project["id"])},
         json={
-            "project_id": test_project["id"],
             "name": "invalid-storage",
             "title": "Invalid Storage",
             "parameters": {
@@ -153,8 +155,8 @@ def test_lakehouse_storage_invalid_endpoint_url(client: TestClient, test_project
     """Test lakehouse storage with invalid endpoint URL."""
     resp = client.post(
         "/lakehouse_storages",
+        headers={"X-Project-Id": str(test_project["id"])},
         json={
-            "project_id": test_project["id"],
             "name": "invalid-storage",
             "title": "Invalid Storage",
             "parameters": {
@@ -182,8 +184,8 @@ def test_lakehouse_storage_list(client: TestClient, test_project):
     # Create a storage first
     client.post(
         "/lakehouse_storages",
+        headers={"X-Project-Id": str(test_project["id"])},
         json={
-            "project_id": test_project["id"],
             "name": "test-storage",
             "title": "Test Storage",
             "parameters": {
@@ -207,8 +209,8 @@ def test_lakehouse_storage_get(client: TestClient, test_project):
     # Create a storage
     create_resp = client.post(
         "/lakehouse_storages",
+        headers={"X-Project-Id": str(test_project["id"])},
         json={
-            "project_id": test_project["id"],
             "name": "get-test-storage",
             "title": "Get Test Storage",
             "parameters": {
@@ -233,8 +235,8 @@ def test_lakehouse_storage_update(client: TestClient, test_project):
     # Create a storage
     create_resp = client.post(
         "/lakehouse_storages",
+        headers={"X-Project-Id": str(test_project["id"])},
         json={
-            "project_id": test_project["id"],
             "name": "update-test",
             "title": "Update Test",
             "parameters": {
@@ -251,8 +253,8 @@ def test_lakehouse_storage_update(client: TestClient, test_project):
     # Update the storage
     update_resp = client.put(
         f"/lakehouse_storages/{storage_id}",
+        headers={"X-Project-Id": str(test_project["id"])},
         json={
-            "project_id": test_project["id"],
             "name": "update-test",
             "title": "Updated Test",
             "parameters": {
@@ -275,8 +277,8 @@ def test_lakehouse_storage_update_retain_secret(client: TestClient, test_project
     # Create a storage with secret
     create_resp = client.post(
         "/lakehouse_storages",
+        headers={"X-Project-Id": str(test_project["id"])},
         json={
-            "project_id": test_project["id"],
             "name": "secret-test",
             "title": "Secret Test",
             "parameters": {
@@ -294,8 +296,8 @@ def test_lakehouse_storage_update_retain_secret(client: TestClient, test_project
     # Update without providing secret_key
     update_resp = client.put(
         f"/lakehouse_storages/{storage_id}",
+        headers={"X-Project-Id": str(test_project["id"])},
         json={
-            "project_id": test_project["id"],
             "name": "secret-test",
             "title": "Secret Test Updated",
             "parameters": {
@@ -317,8 +319,8 @@ def test_lakehouse_storage_update_clear_secret(client: TestClient, test_project)
     # Create a storage with secret
     create_resp = client.post(
         "/lakehouse_storages",
+        headers={"X-Project-Id": str(test_project["id"])},
         json={
-            "project_id": test_project["id"],
             "name": "clear-secret-test",
             "title": "Clear Secret Test",
             "parameters": {
@@ -335,8 +337,8 @@ def test_lakehouse_storage_update_clear_secret(client: TestClient, test_project)
     # Update with clear marker
     update_resp = client.put(
         f"/lakehouse_storages/{storage_id}",
+        headers={"X-Project-Id": str(test_project["id"])},
         json={
-            "project_id": test_project["id"],
             "name": "clear-secret-test",
             "title": "Clear Secret Test",
             "parameters": {
@@ -359,8 +361,8 @@ def test_lakehouse_storage_delete(client: TestClient, test_project):
     # Create a storage
     create_resp = client.post(
         "/lakehouse_storages",
+        headers={"X-Project-Id": str(test_project["id"])},
         json={
-            "project_id": test_project["id"],
             "name": "delete-test",
             "title": "Delete Test",
             "parameters": {
@@ -393,8 +395,8 @@ def test_lakehouse_storage_secret_key_encryption(client: TestClient, test_projec
 
     resp = client.post(
         "/lakehouse_storages",
+        headers={"X-Project-Id": str(test_project["id"])},
         json={
-            "project_id": test_project["id"],
             "name": "encryption-test",
             "title": "Encryption Test",
             "parameters": {
@@ -423,8 +425,8 @@ def test_lakehouse_storage_update_new_secret(client: TestClient, test_project):
     # Create storage
     create_resp = client.post(
         "/lakehouse_storages",
+        headers={"X-Project-Id": str(test_project["id"])},
         json={
-            "project_id": test_project["id"],
             "name": "new-secret-test",
             "title": "New Secret Test",
             "parameters": {
@@ -443,8 +445,8 @@ def test_lakehouse_storage_update_new_secret(client: TestClient, test_project):
     new_secret = "brand_new_secret_key"
     update_resp = client.put(
         f"/lakehouse_storages/{storage_id}",
+        headers={"X-Project-Id": str(test_project["id"])},
         json={
-            "project_id": test_project["id"],
             "name": "new-secret-test",
             "title": "New Secret Test",
             "parameters": {

@@ -5,13 +5,13 @@ def test_knowledge_db(client: TestClient, test_project):
     resp = client.post(
         "/knowledge_dbs",
         json={
-            "project_id": test_project["id"],
             "name": "my-docs",
             "title": "My Documentation",
             "type": "vector",
             "description": "A vector database for documentation",
             "parameters": {"embedding_model": "openai", "chunk_size": 1000},
         },
+        headers={"X-Project-Id": str(test_project["id"])},
     )
     resp.raise_for_status()
     data = resp.json()

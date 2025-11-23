@@ -19,8 +19,8 @@ def test_lakehouse_storage_test_connection_success(
     # Create a storage first
     create_resp = client.post(
         "/lakehouse_storages",
+        headers={"X-Project-Id": str(test_project["id"])},
         json={
-            "project_id": test_project["id"],
             "name": "test-storage",
             "title": "Test Storage",
             "parameters": {
@@ -204,8 +204,8 @@ def test_lakehouse_storage_test_connection_with_stored_secret(
     # Create a storage with secret key
     create_resp = client.post(
         "/lakehouse_storages",
+        headers={"X-Project-Id": str(test_project["id"])},
         json={
-            "project_id": test_project["id"],
             "name": "stored-secret-test",
             "title": "Stored Secret Test",
             "parameters": {
@@ -226,6 +226,7 @@ def test_lakehouse_storage_test_connection_with_stored_secret(
 
     test_resp = client.post(
         "/lakehouse_storages/test_connection",
+        headers={"X-Project-Id": str(test_project["id"])},
         json={
             "storage_id": storage_id,
             "parameters": {

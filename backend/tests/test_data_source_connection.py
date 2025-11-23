@@ -195,8 +195,8 @@ def test_data_source_test_connection_with_stored_password(
     # Create a data source with password
     create_resp = client.post(
         "/data_sources",
+        headers={"X-Project-Id": str(test_project["id"])},
         json={
-            "project_id": test_project["id"],
             "name": "db-with-password",
             "title": "DB With Password",
             "type": "Database",
@@ -222,6 +222,7 @@ def test_data_source_test_connection_with_stored_password(
 
         test_resp = client.post(
             "/data_sources/test_connection",
+            headers={"X-Project-Id": str(test_project["id"])},
             json={
                 "type": "Database",
                 "source_id": source_id,

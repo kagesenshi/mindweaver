@@ -5,7 +5,6 @@ def test_chat(client: TestClient, test_project):
     resp = client.post(
         "/chats",
         json={
-            "project_id": test_project["id"],
             "name": "chat-session-1",
             "title": "Chat Session 1",
             "agent_id": "agent-123",
@@ -14,6 +13,7 @@ def test_chat(client: TestClient, test_project):
                 {"role": "assistant", "content": "Hi there"},
             ],
         },
+        headers={"X-Project-Id": str(test_project["id"])},
     )
     resp.raise_for_status()
     data = resp.json()

@@ -1,6 +1,6 @@
 from . import NamedBase, Base
-from . import Service
-from .base import ProjectScopedNamedBase
+from .base import ProjectScopedNamedBase, ProjectScopedService
+from mindweaver.fw.service import Service
 from sqlalchemy import String, Integer, DateTime, Enum as SQLEnum, ForeignKey
 from sqlalchemy_utils import JSONType
 from sqlmodel import Field, Relationship
@@ -89,7 +89,7 @@ class IngestionRun(Base, table=True):
     watermark_metadata: dict[str, Any] = Field(sa_type=JSONType(), default={})
 
 
-class IngestionService(Service[Ingestion]):
+class IngestionService(ProjectScopedService[Ingestion]):
 
     @classmethod
     def model_class(cls) -> type[Ingestion]:
