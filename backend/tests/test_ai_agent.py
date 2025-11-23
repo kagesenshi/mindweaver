@@ -24,3 +24,32 @@ def test_ai_agent(client: TestClient, test_project):
     resp = client.get(f"/ai_agents/{record_id}")
     resp.raise_for_status()
     assert resp.json()["record"]["id"] == record_id
+
+
+def test_list_ai_agents_without_project_id_returns_empty(
+    client: TestClient, test_project
+):
+    """Test that listing AI agents without project_id returns empty list."""
+    # Create an AI agent in the project
+    resp = client.post(
+        "/ai_agents",
+        json={
+            "name": "test-agent",
+            "title": "Test Agent",
+            "model": "gpt-4",
+            "temperature": 0.7,
+            "system_prompt": "You are a helpful assistant",
+            "status": "Active",
+            "knowledge_db_ids": [],
+        },
+        headers={"X-Project-Id": str(test_project["id"])},
+    )
+    resp.raise_for_status()
+
+    # List AI agents WITHOUT project_id header
+    # Should return empty list
+    resp = client.get("/ai_agents")
+    resp.raise_for_status()
+    data = resp.json()
+
+    assert data["records"] == []

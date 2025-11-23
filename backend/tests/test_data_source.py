@@ -596,3 +596,32 @@ def test_update_data_source_without_type_field(client: TestClient, test_project)
     data = update_resp.json()
     assert data["record"]["type"] == "API"  # Type should remain unchanged
     assert data["record"]["title"] == "Updated API Source"
+
+
+def test_list_data_sources_without_project_id_returns_empty(
+    client: TestClient, test_project
+):
+    """Test that listing data sources without project_id returns empty list."""
+    # Create a data source in the project
+    resp = client.post(
+        "/data_sources",
+        json={
+            "name": "test-api-source",
+            "title": "Test API Source",
+            "type": "API",
+            "parameters": {
+                "base_url": "https://api.example.com",
+                "api_key": "test_key",
+            },
+        },
+        headers={"X-Project-Id": str(test_project["id"])},
+    )
+    resp.raise_for_status()
+
+    # List data sources WITHOUT project_id header
+    # Should return empty list
+    resp = client.get("/data_sources")
+    resp.raise_for_status()
+    data = resp.json()
+
+    assert data["records"] == []

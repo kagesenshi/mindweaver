@@ -197,7 +197,9 @@ def test_lakehouse_storage_list(client: TestClient, test_project):
     )
 
     # List storages
-    resp = client.get("/lakehouse_storages")
+    resp = client.get(
+        "/lakehouse_storages", headers={"X-Project-Id": str(test_project["id"])}
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert "records" in data
@@ -466,3 +468,33 @@ def test_lakehouse_storage_update_new_secret(client: TestClient, test_project):
     assert new_encrypted_secret != old_encrypted_secret
     # New encrypted secret should not be plain text
     assert new_encrypted_secret != new_secret
+
+
+def test_list_lakehouse_storages_without_project_id_returns_empty(
+    client: TestClient, test_project
+):
+    """Test that listing lakehouse storages without project_id returns empty list."""
+    # Create a lakehouse storage in the project
+    resp = client.post(
+        "/lakehouse_storages",
+        json={
+            "name": "test-storage",
+            "title": "Test Storage",
+            "parameters": {
+                "bucket": "test-bucket",
+                "region": "us-east-1",
+                "access_key": "AKIAIOSFODNN7EXAMPLE",
+                "secret_key": "test_secret",
+            },
+        },
+        headers={"X-Project-Id": str(test_project["id"])},
+    )
+    resp.raise_for_status()
+
+    # List lakehouse storages WITHOUT project_id header
+    # Should return empty list
+    resp = client.get("/lakehouse_storages")
+    resp.raise_for_status()
+    data = resp.json()
+
+    assert data["records"] == []

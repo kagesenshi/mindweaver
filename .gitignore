@@ -1,5 +1,6 @@
 # Python-generated files
 __pycache__/
+.agent/
 *.py[oc]
 build/
 dist/

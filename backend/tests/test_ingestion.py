@@ -409,7 +409,7 @@ def test_list_all_ingestions(client: TestClient, test_project):
         )
 
     # List all ingestions
-    resp = client.get("/ingestions")
+    resp = client.get("/ingestions", headers={"X-Project-Id": str(test_project["id"])})
     assert resp.status_code == 200
     data = resp.json()
     assert "records" in data
@@ -982,3 +982,72 @@ def test_ingestion_with_different_timezones(client: TestClient, test_project):
         )
         assert resp.status_code == 200
         assert resp.json()["record"]["timezone"] == tz
+
+
+def test_list_ingestions_without_project_id_returns_empty(
+    client: TestClient, test_project
+):
+    """Test that listing ingestions without project_id returns empty list."""
+    # Create data source
+    ds_resp = client.post(
+        "/data_sources",
+        headers={"X-Project-Id": str(test_project["id"])},
+        json={
+            "name": "test-db",
+            "title": "Test Database",
+            "type": "Database",
+            "parameters": {
+                "host": "localhost",
+                "port": 5432,
+                "username": "admin",
+                "database_type": "postgresql",
+            },
+        },
+    )
+    data_source_id = ds_resp.json()["record"]["id"]
+
+    # Create lakehouse storage
+    ls_resp = client.post(
+        "/lakehouse_storages",
+        headers={"X-Project-Id": str(test_project["id"])},
+        json={
+            "name": "test-s3",
+            "title": "Test S3 Storage",
+            "parameters": {
+                "bucket": "test-bucket",
+                "region": "us-east-1",
+                "access_key": "test-key",
+                "secret_key": "test-secret",
+            },
+        },
+    )
+    lakehouse_storage_id = ls_resp.json()["record"]["id"]
+
+    # Create an ingestion in the project
+    resp = client.post(
+        "/ingestions",
+        json={
+            "name": "test-ingestion",
+            "title": "Test Ingestion",
+            "data_source_id": data_source_id,
+            "lakehouse_storage_id": lakehouse_storage_id,
+            "storage_path": "/data/test/",
+            "cron_schedule": "0 2 * * *",
+            "timezone": "UTC",
+            "ingestion_type": "full_refresh",
+            "config": {
+                "table_name": "test_table",
+                "ingestion_type": "full_refresh",
+            },
+        },
+        headers={"X-Project-Id": str(test_project["id"])},
+    )
+    resp.raise_for_status()
+
+    # List ingestions WITHOUT project_id header
+    # Should return empty list
+    resp = client.get("/ingestions")
+    resp.raise_for_status()
+    data = resp.json()
+
+    assert data["records"] == []
