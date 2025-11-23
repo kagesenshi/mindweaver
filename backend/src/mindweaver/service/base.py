@@ -1,7 +1,8 @@
 from mindweaver.fw.model import Base, NamedBase
 from mindweaver.fw.service import Service, redefine_model
 from sqlmodel import Field
-from typing import TypeVar
+from typing import TypeVar, Annotated
+from fastapi import Header, Depends
 
 
 class ProjectScopedBase(Base):
@@ -19,6 +20,10 @@ class ProjectScopedNamedBase(NamedBase):
 T = TypeVar("T", bound=ProjectScopedNamedBase)
 
 
+async def x_project_id(x_project_id: Annotated[str, Header()]) -> int:
+    return int(x_project_id)
+
+
 class ProjectScopedService(Service[T]):
     """Base service for project-scoped models."""
 
@@ -32,6 +37,10 @@ class ProjectScopedService(Service[T]):
             cls.model_class(),
             exclude=["project_id"],
         )
+
+    @classmethod
+    def extra_dependencies(cls):
+        return [Depends(x_project_id)]
 
     async def all(self) -> list[T]:
         """

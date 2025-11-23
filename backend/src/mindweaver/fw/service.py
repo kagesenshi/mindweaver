@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, create_model, AnyUrl
 import fastapi
-from fastapi import Depends
+from fastapi import Depends, Header
 import sqlalchemy as sa
 from uuid import UUID
 from sqlmodel import SQLModel, Session, select
@@ -13,6 +13,7 @@ import abc
 import jinja2 as j2
 from .exc import NotFoundError
 from .util import camel_to_snake
+
 
 T = TypeVar("T", bound=NamedBase)
 S = TypeVar("S", bound=SQLModel)
@@ -272,6 +273,10 @@ class Service(Generic[S], abc.ABC):
         return cls._router
 
     @classmethod
+    def extra_dependencies(cls):
+        return []
+
+    @classmethod
     def register_views(
         cls, router: fastapi.APIRouter, service_path: str, model_path: str
     ):
@@ -284,22 +289,38 @@ class Service(Generic[S], abc.ABC):
         CreateModel = cls.createmodel_class()
         UpdateModel = cls.updatemodel_class()
 
-        @router.get(service_path, operation_id=f"mw-list-{entity_type}")
+        @router.get(
+            service_path,
+            operation_id=f"mw-list-{entity_type}",
+            dependencies=cls.extra_dependencies(),
+        )
         async def list_all(svc: Annotated[cls, Depends(cls.get_service)]) -> ListResult[model_class]:  # type: ignore
             return {"records": await svc.all()}
 
-        @router.post(service_path, operation_id=f"mw-create-{entity_type}")
+        @router.post(
+            service_path,
+            operation_id=f"mw-create-{entity_type}",
+            dependencies=cls.extra_dependencies(),
+        )
         async def create(svc: Annotated[cls, Depends(cls.get_service)], data: CreateModel) -> Result[model_class]:  # type: ignore
             created_model = await svc.create(data)
             return {"record": created_model}
 
-        @router.get(model_path, operation_id=f"mw-get-{entity_type}")
+        @router.get(
+            model_path,
+            operation_id=f"mw-get-{entity_type}",
+            dependencies=cls.extra_dependencies(),
+        )
         async def get(model: Annotated[model_class, Depends(cls.get_model)]) -> Result[model_class]:  # type: ignore
             return {"record": model}
 
         if UpdateModel.model_fields:
 
-            @router.put(model_path, operation_id=f"mw-update-{entity_type}")
+            @router.put(
+                model_path,
+                operation_id=f"mw-update-{entity_type}",
+                dependencies=cls.extra_dependencies(),
+            )
             async def update(
                 svc: Annotated[cls, Depends(cls.get_service)],  # type: ignore
                 model: Annotated[model_class, Depends(cls.get_model)],  # type: ignore
@@ -308,7 +329,11 @@ class Service(Generic[S], abc.ABC):
                 updated_model = await svc.update(model.id, data)
                 return {"record": updated_model}
 
-        @router.delete(model_path, operation_id=f"mw-delete-{entity_type}")
+        @router.delete(
+            model_path,
+            operation_id=f"mw-delete-{entity_type}",
+            dependencies=cls.extra_dependencies(),
+        )
         async def delete(
             svc: Annotated[cls, Depends(cls.get_service)],  # type: ignore
             model: Annotated[model_class, Depends(cls.get_model)],
