@@ -20,8 +20,8 @@ class ProjectScopedNamedBase(NamedBase):
 T = TypeVar("T", bound=ProjectScopedNamedBase)
 
 
-async def x_project_id(x_project_id: Annotated[str, Header()]) -> int:
-    return int(x_project_id)
+async def x_project_id(x_project_id: Annotated[str | None, Header()] = None):
+    pass
 
 
 class ProjectScopedService(Service[T]):

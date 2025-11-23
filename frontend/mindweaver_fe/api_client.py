@@ -148,7 +148,7 @@ class AIAgentClient:
 
     def __init__(self, client: APIClient = None):
         self.client = client or APIClient()
-        self.endpoint = "/ai_agents"
+        self.endpoint = "/api/v1/ai_agents"
 
     async def list_all(self, headers: Dict[str, str] = None) -> List[Dict[str, Any]]:
         return await self.client.list_all(self.endpoint, headers=headers)
@@ -177,7 +177,7 @@ class ChatClient:
 
     def __init__(self, client: APIClient = None):
         self.client = client or APIClient()
-        self.endpoint = "/chats"
+        self.endpoint = "/api/v1/chats"
 
     async def list_all(self, headers: Dict[str, str] = None) -> List[Dict[str, Any]]:
         return await self.client.list_all(self.endpoint, headers=headers)
@@ -204,7 +204,7 @@ class KnowledgeDBClient:
 
     def __init__(self, client: APIClient = None):
         self.client = client or APIClient()
-        self.endpoint = "/knowledge_dbs"
+        self.endpoint = "/api/v1/knowledge_dbs"
 
     async def list_all(self, headers: Dict[str, str] = None) -> List[Dict[str, Any]]:
         return await self.client.list_all(self.endpoint, headers=headers)
@@ -231,7 +231,7 @@ class DataSourceClient:
 
     def __init__(self, client: APIClient = None):
         self.client = client or APIClient()
-        self.endpoint = "/data_sources"
+        self.endpoint = "/api/v1/data_sources"
 
     async def list_all(self, headers: Dict[str, str] = None) -> List[Dict[str, Any]]:
         return await self.client.list_all(self.endpoint, headers=headers)
@@ -292,7 +292,7 @@ class LakehouseStorageClient:
 
     def __init__(self, client: APIClient = None):
         self.client = client or APIClient()
-        self.endpoint = "/lakehouse_storages"
+        self.endpoint = "/api/v1/lakehouse_storages"
 
     async def list_all(self, headers: Dict[str, str] = None) -> List[Dict[str, Any]]:
         return await self.client.list_all(self.endpoint, headers=headers)
@@ -351,7 +351,7 @@ class IngestionClient:
 
     def __init__(self, client: APIClient = None):
         self.client = client or APIClient()
-        self.endpoint = "/ingestions"
+        self.endpoint = "/api/v1/ingestions"
 
     async def list_all(self, headers: Dict[str, str] = None) -> List[Dict[str, Any]]:
         return await self.client.list_all(self.endpoint, headers=headers)
@@ -421,7 +421,7 @@ class ProjectClient:
 
     def __init__(self, client: APIClient = None):
         self.client = client or APIClient()
-        self.endpoint = "/projects"
+        self.endpoint = "/api/v1/projects"
 
     async def list_all(self, headers: Dict[str, str] = None) -> List[Dict[str, Any]]:
         return await self.client.list_all(self.endpoint, headers=headers)

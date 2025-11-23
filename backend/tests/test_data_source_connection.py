@@ -17,7 +17,7 @@ def test_data_source_test_connection_api_success(client: TestClient):
         mock_client.get.return_value = mock_response
 
         test_resp = client.post(
-            "/data_sources/test_connection",
+            "/api/v1/data_sources/test_connection",
             json={
                 "type": "API",
                 "parameters": {
@@ -43,7 +43,7 @@ def test_data_source_test_connection_database_success(client: TestClient):
         mock_engine.connect.return_value.__enter__.return_value = mock_connection
 
         test_resp = client.post(
-            "/data_sources/test_connection",
+            "/api/v1/data_sources/test_connection",
             json={
                 "type": "Database",
                 "parameters": {
@@ -74,7 +74,7 @@ def test_data_source_test_connection_web_scraper_success(client: TestClient):
         mock_client.get.return_value = mock_response
 
         test_resp = client.post(
-            "/data_sources/test_connection",
+            "/api/v1/data_sources/test_connection",
             json={
                 "type": "Web Scraper",
                 "parameters": {
@@ -92,7 +92,7 @@ def test_data_source_test_connection_web_scraper_success(client: TestClient):
 def test_data_source_test_connection_file_upload(client: TestClient):
     """Test file upload connection (should always succeed)."""
     test_resp = client.post(
-        "/data_sources/test_connection",
+        "/api/v1/data_sources/test_connection",
         json={
             "type": "File Upload",
             "parameters": {},
@@ -117,7 +117,7 @@ def test_data_source_test_connection_api_unreachable(client: TestClient):
         mock_client.get.side_effect = httpx.ConnectError("Connection refused")
 
         test_resp = client.post(
-            "/data_sources/test_connection",
+            "/api/v1/data_sources/test_connection",
             json={
                 "type": "API",
                 "parameters": {
@@ -144,7 +144,7 @@ def test_data_source_test_connection_database_invalid_credentials(client: TestCl
         )
 
         test_resp = client.post(
-            "/data_sources/test_connection",
+            "/api/v1/data_sources/test_connection",
             json={
                 "type": "Database",
                 "parameters": {
@@ -174,7 +174,7 @@ def test_data_source_test_connection_web_scraper_404(client: TestClient):
         mock_client.get.return_value = mock_response
 
         test_resp = client.post(
-            "/data_sources/test_connection",
+            "/api/v1/data_sources/test_connection",
             json={
                 "type": "Web Scraper",
                 "parameters": {
@@ -194,7 +194,7 @@ def test_data_source_test_connection_with_stored_password(
     """Test database connection using stored encrypted password."""
     # Create a data source with password
     create_resp = client.post(
-        "/data_sources",
+        "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "db-with-password",
@@ -221,7 +221,7 @@ def test_data_source_test_connection_with_stored_password(
         mock_engine.connect.return_value.__enter__.return_value = mock_connection
 
         test_resp = client.post(
-            "/data_sources/test_connection",
+            "/api/v1/data_sources/test_connection",
             headers={"X-Project-Id": str(test_project["id"])},
             json={
                 "type": "Database",
@@ -256,7 +256,7 @@ def test_data_source_test_connection_database_different_types(client: TestClient
             mock_engine.connect.return_value.__enter__.return_value = mock_connection
 
             test_resp = client.post(
-                "/data_sources/test_connection",
+                "/api/v1/data_sources/test_connection",
                 json={
                     "type": "Database",
                     "parameters": {
@@ -285,7 +285,7 @@ def test_data_source_test_connection_api_with_auth_header(client: TestClient):
         mock_client.get.return_value = mock_response
 
         test_resp = client.post(
-            "/data_sources/test_connection",
+            "/api/v1/data_sources/test_connection",
             json={
                 "type": "API",
                 "parameters": {

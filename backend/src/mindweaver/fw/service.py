@@ -277,6 +277,10 @@ class Service(Generic[S], abc.ABC):
         return []
 
     @classmethod
+    def path_tags(cls):
+        return [cls.model_class().__name__]
+
+    @classmethod
     def register_views(
         cls, router: fastapi.APIRouter, service_path: str, model_path: str
     ):
@@ -289,10 +293,15 @@ class Service(Generic[S], abc.ABC):
         CreateModel = cls.createmodel_class()
         UpdateModel = cls.updatemodel_class()
 
+        extra_deps = cls.extra_dependencies()
+
+        path_tags = cls.path_tags()
+
         @router.get(
             service_path,
             operation_id=f"mw-list-{entity_type}",
-            dependencies=cls.extra_dependencies(),
+            dependencies=extra_deps,
+            tags=path_tags,
         )
         async def list_all(svc: Annotated[cls, Depends(cls.get_service)]) -> ListResult[model_class]:  # type: ignore
             return {"records": await svc.all()}
@@ -301,6 +310,7 @@ class Service(Generic[S], abc.ABC):
             service_path,
             operation_id=f"mw-create-{entity_type}",
             dependencies=cls.extra_dependencies(),
+            tags=path_tags,
         )
         async def create(svc: Annotated[cls, Depends(cls.get_service)], data: CreateModel) -> Result[model_class]:  # type: ignore
             created_model = await svc.create(data)
@@ -310,6 +320,7 @@ class Service(Generic[S], abc.ABC):
             model_path,
             operation_id=f"mw-get-{entity_type}",
             dependencies=cls.extra_dependencies(),
+            tags=path_tags,
         )
         async def get(model: Annotated[model_class, Depends(cls.get_model)]) -> Result[model_class]:  # type: ignore
             return {"record": model}
@@ -320,6 +331,7 @@ class Service(Generic[S], abc.ABC):
                 model_path,
                 operation_id=f"mw-update-{entity_type}",
                 dependencies=cls.extra_dependencies(),
+                tags=path_tags,
             )
             async def update(
                 svc: Annotated[cls, Depends(cls.get_service)],  # type: ignore
@@ -333,6 +345,7 @@ class Service(Generic[S], abc.ABC):
             model_path,
             operation_id=f"mw-delete-{entity_type}",
             dependencies=cls.extra_dependencies(),
+            tags=path_tags,
         )
         async def delete(
             svc: Annotated[cls, Depends(cls.get_service)],  # type: ignore

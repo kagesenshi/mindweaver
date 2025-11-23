@@ -7,7 +7,7 @@ def test_crud(crud_client: TestClient):
     client = crud_client
 
     resp = client.post(
-        "/models",
+        "/api/v1/models",
         json={
             "name": "my-model",
             "title": "My Model",
@@ -18,7 +18,7 @@ def test_crud(crud_client: TestClient):
     data = resp.json()
     record_id = data["record"]["id"]
 
-    resp = client.get(f"/models/{record_id}")
+    resp = client.get(f"/api/v1/models/{record_id}")
 
     resp.raise_for_status()
 
@@ -32,7 +32,7 @@ def test_crud(crud_client: TestClient):
     update_request["id"] = 2  # should be ignored
     update_request["title"] = "New title"
     update_request["name"] = "new-name"  # should be ignored
-    resp = client.put(f"/models/{record_id}", json=update_request)
+    resp = client.put(f"/api/v1/models/{record_id}", json=update_request)
 
     resp.raise_for_status()
 
@@ -48,11 +48,11 @@ def test_crud(crud_client: TestClient):
     assert updated_record["title"] == "New title"
     assert updated_record["modified"] >= record["modified"]
 
-    resp = client.delete(f"/models/{record_id}")
+    resp = client.delete(f"/api/v1/models/{record_id}")
 
     resp.raise_for_status()
 
-    resp = client.get(f"/models/{record_id}")
+    resp = client.get(f"/api/v1/models/{record_id}")
 
     assert resp.status_code == 404
 
@@ -63,7 +63,7 @@ def test_project_scoped_crud(project_scoped_crud_client: TestClient):
 
     # Create a test project
     resp = client.post(
-        "/projects",
+        "/api/v1/projects",
         json={
             "name": "test-project",
             "title": "Test Project",
@@ -75,7 +75,7 @@ def test_project_scoped_crud(project_scoped_crud_client: TestClient):
 
     # Create a second project for testing project scoping
     resp = client.post(
-        "/projects",
+        "/api/v1/projects",
         json={
             "name": "test-project-2",
             "title": "Test Project 2",
@@ -87,7 +87,7 @@ def test_project_scoped_crud(project_scoped_crud_client: TestClient):
 
     # Create a record in project 1
     resp = client.post(
-        "/project_scoped_models",
+        "/api/v1/project_scoped_models",
         json={"name": "my-model", "title": "My Model"},
         headers={"X-Project-Id": str(project_id)},
     )
@@ -100,7 +100,7 @@ def test_project_scoped_crud(project_scoped_crud_client: TestClient):
 
     # Get the record with project_id header
     resp = client.get(
-        f"/project_scoped_models/{record_id}", headers={"X-Project-Id": str(project_id)}
+        f"/api/v1/project_scoped_models/{record_id}", headers={"X-Project-Id": str(project_id)}
     )
     resp.raise_for_status()
     result = resp.json()
@@ -110,7 +110,7 @@ def test_project_scoped_crud(project_scoped_crud_client: TestClient):
 
     # List all records for project 1 - should return 1 record
     resp = client.get(
-        "/project_scoped_models", headers={"X-Project-Id": str(project_id)}
+        "/api/v1/project_scoped_models", headers={"X-Project-Id": str(project_id)}
     )
     resp.raise_for_status()
     records = resp.json()["records"]
@@ -119,14 +119,14 @@ def test_project_scoped_crud(project_scoped_crud_client: TestClient):
 
     # List all records for project 2 - should return 0 records
     resp = client.get(
-        "/project_scoped_models", headers={"X-Project-Id": str(project2_id)}
+        "/api/v1/project_scoped_models", headers={"X-Project-Id": str(project2_id)}
     )
     resp.raise_for_status()
     records = resp.json()["records"]
     assert len(records) == 0
 
     # List all records without project_id - should return empty list
-    resp = client.get("/project_scoped_models")
+    resp = client.get("/api/v1/project_scoped_models")
     resp.raise_for_status()
     records = resp.json()["records"]
     assert len(records) == 0
@@ -140,7 +140,7 @@ def test_project_scoped_crud(project_scoped_crud_client: TestClient):
     update_request["project_id"] = project2_id  # should be ignored
 
     resp = client.put(
-        f"/project_scoped_models/{record_id}",
+        f"/api/v1/project_scoped_models/{record_id}",
         json=update_request,
         headers={"X-Project-Id": str(project_id)},
     )
@@ -160,12 +160,12 @@ def test_project_scoped_crud(project_scoped_crud_client: TestClient):
 
     # Delete the record
     resp = client.delete(
-        f"/project_scoped_models/{record_id}", headers={"X-Project-Id": str(project_id)}
+        f"/api/v1/project_scoped_models/{record_id}", headers={"X-Project-Id": str(project_id)}
     )
     resp.raise_for_status()
 
     # Verify the record is deleted
     resp = client.get(
-        f"/project_scoped_models/{record_id}", headers={"X-Project-Id": str(project_id)}
+        f"/api/v1/project_scoped_models/{record_id}", headers={"X-Project-Id": str(project_id)}
     )
     assert resp.status_code == 404

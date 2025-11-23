@@ -6,7 +6,7 @@ def test_create_ingestion_full_refresh(client: TestClient, test_project):
     """Test creating a full refresh ingestion."""
     # First create a data source
     ds_resp = client.post(
-        "/data_sources",
+        "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-db",
@@ -25,7 +25,7 @@ def test_create_ingestion_full_refresh(client: TestClient, test_project):
 
     # Create a lakehouse storage
     ls_resp = client.post(
-        "/lakehouse_storages",
+        "/api/v1/lakehouse_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-s3",
@@ -43,7 +43,7 @@ def test_create_ingestion_full_refresh(client: TestClient, test_project):
 
     # Create ingestion
     resp = client.post(
-        "/ingestions",
+        "/api/v1/ingestions",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "daily-users",
@@ -72,7 +72,7 @@ def test_create_ingestion_incremental(client: TestClient, test_project):
     """Test creating an incremental ingestion with required fields."""
     # Create data source
     ds_resp = client.post(
-        "/data_sources",
+        "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-db-inc",
@@ -91,7 +91,7 @@ def test_create_ingestion_incremental(client: TestClient, test_project):
 
     # Create lakehouse storage
     ls_resp = client.post(
-        "/lakehouse_storages",
+        "/api/v1/lakehouse_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-s3-inc",
@@ -109,7 +109,7 @@ def test_create_ingestion_incremental(client: TestClient, test_project):
 
     # Create incremental ingestion
     resp = client.post(
-        "/ingestions",
+        "/api/v1/ingestions",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "incremental-orders",
@@ -142,7 +142,7 @@ def test_create_ingestion_incremental_missing_fields(client: TestClient, test_pr
     """Test that incremental ingestion fails without required fields."""
     # Create data source
     ds_resp = client.post(
-        "/data_sources",
+        "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-db-fail",
@@ -161,7 +161,7 @@ def test_create_ingestion_incremental_missing_fields(client: TestClient, test_pr
 
     # Create lakehouse storage
     ls_resp = client.post(
-        "/lakehouse_storages",
+        "/api/v1/lakehouse_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-s3-fail",
@@ -179,7 +179,7 @@ def test_create_ingestion_incremental_missing_fields(client: TestClient, test_pr
 
     # Try to create incremental ingestion without primary keys
     resp = client.post(
-        "/ingestions",
+        "/api/v1/ingestions",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "bad-incremental",
@@ -212,7 +212,7 @@ def test_execute_ingestion(client: TestClient, test_project):
     """Test manual execution of an ingestion."""
     # Create data source
     ds_resp = client.post(
-        "/data_sources",
+        "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-db-exec",
@@ -231,7 +231,7 @@ def test_execute_ingestion(client: TestClient, test_project):
 
     # Create lakehouse storage
     ls_resp = client.post(
-        "/lakehouse_storages",
+        "/api/v1/lakehouse_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-s3-exec",
@@ -249,7 +249,7 @@ def test_execute_ingestion(client: TestClient, test_project):
 
     # Create ingestion
     ing_resp = client.post(
-        "/ingestions",
+        "/api/v1/ingestions",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "exec-test",
@@ -270,7 +270,7 @@ def test_execute_ingestion(client: TestClient, test_project):
     ingestion_id = ing_resp.json()["record"]["id"]
 
     # Execute the ingestion
-    exec_resp = client.post(f"/ingestions/{ingestion_id}/execute")
+    exec_resp = client.post(f"/api/v1/ingestions/{ingestion_id}/execute")
     assert exec_resp.status_code == 200
     data = exec_resp.json()
     assert data["status"] == "success"
@@ -281,7 +281,7 @@ def test_list_ingestion_runs(client: TestClient, test_project):
     """Test listing execution runs for an ingestion."""
     # Create data source
     ds_resp = client.post(
-        "/data_sources",
+        "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-db-runs",
@@ -300,7 +300,7 @@ def test_list_ingestion_runs(client: TestClient, test_project):
 
     # Create lakehouse storage
     ls_resp = client.post(
-        "/lakehouse_storages",
+        "/api/v1/lakehouse_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-s3-runs",
@@ -318,7 +318,7 @@ def test_list_ingestion_runs(client: TestClient, test_project):
 
     # Create ingestion
     ing_resp = client.post(
-        "/ingestions",
+        "/api/v1/ingestions",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "runs-test",
@@ -339,10 +339,10 @@ def test_list_ingestion_runs(client: TestClient, test_project):
     ingestion_id = ing_resp.json()["record"]["id"]
 
     # Execute the ingestion to create a run
-    client.post(f"/ingestions/{ingestion_id}/execute")
+    client.post(f"/api/v1/ingestions/{ingestion_id}/execute")
 
     # List runs
-    runs_resp = client.get(f"/ingestions/{ingestion_id}/runs")
+    runs_resp = client.get(f"/api/v1/ingestions/{ingestion_id}/runs")
     assert runs_resp.status_code == 200
     data = runs_resp.json()
     assert "records" in data
@@ -354,7 +354,7 @@ def test_list_all_ingestions(client: TestClient, test_project):
     """Test listing all ingestions."""
     # Create data source
     ds_resp = client.post(
-        "/data_sources",
+        "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-db-list",
@@ -372,7 +372,7 @@ def test_list_all_ingestions(client: TestClient, test_project):
 
     # Create lakehouse storage
     ls_resp = client.post(
-        "/lakehouse_storages",
+        "/api/v1/lakehouse_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-s3-list",
@@ -390,7 +390,7 @@ def test_list_all_ingestions(client: TestClient, test_project):
     # Create multiple ingestions
     for i in range(3):
         client.post(
-            "/ingestions",
+            "/api/v1/ingestions",
             headers={"X-Project-Id": str(test_project["id"])},
             json={
                 "name": f"ingestion-{i}",
@@ -409,7 +409,7 @@ def test_list_all_ingestions(client: TestClient, test_project):
         )
 
     # List all ingestions
-    resp = client.get("/ingestions", headers={"X-Project-Id": str(test_project["id"])})
+    resp = client.get("/api/v1/ingestions", headers={"X-Project-Id": str(test_project["id"])})
     assert resp.status_code == 200
     data = resp.json()
     assert "records" in data
@@ -420,7 +420,7 @@ def test_get_single_ingestion(client: TestClient, test_project):
     """Test getting a single ingestion by ID."""
     # Create data source
     ds_resp = client.post(
-        "/data_sources",
+        "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-db-get",
@@ -438,7 +438,7 @@ def test_get_single_ingestion(client: TestClient, test_project):
 
     # Create lakehouse storage
     ls_resp = client.post(
-        "/lakehouse_storages",
+        "/api/v1/lakehouse_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-s3-get",
@@ -455,7 +455,7 @@ def test_get_single_ingestion(client: TestClient, test_project):
 
     # Create ingestion
     create_resp = client.post(
-        "/ingestions",
+        "/api/v1/ingestions",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "get-test",
@@ -475,7 +475,7 @@ def test_get_single_ingestion(client: TestClient, test_project):
     ingestion_id = create_resp.json()["record"]["id"]
 
     # Get the ingestion
-    get_resp = client.get(f"/ingestions/{ingestion_id}")
+    get_resp = client.get(f"/api/v1/ingestions/{ingestion_id}")
     assert get_resp.status_code == 200
     data = get_resp.json()
     assert data["record"]["id"] == ingestion_id
@@ -486,7 +486,7 @@ def test_update_ingestion(client: TestClient, test_project):
     """Test updating an existing ingestion."""
     # Create data source
     ds_resp = client.post(
-        "/data_sources",
+        "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-db-update",
@@ -504,7 +504,7 @@ def test_update_ingestion(client: TestClient, test_project):
 
     # Create lakehouse storage
     ls_resp = client.post(
-        "/lakehouse_storages",
+        "/api/v1/lakehouse_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-s3-update",
@@ -521,7 +521,7 @@ def test_update_ingestion(client: TestClient, test_project):
 
     # Create ingestion
     create_resp = client.post(
-        "/ingestions",
+        "/api/v1/ingestions",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "update-test",
@@ -542,7 +542,7 @@ def test_update_ingestion(client: TestClient, test_project):
 
     # Update the ingestion
     update_resp = client.put(
-        f"/ingestions/{ingestion_id}",
+        f"/api/v1/ingestions/{ingestion_id}",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "updated-test",
@@ -572,7 +572,7 @@ def test_delete_ingestion(client: TestClient, test_project):
     """Test deleting an ingestion."""
     # Create data source
     ds_resp = client.post(
-        "/data_sources",
+        "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-db-delete",
@@ -590,7 +590,7 @@ def test_delete_ingestion(client: TestClient, test_project):
 
     # Create lakehouse storage
     ls_resp = client.post(
-        "/lakehouse_storages",
+        "/api/v1/lakehouse_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-s3-delete",
@@ -607,7 +607,7 @@ def test_delete_ingestion(client: TestClient, test_project):
 
     # Create ingestion
     create_resp = client.post(
-        "/ingestions",
+        "/api/v1/ingestions",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "delete-test",
@@ -627,12 +627,12 @@ def test_delete_ingestion(client: TestClient, test_project):
     ingestion_id = create_resp.json()["record"]["id"]
 
     # Delete the ingestion
-    delete_resp = client.delete(f"/ingestions/{ingestion_id}")
+    delete_resp = client.delete(f"/api/v1/ingestions/{ingestion_id}")
     assert delete_resp.status_code == 200
     assert delete_resp.json()["status"] == "success"
 
     # Verify it's deleted
-    get_resp = client.get(f"/ingestions/{ingestion_id}")
+    get_resp = client.get(f"/api/v1/ingestions/{ingestion_id}")
     assert get_resp.status_code == 404
 
 
@@ -640,7 +640,7 @@ def test_create_ingestion_with_date_range(client: TestClient, test_project):
     """Test creating an ingestion with start and end dates."""
     # Create data source
     ds_resp = client.post(
-        "/data_sources",
+        "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-db-dates",
@@ -658,7 +658,7 @@ def test_create_ingestion_with_date_range(client: TestClient, test_project):
 
     # Create lakehouse storage
     ls_resp = client.post(
-        "/lakehouse_storages",
+        "/api/v1/lakehouse_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-s3-dates",
@@ -675,7 +675,7 @@ def test_create_ingestion_with_date_range(client: TestClient, test_project):
 
     # Create ingestion with date range
     resp = client.post(
-        "/ingestions",
+        "/api/v1/ingestions",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "date-range-test",
@@ -706,7 +706,7 @@ def test_create_ingestion_with_complex_cron(client: TestClient, test_project):
     """Test creating an ingestion with various cron schedules."""
     # Create data source
     ds_resp = client.post(
-        "/data_sources",
+        "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-db-cron",
@@ -724,7 +724,7 @@ def test_create_ingestion_with_complex_cron(client: TestClient, test_project):
 
     # Create lakehouse storage
     ls_resp = client.post(
-        "/lakehouse_storages",
+        "/api/v1/lakehouse_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-s3-cron",
@@ -749,7 +749,7 @@ def test_create_ingestion_with_complex_cron(client: TestClient, test_project):
 
     for i, cron in enumerate(cron_schedules):
         resp = client.post(
-            "/ingestions",
+            "/api/v1/ingestions",
             headers={"X-Project-Id": str(test_project["id"])},
             json={
                 "name": f"cron-test-{i}",
@@ -776,7 +776,7 @@ def test_create_ingestion_with_invalid_cron_schedule(client: TestClient, test_pr
     """Test creating an ingestion with invalid cron schedules."""
     # Create data source
     ds_resp = client.post(
-        "/data_sources",
+        "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-db-invalid-cron",
@@ -794,7 +794,7 @@ def test_create_ingestion_with_invalid_cron_schedule(client: TestClient, test_pr
 
     # Create lakehouse storage
     ls_resp = client.post(
-        "/lakehouse_storages",
+        "/api/v1/lakehouse_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-s3-invalid-cron",
@@ -826,7 +826,7 @@ def test_create_ingestion_with_invalid_cron_schedule(client: TestClient, test_pr
 
     for i, cron in enumerate(invalid_cron_schedules):
         resp = client.post(
-            "/ingestions",
+            "/api/v1/ingestions",
             headers={"X-Project-Id": str(test_project["id"])},
             json={
                 "name": f"invalid-cron-test-{i}",
@@ -859,7 +859,7 @@ def test_create_ingestion_with_multiple_primary_keys(client: TestClient, test_pr
     """Test creating an incremental ingestion with multiple primary keys."""
     # Create data source
     ds_resp = client.post(
-        "/data_sources",
+        "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-db-multi-pk",
@@ -877,7 +877,7 @@ def test_create_ingestion_with_multiple_primary_keys(client: TestClient, test_pr
 
     # Create lakehouse storage
     ls_resp = client.post(
-        "/lakehouse_storages",
+        "/api/v1/lakehouse_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-s3-multi-pk",
@@ -894,7 +894,7 @@ def test_create_ingestion_with_multiple_primary_keys(client: TestClient, test_pr
 
     # Create incremental ingestion with multiple primary keys
     resp = client.post(
-        "/ingestions",
+        "/api/v1/ingestions",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "multi-pk-test",
@@ -926,7 +926,7 @@ def test_ingestion_with_different_timezones(client: TestClient, test_project):
     """Test creating ingestions with different timezones."""
     # Create data source
     ds_resp = client.post(
-        "/data_sources",
+        "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-db-tz",
@@ -944,7 +944,7 @@ def test_ingestion_with_different_timezones(client: TestClient, test_project):
 
     # Create lakehouse storage
     ls_resp = client.post(
-        "/lakehouse_storages",
+        "/api/v1/lakehouse_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-s3-tz",
@@ -963,7 +963,7 @@ def test_ingestion_with_different_timezones(client: TestClient, test_project):
 
     for i, tz in enumerate(timezones):
         resp = client.post(
-            "/ingestions",
+            "/api/v1/ingestions",
             headers={"X-Project-Id": str(test_project["id"])},
             json={
                 "name": f"tz-test-{i}",
@@ -990,7 +990,7 @@ def test_list_ingestions_without_project_id_returns_empty(
     """Test that listing ingestions without project_id returns empty list."""
     # Create data source
     ds_resp = client.post(
-        "/data_sources",
+        "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-db",
@@ -1008,7 +1008,7 @@ def test_list_ingestions_without_project_id_returns_empty(
 
     # Create lakehouse storage
     ls_resp = client.post(
-        "/lakehouse_storages",
+        "/api/v1/lakehouse_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-s3",
@@ -1025,7 +1025,7 @@ def test_list_ingestions_without_project_id_returns_empty(
 
     # Create an ingestion in the project
     resp = client.post(
-        "/ingestions",
+        "/api/v1/ingestions",
         json={
             "name": "test-ingestion",
             "title": "Test Ingestion",
@@ -1046,7 +1046,7 @@ def test_list_ingestions_without_project_id_returns_empty(
 
     # List ingestions WITHOUT project_id header
     # Should return empty list
-    resp = client.get("/ingestions")
+    resp = client.get("/api/v1/ingestions")
     resp.raise_for_status()
     data = resp.json()
 

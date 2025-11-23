@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 
 def test_ai_agent(client: TestClient, test_project):
     resp = client.post(
-        "/ai_agents",
+        "/api/v1/ai_agents",
         json={
             "name": "support-agent",
             "title": "Support Agent",
@@ -21,7 +21,7 @@ def test_ai_agent(client: TestClient, test_project):
     assert data["record"]["model"] == "gpt-4"
 
     record_id = data["record"]["id"]
-    resp = client.get(f"/ai_agents/{record_id}")
+    resp = client.get(f"/api/v1/ai_agents/{record_id}")
     resp.raise_for_status()
     assert resp.json()["record"]["id"] == record_id
 
@@ -32,7 +32,7 @@ def test_list_ai_agents_without_project_id_returns_empty(
     """Test that listing AI agents without project_id returns empty list."""
     # Create an AI agent in the project
     resp = client.post(
-        "/ai_agents",
+        "/api/v1/ai_agents",
         json={
             "name": "test-agent",
             "title": "Test Agent",
@@ -48,7 +48,7 @@ def test_list_ai_agents_without_project_id_returns_empty(
 
     # List AI agents WITHOUT project_id header
     # Should return empty list
-    resp = client.get("/ai_agents")
+    resp = client.get("/api/v1/ai_agents")
     resp.raise_for_status()
     data = resp.json()
 

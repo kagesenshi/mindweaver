@@ -8,7 +8,7 @@ import pytest
 def test_datasource(client: TestClient, test_project):
     """Test creating a valid data source."""
     resp = client.post(
-        "/data_sources",
+        "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "my-api-source",
@@ -37,7 +37,7 @@ def test_datasource(client: TestClient, test_project):
 def test_api_source_valid(client: TestClient, test_project):
     """Test creating a valid API data source."""
     resp = client.post(
-        "/data_sources",
+        "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "stripe-api",
@@ -59,7 +59,7 @@ def test_api_source_valid(client: TestClient, test_project):
 def test_api_source_invalid_url(client: TestClient, test_project):
     """Test API source with invalid URL format."""
     resp = client.post(
-        "/data_sources",
+        "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "invalid-api",
@@ -78,7 +78,7 @@ def test_api_source_invalid_url(client: TestClient, test_project):
 def test_api_source_missing_api_key(client: TestClient, test_project):
     """Test API source with missing API key."""
     resp = client.post(
-        "/data_sources",
+        "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "no-key-api",
@@ -96,7 +96,7 @@ def test_api_source_missing_api_key(client: TestClient, test_project):
 def test_api_source_empty_api_key(client: TestClient, test_project):
     """Test API source with empty API key."""
     resp = client.post(
-        "/data_sources",
+        "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "empty-key-api",
@@ -120,7 +120,7 @@ def test_api_source_empty_api_key(client: TestClient, test_project):
 def test_database_source_valid(client: TestClient, test_project):
     """Test creating a valid Database data source."""
     resp = client.post(
-        "/data_sources",
+        "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "production-db",
@@ -139,7 +139,7 @@ def test_database_source_valid(client: TestClient, test_project):
 def test_database_source_invalid_port(client: TestClient, test_project):
     """Test Database source with invalid port number."""
     resp = client.post(
-        "/data_sources",
+        "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "bad-port-db",
@@ -162,7 +162,7 @@ def test_database_source_invalid_port(client: TestClient, test_project):
 def test_database_source_negative_port(client: TestClient, test_project):
     """Test Database source with negative port number."""
     resp = client.post(
-        "/data_sources",
+        "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "negative-port-db",
@@ -180,7 +180,7 @@ def test_database_source_negative_port(client: TestClient, test_project):
 def test_database_source_empty_host(client: TestClient, test_project):
     """Test Database source with empty host."""
     resp = client.post(
-        "/data_sources",
+        "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "no-host-db",
@@ -199,7 +199,7 @@ def test_database_source_empty_host(client: TestClient, test_project):
 def test_database_source_empty_username(client: TestClient, test_project):
     """Test Database source with empty username."""
     resp = client.post(
-        "/data_sources",
+        "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "no-user-db",
@@ -223,7 +223,7 @@ def test_database_source_empty_username(client: TestClient, test_project):
 def test_web_scraper_source_valid(client: TestClient, test_project):
     """Test creating a valid Web Scraper data source."""
     resp = client.post(
-        "/data_sources",
+        "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "example-scraper",
@@ -242,7 +242,7 @@ def test_web_scraper_source_valid(client: TestClient, test_project):
 def test_web_scraper_source_invalid_url(client: TestClient, test_project):
     """Test Web Scraper source with invalid URL."""
     resp = client.post(
-        "/data_sources",
+        "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "bad-scraper",
@@ -261,7 +261,7 @@ def test_web_scraper_source_invalid_url(client: TestClient, test_project):
 def test_web_scraper_source_empty_url(client: TestClient, test_project):
     """Test Web Scraper source with empty URL."""
     resp = client.post(
-        "/data_sources",
+        "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "empty-scraper",
@@ -284,7 +284,7 @@ def test_web_scraper_source_empty_url(client: TestClient, test_project):
 def test_file_upload_source_valid(client: TestClient, test_project):
     """Test creating a valid File Upload data source."""
     resp = client.post(
-        "/data_sources",
+        "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "csv-uploader",
@@ -307,7 +307,7 @@ def test_file_upload_source_valid(client: TestClient, test_project):
 def test_invalid_source_type(client: TestClient, test_project):
     """Test creating a data source with invalid type."""
     resp = client.post(
-        "/data_sources",
+        "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "invalid-type",
@@ -326,7 +326,7 @@ def test_invalid_source_type(client: TestClient, test_project):
 def test_missing_source_type(client: TestClient, test_project):
     """Test creating a data source without type."""
     resp = client.post(
-        "/data_sources",
+        "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "no-type",
@@ -348,7 +348,7 @@ def test_update_data_source_valid(client: TestClient, test_project):
     """Test updating a data source."""
     # First create a data source
     create_resp = client.post(
-        "/data_sources",
+        "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "update-test",
@@ -362,7 +362,7 @@ def test_update_data_source_valid(client: TestClient, test_project):
 
     # Update the name
     update_resp = client.put(
-        f"/data_sources/{source_id}", json={"name": "updated-test-name"}
+        f"/api/v1/data_sources/{source_id}", json={"name": "updated-test-name"}
     )
 
     # Accept both 200 (success) and 422 (if framework requires more fields)
@@ -374,7 +374,7 @@ def test_update_data_source_invalid_parameters(client: TestClient, test_project)
     """Test that creating with invalid parameters fails (update validation tested implicitly)."""
     # Test that we can't create with invalid parameters in the first place
     resp = client.post(
-        "/data_sources",
+        "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "invalid-create",
@@ -400,7 +400,7 @@ def test_update_data_source_reject_type_change_api_to_database(
     """Test that changing data source type from API to Database is rejected."""
     # Create an API data source
     create_resp = client.post(
-        "/data_sources",
+        "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "api-source",
@@ -417,7 +417,7 @@ def test_update_data_source_reject_type_change_api_to_database(
 
     # Try to change type to Database
     update_resp = client.put(
-        f"/data_sources/{source_id}",
+        f"/api/v1/data_sources/{source_id}",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "api-source",
@@ -444,7 +444,7 @@ def test_update_data_source_reject_type_change_database_to_web_scraper(
     """Test that changing data source type from Database to Web Scraper is rejected."""
     # Create a Database data source
     create_resp = client.post(
-        "/data_sources",
+        "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "db-source",
@@ -458,7 +458,7 @@ def test_update_data_source_reject_type_change_database_to_web_scraper(
 
     # Try to change type to Web Scraper
     update_resp = client.put(
-        f"/data_sources/{source_id}",
+        f"/api/v1/data_sources/{source_id}",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "db-source",
@@ -485,7 +485,7 @@ def test_update_data_source_reject_type_change_web_scraper_to_file_upload(
     """Test that changing data source type from Web Scraper to File Upload is rejected."""
     # Create a Web Scraper data source
     create_resp = client.post(
-        "/data_sources",
+        "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "scraper-source",
@@ -499,7 +499,7 @@ def test_update_data_source_reject_type_change_web_scraper_to_file_upload(
 
     # Try to change type to File Upload
     update_resp = client.put(
-        f"/data_sources/{source_id}",
+        f"/api/v1/data_sources/{source_id}",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "scraper-source",
@@ -524,7 +524,7 @@ def test_update_data_source_same_type_allowed(client: TestClient, test_project):
     """Test that updating a data source with the same type is allowed."""
     # Create an API data source
     create_resp = client.post(
-        "/data_sources",
+        "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "api-source",
@@ -538,7 +538,7 @@ def test_update_data_source_same_type_allowed(client: TestClient, test_project):
 
     # Update with the same type but different parameters
     update_resp = client.put(
-        f"/data_sources/{source_id}",
+        f"/api/v1/data_sources/{source_id}",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "api-source",
@@ -562,7 +562,7 @@ def test_update_data_source_without_type_field(client: TestClient, test_project)
     """Test that updating a data source without specifying type field works."""
     # Create an API data source
     create_resp = client.post(
-        "/data_sources",
+        "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "api-source",
@@ -579,7 +579,7 @@ def test_update_data_source_without_type_field(client: TestClient, test_project)
 
     # Update only the title without specifying type
     update_resp = client.put(
-        f"/data_sources/{source_id}",
+        f"/api/v1/data_sources/{source_id}",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "api-source",
@@ -604,7 +604,7 @@ def test_list_data_sources_without_project_id_returns_empty(
     """Test that listing data sources without project_id returns empty list."""
     # Create a data source in the project
     resp = client.post(
-        "/data_sources",
+        "/api/v1/data_sources",
         json={
             "name": "test-api-source",
             "title": "Test API Source",
@@ -620,7 +620,7 @@ def test_list_data_sources_without_project_id_returns_empty(
 
     # List data sources WITHOUT project_id header
     # Should return empty list
-    resp = client.get("/data_sources")
+    resp = client.get("/api/v1/data_sources")
     resp.raise_for_status()
     data = resp.json()
 

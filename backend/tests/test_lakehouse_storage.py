@@ -5,7 +5,7 @@ import pytest
 def test_lakehouse_storage_create_valid(client: TestClient, test_project):
     """Test creating a valid lakehouse storage."""
     resp = client.post(
-        "/lakehouse_storages",
+        "/api/v1/lakehouse_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "production-lakehouse",
@@ -36,7 +36,7 @@ def test_lakehouse_storage_create_valid(client: TestClient, test_project):
 def test_lakehouse_storage_create_with_endpoint(client: TestClient, test_project):
     """Test creating lakehouse storage with custom endpoint."""
     resp = client.post(
-        "/lakehouse_storages",
+        "/api/v1/lakehouse_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "minio-lakehouse",
@@ -64,7 +64,7 @@ def test_lakehouse_storage_create_with_endpoint(client: TestClient, test_project
 def test_lakehouse_storage_invalid_bucket_empty(client: TestClient, test_project):
     """Test lakehouse storage with empty bucket name."""
     resp = client.post(
-        "/lakehouse_storages",
+        "/api/v1/lakehouse_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "invalid-storage",
@@ -88,7 +88,7 @@ def test_lakehouse_storage_invalid_bucket_special_chars(
 ):
     """Test lakehouse storage with invalid bucket name (special characters)."""
     resp = client.post(
-        "/lakehouse_storages",
+        "/api/v1/lakehouse_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "invalid-storage",
@@ -110,7 +110,7 @@ def test_lakehouse_storage_invalid_bucket_special_chars(
 def test_lakehouse_storage_empty_region(client: TestClient, test_project):
     """Test lakehouse storage with empty region."""
     resp = client.post(
-        "/lakehouse_storages",
+        "/api/v1/lakehouse_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "invalid-storage",
@@ -132,7 +132,7 @@ def test_lakehouse_storage_empty_region(client: TestClient, test_project):
 def test_lakehouse_storage_empty_access_key(client: TestClient, test_project):
     """Test lakehouse storage with empty access key."""
     resp = client.post(
-        "/lakehouse_storages",
+        "/api/v1/lakehouse_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "invalid-storage",
@@ -154,7 +154,7 @@ def test_lakehouse_storage_empty_access_key(client: TestClient, test_project):
 def test_lakehouse_storage_invalid_endpoint_url(client: TestClient, test_project):
     """Test lakehouse storage with invalid endpoint URL."""
     resp = client.post(
-        "/lakehouse_storages",
+        "/api/v1/lakehouse_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "invalid-storage",
@@ -183,7 +183,7 @@ def test_lakehouse_storage_list(client: TestClient, test_project):
     """Test listing lakehouse storages."""
     # Create a storage first
     client.post(
-        "/lakehouse_storages",
+        "/api/v1/lakehouse_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-storage",
@@ -198,7 +198,7 @@ def test_lakehouse_storage_list(client: TestClient, test_project):
 
     # List storages
     resp = client.get(
-        "/lakehouse_storages", headers={"X-Project-Id": str(test_project["id"])}
+        "/api/v1/lakehouse_storages", headers={"X-Project-Id": str(test_project["id"])}
     )
     assert resp.status_code == 200
     data = resp.json()
@@ -210,7 +210,7 @@ def test_lakehouse_storage_get(client: TestClient, test_project):
     """Test getting a specific lakehouse storage."""
     # Create a storage
     create_resp = client.post(
-        "/lakehouse_storages",
+        "/api/v1/lakehouse_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "get-test-storage",
@@ -226,7 +226,7 @@ def test_lakehouse_storage_get(client: TestClient, test_project):
     storage_id = create_resp.json()["record"]["id"]
 
     # Get the storage
-    get_resp = client.get(f"/lakehouse_storages/{storage_id}")
+    get_resp = client.get(f"/api/v1/lakehouse_storages/{storage_id}")
     assert get_resp.status_code == 200
     data = get_resp.json()
     assert data["record"]["name"] == "get-test-storage"
@@ -236,7 +236,7 @@ def test_lakehouse_storage_update(client: TestClient, test_project):
     """Test updating a lakehouse storage."""
     # Create a storage
     create_resp = client.post(
-        "/lakehouse_storages",
+        "/api/v1/lakehouse_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "update-test",
@@ -254,7 +254,7 @@ def test_lakehouse_storage_update(client: TestClient, test_project):
 
     # Update the storage
     update_resp = client.put(
-        f"/lakehouse_storages/{storage_id}",
+        f"/api/v1/lakehouse_storages/{storage_id}",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "update-test",
@@ -278,7 +278,7 @@ def test_lakehouse_storage_update_retain_secret(client: TestClient, test_project
     """Test that updating without providing secret_key retains the existing one."""
     # Create a storage with secret
     create_resp = client.post(
-        "/lakehouse_storages",
+        "/api/v1/lakehouse_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "secret-test",
@@ -297,7 +297,7 @@ def test_lakehouse_storage_update_retain_secret(client: TestClient, test_project
 
     # Update without providing secret_key
     update_resp = client.put(
-        f"/lakehouse_storages/{storage_id}",
+        f"/api/v1/lakehouse_storages/{storage_id}",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "secret-test",
@@ -320,7 +320,7 @@ def test_lakehouse_storage_update_clear_secret(client: TestClient, test_project)
     """Test clearing secret_key using special marker."""
     # Create a storage with secret
     create_resp = client.post(
-        "/lakehouse_storages",
+        "/api/v1/lakehouse_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "clear-secret-test",
@@ -338,7 +338,7 @@ def test_lakehouse_storage_update_clear_secret(client: TestClient, test_project)
 
     # Update with clear marker
     update_resp = client.put(
-        f"/lakehouse_storages/{storage_id}",
+        f"/api/v1/lakehouse_storages/{storage_id}",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "clear-secret-test",
@@ -362,7 +362,7 @@ def test_lakehouse_storage_delete(client: TestClient, test_project):
     """Test deleting a lakehouse storage."""
     # Create a storage
     create_resp = client.post(
-        "/lakehouse_storages",
+        "/api/v1/lakehouse_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "delete-test",
@@ -378,11 +378,11 @@ def test_lakehouse_storage_delete(client: TestClient, test_project):
     storage_id = create_resp.json()["record"]["id"]
 
     # Delete the storage
-    delete_resp = client.delete(f"/lakehouse_storages/{storage_id}")
+    delete_resp = client.delete(f"/api/v1/lakehouse_storages/{storage_id}")
     assert delete_resp.status_code == 200
 
     # Verify it's deleted
-    get_resp = client.get(f"/lakehouse_storages/{storage_id}")
+    get_resp = client.get(f"/api/v1/lakehouse_storages/{storage_id}")
     assert get_resp.status_code == 404
 
 
@@ -396,7 +396,7 @@ def test_lakehouse_storage_secret_key_encryption(client: TestClient, test_projec
     plain_secret = "my_super_secret_key_12345"
 
     resp = client.post(
-        "/lakehouse_storages",
+        "/api/v1/lakehouse_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "encryption-test",
@@ -426,7 +426,7 @@ def test_lakehouse_storage_update_new_secret(client: TestClient, test_project):
     """Test updating with a new secret_key encrypts it."""
     # Create storage
     create_resp = client.post(
-        "/lakehouse_storages",
+        "/api/v1/lakehouse_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "new-secret-test",
@@ -446,7 +446,7 @@ def test_lakehouse_storage_update_new_secret(client: TestClient, test_project):
     # Update with new secret
     new_secret = "brand_new_secret_key"
     update_resp = client.put(
-        f"/lakehouse_storages/{storage_id}",
+        f"/api/v1/lakehouse_storages/{storage_id}",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "new-secret-test",
@@ -476,7 +476,7 @@ def test_list_lakehouse_storages_without_project_id_returns_empty(
     """Test that listing lakehouse storages without project_id returns empty list."""
     # Create a lakehouse storage in the project
     resp = client.post(
-        "/lakehouse_storages",
+        "/api/v1/lakehouse_storages",
         json={
             "name": "test-storage",
             "title": "Test Storage",
@@ -493,7 +493,7 @@ def test_list_lakehouse_storages_without_project_id_returns_empty(
 
     # List lakehouse storages WITHOUT project_id header
     # Should return empty list
-    resp = client.get("/lakehouse_storages")
+    resp = client.get("/api/v1/lakehouse_storages")
     resp.raise_for_status()
     data = resp.json()
 

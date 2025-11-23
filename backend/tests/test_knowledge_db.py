@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 
 def test_knowledge_db(client: TestClient, test_project):
     resp = client.post(
-        "/knowledge_dbs",
+        "/api/v1/knowledge_dbs",
         json={
             "name": "my-docs",
             "title": "My Documentation",
@@ -19,7 +19,7 @@ def test_knowledge_db(client: TestClient, test_project):
     assert data["record"]["type"] == "vector"
 
     record_id = data["record"]["id"]
-    resp = client.get(f"/knowledge_dbs/{record_id}")
+    resp = client.get(f"/api/v1/knowledge_dbs/{record_id}")
     resp.raise_for_status()
     assert resp.json()["record"]["id"] == record_id
 
@@ -30,7 +30,7 @@ def test_list_knowledge_dbs_without_project_id_returns_empty(
     """Test that listing knowledge DBs without project_id returns empty list."""
     # Create a knowledge DB in the project
     resp = client.post(
-        "/knowledge_dbs",
+        "/api/v1/knowledge_dbs",
         json={
             "name": "test-kb",
             "title": "Test Knowledge Base",
@@ -44,7 +44,7 @@ def test_list_knowledge_dbs_without_project_id_returns_empty(
 
     # List knowledge DBs WITHOUT project_id header
     # Should return empty list
-    resp = client.get("/knowledge_dbs")
+    resp = client.get("/api/v1/knowledge_dbs")
     resp.raise_for_status()
     data = resp.json()
 

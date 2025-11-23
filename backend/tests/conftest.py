@@ -30,7 +30,7 @@ def client(postgresql_proc: PostgreSQLExecutor, postgresql: Connection):
 def test_project(client: TestClient):
     """Create a test project for use in tests."""
     response = client.post(
-        "/projects",
+        "/api/v1/projects",
         json={
             "name": "test-project",
             "title": "Test Project",
@@ -59,7 +59,7 @@ def crud_client(postgresql_proc: PostgreSQLExecutor, postgresql: Connection):
             return Model
 
     router = ModelService.router()
-    app.include_router(router)
+    app.include_router(router, prefix="/api/v1")
 
     engine = create_engine(settings.db_uri)
     SQLModel.metadata.create_all(engine)
@@ -93,10 +93,10 @@ def project_scoped_crud_client(
 
     # Register both the project service and the project-scoped model service
     project_router = ProjectService.router()
-    app.include_router(project_router)
+    app.include_router(project_router, prefix="/api/v1")
 
     model_router = ProjectScopedModelService.router()
-    app.include_router(model_router)
+    app.include_router(model_router, prefix="/api/v1")
 
     engine = create_engine(settings.db_uri)
     SQLModel.metadata.create_all(engine)

@@ -18,7 +18,7 @@ def test_lakehouse_storage_test_connection_success(
 
     # Create a storage first
     create_resp = client.post(
-        "/lakehouse_storages",
+        "/api/v1/lakehouse_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-storage",
@@ -35,7 +35,7 @@ def test_lakehouse_storage_test_connection_success(
 
     # Test connection
     test_resp = client.post(
-        "/lakehouse_storages/test_connection",
+        "/api/v1/lakehouse_storages/test_connection",
         json={
             "parameters": {
                 "bucket": "test-bucket",
@@ -55,7 +55,7 @@ def test_lakehouse_storage_test_connection_success(
 def test_lakehouse_storage_test_connection_missing_bucket(client: TestClient):
     """Test connection with missing bucket name."""
     test_resp = client.post(
-        "/lakehouse_storages/test_connection",
+        "/api/v1/lakehouse_storages/test_connection",
         json={
             "parameters": {
                 "bucket": "",
@@ -73,7 +73,7 @@ def test_lakehouse_storage_test_connection_missing_bucket(client: TestClient):
 def test_lakehouse_storage_test_connection_missing_region(client: TestClient):
     """Test connection with missing region."""
     test_resp = client.post(
-        "/lakehouse_storages/test_connection",
+        "/api/v1/lakehouse_storages/test_connection",
         json={
             "parameters": {
                 "bucket": "test-bucket",
@@ -91,7 +91,7 @@ def test_lakehouse_storage_test_connection_missing_region(client: TestClient):
 def test_lakehouse_storage_test_connection_missing_access_key(client: TestClient):
     """Test connection with missing access key."""
     test_resp = client.post(
-        "/lakehouse_storages/test_connection",
+        "/api/v1/lakehouse_storages/test_connection",
         json={
             "parameters": {
                 "bucket": "test-bucket",
@@ -116,7 +116,7 @@ def test_lakehouse_storage_test_connection_with_endpoint_url(
     mock_s3_client.head_bucket.return_value = {}
 
     test_resp = client.post(
-        "/lakehouse_storages/test_connection",
+        "/api/v1/lakehouse_storages/test_connection",
         json={
             "parameters": {
                 "bucket": "minio-bucket",
@@ -151,7 +151,7 @@ def test_lakehouse_storage_test_connection_bucket_not_found(
     mock_s3_client.head_bucket.side_effect = ClientError(error_response, "HeadBucket")
 
     test_resp = client.post(
-        "/lakehouse_storages/test_connection",
+        "/api/v1/lakehouse_storages/test_connection",
         json={
             "parameters": {
                 "bucket": "nonexistent-bucket",
@@ -180,7 +180,7 @@ def test_lakehouse_storage_test_connection_access_denied(
     mock_s3_client.head_bucket.side_effect = ClientError(error_response, "HeadBucket")
 
     test_resp = client.post(
-        "/lakehouse_storages/test_connection",
+        "/api/v1/lakehouse_storages/test_connection",
         json={
             "parameters": {
                 "bucket": "restricted-bucket",
@@ -203,7 +203,7 @@ def test_lakehouse_storage_test_connection_with_stored_secret(
     """Test connection using stored encrypted secret key."""
     # Create a storage with secret key
     create_resp = client.post(
-        "/lakehouse_storages",
+        "/api/v1/lakehouse_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "stored-secret-test",
@@ -225,7 +225,7 @@ def test_lakehouse_storage_test_connection_with_stored_secret(
     mock_s3_client.head_bucket.return_value = {}
 
     test_resp = client.post(
-        "/lakehouse_storages/test_connection",
+        "/api/v1/lakehouse_storages/test_connection",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "storage_id": storage_id,
