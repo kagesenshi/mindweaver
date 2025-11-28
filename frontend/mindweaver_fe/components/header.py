@@ -22,37 +22,6 @@ def header_component() -> rx.Component:
                     class_name="text-2xl font-bold text-gray-900 mt-1",
                 ),
             ),
-            rx.el.div(
-                rx.menu.root(
-                    rx.menu.trigger(
-                        rx.button(
-                            rx.cond(
-                                ProjectState.current_project,
-                                ProjectState.current_project["name"],
-                                "Select Project",
-                            ),
-                            rx.icon("chevron-down", class_name="ml-2 h-4 w-4"),
-                            variant="outline",
-                            class_name="flex items-center",
-                        ),
-                    ),
-                    rx.menu.content(
-                        rx.foreach(
-                            ProjectState.projects,
-                            lambda project: rx.menu.item(
-                                project["name"],
-                                on_click=lambda: ProjectState.select_project(project),
-                            ),
-                        ),
-                        rx.menu.separator(),
-                        rx.menu.item(
-                            "Manage Projects",
-                            on_click=rx.redirect("/projects"),
-                        ),
-                    ),
-                ),
-                class_name="flex items-center",
-            ),
             class_name="flex items-center justify-between",
         ),
         class_name="bg-white/80 backdrop-blur-sm sticky top-0 z-10 border-b border-gray-200 px-6 py-4",

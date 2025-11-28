@@ -2,6 +2,11 @@ import reflex as rx
 from mindweaver_fe.components.sidebar import sidebar
 from mindweaver_fe.components.header import header_component
 
+# Add ProjectState.check_access and BaseState.on_load to the beginning of on_mount list
+from ..states.project_state import ProjectState
+from ..states.base_state import BaseState
+from pprint import pprint
+
 
 def base_layout(child: rx.Component, **props) -> rx.Component:
     """The base layout for all pages, including sidebar and header."""
@@ -11,10 +16,7 @@ def base_layout(child: rx.Component, **props) -> rx.Component:
     if not isinstance(on_mount, list):
         on_mount = [on_mount]
 
-    # Add ProjectState.check_access to the beginning of on_mount list
-    from ..states.project_state import ProjectState
-    from ..states.base_state import BaseState
-
+    on_mount.insert(0, BaseState.on_load)
     on_mount.insert(0, ProjectState.check_access)
 
     return rx.el.div(

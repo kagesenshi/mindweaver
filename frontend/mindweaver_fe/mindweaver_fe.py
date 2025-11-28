@@ -6,6 +6,7 @@ from mindweaver_fe.pages.data_sources import data_sources_page
 from mindweaver_fe.pages.lakehouse_storage import lakehouse_storage_page
 from mindweaver_fe.pages.ingestion import ingestion_page
 from mindweaver_fe.pages.projects import projects_page
+from mindweaver_fe.pages.project_overview import project_overview_page
 
 # from mindweaver_fe.pages.graph import graph_page
 
@@ -33,5 +34,6 @@ app.add_page(data_sources_page, route="/sources")
 app.add_page(lakehouse_storage_page, route="/lakehouse")
 app.add_page(ingestion_page, route="/ingestion")
 app.add_page(projects_page, route="/projects")
+app.add_page(project_overview_page, route="/overview")
 
 # app.add_page(graph_page, route="/graph")

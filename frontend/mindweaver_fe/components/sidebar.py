@@ -57,6 +57,17 @@ def sidebar() -> rx.Component:
                 ),
                 class_name="flex-1 flex flex-col gap-1 p-4",
             ),
+            rx.el.nav(
+                nav_item(
+                    {
+                        "path": "/projects",
+                        "name": "Projects",
+                        "icon": "brain-circuit",
+                    },
+                    BaseState.router.page.path,
+                ),
+                class_name="flex flex-col gap-1 p-4",
+            ),
             rx.el.div(
                 rx.el.button(
                     rx.icon(

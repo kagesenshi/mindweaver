@@ -3,12 +3,20 @@ import pytest_postgresql
 from pytest_postgresql.executor import PostgreSQLExecutor
 from psycopg.connection import Connection
 from fastapi.testclient import TestClient
-from mindweaver.app import app
-from mindweaver.config import settings
 from mindweaver.fw.service import Service
 from mindweaver.fw.model import NamedBase
 from mindweaver.service.base import ProjectScopedNamedBase, ProjectScopedService
 from sqlmodel import SQLModel, create_engine, Field
+from mindweaver.config import settings
+
+settings.experimental_ai_agent = True
+settings.experimental_data_source = True
+settings.experimental_knowledge_db = True
+settings.experimental_lakehouse_storage = True
+settings.experimental_ingestion = True
+settings.experimental_chat = True
+
+from mindweaver.app import app
 
 
 @pytest.fixture(scope="function")

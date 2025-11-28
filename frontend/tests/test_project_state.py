@@ -39,7 +39,7 @@ async def test_select_project(project_state):
     ]
     project_state.projects = mock_projects
 
-    project_state.select_project(mock_projects[1])
+    await project_state.select_project(mock_projects[1])
 
     assert project_state.current_project == mock_projects[1]
 
