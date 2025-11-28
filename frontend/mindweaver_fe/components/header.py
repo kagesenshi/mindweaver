@@ -10,10 +10,20 @@ def header_component() -> rx.Component:
             rx.el.div(
                 rx.el.div(
                     rx.icon("home", class_name="h-4 w-4 text-gray-500"),
-                    rx.el.span("/", class_name="mx-2 text-gray-400"),
-                    rx.el.span(
-                        BaseState.current_page_name,
-                        class_name="font-medium text-gray-700",
+                    rx.cond(
+                        BaseState.router.page.path != "/index",
+                        rx.el.span(
+                            rx.el.span("/", class_name="mx-2 text-gray-400"),
+                            rx.el.span(
+                                ProjectState.current_project["name"],
+                                class_name="font-medium text-gray-700",
+                            ),
+                            rx.el.span("/", class_name="mx-2 text-gray-400"),
+                            rx.el.span(
+                                BaseState.current_page_name,
+                                class_name="font-medium text-gray-700",
+                            ),
+                        ),
                     ),
                     class_name="flex items-center text-sm",
                 ),

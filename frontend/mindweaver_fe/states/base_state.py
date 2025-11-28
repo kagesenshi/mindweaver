@@ -48,7 +48,7 @@ class BaseState(rx.State):
             {"name": "Data Sources", "path": "/sources", "icon": "cloud-download"},
             {"name": "Lakehouse Storage", "path": "/lakehouse", "icon": "warehouse"},
             {"name": "Ingestion", "path": "/ingestion", "icon": "database-zap"},
-            {"name": "Knowledge DB", "path": "/", "icon": "database"},
+            {"name": "Knowledge DB", "path": "/knowledge_db", "icon": "database"},
             {"name": "AI Agents", "path": "/agents", "icon": "cpu"},
             {"name": "Chat", "path": "/chat", "icon": "messages-square"},
             #    {"name": "Graph Explorer", "path": "/graph", "icon": "git-fork"},
@@ -111,7 +111,7 @@ class BaseState(rx.State):
             if item["path"] == path:
                 return item["name"]
         if path == "/":
-            return "Knowledge DB"
+            return "Overview"
         return path.strip("/").replace("_", " ").title()
 
     @rx.event

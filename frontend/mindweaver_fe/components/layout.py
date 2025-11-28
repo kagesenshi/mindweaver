@@ -21,7 +21,7 @@ def base_layout(child: rx.Component, **props) -> rx.Component:
 
     return rx.el.div(
         rx.cond(
-            BaseState.router.page.path != "/projects",
+            BaseState.router.page.path != "/index",
             sidebar(),
         ),
         rx.el.div(

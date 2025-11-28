@@ -60,7 +60,7 @@ def sidebar() -> rx.Component:
             rx.el.nav(
                 nav_item(
                     {
-                        "path": "/projects",
+                        "path": "/",
                         "name": "Projects",
                         "icon": "brain-circuit",
                     },

@@ -29,7 +29,6 @@ class ProjectOverviewState(BaseState):
 
     async def load_overview(self):
         """Load project overview data including resource counts."""
-        print("loading")
         self.is_loading = True
         yield
 
@@ -37,7 +36,6 @@ class ProjectOverviewState(BaseState):
             # Get project from ProjectState
             project_state = await self.get_state(ProjectState)
             if not project_state.current_project:
-                print("no project selected")
                 self.is_loading = False
                 yield rx.redirect("/projects")
                 return

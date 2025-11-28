@@ -27,13 +27,13 @@ app = rx.App(
         ),
     ],
 )
-app.add_page(knowledge_db_page, route="/")
+app.add_page(knowledge_db_page, route="/knowledge_db")
 app.add_page(ai_agents_page, route="/agents")
 app.add_page(chat_page, route="/chat")
 app.add_page(data_sources_page, route="/sources")
 app.add_page(lakehouse_storage_page, route="/lakehouse")
 app.add_page(ingestion_page, route="/ingestion")
-app.add_page(projects_page, route="/projects")
+app.add_page(projects_page, route="/")
 app.add_page(project_overview_page, route="/overview")
 
 # app.add_page(graph_page, route="/graph")
