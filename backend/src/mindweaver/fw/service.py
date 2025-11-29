@@ -13,6 +13,7 @@ import abc
 import jinja2 as j2
 from .exc import NotFoundError
 from .util import camel_to_snake
+import graphlib
 
 
 T = TypeVar("T", bound=NamedBase)
@@ -62,7 +63,83 @@ def redefine_model(name, Model: type[BaseModel], *, exclude=None) -> type[BaseMo
     return model
 
 
+def before_create(func=None, *, before=None, after=None):
+    def decorator(f):
+        f._is_before_create_hook = True
+        f._hook_before = [before] if isinstance(before, str) else (before or [])
+        f._hook_after = [after] if isinstance(after, str) else (after or [])
+        return f
+
+    if func:
+        return decorator(func)
+    return decorator
+
+
+def after_create(func=None, *, before=None, after=None):
+    def decorator(f):
+        f._is_after_create_hook = True
+        f._hook_before = [before] if isinstance(before, str) else (before or [])
+        f._hook_after = [after] if isinstance(after, str) else (after or [])
+        return f
+
+    if func:
+        return decorator(func)
+    return decorator
+
+
+def _sort_hooks(hooks: list[Any]) -> list[Any]:
+    if not hooks:
+        return []
+
+    graph = {h.__name__: set() for h in hooks}
+    name_to_hook = {h.__name__: h for h in hooks}
+
+    for hook in hooks:
+        # Handle 'after' dependencies: hook depends on other (other -> hook)
+        for other_name in hook._hook_after:
+            if other_name in graph:
+                graph[hook.__name__].add(other_name)
+
+        # Handle 'before' dependencies: other depends on hook (hook -> other)
+        for other_name in hook._hook_before:
+            if other_name in graph:
+                graph[other_name].add(hook.__name__)
+
+    ts = graphlib.TopologicalSorter(graph)
+    try:
+        sorted_names = list(ts.static_order())
+    except graphlib.CycleError as e:
+        raise ValueError(f"Circular dependency detected in hooks: {e.args[1]}")
+
+    return [name_to_hook[name] for name in sorted_names]
+
+
 class Service(Generic[S], abc.ABC):
+    _before_create_hooks: list[Any] = []
+    _after_create_hooks: list[Any] = []
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        cls._before_create_hooks = []
+        cls._after_create_hooks = []
+
+        # Collect hooks from MRO in reverse order (base to child)
+        # Use a dict to avoid duplicates and respect definition order within class
+        collected_before = {}
+        collected_after = {}
+
+        for base in reversed(cls.mro()):
+            if not issubclass(base, Service):
+                continue
+
+            for attr_name, attr in base.__dict__.items():
+                if getattr(attr, "_is_before_create_hook", False):
+                    collected_before[attr_name] = attr
+                if getattr(attr, "_is_after_create_hook", False):
+                    collected_after[attr_name] = attr
+
+        cls._before_create_hooks = _sort_hooks(list(collected_before.values()))
+        cls._after_create_hooks = _sort_hooks(list(collected_after.values()))
 
     @classmethod
     @abc.abstractmethod
@@ -178,12 +255,22 @@ class Service(Generic[S], abc.ABC):
             parsed_data["project_id"] = project_id
 
         model = model_class(**parsed_data)
+
+        # Execute before_create hooks
+        for hook in self._before_create_hooks:
+            await hook(self, model)
+
         self.session.add(model)
         try:
             await self.session.flush()
         except saexc.IntegrityError as e:
             raise ModelValidationError(message=e.args[0])
         await self.session.refresh(model)
+
+        # Execute after_create hooks
+        for hook in self._after_create_hooks:
+            await hook(self, model)
+
         return model
 
     async def get(self, model_id: int) -> S:
