@@ -7,8 +7,8 @@ def test_knowledge_db(client: TestClient, test_project):
         json={
             "name": "my-docs",
             "title": "My Documentation",
-            "type": "vector",
-            "description": "A vector database for documentation",
+            "type": "knowledge-graph",
+            "description": "A knowledge graph for documentation",
             "parameters": {"embedding_model": "openai", "chunk_size": 1000},
         },
         headers={"X-Project-Id": str(test_project["id"])},
@@ -16,7 +16,7 @@ def test_knowledge_db(client: TestClient, test_project):
     resp.raise_for_status()
     data = resp.json()
     assert data["record"]["name"] == "my-docs"
-    assert data["record"]["type"] == "vector"
+    assert data["record"]["type"] == "knowledge-graph"
 
     record_id = data["record"]["id"]
     resp = client.get(f"/api/v1/knowledge_dbs/{record_id}")
@@ -34,7 +34,7 @@ def test_list_knowledge_dbs_without_project_id_returns_empty(
         json={
             "name": "test-kb",
             "title": "Test Knowledge Base",
-            "type": "vector",
+            "type": "knowledge-graph",
             "description": "Test KB",
             "parameters": {"embedding_model": "openai", "chunk_size": 1000},
         },

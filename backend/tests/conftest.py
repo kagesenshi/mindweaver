@@ -1,3 +1,12 @@
+import os
+
+os.environ["MINDWEAVER_EXPERIMENTAL_AI_AGENT"] = "true"
+os.environ["MINDWEAVER_EXPERIMENTAL_DATA_SOURCE"] = "true"
+os.environ["MINDWEAVER_EXPERIMENTAL_KNOWLEDGE_DB"] = "true"
+os.environ["MINDWEAVER_EXPERIMENTAL_LAKEHOUSE_STORAGE"] = "true"
+os.environ["MINDWEAVER_EXPERIMENTAL_INGESTION"] = "true"
+os.environ["MINDWEAVER_EXPERIMENTAL_CHAT"] = "true"
+
 import pytest
 import pytest_postgresql
 from pytest_postgresql.executor import PostgreSQLExecutor
@@ -9,12 +18,6 @@ from mindweaver.service.base import ProjectScopedNamedBase, ProjectScopedService
 from sqlmodel import SQLModel, create_engine, Field
 from mindweaver.config import settings
 
-settings.experimental_ai_agent = True
-settings.experimental_data_source = True
-settings.experimental_knowledge_db = True
-settings.experimental_lakehouse_storage = True
-settings.experimental_ingestion = True
-settings.experimental_chat = True
 
 from mindweaver.app import app
 

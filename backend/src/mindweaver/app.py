@@ -2,6 +2,7 @@ import fastapi
 from .config import settings
 from .service.data_source import router as ds_router
 from .service.knowledge_db import router as kdb_router
+from .service.ontology import router as ontology_router
 from .service.ai_agent import router as agent_router
 from .service.chat import router as chat_router
 from .service.lakehouse_storage import router as lakehouse_router
@@ -37,6 +38,7 @@ if settings.experimental_data_source:
     app.include_router(ds_router, prefix="/api/v1")
 if settings.experimental_knowledge_db:
     app.include_router(kdb_router, prefix="/api/v1")
+    app.include_router(ontology_router, prefix="/api/v1")
 if settings.experimental_ai_agent:
     app.include_router(agent_router, prefix="/api/v1")
 if settings.experimental_chat:

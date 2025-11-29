@@ -8,13 +8,25 @@ from mindweaver_fe.states.knowledge_db_state import KnowledgeDBState, KnowledgeD
 def type_badge(db_type: rx.Var[str]) -> rx.Component:
     """A badge component to display the database type."""
     base_class = " text-xs font-medium px-2.5 py-1 rounded-full w-fit"
-    return rx.el.span(
+
+    # Map kebab-case to display labels
+    display_label = rx.match(
         db_type,
+        ("passage-graph", "Passage Graph"),
+        ("tree-graph", "Tree Graph"),
+        ("knowledge-graph", "Knowledge Graph"),
+        ("textual-knowledge-graph", "Textual Knowledge Graph"),
+        db_type,  # fallback to original value
+    )
+
+    return rx.el.span(
+        display_label,
         class_name=rx.match(
             db_type,
-            ("Vector", "bg-blue-100 text-blue-800" + base_class),
-            ("Graph", "bg-purple-100 text-purple-800" + base_class),
-            ("Hybrid", "bg-green-100 text-green-800" + base_class),
+            ("passage-graph", "bg-purple-100 text-purple-800" + base_class),
+            ("tree-graph", "bg-indigo-100 text-indigo-800" + base_class),
+            ("knowledge-graph", "bg-pink-100 text-pink-800" + base_class),
+            ("textual-knowledge-graph", "bg-teal-100 text-teal-800" + base_class),
             "bg-gray-100 text-gray-800" + base_class,
         ),
     )
@@ -177,17 +189,54 @@ def db_modal() -> rx.Component:
                         ),
                         rx.el.select(
                             rx.foreach(
-                                KnowledgeDBState.modal_db_types,
-                                lambda type: rx.el.option(type, value=type),
+                                KnowledgeDBState.modal_db_types_with_labels,
+                                lambda item: rx.el.option(item[1], value=item[0]),
                             ),
                             name="db_type",
-                            default_value=KnowledgeDBState.form_data["db_type"],
+                            default_value=KnowledgeDBState.form_data["type"],
                             on_change=lambda value: KnowledgeDBState.set_form_data_field(
-                                "db_type", value
+                                "type", value
                             ),
                             class_name="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500",
                         ),
                         class_name="mb-6",
+                    ),
+                    rx.cond(
+                        KnowledgeDBState.form_data["type"] == "knowledge-graph",
+                        rx.el.div(
+                            rx.el.label(
+                                "Ontology",
+                                class_name="text-sm font-medium text-gray-700 mb-1 block",
+                            ),
+                            rx.el.select(
+                                rx.el.option("Select an Ontology", value=""),
+                                rx.foreach(
+                                    KnowledgeDBState.ontologies,
+                                    lambda ontology: rx.el.option(
+                                        ontology["name"], value=ontology["id"]
+                                    ),
+                                ),
+                                name="ontology_id",
+                                value=KnowledgeDBState.form_data["ontology_id"],
+                                on_change=lambda value: KnowledgeDBState.set_form_data_field(
+                                    "ontology_id", value
+                                ),
+                                class_name=rx.cond(
+                                    KnowledgeDBState.form_errors.get("ontology_id")
+                                    != None,
+                                    "w-full px-3 py-2 border border-red-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500",
+                                    "w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500",
+                                ),
+                            ),
+                            rx.cond(
+                                KnowledgeDBState.form_errors.get("ontology_id") != None,
+                                rx.el.p(
+                                    KnowledgeDBState.form_errors.get("ontology_id"),
+                                    class_name="text-sm text-red-600 mt-1",
+                                ),
+                            ),
+                            class_name="mb-6",
+                        ),
                     ),
                     on_submit=KnowledgeDBState.handle_submit,
                     id="db-form",

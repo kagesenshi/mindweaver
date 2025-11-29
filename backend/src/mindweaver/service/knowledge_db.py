@@ -1,16 +1,27 @@
 from . import NamedBase, Base
+from .ontology import Ontology
 from .base import ProjectScopedNamedBase, ProjectScopedService
 from sqlalchemy import String
 from sqlalchemy_utils import JSONType
 from sqlmodel import Field, Relationship
-from typing import Any, Optional
+from typing import Any, Optional, Literal
+
+DBType = Literal[
+    "passage-graph",
+    "tree-graph",
+    "knowledge-graph",
+    "textual-knowledge-graph",
+]
 
 
 class KnowledgeDB(ProjectScopedNamedBase, table=True):
     __tablename__ = "mw_knowledge_db"
-    type: str = Field(index=True)
+    type: DBType = Field(index=True, sa_type=String())
     description: str = Field(default="", sa_type=String())
     parameters: dict[str, Any] = Field(sa_type=JSONType())
+
+    ontology_id: Optional[int] = Field(default=None, foreign_key="mw_ontology.id")
+    ontology: Optional["Ontology"] = Relationship()
 
 
 class KnowledgeDBService(ProjectScopedService[KnowledgeDB]):

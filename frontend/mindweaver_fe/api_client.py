@@ -92,6 +92,7 @@ class APIClient:
         """
         client = await self._get_client()
         response = await client.post(endpoint, json=data, headers=headers)
+        print(response.text)
         response.raise_for_status()
         result = response.json()
         return result.get("record", {})
@@ -416,6 +417,37 @@ class IngestionClient:
         return data.get("records", [])
 
 
+class OntologyClient:
+    """Client for Ontology API endpoints."""
+
+    def __init__(self, client: APIClient = None):
+        self.client = client or APIClient()
+        self.endpoint = "/api/v1/ontologies"
+
+    async def list_all(self, headers: Dict[str, str] = None) -> List[Dict[str, Any]]:
+        return await self.client.list_all(self.endpoint, headers=headers)
+
+    async def get(
+        self, ontology_id: int, headers: Dict[str, str] = None
+    ) -> Dict[str, Any]:
+        return await self.client.get(self.endpoint, ontology_id, headers=headers)
+
+    async def create(
+        self, data: Dict[str, Any], headers: Dict[str, str] = None
+    ) -> Dict[str, Any]:
+        return await self.client.create(self.endpoint, data, headers=headers)
+
+    async def update(
+        self, ontology_id: int, data: Dict[str, Any], headers: Dict[str, str] = None
+    ) -> Dict[str, Any]:
+        return await self.client.update(
+            self.endpoint, ontology_id, data, headers=headers
+        )
+
+    async def delete(self, ontology_id: int, headers: Dict[str, str] = None) -> bool:
+        return await self.client.delete(self.endpoint, ontology_id, headers=headers)
+
+
 class ProjectClient:
     """Client for Project API endpoints."""
 
@@ -457,4 +489,5 @@ knowledge_db_client = KnowledgeDBClient(_api_client)
 data_source_client = DataSourceClient(_api_client)
 lakehouse_storage_client = LakehouseStorageClient(_api_client)
 ingestion_client = IngestionClient(_api_client)
+ontology_client = OntologyClient(_api_client)
 project_client = ProjectClient(_api_client)

@@ -17,17 +17,31 @@ async def test_load_databases(mock_knowledge_db_client, mock_project_state):
 
     object.__setattr__(state, "get_state", mock_get_state)
 
-    # Mock api client response
-    mock_dbs = [{"id": 1, "name": "Test DB", "type": "Vector"}]
-    mock_knowledge_db_client.list_all.return_value = mock_dbs
+    # Mock _get_headers to prevent actual backend connection
+    async def mock_get_headers():
+        return {}
+
+    object.__setattr__(state, "_get_headers", mock_get_headers)
+
+    # Mock api client responses
+    mock_dbs = [{"id": 1, "name": "Test DB", "type": "knowledge-graph"}]
+    mock_knowledge_db_client.list_all = AsyncMock(return_value=mock_dbs)
+
+    # Mock ontology client
+    mock_ontology_client = AsyncMock()
+    mock_ontology_client.list_all = AsyncMock(return_value=[])
 
     with patch(
         "mindweaver_fe.states.knowledge_db_state.knowledge_db_client",
         mock_knowledge_db_client,
+    ), patch(
+        "mindweaver_fe.states.knowledge_db_state.ontology_client",
+        mock_ontology_client,
     ):
         await state.load_databases()
 
     assert state.all_databases == mock_dbs
+    assert state.ontologies == []
     assert state.is_loading is False
     assert state.error_message == ""
 
@@ -41,7 +55,7 @@ def test_open_create_modal():
     assert state.show_db_modal is True
     assert state.is_editing is False
     assert state.form_data["name"] == ""
-    assert state.form_data["type"] == "Vector"
+    assert state.form_data["type"] == "passage-graph"
     assert state.form_errors == {}
 
 
@@ -53,7 +67,7 @@ def test_open_edit_modal():
         "name": "Test DB",
         "title": "Test Title",
         "description": "Desc",
-        "type": "Vector",
+        "type": "knowledge-graph",
         "parameters": {},
         "created": "",
         "modified": "",
@@ -66,7 +80,7 @@ def test_open_edit_modal():
     assert state.is_editing is True
     assert state.db_to_edit["id"] == 1
     assert state.form_data["name"] == "Test DB"
-    assert state.form_data["type"] == "Vector"
+    assert state.form_data["type"] == "knowledge-graph"
 
 
 @pytest.mark.asyncio
@@ -88,11 +102,16 @@ async def test_handle_submit_create(mock_knowledge_db_client, mock_project_state
         "name": "New DB",
         "title": "New Title",
         "description": "New Desc",
-        "type": "Vector",
+        "type": "knowledge-graph",
     }
 
     # Mock create response
-    new_db = {"id": 2, "name": "New DB", "title": "New Title", "type": "Vector"}
+    new_db = {
+        "id": 2,
+        "name": "New DB",
+        "title": "New Title",
+        "type": "knowledge-graph",
+    }
     mock_knowledge_db_client.create.return_value = new_db
 
     with patch(
@@ -115,7 +134,7 @@ async def test_handle_submit_update(mock_knowledge_db_client, mock_project_state
         "name": "Old Name",
         "title": "Old Title",
         "description": "Desc",
-        "type": "Vector",
+        "type": "knowledge-graph",
         "parameters": {},
         "created": "",
         "modified": "",
@@ -138,7 +157,7 @@ async def test_handle_submit_update(mock_knowledge_db_client, mock_project_state
         "name": "Updated Name",
         "title": "Updated Title",
         "description": "Desc",
-        "type": "Vector",
+        "type": "knowledge-graph",
     }
 
     # Mock update response
@@ -166,7 +185,7 @@ async def test_confirm_delete(mock_knowledge_db_client, mock_project_state):
         "name": "To Delete",
         "title": "Title",
         "description": "Desc",
-        "type": "Vector",
+        "type": "knowledge-graph",
         "parameters": {},
         "created": "",
         "modified": "",

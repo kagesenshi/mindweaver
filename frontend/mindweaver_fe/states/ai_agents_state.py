@@ -4,6 +4,7 @@ import uuid
 from mindweaver_fe.states.knowledge_db_state import KnowledgeDBState, KnowledgeDB
 from mindweaver_fe.api_client import ai_agent_client
 from mindweaver_fe.states.project_state import ProjectState
+import httpx
 
 AgentStatus = Literal["Active", "Inactive"]
 
@@ -236,6 +237,24 @@ class AIAgentsState(rx.State):
                 self.all_agents.append(new_agent)
 
             return AIAgentsState.close_agent_modal
+        except httpx.HTTPStatusError as e:
+            # Extract validation errors from the response
+            try:
+                error_data = e.response.json()
+                if "detail" in error_data and isinstance(error_data["detail"], list):
+                    # Parse validation errors
+                    for error in error_data["detail"]:
+                        if "loc" in error and len(error["loc"]) > 1:
+                            field_name = error["loc"][-1]  # Get the field name
+                            error_msg = error.get("msg", "Invalid value")
+                            self.form_errors[field_name] = error_msg
+                    # If we have field errors, don't set general error message
+                    if not self.form_errors:
+                        self.error_message = f"Failed to save agent: {str(error_data)}"
+                else:
+                    self.error_message = f"Failed to save agent: {str(error_data)}"
+            except Exception:
+                self.error_message = f"Failed to save agent: {str(e)}"
         except Exception as e:
             self.error_message = f"Failed to save agent: {str(e)}"
 
@@ -281,6 +300,14 @@ class AIAgentsState(rx.State):
                 for agent in self.all_agents
                 if agent["id"] != self.agent_to_delete["id"]
             ]
+        except httpx.HTTPStatusError as e:
+            try:
+                error_data = e.response.json()
+                self.error_message = (
+                    f"Failed to delete agent: {error_data.get('detail', str(e))}"
+                )
+            except Exception:
+                self.error_message = f"Failed to delete agent: {str(e)}"
         except Exception as e:
             self.error_message = f"Failed to delete agent: {str(e)}"
 

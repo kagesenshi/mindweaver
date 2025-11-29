@@ -49,6 +49,7 @@ class BaseState(rx.State):
             {"name": "Lakehouse Storage", "path": "/lakehouse", "icon": "warehouse"},
             {"name": "Ingestion", "path": "/ingestion", "icon": "database-zap"},
             {"name": "Knowledge DB", "path": "/knowledge_db", "icon": "database"},
+            {"name": "Ontology", "path": "/ontology", "icon": "workflow"},
             {"name": "AI Agents", "path": "/agents", "icon": "cpu"},
             {"name": "Chat", "path": "/chat", "icon": "messages-square"},
             #    {"name": "Graph Explorer", "path": "/graph", "icon": "git-fork"},
@@ -67,25 +68,22 @@ class BaseState(rx.State):
                 response.raise_for_status()
                 self.feature_flags = response.json()
 
-                # Map feature flags to nav items
-                feature_to_nav = {
-                    "experimental_data_source": "Data Sources",
-                    "experimental_lakehouse_storage": "Lakehouse Storage",
-                    "experimental_ingestion": "Ingestion",
-                    "experimental_knowledge_db": "Knowledge DB",
-                    "experimental_ai_agent": "AI Agents",
-                    "experimental_chat": "Chat",
+                # Map nav items to feature flags
+                nav_to_feature = {
+                    "Data Sources": "experimental_data_source",
+                    "Lakehouse Storage": "experimental_lakehouse_storage",
+                    "Ingestion": "experimental_ingestion",
+                    "Knowledge DB": "experimental_knowledge_db",
+                    "Ontology": "experimental_knowledge_db",
+                    "AI Agents": "experimental_ai_agent",
+                    "Chat": "experimental_chat",
                 }
 
                 # Filter nav items based on enabled feature flags
                 enabled_nav_items = []
                 for item in _all_nav_items:
                     # Find the corresponding feature flag
-                    feature_flag = None
-                    for flag_name, nav_name in feature_to_nav.items():
-                        if nav_name == item["name"]:
-                            feature_flag = flag_name
-                            break
+                    feature_flag = nav_to_feature.get(item["name"])
 
                     # Include item if feature flag is enabled (or if no flag exists for it)
                     if feature_flag is None or self.feature_flags.get(

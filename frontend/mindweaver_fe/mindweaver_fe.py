@@ -1,5 +1,8 @@
 import reflex as rx
 from mindweaver_fe.pages.knowledge_db import knowledge_db_page
+from mindweaver_fe.pages.ontology import ontology_page
+from mindweaver_fe.states.knowledge_db_state import KnowledgeDBState
+from mindweaver_fe.states.ontology_state import OntologyState
 from mindweaver_fe.pages.ai_agents import ai_agents_page
 from mindweaver_fe.pages.chat import chat_page
 from mindweaver_fe.pages.data_sources import data_sources_page
@@ -29,6 +32,12 @@ app = rx.App(
 )
 app.add_page(knowledge_db_page, route="/knowledge_db")
 app.add_page(ai_agents_page, route="/agents")
+app.add_page(
+    ontology_page,
+    route="/ontology",
+    title="Ontology",
+    on_load=OntologyState.load_ontologies,
+)
 app.add_page(chat_page, route="/chat")
 app.add_page(data_sources_page, route="/sources")
 app.add_page(lakehouse_storage_page, route="/lakehouse")

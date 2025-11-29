@@ -380,7 +380,27 @@ class IngestionState(rx.State):
 
             yield IngestionState.close_ingestion_modal
         except httpx.HTTPStatusError as e:
-            self.error_message = f"Failed to save ingestion: {str(e.response.json())}"
+            # Extract validation errors from the response
+            try:
+                error_data = e.response.json()
+                if "detail" in error_data and isinstance(error_data["detail"], list):
+                    # Parse validation errors
+                    for error in error_data["detail"]:
+                        if "loc" in error and len(error["loc"]) > 1:
+                            field_name = error["loc"][-1]  # Get the field name
+                            error_msg = error.get("msg", "Invalid value")
+                            self.form_errors[field_name] = error_msg
+                    # If we have field errors, don't set general error message
+                    if not self.form_errors:
+                        self.error_message = (
+                            f"Failed to save ingestion: {str(error_data)}"
+                        )
+                else:
+                    self.error_message = f"Failed to save ingestion: {str(error_data)}"
+            except Exception:
+                self.error_message = f"Failed to save ingestion: {str(e)}"
+        except Exception as e:
+            self.error_message = f"Failed to save ingestion: {str(e)}"
 
     @rx.event
     def open_delete_dialog(self, ingestion: Ingestion):
@@ -425,6 +445,14 @@ class IngestionState(rx.State):
                 for ing in self.all_ingestions
                 if ing["id"] != self.ingestion_to_delete["id"]
             ]
+        except httpx.HTTPStatusError as e:
+            try:
+                error_data = e.response.json()
+                self.error_message = (
+                    f"Failed to delete ingestion: {error_data.get('detail', str(e))}"
+                )
+            except Exception:
+                self.error_message = f"Failed to delete ingestion: {str(e)}"
         except Exception as e:
             self.error_message = f"Failed to delete ingestion: {str(e)}"
 

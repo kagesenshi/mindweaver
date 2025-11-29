@@ -4,8 +4,15 @@ import datetime
 import uuid
 from mindweaver_fe.api_client import knowledge_db_client
 from mindweaver_fe.states.project_state import ProjectState
+from mindweaver_fe.api_client import ontology_client
+import httpx
 
-DBType = Literal["Vector", "Graph", "Hybrid"]
+DBType = Literal[
+    "passage-graph",
+    "tree-graph",
+    "knowledge-graph",
+    "textual-knowledge-graph",
+]
 
 
 class KnowledgeDB(TypedDict):
@@ -19,22 +26,36 @@ class KnowledgeDB(TypedDict):
     created: str
     modified: str
     entry_count: int
+    ontology_id: int | None
 
 
 class KnowledgeDBState(rx.State):
     """Manages the state for the knowledge database page."""
 
     all_databases: list[KnowledgeDB] = []
+    ontologies: list[dict] = []
     show_db_modal: bool = False
     show_delete_dialog: bool = False
     is_editing: bool = False
     db_to_edit: KnowledgeDB | None = None
     db_to_delete: KnowledgeDB | None = None
-    form_data: dict = {"name": "", "title": "", "description": "", "type": "Vector"}
+    form_data: dict = {
+        "name": "",
+        "title": "",
+        "description": "",
+        "type": "passage-graph",
+        "ontology_id": None,
+    }
     form_errors: dict = {}
     search_query: str = ""
     filter_type: str = "All"
-    db_types: list[str] = ["All", "Vector", "Graph", "Hybrid"]
+    db_types: list[str] = [
+        "All",
+        "passage-graph",
+        "tree-graph",
+        "knowledge-graph",
+        "textual-knowledge-graph",
+    ]
     is_loading: bool = False
     error_message: str = ""
 
@@ -53,6 +74,7 @@ class KnowledgeDBState(rx.State):
             headers = await self._get_headers()
             databases = await knowledge_db_client.list_all(headers=headers)
             self.all_databases = databases
+            self.ontologies = await ontology_client.list_all(headers=headers)
         except Exception as e:
             self.error_message = f"Failed to load databases: {str(e)}"
         finally:
@@ -72,6 +94,16 @@ class KnowledgeDBState(rx.State):
         return self.db_types[1:]
 
     @rx.var
+    def modal_db_types_with_labels(self) -> list[tuple[str, str]]:
+        """Returns a list of (value, label) tuples for the modal dropdown."""
+        return [
+            ("passage-graph", "Passage Graph"),
+            ("tree-graph", "Tree Graph"),
+            ("knowledge-graph", "Knowledge Graph"),
+            ("textual-knowledge-graph", "Textual Knowledge Graph"),
+        ]
+
+    @rx.var
     def filtered_databases(self) -> list[KnowledgeDB]:
         """Returns a list of databases filtered by search query and type."""
         return [
@@ -88,6 +120,12 @@ class KnowledgeDBState(rx.State):
             errors["name"] = "Name is required."
         if not self.form_data.get("title", "").strip():
             errors["title"] = "Title is required."
+
+        if self.form_data["type"] == "knowledge-graph" and not self.form_data.get(
+            "ontology_id"
+        ):
+            errors["ontology_id"] = "Ontology is required for Knowledge Graph type."
+
         self.form_errors = errors
         return not errors
 
@@ -95,7 +133,13 @@ class KnowledgeDBState(rx.State):
     def open_create_modal(self):
         """Opens the modal to create a new database."""
         self.is_editing = False
-        self.form_data = {"name": "", "title": "", "description": "", "type": "Vector"}
+        self.form_data = {
+            "name": "",
+            "title": "",
+            "description": "",
+            "type": "passage-graph",
+            "ontology_id": None,
+        }
         self.form_errors = {}
         self.error_message = ""
         self.show_db_modal = True
@@ -111,11 +155,12 @@ class KnowledgeDBState(rx.State):
             "name": db.get("name", ""),
             "title": db.get("title", ""),
             "description": db.get("description", ""),
-            "type": db.get("type", "Vector"),
+            "type": db.get("type", "passage-graph"),
             "parameters": db.get("parameters", {}),
             "created": db.get("created", ""),
             "modified": db.get("modified", ""),
             "entry_count": db.get("entry_count", 0),
+            "ontology_id": db.get("ontology_id"),
         }
         self.db_to_edit = typed_db
         self.form_data = {
@@ -123,6 +168,9 @@ class KnowledgeDBState(rx.State):
             "title": typed_db["title"],
             "description": typed_db["description"],
             "type": typed_db["type"],
+            "ontology_id": (
+                str(typed_db["ontology_id"]) if typed_db["ontology_id"] else None
+            ),
         }
         self.form_errors = {}
         self.error_message = ""
@@ -133,7 +181,13 @@ class KnowledgeDBState(rx.State):
         """Closes the create/edit modal."""
         self.show_db_modal = False
         self.db_to_edit = None
-        self.form_data = {"name": "", "title": "", "description": "", "type": "Vector"}
+        self.form_data = {
+            "name": "",
+            "title": "",
+            "description": "",
+            "type": "passage-graph",
+            "ontology_id": None,
+        }
         self.form_errors = {}
 
     @rx.event
@@ -151,6 +205,7 @@ class KnowledgeDBState(rx.State):
         self.form_data["name"] = form_data.get("name", "")
         self.form_data["title"] = form_data.get("title", "")
         self.form_data["description"] = form_data.get("description", "")
+        self.form_data["type"] = form_data.get("db_type", "passage-graph")
 
         # Validate form
         if not self._validate_form():
@@ -163,7 +218,14 @@ class KnowledgeDBState(rx.State):
                 "description": self.form_data.get("description", ""),
                 "type": self.form_data["type"],
                 "parameters": {},
+                "ontology_id": (
+                    int(self.form_data["ontology_id"])
+                    if self.form_data.get("ontology_id")
+                    else None
+                ),
             }
+
+            print(api_data)
 
             headers = await self._get_headers()
 
@@ -183,6 +245,26 @@ class KnowledgeDBState(rx.State):
                 self.all_databases.append(new_db)
 
             return KnowledgeDBState.close_db_modal
+        except httpx.HTTPStatusError as e:
+            # Extract validation errors from the response
+            try:
+                error_data = e.response.json()
+                if "detail" in error_data and isinstance(error_data["detail"], list):
+                    # Parse validation errors
+                    for error in error_data["detail"]:
+                        if "loc" in error and len(error["loc"]) > 1:
+                            field_name = error["loc"][-1]  # Get the field name
+                            error_msg = error.get("msg", "Invalid value")
+                            self.form_errors[field_name] = error_msg
+                    # If we have field errors, don't set general error message
+                    if not self.form_errors:
+                        self.error_message = (
+                            f"Failed to save database: {str(error_data)}"
+                        )
+                else:
+                    self.error_message = f"Failed to save database: {str(error_data)}"
+            except Exception:
+                self.error_message = f"Failed to save database: {str(e)}"
         except Exception as e:
             self.error_message = f"Failed to save database: {str(e)}"
 
@@ -196,7 +278,7 @@ class KnowledgeDBState(rx.State):
             "name": db.get("name", ""),
             "title": db.get("title", ""),
             "description": db.get("description", ""),
-            "type": db.get("type", "Vector"),
+            "type": db.get("type", "passage-graph"),
             "parameters": db.get("parameters", {}),
             "created": db.get("created", ""),
             "modified": db.get("modified", ""),
@@ -225,6 +307,14 @@ class KnowledgeDBState(rx.State):
             self.all_databases = [
                 db for db in self.all_databases if db["id"] != self.db_to_delete["id"]
             ]
+        except httpx.HTTPStatusError as e:
+            try:
+                error_data = e.response.json()
+                self.error_message = (
+                    f"Failed to delete database: {error_data.get('detail', str(e))}"
+                )
+            except Exception:
+                self.error_message = f"Failed to delete database: {str(e)}"
         except Exception as e:
             self.error_message = f"Failed to delete database: {str(e)}"
 

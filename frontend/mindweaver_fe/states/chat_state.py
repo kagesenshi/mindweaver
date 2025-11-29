@@ -6,6 +6,7 @@ from mindweaver_fe.states.ai_agents_state import AIAgentsState, AIAgent
 from mindweaver_fe.states.knowledge_db_state import KnowledgeDB, KnowledgeDBState
 from mindweaver_fe.api_client import chat_client
 from mindweaver_fe.states.project_state import ProjectState
+import httpx
 
 
 class Message(TypedDict):
@@ -134,6 +135,14 @@ class ChatState(rx.State):
             new_chat = await chat_client.create(new_chat_data, headers=headers)
             self.all_chats.insert(0, new_chat)
             self.current_conversation_id = new_chat["id"]
+        except httpx.HTTPStatusError as e:
+            try:
+                error_data = e.response.json()
+                self.error_message = (
+                    f"Failed to create conversation: {error_data.get('detail', str(e))}"
+                )
+            except Exception:
+                self.error_message = f"Failed to create conversation: {str(e)}"
         except Exception as e:
             self.error_message = f"Failed to create conversation: {str(e)}"
 
@@ -218,5 +227,13 @@ class ChatState(rx.State):
                 self.current_conversation_id, update_data, headers=headers
             )
             self.all_chats[chat_index] = updated_chat
+        except httpx.HTTPStatusError as e:
+            try:
+                error_data = e.response.json()
+                self.error_message = (
+                    f"Failed to save message: {error_data.get('detail', str(e))}"
+                )
+            except Exception:
+                self.error_message = f"Failed to save message: {str(e)}"
         except Exception as e:
             self.error_message = f"Failed to save message: {str(e)}"

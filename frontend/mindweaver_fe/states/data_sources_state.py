@@ -288,7 +288,29 @@ class DataSourcesState(rx.State):
 
             yield DataSourcesState.close_source_modal
         except httpx.HTTPStatusError as e:
-            self.error_message = f"Failed to save data source: {str(e.response.json())}"
+            # Extract validation errors from the response
+            try:
+                error_data = e.response.json()
+                if "detail" in error_data and isinstance(error_data["detail"], list):
+                    # Parse validation errors
+                    for error in error_data["detail"]:
+                        if "loc" in error and len(error["loc"]) > 1:
+                            field_name = error["loc"][-1]  # Get the field name
+                            error_msg = error.get("msg", "Invalid value")
+                            self.form_errors[field_name] = error_msg
+                    # If we have field errors, don't set general error message
+                    if not self.form_errors:
+                        self.error_message = (
+                            f"Failed to save data source: {str(error_data)}"
+                        )
+                else:
+                    self.error_message = (
+                        f"Failed to save data source: {str(error_data)}"
+                    )
+            except Exception:
+                self.error_message = f"Failed to save data source: {str(e)}"
+        except Exception as e:
+            self.error_message = f"Failed to save data source: {str(e)}"
 
     async def _handle_test_connection(self, form_data: dict):
         self.is_testing_connection = True
@@ -375,6 +397,14 @@ class DataSourcesState(rx.State):
             self.all_sources = [
                 s for s in self.all_sources if s["id"] != self.source_to_delete["id"]
             ]
+        except httpx.HTTPStatusError as e:
+            try:
+                error_data = e.response.json()
+                self.error_message = (
+                    f"Failed to delete data source: {error_data.get('detail', str(e))}"
+                )
+            except Exception:
+                self.error_message = f"Failed to delete data source: {str(e)}"
         except Exception as e:
             self.error_message = f"Failed to delete data source: {str(e)}"
 
