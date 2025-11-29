@@ -6,6 +6,7 @@ from mindweaver_fe.api_client import knowledge_db_client
 from mindweaver_fe.states.project_state import ProjectState
 from mindweaver_fe.api_client import ontology_client
 import httpx
+from ..config import settings
 
 DBType = Literal[
     "passage-graph",
@@ -34,6 +35,7 @@ class KnowledgeDBState(rx.State):
 
     all_databases: list[KnowledgeDB] = []
     ontologies: list[dict] = []
+    feature_flags: dict[str, bool] = {}
     show_db_modal: bool = False
     show_delete_dialog: bool = False
     is_editing: bool = False
@@ -72,9 +74,23 @@ class KnowledgeDBState(rx.State):
         self.error_message = ""
         try:
             headers = await self._get_headers()
+
+            # Fetch feature flags
+            async with httpx.AsyncClient(
+                base_url=settings.api_base_url, timeout=settings.api_timeout
+            ) as client:
+                response = await client.get("/feature-flags")
+                if response.status_code == 200:
+                    self.feature_flags = response.json()
+
             databases = await knowledge_db_client.list_all(headers=headers)
             self.all_databases = databases
-            self.ontologies = await ontology_client.list_all(headers=headers)
+
+            # Only fetch ontologies if the feature is enabled
+            if self.feature_flags.get("experimental_ontology", False):
+                self.ontologies = await ontology_client.list_all(headers=headers)
+            else:
+                self.ontologies = []
         except Exception as e:
             self.error_message = f"Failed to load databases: {str(e)}"
         finally:
@@ -96,12 +112,16 @@ class KnowledgeDBState(rx.State):
     @rx.var
     def modal_db_types_with_labels(self) -> list[tuple[str, str]]:
         """Returns a list of (value, label) tuples for the modal dropdown."""
-        return [
+        types = [
             ("passage-graph", "Passage Graph"),
             ("tree-graph", "Tree Graph"),
-            ("knowledge-graph", "Knowledge Graph"),
             ("textual-knowledge-graph", "Textual Knowledge Graph"),
         ]
+
+        if self.feature_flags.get("experimental_ontology", False):
+            types.append(("knowledge-graph", "Knowledge Graph"))
+
+        return types
 
     @rx.var
     def filtered_databases(self) -> list[KnowledgeDB]:
@@ -283,6 +303,7 @@ class KnowledgeDBState(rx.State):
             "created": db.get("created", ""),
             "modified": db.get("modified", ""),
             "entry_count": db.get("entry_count", 0),
+            "ontology_id": db.get("ontology_id"),
         }
         self.db_to_delete = typed_db
         self.show_delete_dialog = True

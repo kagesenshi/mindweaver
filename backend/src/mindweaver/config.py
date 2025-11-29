@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     experimental_lakehouse_storage: bool = False
     experimental_ingestion: bool = False
     experimental_chat: bool = False
+    experimental_ontology: bool = False
 
     model_config = SettingsConfigDict(
         env_file=".env", env_prefix="mindweaver_", extra="allow"

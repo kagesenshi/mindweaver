@@ -74,7 +74,7 @@ class BaseState(rx.State):
                     "Lakehouse Storage": "experimental_lakehouse_storage",
                     "Ingestion": "experimental_ingestion",
                     "Knowledge DB": "experimental_knowledge_db",
-                    "Ontology": "experimental_knowledge_db",
+                    "Ontology": "experimental_ontology",
                     "AI Agents": "experimental_ai_agent",
                     "Chat": "experimental_chat",
                 }

@@ -92,7 +92,6 @@ class APIClient:
         """
         client = await self._get_client()
         response = await client.post(endpoint, json=data, headers=headers)
-        print(response.text)
         response.raise_for_status()
         result = response.json()
         return result.get("record", {})

@@ -29,6 +29,7 @@ async def feature_flags():
         "experimental_lakehouse_storage": settings.experimental_lakehouse_storage,
         "experimental_ingestion": settings.experimental_ingestion,
         "experimental_chat": settings.experimental_chat,
+        "experimental_ontology": settings.experimental_ontology,
     }
 
 
@@ -38,6 +39,7 @@ if settings.experimental_data_source:
     app.include_router(ds_router, prefix="/api/v1")
 if settings.experimental_knowledge_db:
     app.include_router(kdb_router, prefix="/api/v1")
+if settings.experimental_ontology:
     app.include_router(ontology_router, prefix="/api/v1")
 if settings.experimental_ai_agent:
     app.include_router(agent_router, prefix="/api/v1")

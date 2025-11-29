@@ -31,12 +31,22 @@ async def test_load_databases(mock_knowledge_db_client, mock_project_state):
     mock_ontology_client = AsyncMock()
     mock_ontology_client.list_all = AsyncMock(return_value=[])
 
+    # Mock httpx client for feature flags
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {"experimental_ontology": True}
+
+    mock_httpx_client = AsyncMock()
+    mock_httpx_client.__aenter__.return_value.get.return_value = mock_response
+
     with patch(
         "mindweaver_fe.states.knowledge_db_state.knowledge_db_client",
         mock_knowledge_db_client,
     ), patch(
         "mindweaver_fe.states.knowledge_db_state.ontology_client",
         mock_ontology_client,
+    ), patch(
+        "httpx.AsyncClient", return_value=mock_httpx_client
     ):
         await state.load_databases()
 
@@ -72,6 +82,7 @@ def test_open_edit_modal():
         "created": "",
         "modified": "",
         "entry_count": 10,
+        "ontology_id": None,
     }
 
     state.open_edit_modal(db)
@@ -190,6 +201,7 @@ async def test_confirm_delete(mock_knowledge_db_client, mock_project_state):
         "created": "",
         "modified": "",
         "entry_count": 0,
+        "ontology_id": None,
     }
     state.all_databases = [db_to_delete]
     state.open_delete_dialog(db_to_delete)
