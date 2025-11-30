@@ -13,14 +13,32 @@ class ProjectState(BaseState):
     new_project_name: str = ""
     new_project_description: str = ""
 
+    # Cookie to persist the selected project ID
+    current_project_id_cookie: str = rx.Cookie(name="current_project_id")
+
+    @rx.var
+    def current_project_id(self) -> Optional[str]:
+        """Get the current project ID."""
+        if self.current_project:
+            return str(self.current_project.get("id"))
+        return None
+
     async def load_projects(self):
         """Load all projects."""
         self.projects = await project_client.list_all()
+
+        # Restore current project from cookie if available and not already set
+        if not self.current_project and self.current_project_id_cookie:
+            for project in self.projects:
+                if str(project.get("id")) == self.current_project_id_cookie:
+                    self.current_project = project
+                    break
 
     @rx.event
     async def select_project(self, project: Dict[str, Any]):
         """Select a project."""
         self.current_project = project
+        self.current_project_id_cookie = str(project.get("id"))
         # force page reload
         yield rx.redirect(f"/overview")
 
