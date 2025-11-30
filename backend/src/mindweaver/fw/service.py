@@ -14,7 +14,7 @@ import jinja2 as j2
 from .exc import NotFoundError
 from .util import camel_to_snake
 import graphlib
-
+import inspect
 
 T = TypeVar("T", bound=NamedBase)
 S = TypeVar("S", bound=SQLModel)
@@ -65,6 +65,11 @@ def redefine_model(name, Model: type[BaseModel], *, exclude=None) -> type[BaseMo
 
 def before_create(func=None, *, before=None, after=None):
     def decorator(f):
+        sig = inspect.signature(f)
+        if len(sig.parameters) != 2:
+            raise TypeError(
+                f"before_create hook must accept 2 arguments (self, data), got {len(sig.parameters)}"
+            )
         f._is_before_create_hook = True
         f._hook_before = [before] if isinstance(before, str) else (before or [])
         f._hook_after = [after] if isinstance(after, str) else (after or [])
@@ -77,6 +82,11 @@ def before_create(func=None, *, before=None, after=None):
 
 def after_create(func=None, *, before=None, after=None):
     def decorator(f):
+        sig = inspect.signature(f)
+        if len(sig.parameters) != 2:
+            raise TypeError(
+                f"after_create hook must accept 2 arguments (self, model), got {len(sig.parameters)}"
+            )
         f._is_after_create_hook = True
         f._hook_before = [before] if isinstance(before, str) else (before or [])
         f._hook_after = [after] if isinstance(after, str) else (after or [])
@@ -89,6 +99,11 @@ def after_create(func=None, *, before=None, after=None):
 
 def before_update(func=None, *, before=None, after=None):
     def decorator(f):
+        sig = inspect.signature(f)
+        if len(sig.parameters) != 3:
+            raise TypeError(
+                f"before_update hook must accept 3 arguments (self, model, data), got {len(sig.parameters)}"
+            )
         f._is_before_update_hook = True
         f._hook_before = [before] if isinstance(before, str) else (before or [])
         f._hook_after = [after] if isinstance(after, str) else (after or [])
@@ -101,6 +116,11 @@ def before_update(func=None, *, before=None, after=None):
 
 def after_update(func=None, *, before=None, after=None):
     def decorator(f):
+        sig = inspect.signature(f)
+        if len(sig.parameters) != 2:
+            raise TypeError(
+                f"after_update hook must accept 2 arguments (self, model), got {len(sig.parameters)}"
+            )
         f._is_after_update_hook = True
         f._hook_before = [before] if isinstance(before, str) else (before or [])
         f._hook_after = [after] if isinstance(after, str) else (after or [])
@@ -113,6 +133,11 @@ def after_update(func=None, *, before=None, after=None):
 
 def before_delete(func=None, *, before=None, after=None):
     def decorator(f):
+        sig = inspect.signature(f)
+        if len(sig.parameters) != 2:
+            raise TypeError(
+                f"before_delete hook must accept 2 arguments (self, model), got {len(sig.parameters)}"
+            )
         f._is_before_delete_hook = True
         f._hook_before = [before] if isinstance(before, str) else (before or [])
         f._hook_after = [after] if isinstance(after, str) else (after or [])
@@ -125,6 +150,11 @@ def before_delete(func=None, *, before=None, after=None):
 
 def after_delete(func=None, *, before=None, after=None):
     def decorator(f):
+        sig = inspect.signature(f)
+        if len(sig.parameters) != 2:
+            raise TypeError(
+                f"after_delete hook must accept 2 arguments (self, model), got {len(sig.parameters)}"
+            )
         f._is_after_delete_hook = True
         f._hook_before = [before] if isinstance(before, str) else (before or [])
         f._hook_after = [after] if isinstance(after, str) else (after or [])
