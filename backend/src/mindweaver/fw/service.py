@@ -87,6 +87,54 @@ def after_create(func=None, *, before=None, after=None):
     return decorator
 
 
+def before_update(func=None, *, before=None, after=None):
+    def decorator(f):
+        f._is_before_update_hook = True
+        f._hook_before = [before] if isinstance(before, str) else (before or [])
+        f._hook_after = [after] if isinstance(after, str) else (after or [])
+        return f
+
+    if func:
+        return decorator(func)
+    return decorator
+
+
+def after_update(func=None, *, before=None, after=None):
+    def decorator(f):
+        f._is_after_update_hook = True
+        f._hook_before = [before] if isinstance(before, str) else (before or [])
+        f._hook_after = [after] if isinstance(after, str) else (after or [])
+        return f
+
+    if func:
+        return decorator(func)
+    return decorator
+
+
+def before_delete(func=None, *, before=None, after=None):
+    def decorator(f):
+        f._is_before_delete_hook = True
+        f._hook_before = [before] if isinstance(before, str) else (before or [])
+        f._hook_after = [after] if isinstance(after, str) else (after or [])
+        return f
+
+    if func:
+        return decorator(func)
+    return decorator
+
+
+def after_delete(func=None, *, before=None, after=None):
+    def decorator(f):
+        f._is_after_delete_hook = True
+        f._hook_before = [before] if isinstance(before, str) else (before or [])
+        f._hook_after = [after] if isinstance(after, str) else (after or [])
+        return f
+
+    if func:
+        return decorator(func)
+    return decorator
+
+
 def _sort_hooks(hooks: list[Any]) -> list[Any]:
     if not hooks:
         return []
@@ -117,16 +165,28 @@ def _sort_hooks(hooks: list[Any]) -> list[Any]:
 class Service(Generic[S], abc.ABC):
     _before_create_hooks: list[Any] = []
     _after_create_hooks: list[Any] = []
+    _before_update_hooks: list[Any] = []
+    _after_update_hooks: list[Any] = []
+    _before_delete_hooks: list[Any] = []
+    _after_delete_hooks: list[Any] = []
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
         cls._before_create_hooks = []
         cls._after_create_hooks = []
+        cls._before_update_hooks = []
+        cls._after_update_hooks = []
+        cls._before_delete_hooks = []
+        cls._after_delete_hooks = []
 
         # Collect hooks from MRO in reverse order (base to child)
         # Use a dict to avoid duplicates and respect definition order within class
-        collected_before = {}
-        collected_after = {}
+        collected_before_create = {}
+        collected_after_create = {}
+        collected_before_update = {}
+        collected_after_update = {}
+        collected_before_delete = {}
+        collected_after_delete = {}
 
         for base in reversed(cls.mro()):
             if not issubclass(base, Service):
@@ -134,12 +194,24 @@ class Service(Generic[S], abc.ABC):
 
             for attr_name, attr in base.__dict__.items():
                 if getattr(attr, "_is_before_create_hook", False):
-                    collected_before[attr_name] = attr
+                    collected_before_create[attr_name] = attr
                 if getattr(attr, "_is_after_create_hook", False):
-                    collected_after[attr_name] = attr
+                    collected_after_create[attr_name] = attr
+                if getattr(attr, "_is_before_update_hook", False):
+                    collected_before_update[attr_name] = attr
+                if getattr(attr, "_is_after_update_hook", False):
+                    collected_after_update[attr_name] = attr
+                if getattr(attr, "_is_before_delete_hook", False):
+                    collected_before_delete[attr_name] = attr
+                if getattr(attr, "_is_after_delete_hook", False):
+                    collected_after_delete[attr_name] = attr
 
-        cls._before_create_hooks = _sort_hooks(list(collected_before.values()))
-        cls._after_create_hooks = _sort_hooks(list(collected_after.values()))
+        cls._before_create_hooks = _sort_hooks(list(collected_before_create.values()))
+        cls._after_create_hooks = _sort_hooks(list(collected_after_create.values()))
+        cls._before_update_hooks = _sort_hooks(list(collected_before_update.values()))
+        cls._after_update_hooks = _sort_hooks(list(collected_after_update.values()))
+        cls._before_delete_hooks = _sort_hooks(list(collected_before_delete.values()))
+        cls._after_delete_hooks = _sort_hooks(list(collected_after_delete.values()))
 
     @classmethod
     @abc.abstractmethod
@@ -304,6 +376,11 @@ class Service(Generic[S], abc.ABC):
 
         data = await self.validate_data(data)
         model = await self.get(model_id)  # get() already filters by project_id
+
+        # Execute before_update hooks
+        for hook in self._before_update_hooks:
+            await hook(self, model, data)
+
         model_class = self.model_class()
         newdata = model.model_dump(exclude=self.noninheritable_fields())
         newdata.update(data.model_dump(exclude_unset=True))
@@ -311,12 +388,26 @@ class Service(Generic[S], abc.ABC):
         model.sqlmodel_update(newdata)
         await self.session.flush()
         await self.session.refresh(model)
+
+        # Execute after_update hooks
+        for hook in self._after_update_hooks:
+            await hook(self, model)
+
         return model
 
     async def delete(self, model_id: int):
         model = await self.get(model_id)  # get() already filters by project_id
+
+        # Execute before_delete hooks
+        for hook in self._before_delete_hooks:
+            await hook(self, model)
+
         await self.session.delete(model)
         await self.session.flush()
+
+        # Execute after_delete hooks
+        for hook in self._after_delete_hooks:
+            await hook(self, model)
 
     async def search(self, *, offset=0, limit=10, sa_filters=None, **filters):
         model_class = self.__class__.model_class()

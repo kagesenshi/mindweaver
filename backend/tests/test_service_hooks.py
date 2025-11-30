@@ -1,6 +1,14 @@
 import pytest
 from unittest.mock import MagicMock, AsyncMock
-from mindweaver.fw.service import Service, before_create, after_create
+from mindweaver.fw.service import (
+    Service,
+    before_create,
+    after_create,
+    before_update,
+    after_update,
+    before_delete,
+    after_delete,
+)
 from mindweaver.fw.model import NamedBase
 
 
@@ -138,3 +146,68 @@ async def test_inheritance_order():
 
     hooks = [h.__name__ for h in SubOrderService._before_create_hooks]
     assert hooks == ["hook_base", "hook_sub"]
+
+
+class UpdateDeleteService(Service[MockModel]):
+    @classmethod
+    def model_class(cls):
+        return MockModel
+
+    @before_update
+    async def hook_before_update(self, model, data):
+        data.description = "modified_before_update"
+
+    @after_update
+    async def hook_after_update(self, model):
+        model.title = "modified_after_update"
+
+    @before_delete
+    async def hook_before_delete(self, model):
+        # We can test side effects here, e.g. setting a flag on the model object in memory
+        model.description = "deleted"
+
+    @after_delete
+    async def hook_after_delete(self, model):
+        # Verify that we can still access the model
+        assert model.description == "deleted"
+
+
+@pytest.mark.asyncio
+async def test_update_delete_hooks():
+    mock_session = AsyncMock()
+    mock_request = MagicMock()
+
+    service = UpdateDeleteService(mock_request, mock_session)
+
+    # Mock existing model
+    existing_model = MockModel(id=1, name="existing", title="existing")
+
+    # Mock session behavior
+    mock_result = MagicMock()
+    mock_result.first.return_value = [existing_model]
+    mock_session.execute = AsyncMock(return_value=mock_result)
+
+    mock_session.get = AsyncMock(return_value=existing_model)
+    mock_session.flush = AsyncMock()
+    mock_session.refresh = AsyncMock()
+    mock_session.delete = AsyncMock()
+
+    # Test Update
+    update_data = MockModel(name="updated")
+    updated_model = await service.update(1, update_data)
+
+    # Verify before_update hook
+    # The data object passed to update should have been modified
+    assert update_data.description == "modified_before_update"
+
+    # Verify after_update hook
+    assert updated_model.title == "modified_after_update"
+
+    # Test Delete
+    await service.delete(1)
+
+    # Verify before_delete hook (via side effect on model)
+    assert existing_model.description == "deleted"
+
+    # Verify delete was called
+    mock_session.delete.assert_called_with(existing_model)
