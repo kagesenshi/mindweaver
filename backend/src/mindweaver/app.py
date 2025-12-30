@@ -12,7 +12,17 @@ from .service.ingestion import (
 )
 from .service.project import router as project_router
 
+from fastapi.middleware.cors import CORSMiddleware
+
 app = fastapi.FastAPI(title="Mindweaver")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/health")

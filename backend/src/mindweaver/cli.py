@@ -17,11 +17,18 @@ from .config import logger
 
 
 class RunArgs(argparse.Namespace):
-    pass
+    port: int
+    host: str
 
 
 def handle_run(args: RunArgs):
-    uvicorn.run("mindweaver.app:app", reload=True, reload_delay=5, port=5000)
+    uvicorn.run(
+        "mindweaver.app:app",
+        reload=True,
+        reload_delay=5,
+        host=args.host,
+        port=args.port,
+    )
 
 
 class MigrateArgs(argparse.Namespace):
@@ -163,6 +170,8 @@ def get_parser() -> argparse.ArgumentParser:
 
     # run
     run_cmd = subparsers.add_parser("run", help="Run the application")
+    run_cmd.add_argument("-p", "--port", dest="port", type=int, default=8000)
+    run_cmd.add_argument("-b", "--bind", dest="host", type=str, default="127.0.0.1")
     run_cmd.set_defaults(handler=handle_run)
 
     # db

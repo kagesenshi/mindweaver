@@ -1,0 +1,217 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import '../providers/knowledge_db_provider.dart';
+import '../providers/ontology_provider.dart';
+import '../models/knowledge_db.dart';
+
+class KnowledgeDbPage extends ConsumerWidget {
+  const KnowledgeDbPage({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final dbsAsync = ref.watch(knowledgeDBListProvider);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Knowledge Databases'),
+        actions: [
+          IconButton(
+            onPressed: () =>
+                ref.read(knowledgeDBListProvider.notifier).loadDBs(),
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
+      ),
+      body: dbsAsync.when(
+        data: (dbs) => _KnowledgeDBList(dbs: dbs),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, stack) => Center(child: Text('Error: $err')),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showCreateDBDialog(context, ref),
+        label: const Text('New Database'),
+        icon: const Icon(Icons.add),
+      ),
+    );
+  }
+
+  void _showCreateDBDialog(BuildContext context, WidgetRef ref) {
+    final nameController = TextEditingController();
+    final titleController = TextEditingController();
+    final descController = TextEditingController();
+    String selectedType = 'passage-graph';
+    int? selectedOntologyId;
+
+    final ontologiesAsync = ref.read(ontologyListProvider);
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Create Knowledge Database'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'Name (ID)'),
+                ),
+                TextField(
+                  controller: titleController,
+                  decoration: const InputDecoration(labelText: 'Title'),
+                ),
+                TextField(
+                  controller: descController,
+                  decoration: const InputDecoration(labelText: 'Description'),
+                ),
+                const SizedBox(height: 20),
+                DropdownButtonFormField<String>(
+                  value: selectedType,
+                  decoration: const InputDecoration(labelText: 'Type'),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'passage-graph',
+                      child: Text('Passage Graph'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'tree-graph',
+                      child: Text('Tree Graph'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'knowledge-graph',
+                      child: Text('Knowledge Graph'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'textual-knowledge-graph',
+                      child: Text('Textual Knowledge Graph'),
+                    ),
+                  ],
+                  onChanged: (val) => setState(() => selectedType = val!),
+                ),
+                const SizedBox(height: 10),
+                ontologiesAsync.when(
+                  data: (ontologies) => DropdownButtonFormField<int?>(
+                    value: selectedOntologyId,
+                    decoration: const InputDecoration(
+                      labelText: 'Ontology (Optional)',
+                    ),
+                    items: [
+                      const DropdownMenuItem(value: null, child: Text('None')),
+                      ...ontologies.map(
+                        (o) =>
+                            DropdownMenuItem(value: o.id, child: Text(o.title)),
+                      ),
+                    ],
+                    onChanged: (val) =>
+                        setState(() => selectedOntologyId = val),
+                  ),
+                  loading: () => const LinearProgressIndicator(),
+                  error: (err, _) => Text('Error loading ontologies: $err'),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                try {
+                  final newDb = KnowledgeDB(
+                    name: nameController.text,
+                    title: titleController.text,
+                    description: descController.text,
+                    type: selectedType,
+                    ontology_id: selectedOntologyId,
+                    parameters: {},
+                  );
+                  await ref
+                      .read(knowledgeDBListProvider.notifier)
+                      .createDB(newDb);
+                  if (context.mounted) Navigator.pop(context);
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error creating database: $e')),
+                    );
+                  }
+                }
+              },
+              child: const Text('Create'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _KnowledgeDBList extends StatelessWidget {
+  final List<KnowledgeDB> dbs;
+
+  const _KnowledgeDBList({required this.dbs});
+
+  @override
+  Widget build(BuildContext context) {
+    if (dbs.isEmpty) {
+      return const Center(child: Text('No knowledge databases found.'));
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(20),
+      itemCount: dbs.length,
+      itemBuilder: (context, index) {
+        final db = dbs[index];
+        return Card(
+          margin: const EdgeInsets.only(bottom: 15),
+          child: ListTile(
+            leading: const FaIcon(
+              FontAwesomeIcons.database,
+              color: Colors.blue,
+            ),
+            title: Text(db.title),
+            subtitle: Text('${db.type} • ${db.name}'),
+            trailing: IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red),
+              onPressed: () => _confirmDelete(context, db),
+            ),
+            onTap: () {
+              // TODO: Navigate to DB details/management
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  void _confirmDelete(BuildContext context, KnowledgeDB db) {
+    showDialog(
+      context: context,
+      builder: (context) => Consumer(
+        builder: (context, ref, _) => AlertDialog(
+          title: const Text('Delete Database'),
+          content: Text('Are you sure you want to delete "${db.title}"?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                await ref
+                    .read(knowledgeDBListProvider.notifier)
+                    .deleteDB(db.id!);
+                if (context.mounted) Navigator.pop(context);
+              },
+              child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

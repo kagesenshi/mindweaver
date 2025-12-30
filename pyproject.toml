@@ -1,6 +1,5 @@
 
 [tool.uv.workspace]
 members = [
-    "frontend",
     "backend"
 ]
