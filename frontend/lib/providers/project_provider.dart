@@ -34,8 +34,10 @@ class ProjectListNotifier extends StateNotifier<AsyncValue<List<Project>>> {
         '/api/v1/projects',
         (json) => Project.fromJson(json as Map<String, dynamic>),
       );
+      if (!mounted) return;
       state = AsyncValue.data(response);
     } catch (e, st) {
+      if (!mounted) return;
       state = AsyncValue.error(e, st);
     }
   }

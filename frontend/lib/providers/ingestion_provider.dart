@@ -17,8 +17,10 @@ class IngestionListNotifier extends StateNotifier<AsyncValue<List<Ingestion>>> {
         '/api/v1/ingestions',
         (json) => Ingestion.fromJson(json as Map<String, dynamic>),
       );
+      if (!mounted) return;
       state = AsyncValue.data(response);
     } catch (e, st) {
+      if (!mounted) return;
       state = AsyncValue.error(e, st);
     }
   }

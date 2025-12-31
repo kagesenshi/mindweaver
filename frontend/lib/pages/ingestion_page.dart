@@ -46,128 +46,139 @@ class IngestionPage extends ConsumerWidget {
     int? selectedSourceId;
     int? selectedStorageId;
 
-    final sourcesAsync = ref.read(dataSourceListProvider);
-    final storagesAsync = ref.read(lakehouseStorageListProvider);
-
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('New Ingestion Job'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Name (ID)'),
-                ),
-                TextField(
-                  controller: titleController,
-                  decoration: const InputDecoration(labelText: 'Title'),
-                ),
-                const SizedBox(height: 20),
-                sourcesAsync.when(
-                  data: (sources) => DropdownButtonFormField<int?>(
-                    value: selectedSourceId,
-                    decoration: const InputDecoration(labelText: 'Data Source'),
-                    items: sources
-                        .map(
-                          (s) => DropdownMenuItem(
-                            value: s.id,
-                            child: Text(s.title),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (val) => setState(() => selectedSourceId = val),
-                  ),
-                  loading: () => const CircularProgressIndicator(),
-                  error: (err, _) => Text('Error: $err'),
-                ),
-                const SizedBox(height: 10),
-                storagesAsync.when(
-                  data: (storages) => DropdownButtonFormField<int?>(
-                    value: selectedStorageId,
-                    decoration: const InputDecoration(
-                      labelText: 'Lakehouse Storage',
+        builder: (context, setState) => Consumer(
+          builder: (context, ref, _) {
+            final sourcesAsync = ref.watch(dataSourceListProvider);
+            final storagesAsync = ref.watch(lakehouseStorageListProvider);
+            return AlertDialog(
+              title: const Text('New Ingestion Job'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: nameController,
+                      decoration: const InputDecoration(labelText: 'Name (ID)'),
                     ),
-                    items: storages
-                        .map(
-                          (s) => DropdownMenuItem(
-                            value: s.id,
-                            child: Text(s.title),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (val) => setState(() => selectedStorageId = val),
-                  ),
-                  loading: () => const CircularProgressIndicator(),
-                  error: (err, _) => Text('Error: $err'),
-                ),
-                TextField(
-                  controller: pathController,
-                  decoration: const InputDecoration(labelText: 'Storage Path'),
-                ),
-                TextField(
-                  controller: cronController,
-                  decoration: const InputDecoration(labelText: 'Cron Schedule'),
-                ),
-                DropdownButtonFormField<String>(
-                  value: ingestionType,
-                  decoration: const InputDecoration(
-                    labelText: 'Ingestion Type',
-                  ),
-                  items: const [
-                    DropdownMenuItem(
-                      value: 'full_refresh',
-                      child: Text('Full Refresh'),
+                    TextField(
+                      controller: titleController,
+                      decoration: const InputDecoration(labelText: 'Title'),
                     ),
-                    DropdownMenuItem(
-                      value: 'incremental',
-                      child: Text('Incremental'),
+                    const SizedBox(height: 20),
+                    sourcesAsync.when(
+                      data: (sources) => DropdownButtonFormField<int?>(
+                        value: selectedSourceId,
+                        decoration: const InputDecoration(
+                          labelText: 'Data Source',
+                        ),
+                        items: sources
+                            .map(
+                              (s) => DropdownMenuItem(
+                                value: s.id,
+                                child: Text(s.title),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (val) =>
+                            setState(() => selectedSourceId = val),
+                      ),
+                      loading: () => const CircularProgressIndicator(),
+                      error: (err, _) => Text('Error: $err'),
+                    ),
+                    const SizedBox(height: 10),
+                    storagesAsync.when(
+                      data: (storages) => DropdownButtonFormField<int?>(
+                        value: selectedStorageId,
+                        decoration: const InputDecoration(
+                          labelText: 'Lakehouse Storage',
+                        ),
+                        items: storages
+                            .map(
+                              (s) => DropdownMenuItem(
+                                value: s.id,
+                                child: Text(s.title),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (val) =>
+                            setState(() => selectedStorageId = val),
+                      ),
+                      loading: () => const CircularProgressIndicator(),
+                      error: (err, _) => Text('Error: $err'),
+                    ),
+                    TextField(
+                      controller: pathController,
+                      decoration: const InputDecoration(
+                        labelText: 'Storage Path',
+                      ),
+                    ),
+                    TextField(
+                      controller: cronController,
+                      decoration: const InputDecoration(
+                        labelText: 'Cron Schedule',
+                      ),
+                    ),
+                    DropdownButtonFormField<String>(
+                      value: ingestionType,
+                      decoration: const InputDecoration(
+                        labelText: 'Ingestion Type',
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'full_refresh',
+                          child: Text('Full Refresh'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'incremental',
+                          child: Text('Incremental'),
+                        ),
+                      ],
+                      onChanged: (val) => setState(() => ingestionType = val!),
                     ),
                   ],
-                  onChanged: (val) => setState(() => ingestionType = val!),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (selectedSourceId == null || selectedStorageId == null)
+                      return;
+                    final ingestion = Ingestion(
+                      name: nameController.text,
+                      title: titleController.text,
+                      data_source_id: selectedSourceId!,
+                      lakehouse_storage_id: selectedStorageId!,
+                      storage_path: pathController.text,
+                      cron_schedule: cronController.text,
+                      ingestion_type: ingestionType,
+                      config: {},
+                    );
+                    try {
+                      await ref
+                          .read(ingestionListProvider.notifier)
+                          .createIngestion(ingestion);
+                      ref.invalidate(ingestionListProvider);
+                      if (context.mounted) Navigator.pop(context);
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+                      }
+                    }
+                  },
+                  child: const Text('Create'),
                 ),
               ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (selectedSourceId == null || selectedStorageId == null)
-                  return;
-                final ingestion = Ingestion(
-                  name: nameController.text,
-                  title: titleController.text,
-                  data_source_id: selectedSourceId!,
-                  lakehouse_storage_id: selectedStorageId!,
-                  storage_path: pathController.text,
-                  cron_schedule: cronController.text,
-                  ingestion_type: ingestionType,
-                  config: {},
-                );
-                try {
-                  await ref
-                      .read(ingestionListProvider.notifier)
-                      .createIngestion(ingestion);
-                  ref.invalidate(ingestionListProvider);
-                  if (context.mounted) Navigator.pop(context);
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(SnackBar(content: Text('Error: $e')));
-                  }
-                }
-              },
-              child: const Text('Create'),
-            ),
-          ],
+            );
+          },
         ),
       ),
     );

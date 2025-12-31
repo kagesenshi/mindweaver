@@ -17,8 +17,10 @@ class OntologyListNotifier extends StateNotifier<AsyncValue<List<Ontology>>> {
         '/api/v1/ontologies',
         (json) => Ontology.fromJson(json as Map<String, dynamic>),
       );
+      if (!mounted) return;
       state = AsyncValue.data(response);
     } catch (e, st) {
+      if (!mounted) return;
       state = AsyncValue.error(e, st);
     }
   }

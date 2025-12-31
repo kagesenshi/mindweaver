@@ -18,8 +18,10 @@ class DataSourceListNotifier
         '/api/v1/data_sources',
         (json) => DataSource.fromJson(json as Map<String, dynamic>),
       );
+      if (!mounted) return;
       state = AsyncValue.data(response);
     } catch (e, st) {
+      if (!mounted) return;
       state = AsyncValue.error(e, st);
     }
   }

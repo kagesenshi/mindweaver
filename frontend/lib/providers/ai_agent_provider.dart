@@ -17,8 +17,10 @@ class AIAgentListNotifier extends StateNotifier<AsyncValue<List<AIAgent>>> {
         '/api/v1/ai_agents',
         (json) => AIAgent.fromJson(json as Map<String, dynamic>),
       );
+      if (!mounted) return;
       state = AsyncValue.data(response);
     } catch (e, st) {
+      if (!mounted) return;
       state = AsyncValue.error(e, st);
     }
   }

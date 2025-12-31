@@ -18,8 +18,10 @@ class KnowledgeDBListNotifier
         '/api/v1/knowledge_dbs',
         (json) => KnowledgeDB.fromJson(json as Map<String, dynamic>),
       );
+      if (!mounted) return;
       state = AsyncValue.data(response);
     } catch (e, st) {
+      if (!mounted) return;
       state = AsyncValue.error(e, st);
     }
   }

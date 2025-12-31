@@ -44,114 +44,119 @@ class AiAgentsPage extends ConsumerWidget {
     double selectedTemp = 0.7;
     List<String> selectedDBIds = [];
 
-    final dbsAsync = ref.read(knowledgeDBListProvider);
-
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('Create AI Agent'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Name (ID)'),
-                ),
-                TextField(
-                  controller: titleController,
-                  decoration: const InputDecoration(labelText: 'Title'),
-                ),
-                DropdownButtonFormField<String>(
-                  value: selectedModel,
-                  decoration: const InputDecoration(labelText: 'Model'),
-                  items: const [
-                    DropdownMenuItem(
-                      value: 'gpt-4-turbo',
-                      child: Text('GPT-4 Turbo'),
+        builder: (context, setState) => Consumer(
+          builder: (context, ref, _) {
+            final dbsAsync = ref.watch(knowledgeDBListProvider);
+            return AlertDialog(
+              title: const Text('Create AI Agent'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: nameController,
+                      decoration: const InputDecoration(labelText: 'Name (ID)'),
                     ),
-                    DropdownMenuItem(
-                      value: 'gpt-3.5-turbo',
-                      child: Text('GPT-3.5 Turbo'),
+                    TextField(
+                      controller: titleController,
+                      decoration: const InputDecoration(labelText: 'Title'),
+                    ),
+                    DropdownButtonFormField<String>(
+                      value: selectedModel,
+                      decoration: const InputDecoration(labelText: 'Model'),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'gpt-4-turbo',
+                          child: Text('GPT-4 Turbo'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'gpt-3.5-turbo',
+                          child: Text('GPT-3.5 Turbo'),
+                        ),
+                      ],
+                      onChanged: (val) => setState(() => selectedModel = val!),
+                    ),
+                    const SizedBox(height: 20),
+                    Text('Temperature: ${selectedTemp.toStringAsFixed(1)}'),
+                    Slider(
+                      value: selectedTemp,
+                      onChanged: (val) => setState(() => selectedTemp = val),
+                    ),
+                    TextField(
+                      controller: systemPromptController,
+                      decoration: const InputDecoration(
+                        labelText: 'System Prompt',
+                      ),
+                      maxLines: 5,
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      'Knowledge Databases',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    dbsAsync.when(
+                      data: (dbs) => Wrap(
+                        spacing: 8,
+                        children: dbs.map((db) {
+                          final isSelected = selectedDBIds.contains(db.uuid);
+                          return FilterChip(
+                            label: Text(db.title),
+                            selected: isSelected,
+                            onSelected: (selected) {
+                              setState(() {
+                                if (selected) {
+                                  selectedDBIds.add(db.uuid!);
+                                } else {
+                                  selectedDBIds.remove(db.uuid!);
+                                }
+                              });
+                            },
+                          );
+                        }).toList(),
+                      ),
+                      loading: () => const LinearProgressIndicator(),
+                      error: (err, _) => Text('Error loading databases: $err'),
                     ),
                   ],
-                  onChanged: (val) => setState(() => selectedModel = val!),
                 ),
-                const SizedBox(height: 20),
-                Text('Temperature: ${selectedTemp.toStringAsFixed(1)}'),
-                Slider(
-                  value: selectedTemp,
-                  onChanged: (val) => setState(() => selectedTemp = val),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
                 ),
-                TextField(
-                  controller: systemPromptController,
-                  decoration: const InputDecoration(labelText: 'System Prompt'),
-                  maxLines: 5,
-                ),
-                const SizedBox(height: 20),
-                const Text(
-                  'Knowledge Databases',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                dbsAsync.when(
-                  data: (dbs) => Wrap(
-                    spacing: 8,
-                    children: dbs.map((db) {
-                      final isSelected = selectedDBIds.contains(db.uuid);
-                      return FilterChip(
-                        label: Text(db.title),
-                        selected: isSelected,
-                        onSelected: (selected) {
-                          setState(() {
-                            if (selected) {
-                              selectedDBIds.add(db.uuid!);
-                            } else {
-                              selectedDBIds.remove(db.uuid!);
-                            }
-                          });
-                        },
+                ElevatedButton(
+                  onPressed: () async {
+                    try {
+                      final newAgent = AIAgent(
+                        name: nameController.text,
+                        title: titleController.text,
+                        model: selectedModel,
+                        temperature: selectedTemp,
+                        system_prompt: systemPromptController.text,
+                        knowledge_db_ids: selectedDBIds,
                       );
-                    }).toList(),
-                  ),
-                  loading: () => const LinearProgressIndicator(),
-                  error: (err, _) => Text('Error loading databases: $err'),
+                      await ref
+                          .read(aiAgentListProvider.notifier)
+                          .createAgent(newAgent);
+                      ref.invalidate(aiAgentListProvider);
+                      if (context.mounted) Navigator.pop(context);
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Error creating agent: $e')),
+                        );
+                      }
+                    }
+                  },
+                  child: const Text('Create'),
                 ),
               ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                try {
-                  final newAgent = AIAgent(
-                    name: nameController.text,
-                    title: titleController.text,
-                    model: selectedModel,
-                    temperature: selectedTemp,
-                    system_prompt: systemPromptController.text,
-                    knowledge_db_ids: selectedDBIds,
-                  );
-                  await ref
-                      .read(aiAgentListProvider.notifier)
-                      .createAgent(newAgent);
-                  ref.invalidate(aiAgentListProvider);
-                  if (context.mounted) Navigator.pop(context);
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error creating agent: $e')),
-                    );
-                  }
-                }
-              },
-              child: const Text('Create'),
-            ),
-          ],
+            );
+          },
         ),
       ),
     );

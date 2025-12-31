@@ -43,108 +43,120 @@ class KnowledgeDbPage extends ConsumerWidget {
     String selectedType = 'passage-graph';
     int? selectedOntologyId;
 
-    final ontologiesAsync = ref.read(ontologyListProvider);
-
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('Create Knowledge Database'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Name (ID)'),
-                ),
-                TextField(
-                  controller: titleController,
-                  decoration: const InputDecoration(labelText: 'Title'),
-                ),
-                TextField(
-                  controller: descController,
-                  decoration: const InputDecoration(labelText: 'Description'),
-                ),
-                const SizedBox(height: 20),
-                DropdownButtonFormField<String>(
-                  value: selectedType,
-                  decoration: const InputDecoration(labelText: 'Type'),
-                  items: const [
-                    DropdownMenuItem(
-                      value: 'passage-graph',
-                      child: Text('Passage Graph'),
+        builder: (context, setState) => Consumer(
+          builder: (context, ref, _) {
+            final ontologiesAsync = ref.watch(ontologyListProvider);
+            return AlertDialog(
+              title: const Text('Create Knowledge Database'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: nameController,
+                      decoration: const InputDecoration(labelText: 'Name (ID)'),
                     ),
-                    DropdownMenuItem(
-                      value: 'tree-graph',
-                      child: Text('Tree Graph'),
+                    TextField(
+                      controller: titleController,
+                      decoration: const InputDecoration(labelText: 'Title'),
                     ),
-                    DropdownMenuItem(
-                      value: 'knowledge-graph',
-                      child: Text('Knowledge Graph'),
+                    TextField(
+                      controller: descController,
+                      decoration: const InputDecoration(
+                        labelText: 'Description',
+                      ),
                     ),
-                    DropdownMenuItem(
-                      value: 'textual-knowledge-graph',
-                      child: Text('Textual Knowledge Graph'),
+                    const SizedBox(height: 20),
+                    DropdownButtonFormField<String>(
+                      initialValue: selectedType,
+                      decoration: const InputDecoration(labelText: 'Type'),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'passage-graph',
+                          child: Text('Passage Graph'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'tree-graph',
+                          child: Text('Tree Graph'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'knowledge-graph',
+                          child: Text('Knowledge Graph'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'textual-knowledge-graph',
+                          child: Text('Textual Knowledge Graph'),
+                        ),
+                      ],
+                      onChanged: (val) => setState(() => selectedType = val!),
+                    ),
+                    const SizedBox(height: 10),
+                    ontologiesAsync.when(
+                      data: (ontologies) => DropdownButtonFormField<int?>(
+                        initialValue: selectedOntologyId,
+                        decoration: const InputDecoration(
+                          labelText: 'Ontology (Optional)',
+                        ),
+                        items: [
+                          const DropdownMenuItem(
+                            value: null,
+                            child: Text('None'),
+                          ),
+                          ...ontologies.map(
+                            (o) => DropdownMenuItem(
+                              value: o.id,
+                              child: Text(o.title),
+                            ),
+                          ),
+                        ],
+                        onChanged: (val) =>
+                            setState(() => selectedOntologyId = val),
+                      ),
+                      loading: () => const LinearProgressIndicator(),
+                      error: (err, _) => Text('Error loading ontologies: $err'),
                     ),
                   ],
-                  onChanged: (val) => setState(() => selectedType = val!),
                 ),
-                const SizedBox(height: 10),
-                ontologiesAsync.when(
-                  data: (ontologies) => DropdownButtonFormField<int?>(
-                    value: selectedOntologyId,
-                    decoration: const InputDecoration(
-                      labelText: 'Ontology (Optional)',
-                    ),
-                    items: [
-                      const DropdownMenuItem(value: null, child: Text('None')),
-                      ...ontologies.map(
-                        (o) =>
-                            DropdownMenuItem(value: o.id, child: Text(o.title)),
-                      ),
-                    ],
-                    onChanged: (val) =>
-                        setState(() => selectedOntologyId = val),
-                  ),
-                  loading: () => const LinearProgressIndicator(),
-                  error: (err, _) => Text('Error loading ontologies: $err'),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    try {
+                      final newDb = KnowledgeDB(
+                        name: nameController.text,
+                        title: titleController.text,
+                        description: descController.text,
+                        type: selectedType,
+                        ontology_id: selectedOntologyId,
+                        parameters: {},
+                      );
+                      await ref
+                          .read(knowledgeDBListProvider.notifier)
+                          .createDB(newDb);
+                      ref.invalidate(knowledgeDBListProvider);
+                      if (context.mounted) Navigator.pop(context);
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error creating database: $e'),
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  child: const Text('Create'),
                 ),
               ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                try {
-                  final newDb = KnowledgeDB(
-                    name: nameController.text,
-                    title: titleController.text,
-                    description: descController.text,
-                    type: selectedType,
-                    ontology_id: selectedOntologyId,
-                    parameters: {},
-                  );
-                  await ref
-                      .read(knowledgeDBListProvider.notifier)
-                      .createDB(newDb);
-                  ref.invalidate(knowledgeDBListProvider);
-                  if (context.mounted) Navigator.pop(context);
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error creating database: $e')),
-                    );
-                  }
-                }
-              },
-              child: const Text('Create'),
-            ),
-          ],
+            );
+          },
         ),
       ),
     );

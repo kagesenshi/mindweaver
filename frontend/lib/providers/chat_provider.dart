@@ -17,8 +17,10 @@ class ChatListNotifier extends StateNotifier<AsyncValue<List<Chat>>> {
         '/api/v1/chats',
         (json) => Chat.fromJson(json as Map<String, dynamic>),
       );
+      if (!mounted) return;
       state = AsyncValue.data(response);
     } catch (e, st) {
+      if (!mounted) return;
       state = AsyncValue.error(e, st);
     }
   }
@@ -90,6 +92,7 @@ class ActiveChatNotifier extends StateNotifier<Chat?> {
         {'messages': updatedMessages},
         (json) => Chat.fromJson(json as Map<String, dynamic>),
       );
+      if (!mounted) return;
       state = response.record;
     } catch (e) {
       // Handle error (maybe rollback)
