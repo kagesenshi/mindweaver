@@ -192,8 +192,8 @@ class _SidebarState extends State<_Sidebar> {
                         },
                       ),
                       _SidebarGroup(
-                        icon: FontAwesomeIcons.database,
-                        label: 'Data Management',
+                        icon: FontAwesomeIcons.networkWired,
+                        label: 'Connections',
                         currentPath: widget.currentPath,
                         items: [
                           _SidebarItem(

@@ -4,8 +4,8 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../providers/ingestion_provider.dart';
 import '../providers/data_source_provider.dart';
 import '../providers/lakehouse_storage_provider.dart';
+import '../providers/project_provider.dart';
 import '../models/ingestion.dart';
-
 import '../widgets/large_dialog.dart';
 
 class IngestionPage extends ConsumerWidget {
@@ -47,6 +47,7 @@ class IngestionPage extends ConsumerWidget {
     String ingestionType = 'full_refresh';
     int? selectedSourceId;
     int? selectedStorageId;
+    int? selectedProjectId = ref.read(currentProjectProvider)?.id;
 
     showDialog(
       context: context,
@@ -55,12 +56,84 @@ class IngestionPage extends ConsumerWidget {
           builder: (context, ref, _) {
             final sourcesAsync = ref.watch(dataSourceListProvider);
             final storagesAsync = ref.watch(lakehouseStorageListProvider);
+            final projectsAsync = ref.watch(projectListProvider);
             return LargeDialog(
               title: 'New Ingestion Job',
+              actions: [
+                OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 16,
+                    ),
+                  ),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (selectedSourceId == null || selectedStorageId == null) {
+                      return;
+                    }
+                    final ingestion = Ingestion(
+                      name: nameController.text,
+                      title: titleController.text,
+                      data_source_id: selectedSourceId!,
+                      lakehouse_storage_id: selectedStorageId!,
+                      storage_path: pathController.text,
+                      cron_schedule: cronController.text,
+                      ingestion_type: ingestionType,
+                      config: {},
+                      project_id: selectedProjectId,
+                    );
+                    try {
+                      await ref
+                          .read(ingestionListProvider.notifier)
+                          .createIngestion(ingestion);
+                      ref.invalidate(ingestionListProvider);
+                      if (context.mounted) Navigator.pop(context);
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+                      }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF646CFF),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 16,
+                    ),
+                  ),
+                  child: const Text('Create'),
+                ),
+              ],
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  projectsAsync.when(
+                    data: (projects) => DropdownButtonFormField<int>(
+                      value: selectedProjectId,
+                      decoration: const InputDecoration(labelText: 'Project'),
+                      items: projects
+                          .map(
+                            (p) => DropdownMenuItem(
+                              value: p.id,
+                              child: Text(p.title),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (val) =>
+                          setState(() => selectedProjectId = val),
+                    ),
+                    loading: () => const LinearProgressIndicator(),
+                    error: (err, _) => Text('Error loading projects: $err'),
+                  ),
+                  const SizedBox(height: 16),
                   Row(
                     children: [
                       Expanded(
@@ -173,57 +246,6 @@ class IngestionPage extends ConsumerWidget {
                   ),
                 ],
               ),
-              actions: [
-                OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 16,
-                    ),
-                  ),
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    if (selectedSourceId == null || selectedStorageId == null) {
-                      return;
-                    }
-                    final ingestion = Ingestion(
-                      name: nameController.text,
-                      title: titleController.text,
-                      data_source_id: selectedSourceId!,
-                      lakehouse_storage_id: selectedStorageId!,
-                      storage_path: pathController.text,
-                      cron_schedule: cronController.text,
-                      ingestion_type: ingestionType,
-                      config: {},
-                    );
-                    try {
-                      await ref
-                          .read(ingestionListProvider.notifier)
-                          .createIngestion(ingestion);
-                      ref.invalidate(ingestionListProvider);
-                      if (context.mounted) Navigator.pop(context);
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(
-                          context,
-                        ).showSnackBar(SnackBar(content: Text('Error: $e')));
-                      }
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF646CFF),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 16,
-                    ),
-                  ),
-                  child: const Text('Create'),
-                ),
-              ],
             );
           },
         ),
@@ -321,6 +343,18 @@ class _IngestionsList extends StatelessWidget {
               .getRuns(ing.id!);
           return LargeDialog(
             title: 'History: ${ing.title}',
+            actions: [
+              OutlinedButton(
+                onPressed: () => Navigator.pop(context),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 16,
+                  ),
+                ),
+                child: const Text('Close'),
+              ),
+            ],
             child: FutureBuilder<List<IngestionRun>>(
               future: runsFuture,
               builder: (context, snapshot) {
@@ -350,18 +384,6 @@ class _IngestionsList extends StatelessWidget {
                 );
               },
             ),
-            actions: [
-              OutlinedButton(
-                onPressed: () => Navigator.pop(context),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 16,
-                  ),
-                ),
-                child: const Text('Close'),
-              ),
-            ],
           );
         },
       ),

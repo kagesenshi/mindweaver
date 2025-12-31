@@ -14,5 +14,5 @@ command to start backend: `uv run mindweaver run --port 8000` in `backend` folde
 
 command to start frontend: `flutter run -d chrome` in `frontend` folder
 
-remember to run `uv run pytest tests` in `backend` after modifying backend
+remember to run `uv run pytest tests` in `backend` after modifying `backend`. You do not have to run this test if you only modifying `frontend`
 

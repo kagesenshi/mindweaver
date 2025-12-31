@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../providers/knowledge_db_provider.dart';
 import '../providers/ontology_provider.dart';
+import '../providers/project_provider.dart';
 import '../models/knowledge_db.dart';
 
 import '../widgets/large_dialog.dart';
@@ -44,6 +45,7 @@ class KnowledgeDbPage extends ConsumerWidget {
     final descController = TextEditingController();
     String selectedType = 'passage-graph';
     int? selectedOntologyId;
+    int? selectedProjectId = ref.read(currentProjectProvider)?.id;
 
     showDialog(
       context: context,
@@ -51,12 +53,81 @@ class KnowledgeDbPage extends ConsumerWidget {
         builder: (context, setState) => Consumer(
           builder: (context, ref, _) {
             final ontologiesAsync = ref.watch(ontologyListProvider);
+            final projectsAsync = ref.watch(projectListProvider);
             return LargeDialog(
               title: 'Create Knowledge Database',
+              actions: [
+                OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 16,
+                    ),
+                  ),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    try {
+                      final newDb = KnowledgeDB(
+                        name: nameController.text,
+                        title: titleController.text,
+                        description: descController.text,
+                        type: selectedType,
+                        ontology_id: selectedOntologyId,
+                        parameters: {},
+                        project_id: selectedProjectId,
+                      );
+                      await ref
+                          .read(knowledgeDBListProvider.notifier)
+                          .createDB(newDb);
+                      ref.invalidate(knowledgeDBListProvider);
+                      if (context.mounted) Navigator.pop(context);
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error creating database: $e'),
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF646CFF),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 16,
+                    ),
+                  ),
+                  child: const Text('Create'),
+                ),
+              ],
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  projectsAsync.when(
+                    data: (projects) => DropdownButtonFormField<int>(
+                      value: selectedProjectId,
+                      decoration: const InputDecoration(labelText: 'Project'),
+                      items: projects
+                          .map(
+                            (p) => DropdownMenuItem(
+                              value: p.id,
+                              child: Text(p.title),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (val) =>
+                          setState(() => selectedProjectId = val),
+                    ),
+                    loading: () => const LinearProgressIndicator(),
+                    error: (err, _) => Text('Error loading projects: $err'),
+                  ),
+                  const SizedBox(height: 16),
                   Row(
                     children: [
                       Expanded(
@@ -144,54 +215,6 @@ class KnowledgeDbPage extends ConsumerWidget {
                   ),
                 ],
               ),
-              actions: [
-                OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 16,
-                    ),
-                  ),
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    try {
-                      final newDb = KnowledgeDB(
-                        name: nameController.text,
-                        title: titleController.text,
-                        description: descController.text,
-                        type: selectedType,
-                        ontology_id: selectedOntologyId,
-                        parameters: {},
-                      );
-                      await ref
-                          .read(knowledgeDBListProvider.notifier)
-                          .createDB(newDb);
-                      ref.invalidate(knowledgeDBListProvider);
-                      if (context.mounted) Navigator.pop(context);
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Error creating database: $e'),
-                          ),
-                        );
-                      }
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF646CFF),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 16,
-                    ),
-                  ),
-                  child: const Text('Create'),
-                ),
-              ],
             );
           },
         ),

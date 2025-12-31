@@ -25,13 +25,18 @@ class ChatListNotifier extends StateNotifier<AsyncValue<List<Chat>>> {
     }
   }
 
-  Future<Chat> createChat(String title, String? agentId) async {
+  Future<Chat> createChat(
+    String title,
+    String? agentId, {
+    int? project_id,
+  }) async {
     try {
       final client = ref.read(apiClientProvider);
       final response = await client.post('/api/v1/chats', {
         'name': title.toLowerCase().replaceAll(' ', '-'),
         'title': title,
         'agent_id': agentId,
+        'project_id': project_id,
         'messages': [],
       }, (json) => Chat.fromJson(json as Map<String, dynamic>));
       await loadChats();

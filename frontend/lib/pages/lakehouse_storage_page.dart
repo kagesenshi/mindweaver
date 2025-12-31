@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../providers/lakehouse_storage_provider.dart';
+import '../providers/project_provider.dart';
 import '../models/lakehouse_storage.dart';
 
 import '../widgets/large_dialog.dart';
@@ -48,167 +49,217 @@ class LakehouseStoragePage extends ConsumerWidget {
 
     showDialog(
       context: context,
-      builder: (context) => LargeDialog(
-        title: 'New Lakehouse Storage',
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: nameController,
-                    decoration: const InputDecoration(labelText: 'Name (ID)'),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: TextField(
-                    controller: titleController,
-                    decoration: const InputDecoration(labelText: 'Title'),
-                  ),
-                ),
-              ],
-            ),
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 24),
-              child: Divider(),
-            ),
-            const Text(
-              'S3 Configuration',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: bucketController,
-                    decoration: const InputDecoration(labelText: 'Bucket'),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: TextField(
-                    controller: regionController,
-                    decoration: const InputDecoration(labelText: 'Region'),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: accessKeyController,
-                    decoration: const InputDecoration(labelText: 'Access Key'),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: TextField(
-                    controller: secretKeyController,
-                    decoration: const InputDecoration(labelText: 'Secret Key'),
-                    obscureText: true,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: endpointController,
-              decoration: const InputDecoration(
-                labelText: 'Endpoint URL (Optional)',
-                hintText: 'e.g. https://minio.example.com',
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          OutlinedButton(
-            onPressed: () => Navigator.pop(context),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            ),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final params = {
-                'bucket': bucketController.text,
-                'region': regionController.text,
-                'access_key': accessKeyController.text,
-                'secret_key': secretKeyController.text,
-                'endpoint_url': endpointController.text.isEmpty
-                    ? null
-                    : endpointController.text,
-              };
-              try {
-                final result = await ref
-                    .read(lakehouseStorageListProvider.notifier)
-                    .testConnection(params);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(result['message'] ?? 'Connected!')),
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Test failed: $e'),
-                      backgroundColor: Colors.red,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => Consumer(
+          builder: (context, ref, _) {
+            final projectsAsync = ref.watch(projectListProvider);
+            int? selectedProjectId = ref.read(currentProjectProvider)?.id;
+
+            return LargeDialog(
+              title: 'New Lakehouse Storage',
+              actions: [
+                OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 16,
                     ),
-                  );
-                }
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue.shade700,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            ),
-            child: const Text('Test Connection'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final storage = LakehouseStorage(
-                name: nameController.text,
-                title: titleController.text,
-                parameters: {
-                  'bucket': bucketController.text,
-                  'region': regionController.text,
-                  'access_key': accessKeyController.text,
-                  'secret_key': secretKeyController.text,
-                  'endpoint_url': endpointController.text.isEmpty
-                      ? null
-                      : endpointController.text,
-                },
-              );
-              try {
-                await ref
-                    .read(lakehouseStorageListProvider.notifier)
-                    .createStorage(storage);
-                ref.invalidate(lakehouseStorageListProvider);
-                if (context.mounted) Navigator.pop(context);
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text('Error: $e')));
-                }
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF646CFF),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            ),
-            child: const Text('Create'),
-          ),
-        ],
+                  ),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    final params = {
+                      'bucket': bucketController.text,
+                      'region': regionController.text,
+                      'access_key': accessKeyController.text,
+                      'secret_key': secretKeyController.text,
+                      'endpoint_url': endpointController.text.isEmpty
+                          ? null
+                          : endpointController.text,
+                    };
+                    try {
+                      final result = await ref
+                          .read(lakehouseStorageListProvider.notifier)
+                          .testConnection(params);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(result['message'] ?? 'Connected!'),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Test failed: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue.shade700,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 16,
+                    ),
+                  ),
+                  child: const Text('Test Connection'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    final storage = LakehouseStorage(
+                      name: nameController.text,
+                      title: titleController.text,
+                      parameters: {
+                        'bucket': bucketController.text,
+                        'region': regionController.text,
+                        'access_key': accessKeyController.text,
+                        'secret_key': secretKeyController.text,
+                        'endpoint_url': endpointController.text.isEmpty
+                            ? null
+                            : endpointController.text,
+                      },
+                      project_id: selectedProjectId,
+                    );
+                    try {
+                      await ref
+                          .read(lakehouseStorageListProvider.notifier)
+                          .createStorage(storage);
+                      ref.invalidate(lakehouseStorageListProvider);
+                      if (context.mounted) Navigator.pop(context);
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+                      }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF646CFF),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 16,
+                    ),
+                  ),
+                  child: const Text('Create'),
+                ),
+              ],
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  projectsAsync.when(
+                    data: (projects) => DropdownButtonFormField<int>(
+                      value: selectedProjectId,
+                      decoration: const InputDecoration(labelText: 'Project'),
+                      items: projects
+                          .map(
+                            (p) => DropdownMenuItem(
+                              value: p.id,
+                              child: Text(p.title),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (val) =>
+                          setState(() => selectedProjectId = val),
+                    ),
+                    loading: () => const LinearProgressIndicator(),
+                    error: (err, _) => Text('Error loading projects: $err'),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: nameController,
+                          decoration: const InputDecoration(
+                            labelText: 'Name (ID)',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: TextField(
+                          controller: titleController,
+                          decoration: const InputDecoration(labelText: 'Title'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Divider(),
+                  ),
+                  const Text(
+                    'S3 Configuration',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: bucketController,
+                          decoration: const InputDecoration(
+                            labelText: 'Bucket',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: TextField(
+                          controller: regionController,
+                          decoration: const InputDecoration(
+                            labelText: 'Region',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: accessKeyController,
+                          decoration: const InputDecoration(
+                            labelText: 'Access Key',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: TextField(
+                          controller: secretKeyController,
+                          decoration: const InputDecoration(
+                            labelText: 'Secret Key',
+                          ),
+                          obscureText: true,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: endpointController,
+                    decoration: const InputDecoration(
+                      labelText: 'Endpoint URL (Optional)',
+                      hintText: 'e.g. https://minio.example.com',
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }

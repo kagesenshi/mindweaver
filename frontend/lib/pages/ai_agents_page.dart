@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../providers/ai_agent_provider.dart';
 import '../providers/knowledge_db_provider.dart';
+import '../providers/project_provider.dart';
 import '../models/ai_agent.dart';
 
 import '../widgets/large_dialog.dart';
@@ -45,6 +46,7 @@ class AiAgentsPage extends ConsumerWidget {
     String selectedModel = 'gpt-4-turbo';
     double selectedTemp = 0.7;
     List<String> selectedDBIds = [];
+    int? selectedProjectId = ref.read(currentProjectProvider)?.id;
 
     showDialog(
       context: context,
@@ -52,12 +54,79 @@ class AiAgentsPage extends ConsumerWidget {
         builder: (context, setState) => Consumer(
           builder: (context, ref, _) {
             final dbsAsync = ref.watch(knowledgeDBListProvider);
+            final projectsAsync = ref.watch(projectListProvider);
             return LargeDialog(
               title: 'Create AI Agent',
+              actions: [
+                OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 16,
+                    ),
+                  ),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    try {
+                      final newAgent = AIAgent(
+                        name: nameController.text,
+                        title: titleController.text,
+                        model: selectedModel,
+                        temperature: selectedTemp,
+                        system_prompt: systemPromptController.text,
+                        knowledge_db_ids: selectedDBIds,
+                        project_id: selectedProjectId,
+                      );
+                      await ref
+                          .read(aiAgentListProvider.notifier)
+                          .createAgent(newAgent);
+                      ref.invalidate(aiAgentListProvider);
+                      if (context.mounted) Navigator.pop(context);
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Error creating agent: $e')),
+                        );
+                      }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF646CFF),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 16,
+                    ),
+                  ),
+                  child: const Text('Create'),
+                ),
+              ],
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  projectsAsync.when(
+                    data: (projects) => DropdownButtonFormField<int>(
+                      value: selectedProjectId,
+                      decoration: const InputDecoration(labelText: 'Project'),
+                      items: projects
+                          .map(
+                            (p) => DropdownMenuItem(
+                              value: p.id,
+                              child: Text(p.title),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (val) =>
+                          setState(() => selectedProjectId = val),
+                    ),
+                    loading: () => const LinearProgressIndicator(),
+                    error: (err, _) => Text('Error loading projects: $err'),
+                  ),
+                  const SizedBox(height: 16),
                   Row(
                     children: [
                       Expanded(
@@ -157,52 +226,6 @@ class AiAgentsPage extends ConsumerWidget {
                   ),
                 ],
               ),
-              actions: [
-                OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 16,
-                    ),
-                  ),
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    try {
-                      final newAgent = AIAgent(
-                        name: nameController.text,
-                        title: titleController.text,
-                        model: selectedModel,
-                        temperature: selectedTemp,
-                        system_prompt: systemPromptController.text,
-                        knowledge_db_ids: selectedDBIds,
-                      );
-                      await ref
-                          .read(aiAgentListProvider.notifier)
-                          .createAgent(newAgent);
-                      ref.invalidate(aiAgentListProvider);
-                      if (context.mounted) Navigator.pop(context);
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Error creating agent: $e')),
-                        );
-                      }
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF646CFF),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 16,
-                    ),
-                  ),
-                  child: const Text('Create'),
-                ),
-              ],
             );
           },
         ),
