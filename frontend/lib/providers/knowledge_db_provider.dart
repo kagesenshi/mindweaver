@@ -56,5 +56,6 @@ final knowledgeDBListProvider =
       KnowledgeDBListNotifier,
       AsyncValue<List<KnowledgeDB>>
     >((ref) {
+      ref.watch(apiClientProvider);
       return KnowledgeDBListNotifier(ref);
     });

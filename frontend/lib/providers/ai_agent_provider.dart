@@ -55,5 +55,6 @@ final aiAgentListProvider =
       AIAgentListNotifier,
       AsyncValue<List<AIAgent>>
     >((ref) {
+      ref.watch(apiClientProvider);
       return AIAgentListNotifier(ref);
     });

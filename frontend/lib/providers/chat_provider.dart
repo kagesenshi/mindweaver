@@ -55,6 +55,7 @@ class ChatListNotifier extends StateNotifier<AsyncValue<List<Chat>>> {
 final chatListProvider =
     StateNotifierProvider.autoDispose<ChatListNotifier, AsyncValue<List<Chat>>>(
       (ref) {
+        ref.watch(apiClientProvider);
         return ChatListNotifier(ref);
       },
     );

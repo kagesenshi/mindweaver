@@ -73,5 +73,6 @@ final lakehouseStorageListProvider =
       LakehouseStorageListNotifier,
       AsyncValue<List<LakehouseStorage>>
     >((ref) {
+      ref.watch(apiClientProvider);
       return LakehouseStorageListNotifier(ref);
     });

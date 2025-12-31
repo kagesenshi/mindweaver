@@ -76,5 +76,6 @@ final ingestionListProvider =
       IngestionListNotifier,
       AsyncValue<List<Ingestion>>
     >((ref) {
+      ref.watch(apiClientProvider);
       return IngestionListNotifier(ref);
     });

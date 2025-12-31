@@ -74,5 +74,6 @@ final dataSourceListProvider =
       DataSourceListNotifier,
       AsyncValue<List<DataSource>>
     >((ref) {
+      ref.watch(apiClientProvider);
       return DataSourceListNotifier(ref);
     });

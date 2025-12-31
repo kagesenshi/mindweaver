@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/project_provider.dart';
+import '../models/project.dart';
 
 class MainLayout extends StatefulWidget {
   final Widget child;
@@ -260,8 +261,6 @@ class _TopBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final currentProject = ref.watch(currentProjectProvider);
-
     return Container(
       height: 70,
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -295,36 +294,102 @@ class _TopBar extends ConsumerWidget {
             ),
           ),
           const SizedBox(width: 24),
-          // Current Project
-          if (currentProject != null)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).colorScheme.primaryContainer.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.folder_shared_outlined,
-                    size: 16,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    currentProject.title,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.primary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
           const Spacer(),
+          // Project Selection Dropdown
+          Consumer(
+            builder: (context, ref, child) {
+              final currentProject = ref.watch(currentProjectProvider);
+              final projectsAsync = ref.watch(projectListProvider);
+
+              return PopupMenuButton<Project?>(
+                offset: const Offset(0, 50),
+                onSelected: (project) {
+                  if (project == null) {
+                    ref.read(currentProjectProvider.notifier).clearProject();
+                  } else {
+                    ref
+                        .read(currentProjectProvider.notifier)
+                        .setProject(project);
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.primaryContainer.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.folder_shared_outlined,
+                        size: 18,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        currentProject?.title ?? 'All Projects',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.keyboard_arrow_down,
+                        size: 18,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ],
+                  ),
+                ),
+                itemBuilder: (context) {
+                  final List<PopupMenuEntry<Project?>> items = [
+                    const PopupMenuItem<Project?>(
+                      value: null,
+                      child: Row(
+                        children: [
+                          Icon(Icons.all_inclusive, size: 20),
+                          SizedBox(width: 10),
+                          Text('All Projects'),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuDivider(),
+                  ];
+
+                  projectsAsync.whenData((projects) {
+                    items.addAll(
+                      projects.map(
+                        (project) => PopupMenuItem<Project?>(
+                          value: project,
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.folder_shared_outlined,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 10),
+                              Text(project.title),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  });
+
+                  return items;
+                },
+              );
+            },
+          ),
+          const SizedBox(width: 16),
           // Notifications
           PopupMenuButton<String>(
             offset: const Offset(0, 50),

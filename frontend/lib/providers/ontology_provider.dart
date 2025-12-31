@@ -55,5 +55,6 @@ final ontologyListProvider =
       OntologyListNotifier,
       AsyncValue<List<Ontology>>
     >((ref) {
+      ref.watch(apiClientProvider);
       return OntologyListNotifier(ref);
     });
