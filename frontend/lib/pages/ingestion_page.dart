@@ -7,6 +7,7 @@ import '../providers/lakehouse_storage_provider.dart';
 import '../providers/project_provider.dart';
 import '../models/ingestion.dart';
 import '../widgets/large_dialog.dart';
+import '../widgets/project_pill.dart';
 
 class IngestionPage extends ConsumerWidget {
   const IngestionPage({super.key});
@@ -277,9 +278,22 @@ class _IngestionsList extends StatelessWidget {
               FontAwesomeIcons.truckLoading,
               color: Colors.blue,
             ),
-            title: Text(ing.title),
-            subtitle: Text(
-              'Schedule: ${ing.cron_schedule} • Type: ${ing.ingestion_type}',
+            title: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(ing.title),
+                      Text(
+                        'Schedule: ${ing.cron_schedule} • Type: ${ing.ingestion_type}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+                ProjectPill(projectId: ing.project_id),
+              ],
             ),
             children: [
               Padding(

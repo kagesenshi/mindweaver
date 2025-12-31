@@ -5,6 +5,7 @@ import '../providers/data_source_provider.dart';
 import '../providers/project_provider.dart';
 import '../models/data_source.dart';
 import '../widgets/large_dialog.dart';
+import '../widgets/project_pill.dart';
 
 class DataSourcesPage extends ConsumerWidget {
   const DataSourcesPage({super.key});
@@ -406,9 +407,15 @@ class _SourcesList extends StatelessWidget {
             leading: FaIcon(icon, color: Colors.blue),
             title: Text(src.title),
             subtitle: Text('${src.type} • ${src.name}'),
-            trailing: IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red),
-              onPressed: () => _confirmDelete(context, src),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ProjectPill(projectId: src.project_id),
+                IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.red),
+                  onPressed: () => _confirmDelete(context, src),
+                ),
+              ],
             ),
           ),
         );

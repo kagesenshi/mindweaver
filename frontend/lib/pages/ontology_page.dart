@@ -6,6 +6,7 @@ import '../providers/project_provider.dart';
 import '../models/ontology.dart';
 
 import '../widgets/large_dialog.dart';
+import '../widgets/project_pill.dart';
 
 class OntologyPage extends ConsumerWidget {
   const OntologyPage({super.key});
@@ -180,9 +181,22 @@ class _OntologyList extends StatelessWidget {
               FontAwesomeIcons.diagramProject,
               color: Colors.blue,
             ),
-            title: Text(o.title),
-            subtitle: Text(
-              '${o.entity_types?.length ?? 0} Entities • ${o.relationship_types?.length ?? 0} Relationships',
+            title: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(o.title),
+                      Text(
+                        '${o.entity_types?.length ?? 0} Entities • ${o.relationship_types?.length ?? 0} Relationships',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+                ProjectPill(projectId: o.project_id),
+              ],
             ),
             children: [
               Padding(

@@ -6,6 +6,7 @@ import '../providers/project_provider.dart';
 import '../models/lakehouse_storage.dart';
 
 import '../widgets/large_dialog.dart';
+import '../widgets/project_pill.dart';
 
 class LakehouseStoragePage extends ConsumerWidget {
   const LakehouseStoragePage({super.key});
@@ -289,9 +290,15 @@ class _StoragesList extends StatelessWidget {
             subtitle: Text(
               'S3 Bucket: ${st.parameters['bucket']} • ${st.name}',
             ),
-            trailing: IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red),
-              onPressed: () => _confirmDelete(context, st),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ProjectPill(projectId: st.project_id),
+                IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.red),
+                  onPressed: () => _confirmDelete(context, st),
+                ),
+              ],
             ),
           ),
         );

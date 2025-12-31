@@ -4,7 +4,7 @@ from pathlib import Path
 
 here = Path(__file__).parent
 
-fe = subprocess.Popen(["flutter", "run", "-d", "chrome"], cwd=here / "frontend")
+fe = subprocess.Popen(["flutter", "run", "-d", "chrome", '--web-port', '3000'], cwd=here / "frontend")
 be = subprocess.Popen(
     ["uv", "run", "mindweaver", "run", "--port", "8000"], cwd=here / "backend"
 )

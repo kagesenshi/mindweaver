@@ -7,6 +7,7 @@ import '../providers/project_provider.dart';
 import '../models/knowledge_db.dart';
 
 import '../widgets/large_dialog.dart';
+import '../widgets/project_pill.dart';
 
 class KnowledgeDbPage extends ConsumerWidget {
   const KnowledgeDbPage({super.key});
@@ -248,9 +249,15 @@ class _KnowledgeDBList extends StatelessWidget {
             ),
             title: Text(db.title),
             subtitle: Text('${db.type} • ${db.name}'),
-            trailing: IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red),
-              onPressed: () => _confirmDelete(context, db),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ProjectPill(projectId: db.project_id),
+                IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.red),
+                  onPressed: () => _confirmDelete(context, db),
+                ),
+              ],
             ),
             onTap: () {
               // TODO: Navigate to DB details/management

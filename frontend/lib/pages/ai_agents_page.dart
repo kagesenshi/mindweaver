@@ -7,6 +7,7 @@ import '../providers/project_provider.dart';
 import '../models/ai_agent.dart';
 
 import '../widgets/large_dialog.dart';
+import '../widgets/project_pill.dart';
 
 class AiAgentsPage extends ConsumerWidget {
   const AiAgentsPage({super.key});
@@ -256,9 +257,15 @@ class _AgentsList extends StatelessWidget {
             leading: const FaIcon(FontAwesomeIcons.robot, color: Colors.purple),
             title: Text(agent.title),
             subtitle: Text('${agent.model} • ${agent.status}'),
-            trailing: IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red),
-              onPressed: () => _confirmDelete(context, agent),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ProjectPill(projectId: agent.project_id),
+                IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.red),
+                  onPressed: () => _confirmDelete(context, agent),
+                ),
+              ],
             ),
             onTap: () {
               // TODO: Navigate to agent configuration/logs
