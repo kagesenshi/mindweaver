@@ -48,3 +48,34 @@ def test_list_chats_without_project_id_returns_empty(client: TestClient, test_pr
 
     assert len(data["records"]) == 1
     assert data["records"][0]["name"] == "chat-session-1"
+
+
+def test_delete_chat(client: TestClient, test_project):
+    """Test deleting a chat session."""
+    # Create a chat session
+    create_resp = client.post(
+        "/api/v1/chats",
+        json={
+            "name": "to-delete",
+            "title": "To Delete Chat",
+            "agent_id": "agent-123",
+            "messages": [],
+        },
+        headers={"X-Project-Id": str(test_project["id"])},
+    )
+    create_resp.raise_for_status()
+    chat_id = create_resp.json()["record"]["id"]
+
+    # Delete the chat session
+    delete_resp = client.delete(
+        f"/api/v1/chats/{chat_id}",
+        headers={"X-Project-Id": str(test_project["id"])},
+    )
+    assert delete_resp.status_code == 200
+
+    # Verify it's gone
+    get_resp = client.get(
+        f"/api/v1/chats/{chat_id}",
+        headers={"X-Project-Id": str(test_project["id"])},
+    )
+    assert get_resp.status_code == 404

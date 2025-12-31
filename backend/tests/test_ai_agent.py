@@ -54,3 +54,37 @@ def test_list_ai_agents_without_project_id_returns_empty(
 
     assert len(data["records"]) == 1
     assert data["records"][0]["name"] == "test-agent"
+
+
+def test_delete_ai_agent(client: TestClient, test_project):
+    """Test deleting an AI agent."""
+    # Create an AI agent
+    create_resp = client.post(
+        "/api/v1/ai_agents",
+        json={
+            "name": "to-delete",
+            "title": "To Delete Agent",
+            "model": "gpt-4",
+            "temperature": 0.5,
+            "system_prompt": "You are a helpful assistant",
+            "status": "Active",
+            "knowledge_db_ids": [],
+        },
+        headers={"X-Project-Id": str(test_project["id"])},
+    )
+    create_resp.raise_for_status()
+    agent_id = create_resp.json()["record"]["id"]
+
+    # Delete the AI agent
+    delete_resp = client.delete(
+        f"/api/v1/ai_agents/{agent_id}",
+        headers={"X-Project-Id": str(test_project["id"])},
+    )
+    assert delete_resp.status_code == 200
+
+    # Verify it's gone
+    get_resp = client.get(
+        f"/api/v1/ai_agents/{agent_id}",
+        headers={"X-Project-Id": str(test_project["id"])},
+    )
+    assert get_resp.status_code == 404

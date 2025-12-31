@@ -25,7 +25,7 @@ class ProjectsPage extends ConsumerWidget {
         ],
       ),
       body: projectsAsync.when(
-        data: (projects) => _ProjectsGrid(projects: projects),
+        data: (projects) => _ProjectsList(projects: projects),
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(child: Text('Error: $err')),
       ),
@@ -238,10 +238,10 @@ class ProjectsPage extends ConsumerWidget {
   }
 }
 
-class _ProjectsGrid extends StatelessWidget {
+class _ProjectsList extends StatelessWidget {
   final List<Project> projects;
 
-  const _ProjectsGrid({required this.projects});
+  const _ProjectsList({required this.projects});
 
   @override
   Widget build(BuildContext context) {
@@ -251,14 +251,8 @@ class _ProjectsGrid extends StatelessWidget {
       );
     }
 
-    return GridView.builder(
+    return ListView.builder(
       padding: const EdgeInsets.all(20),
-      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: 400,
-        childAspectRatio: 1.8,
-        crossAxisSpacing: 20,
-        mainAxisSpacing: 20,
-      ),
       itemCount: projects.length,
       itemBuilder: (context, index) {
         return _ProjectCard(project: projects[index]);
@@ -275,78 +269,33 @@ class _ProjectCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      child: InkWell(
+      margin: const EdgeInsets.only(bottom: 15),
+      child: ListTile(
+        leading: const FaIcon(FontAwesomeIcons.folder, color: Colors.blue),
+        title: Text(project.title),
+        subtitle: Text(
+          '${project.name}${project.description != null && project.description!.isNotEmpty ? " • ${project.description}" : ""}',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.edit, color: Colors.grey),
+              onPressed: () =>
+                  ProjectsPage.showEditProjectDialog(context, ref, project),
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red),
+              onPressed: () => _confirmDelete(context, ref, project),
+            ),
+          ],
+        ),
         onTap: () {
           ref.read(currentProjectProvider.notifier).setProject(project);
           context.go('/overview');
         },
-        borderRadius: BorderRadius.circular(15),
-        child: Stack(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const FaIcon(
-                        FontAwesomeIcons.folder,
-                        size: 20,
-                        color: Colors.blue,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          project.title,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    project.name,
-                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                  ),
-                  const Spacer(),
-                  if (project.description != null &&
-                      project.description!.isNotEmpty)
-                    Text(
-                      project.description!,
-                      style: const TextStyle(fontSize: 14),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                ],
-              ),
-            ),
-            Positioned(
-              top: 5,
-              right: 40,
-              child: IconButton(
-                icon: const Icon(Icons.edit, color: Colors.grey, size: 20),
-                onPressed: () =>
-                    ProjectsPage.showEditProjectDialog(context, ref, project),
-              ),
-            ),
-            Positioned(
-              top: 5,
-              right: 5,
-              child: IconButton(
-                icon: const Icon(Icons.delete, color: Colors.grey, size: 20),
-                onPressed: () => _confirmDelete(context, ref, project),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

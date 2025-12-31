@@ -626,3 +626,37 @@ def test_list_data_sources_without_project_id_returns_empty(
 
     assert len(data["records"]) == 1
     assert data["records"][0]["name"] == "test-api-source"
+
+
+def test_delete_data_source(client: TestClient, test_project):
+    """Test deleting a data source."""
+    # Create a data source
+    create_resp = client.post(
+        "/api/v1/data_sources",
+        headers={"X-Project-Id": str(test_project["id"])},
+        json={
+            "name": "to-delete",
+            "title": "To Delete Source",
+            "type": "API",
+            "parameters": {
+                "base_url": "https://api.example.com/v1",
+                "api_key": "test_key",
+            },
+        },
+    )
+    create_resp.raise_for_status()
+    source_id = create_resp.json()["record"]["id"]
+
+    # Delete the data source
+    delete_resp = client.delete(
+        f"/api/v1/data_sources/{source_id}",
+        headers={"X-Project-Id": str(test_project["id"])},
+    )
+    assert delete_resp.status_code == 200
+
+    # Verify it's gone
+    get_resp = client.get(
+        f"/api/v1/data_sources/{source_id}",
+        headers={"X-Project-Id": str(test_project["id"])},
+    )
+    assert get_resp.status_code == 404
