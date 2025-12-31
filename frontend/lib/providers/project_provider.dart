@@ -60,6 +60,20 @@ class ProjectListNotifier extends StateNotifier<AsyncValue<List<Project>>> {
     }
   }
 
+  Future<void> updateProject(int id, String title, String description) async {
+    try {
+      final client = ref.read(apiClientProvider);
+      await client.put(
+        '/api/v1/projects/$id',
+        {'title': title, 'description': description},
+        (json) => Project.fromJson(json as Map<String, dynamic>),
+      );
+      await loadProjects();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   Future<void> deleteProject(int id) async {
     try {
       final client = ref.read(apiClientProvider);

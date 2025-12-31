@@ -40,6 +40,20 @@ class DataSourceListNotifier
     }
   }
 
+  Future<void> updateSource(DataSource source) async {
+    try {
+      final client = ref.read(apiClientProvider);
+      await client.put(
+        '/api/v1/data_sources/${source.id}',
+        source.toJson(),
+        (json) => DataSource.fromJson(json as Map<String, dynamic>),
+      );
+      await loadSources();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   Future<void> deleteSource(int id) async {
     try {
       final client = ref.read(apiClientProvider);

@@ -134,6 +134,108 @@ class ProjectsPage extends ConsumerWidget {
       ),
     );
   }
+
+  static void showEditProjectDialog(
+    BuildContext context,
+    WidgetRef ref,
+    Project project,
+  ) {
+    final titleController = TextEditingController(text: project.title);
+    final descController = TextEditingController(text: project.description);
+
+    showDialog(
+      context: context,
+      builder: (context) => LargeDialog(
+        title: 'Edit Project',
+        actions: [
+          OutlinedButton(
+            onPressed: () => Navigator.pop(context),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.white,
+              side: const BorderSide(color: Colors.white24),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            ),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                await ref
+                    .read(projectListProvider.notifier)
+                    .updateProject(
+                      project.id!,
+                      titleController.text,
+                      descController.text,
+                    );
+                ref.invalidate(projectListProvider);
+                if (context.mounted) Navigator.pop(context);
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error updating project: $e')),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF646CFF),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            ),
+            child: const Text('Save'),
+          ),
+        ],
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Project Details',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: TextEditingController(text: project.name),
+                    enabled: false,
+                    decoration: const InputDecoration(
+                      labelText: 'Name (ID)',
+                      filled: true,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: TextField(
+                    controller: titleController,
+                    decoration: const InputDecoration(
+                      labelText: 'Title',
+                      hintText: 'e.g. My Awesome Project',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            TextField(
+              controller: descController,
+              decoration: const InputDecoration(
+                labelText: 'Description',
+                hintText: 'Enter project description...',
+              ),
+              maxLines: 4,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _ProjectsGrid extends StatelessWidget {
@@ -224,6 +326,15 @@ class _ProjectCard extends ConsumerWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                 ],
+              ),
+            ),
+            Positioned(
+              top: 5,
+              right: 40,
+              child: IconButton(
+                icon: const Icon(Icons.edit, color: Colors.grey, size: 20),
+                onPressed: () =>
+                    ProjectsPage.showEditProjectDialog(context, ref, project),
               ),
             ),
             Positioned(

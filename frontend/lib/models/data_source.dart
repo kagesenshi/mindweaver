@@ -26,6 +26,30 @@ class DataSource {
     required this.parameters,
   });
 
+  DataSource copyWith({
+    int? id,
+    String? uuid,
+    DateTime? created,
+    DateTime? modified,
+    String? name,
+    String? title,
+    int? project_id,
+    String? type,
+    Map<String, dynamic>? parameters,
+  }) {
+    return DataSource(
+      id: id ?? this.id,
+      uuid: uuid ?? this.uuid,
+      created: created ?? this.created,
+      modified: modified ?? this.modified,
+      name: name ?? this.name,
+      title: title ?? this.title,
+      project_id: project_id ?? this.project_id,
+      type: type ?? this.type,
+      parameters: parameters ?? this.parameters,
+    );
+  }
+
   factory DataSource.fromJson(Map<String, dynamic> json) =>
       _$DataSourceFromJson(json);
   Map<String, dynamic> toJson() => _$DataSourceToJson(this);

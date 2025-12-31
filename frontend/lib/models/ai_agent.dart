@@ -32,6 +32,36 @@ class AIAgent {
     required this.knowledge_db_ids,
   });
 
+  AIAgent copyWith({
+    int? id,
+    String? uuid,
+    DateTime? created,
+    DateTime? modified,
+    String? name,
+    String? title,
+    int? project_id,
+    String? model,
+    double? temperature,
+    String? system_prompt,
+    String? status,
+    List<String>? knowledge_db_ids,
+  }) {
+    return AIAgent(
+      id: id ?? this.id,
+      uuid: uuid ?? this.uuid,
+      created: created ?? this.created,
+      modified: modified ?? this.modified,
+      name: name ?? this.name,
+      title: title ?? this.title,
+      project_id: project_id ?? this.project_id,
+      model: model ?? this.model,
+      temperature: temperature ?? this.temperature,
+      system_prompt: system_prompt ?? this.system_prompt,
+      status: status ?? this.status,
+      knowledge_db_ids: knowledge_db_ids ?? this.knowledge_db_ids,
+    );
+  }
+
   factory AIAgent.fromJson(Map<String, dynamic> json) =>
       _$AIAgentFromJson(json);
   Map<String, dynamic> toJson() => _$AIAgentToJson(this);

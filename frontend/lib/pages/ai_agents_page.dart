@@ -233,15 +233,239 @@ class AiAgentsPage extends ConsumerWidget {
       ),
     );
   }
+
+  static void showEditAgentDialog(
+    BuildContext context,
+    WidgetRef ref,
+    AIAgent agent,
+  ) {
+    final nameController = TextEditingController(text: agent.name);
+    final titleController = TextEditingController(text: agent.title);
+    final systemPromptController = TextEditingController(
+      text: agent.system_prompt,
+    );
+    String selectedModel = agent.model;
+    double selectedTemperature = agent.temperature;
+    String selectedStatus = agent.status;
+    List<String> selectedKnowledgeDBNames = List.from(agent.knowledge_db_ids);
+    int? selectedProjectId = agent.project_id;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => Consumer(
+          builder: (context, ref, _) {
+            final knowledgeDBsAsync = ref.watch(knowledgeDBListProvider);
+            final projectsAsync = ref.watch(projectListProvider);
+
+            return LargeDialog(
+              title: 'Edit AI Agent',
+              actions: [
+                OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 16,
+                    ),
+                  ),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    try {
+                      final updatedAgent = agent.copyWith(
+                        title: titleController.text,
+                        model: selectedModel,
+                        temperature: selectedTemperature,
+                        system_prompt: systemPromptController.text,
+                        status: selectedStatus,
+                        knowledge_db_ids: selectedKnowledgeDBNames,
+                        project_id: selectedProjectId,
+                      );
+                      await ref
+                          .read(aiAgentListProvider.notifier)
+                          .updateAgent(updatedAgent);
+                      ref.invalidate(aiAgentListProvider);
+                      if (context.mounted) Navigator.pop(context);
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Error updating agent: $e')),
+                        );
+                      }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF646CFF),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 16,
+                    ),
+                  ),
+                  child: const Text('Save'),
+                ),
+              ],
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  projectsAsync.when(
+                    data: (projects) => DropdownButtonFormField<int>(
+                      value: selectedProjectId,
+                      decoration: const InputDecoration(labelText: 'Project'),
+                      items: projects
+                          .map(
+                            (p) => DropdownMenuItem(
+                              value: p.id,
+                              child: Text(p.title),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (val) =>
+                          setState(() => selectedProjectId = val),
+                    ),
+                    loading: () => const LinearProgressIndicator(),
+                    error: (err, _) => Text('Error loading projects: $err'),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: nameController,
+                          enabled: false,
+                          decoration: const InputDecoration(
+                            labelText: 'Name (ID)',
+                            filled: true,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: TextField(
+                          controller: titleController,
+                          decoration: const InputDecoration(labelText: 'Title'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: selectedModel,
+                          decoration: const InputDecoration(labelText: 'Model'),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'gpt-4-turbo',
+                              child: Text('GPT-4 Turbo'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'gpt-4',
+                              child: Text('GPT-4'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'gpt-3.5-turbo',
+                              child: Text('GPT-3.5 Turbo'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'claude-3-opus',
+                              child: Text('Claude 3 Opus'),
+                            ),
+                          ],
+                          onChanged: (val) =>
+                              setState(() => selectedModel = val!),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: selectedStatus,
+                          decoration: const InputDecoration(
+                            labelText: 'Status',
+                            filled: true,
+                          ),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'Active',
+                              child: Text('Active'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'Inactive',
+                              child: Text('Inactive'),
+                            ),
+                          ],
+                          onChanged: (val) =>
+                              setState(() => selectedStatus = val!),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Temperature: ${selectedTemperature.toStringAsFixed(1)}',
+                  ),
+                  Slider(
+                    value: selectedTemperature,
+                    min: 0,
+                    max: 1,
+                    onChanged: (val) =>
+                        setState(() => selectedTemperature = val),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: systemPromptController,
+                    decoration: const InputDecoration(
+                      labelText: 'System Prompt',
+                    ),
+                    maxLines: 4,
+                  ),
+                  const SizedBox(height: 16),
+                  knowledgeDBsAsync.when(
+                    data: (dbs) => Wrap(
+                      spacing: 8,
+                      children: dbs.map((db) {
+                        final isSelected = selectedKnowledgeDBNames.contains(
+                          db.name,
+                        );
+                        return FilterChip(
+                          label: Text(db.title),
+                          selected: isSelected,
+                          onSelected: (selected) {
+                            setState(() {
+                              if (selected) {
+                                selectedKnowledgeDBNames.add(db.name);
+                              } else {
+                                selectedKnowledgeDBNames.remove(db.name);
+                              }
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    loading: () => const LinearProgressIndicator(),
+                    error: (err, _) => Text('Error loading DBs: $err'),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
 }
 
-class _AgentsList extends StatelessWidget {
+class _AgentsList extends ConsumerWidget {
   final List<AIAgent> agents;
 
   const _AgentsList({required this.agents});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     if (agents.isEmpty) {
       return const Center(child: Text('No AI agents found.'));
     }
@@ -261,6 +485,11 @@ class _AgentsList extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 ProjectPill(projectId: agent.project_id),
+                IconButton(
+                  icon: const Icon(Icons.edit, color: Colors.grey),
+                  onPressed: () =>
+                      AiAgentsPage.showEditAgentDialog(context, ref, agent),
+                ),
                 IconButton(
                   icon: const Icon(Icons.delete, color: Colors.red),
                   onPressed: () => _confirmDelete(context, agent),

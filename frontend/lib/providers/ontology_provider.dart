@@ -39,6 +39,20 @@ class OntologyListNotifier extends StateNotifier<AsyncValue<List<Ontology>>> {
     }
   }
 
+  Future<void> updateOntology(Ontology ontology) async {
+    try {
+      final client = ref.read(apiClientProvider);
+      await client.put(
+        '/api/v1/ontologies/${ontology.id}',
+        ontology.toJson(),
+        (json) => Ontology.fromJson(json as Map<String, dynamic>),
+      );
+      await loadOntologies();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   Future<void> deleteOntology(int id) async {
     try {
       final client = ref.read(apiClientProvider);

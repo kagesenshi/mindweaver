@@ -222,15 +222,202 @@ class KnowledgeDbPage extends ConsumerWidget {
       ),
     );
   }
+
+  static void showEditDBDialog(
+    BuildContext context,
+    WidgetRef ref,
+    KnowledgeDB db,
+  ) {
+    final nameController = TextEditingController(text: db.name);
+    final titleController = TextEditingController(text: db.title);
+    final descController = TextEditingController(text: db.description);
+    String selectedType = db.type;
+    int? selectedOntologyId = db.ontology_id;
+    int? selectedProjectId = db.project_id;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => Consumer(
+          builder: (context, ref, _) {
+            final ontologiesAsync = ref.watch(ontologyListProvider);
+            final projectsAsync = ref.watch(projectListProvider);
+            return LargeDialog(
+              title: 'Edit Knowledge Database',
+              actions: [
+                OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 16,
+                    ),
+                  ),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    try {
+                      final updatedDb = db.copyWith(
+                        title: titleController.text,
+                        description: descController.text,
+                        type: selectedType,
+                        ontology_id: selectedOntologyId,
+                        project_id: selectedProjectId,
+                      );
+                      await ref
+                          .read(knowledgeDBListProvider.notifier)
+                          .updateDB(updatedDb);
+                      ref.invalidate(knowledgeDBListProvider);
+                      if (context.mounted) Navigator.pop(context);
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error updating database: $e'),
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF646CFF),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 16,
+                    ),
+                  ),
+                  child: const Text('Save'),
+                ),
+              ],
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  projectsAsync.when(
+                    data: (projects) => DropdownButtonFormField<int>(
+                      value: selectedProjectId,
+                      decoration: const InputDecoration(labelText: 'Project'),
+                      items: projects
+                          .map(
+                            (p) => DropdownMenuItem(
+                              value: p.id,
+                              child: Text(p.title),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (val) =>
+                          setState(() => selectedProjectId = val),
+                    ),
+                    loading: () => const LinearProgressIndicator(),
+                    error: (err, _) => Text('Error loading projects: $err'),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: nameController,
+                          enabled: false,
+                          decoration: const InputDecoration(
+                            labelText: 'Name (ID)',
+                            filled: true,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: TextField(
+                          controller: titleController,
+                          decoration: const InputDecoration(labelText: 'Title'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: descController,
+                    decoration: const InputDecoration(labelText: 'Description'),
+                  ),
+                  const SizedBox(height: 24),
+                  const Divider(),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: selectedType,
+                          decoration: const InputDecoration(labelText: 'Type'),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'passage-graph',
+                              child: Text('Passage Graph'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'tree-graph',
+                              child: Text('Tree Graph'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'knowledge-graph',
+                              child: Text('Knowledge Graph'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'textual-knowledge-graph',
+                              child: Text('Textual Knowledge Graph'),
+                            ),
+                          ],
+                          onChanged: (val) =>
+                              setState(() => selectedType = val!),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: ontologiesAsync.when(
+                          data: (ontologies) => DropdownButtonFormField<int?>(
+                            value: selectedOntologyId,
+                            decoration: const InputDecoration(
+                              labelText: 'Ontology (Optional)',
+                            ),
+                            items: [
+                              const DropdownMenuItem(
+                                value: null,
+                                child: Text('None'),
+                              ),
+                              ...ontologies.map(
+                                (o) => DropdownMenuItem(
+                                  value: o.id,
+                                  child: Text(o.title),
+                                ),
+                              ),
+                            ],
+                            onChanged: (val) =>
+                                setState(() => selectedOntologyId = val),
+                          ),
+                          loading: () => const LinearProgressIndicator(),
+                          error: (err, _) =>
+                              Text('Error loading ontologies: $err'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
 }
 
-class _KnowledgeDBList extends StatelessWidget {
+class _KnowledgeDBList extends ConsumerWidget {
   final List<KnowledgeDB> dbs;
 
   const _KnowledgeDBList({required this.dbs});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     if (dbs.isEmpty) {
       return const Center(child: Text('No knowledge databases found.'));
     }
@@ -253,6 +440,11 @@ class _KnowledgeDBList extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 ProjectPill(projectId: db.project_id),
+                IconButton(
+                  icon: const Icon(Icons.edit, color: Colors.grey),
+                  onPressed: () =>
+                      KnowledgeDbPage.showEditDBDialog(context, ref, db),
+                ),
                 IconButton(
                   icon: const Icon(Icons.delete, color: Colors.red),
                   onPressed: () => _confirmDelete(context, db),

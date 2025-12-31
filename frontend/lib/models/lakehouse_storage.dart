@@ -24,6 +24,28 @@ class LakehouseStorage {
     required this.parameters,
   });
 
+  LakehouseStorage copyWith({
+    int? id,
+    String? uuid,
+    DateTime? created,
+    DateTime? modified,
+    String? name,
+    String? title,
+    int? project_id,
+    Map<String, dynamic>? parameters,
+  }) {
+    return LakehouseStorage(
+      id: id ?? this.id,
+      uuid: uuid ?? this.uuid,
+      created: created ?? this.created,
+      modified: modified ?? this.modified,
+      name: name ?? this.name,
+      title: title ?? this.title,
+      project_id: project_id ?? this.project_id,
+      parameters: parameters ?? this.parameters,
+    );
+  }
+
   factory LakehouseStorage.fromJson(Map<String, dynamic> json) =>
       _$LakehouseStorageFromJson(json);
   Map<String, dynamic> toJson() => _$LakehouseStorageToJson(this);

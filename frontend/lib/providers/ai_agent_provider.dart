@@ -39,6 +39,20 @@ class AIAgentListNotifier extends StateNotifier<AsyncValue<List<AIAgent>>> {
     }
   }
 
+  Future<void> updateAgent(AIAgent agent) async {
+    try {
+      final client = ref.read(apiClientProvider);
+      await client.put(
+        '/api/v1/ai_agents/${agent.id}',
+        agent.toJson(),
+        (json) => AIAgent.fromJson(json as Map<String, dynamic>),
+      );
+      await loadAgents();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   Future<void> deleteAgent(int id) async {
     try {
       final client = ref.read(apiClientProvider);

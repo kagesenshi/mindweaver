@@ -264,15 +264,215 @@ class LakehouseStoragePage extends ConsumerWidget {
       ),
     );
   }
+
+  static void showEditStorageDialog(
+    BuildContext context,
+    WidgetRef ref,
+    LakehouseStorage storage,
+  ) {
+    final nameController = TextEditingController(text: storage.name);
+    final titleController = TextEditingController(text: storage.title);
+    final bucketController = TextEditingController(
+      text: storage.parameters['bucket']?.toString(),
+    );
+    final regionController = TextEditingController(
+      text: storage.parameters['region']?.toString() ?? 'us-east-1',
+    );
+    final accessKeyController = TextEditingController(
+      text: storage.parameters['access_key']?.toString(),
+    );
+    final secretKeyController = TextEditingController(); // Empty for security
+    final endpointController = TextEditingController(
+      text: storage.parameters['endpoint_url']?.toString(),
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => Consumer(
+          builder: (context, ref, _) {
+            final projectsAsync = ref.watch(projectListProvider);
+            int? selectedProjectId = storage.project_id;
+
+            return LargeDialog(
+              title: 'Edit Lakehouse Storage',
+              actions: [
+                OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 16,
+                    ),
+                  ),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    final params = {
+                      'bucket': bucketController.text,
+                      'region': regionController.text,
+                      'access_key': accessKeyController.text,
+                      'secret_key': secretKeyController.text.isEmpty
+                          ? null
+                          : secretKeyController.text,
+                      'endpoint_url': endpointController.text.isEmpty
+                          ? null
+                          : endpointController.text,
+                    };
+                    try {
+                      final updatedStorage = storage.copyWith(
+                        title: titleController.text,
+                        parameters: params,
+                        project_id: selectedProjectId,
+                      );
+                      await ref
+                          .read(lakehouseStorageListProvider.notifier)
+                          .updateStorage(updatedStorage);
+                      ref.invalidate(lakehouseStorageListProvider);
+                      if (context.mounted) Navigator.pop(context);
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+                      }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF646CFF),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 16,
+                    ),
+                  ),
+                  child: const Text('Save'),
+                ),
+              ],
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  projectsAsync.when(
+                    data: (projects) => DropdownButtonFormField<int>(
+                      value: selectedProjectId,
+                      decoration: const InputDecoration(labelText: 'Project'),
+                      items: projects
+                          .map(
+                            (p) => DropdownMenuItem(
+                              value: p.id,
+                              child: Text(p.title),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (val) =>
+                          setState(() => selectedProjectId = val),
+                    ),
+                    loading: () => const LinearProgressIndicator(),
+                    error: (err, _) => Text('Error loading projects: $err'),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: nameController,
+                          enabled: false,
+                          decoration: const InputDecoration(
+                            labelText: 'Name (ID)',
+                            filled: true,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: TextField(
+                          controller: titleController,
+                          decoration: const InputDecoration(labelText: 'Title'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Divider(),
+                  ),
+                  const Text(
+                    'S3 Configuration',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: bucketController,
+                          decoration: const InputDecoration(
+                            labelText: 'Bucket',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: TextField(
+                          controller: regionController,
+                          decoration: const InputDecoration(
+                            labelText: 'Region',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: accessKeyController,
+                          decoration: const InputDecoration(
+                            labelText: 'Access Key',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: TextField(
+                          controller: secretKeyController,
+                          decoration: const InputDecoration(
+                            labelText:
+                                'Secret Key (leave empty to keep current)',
+                          ),
+                          obscureText: true,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: endpointController,
+                    decoration: const InputDecoration(
+                      labelText: 'Endpoint URL (Optional)',
+                      hintText: 'e.g. https://minio.example.com',
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
 }
 
-class _StoragesList extends StatelessWidget {
+class _StoragesList extends ConsumerWidget {
   final List<LakehouseStorage> storages;
 
   const _StoragesList({required this.storages});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     if (storages.isEmpty) {
       return const Center(child: Text('No lakehouse storages found.'));
     }
@@ -294,6 +494,14 @@ class _StoragesList extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 ProjectPill(projectId: st.project_id),
+                IconButton(
+                  icon: const Icon(Icons.edit, color: Colors.grey),
+                  onPressed: () => LakehouseStoragePage.showEditStorageDialog(
+                    context,
+                    ref,
+                    st,
+                  ),
+                ),
                 IconButton(
                   icon: const Icon(Icons.delete, color: Colors.red),
                   onPressed: () => _confirmDelete(context, st),

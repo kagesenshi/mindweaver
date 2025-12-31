@@ -40,6 +40,44 @@ class Ingestion {
     required this.config,
   });
 
+  Ingestion copyWith({
+    int? id,
+    String? uuid,
+    DateTime? created,
+    DateTime? modified,
+    String? name,
+    String? title,
+    int? project_id,
+    int? data_source_id,
+    int? lakehouse_storage_id,
+    String? storage_path,
+    String? cron_schedule,
+    DateTime? start_date,
+    DateTime? end_date,
+    String? timezone,
+    String? ingestion_type,
+    Map<String, dynamic>? config,
+  }) {
+    return Ingestion(
+      id: id ?? this.id,
+      uuid: uuid ?? this.uuid,
+      created: created ?? this.created,
+      modified: modified ?? this.modified,
+      name: name ?? this.name,
+      title: title ?? this.title,
+      project_id: project_id ?? this.project_id,
+      data_source_id: data_source_id ?? this.data_source_id,
+      lakehouse_storage_id: lakehouse_storage_id ?? this.lakehouse_storage_id,
+      storage_path: storage_path ?? this.storage_path,
+      cron_schedule: cron_schedule ?? this.cron_schedule,
+      start_date: start_date ?? this.start_date,
+      end_date: end_date ?? this.end_date,
+      timezone: timezone ?? this.timezone,
+      ingestion_type: ingestion_type ?? this.ingestion_type,
+      config: config ?? this.config,
+    );
+  }
+
   factory Ingestion.fromJson(Map<String, dynamic> json) =>
       _$IngestionFromJson(json);
   Map<String, dynamic> toJson() => _$IngestionToJson(this);

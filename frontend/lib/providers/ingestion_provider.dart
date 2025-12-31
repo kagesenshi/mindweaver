@@ -39,6 +39,20 @@ class IngestionListNotifier extends StateNotifier<AsyncValue<List<Ingestion>>> {
     }
   }
 
+  Future<void> updateIngestion(Ingestion ingestion) async {
+    try {
+      final client = ref.read(apiClientProvider);
+      await client.put(
+        '/api/v1/ingestions/${ingestion.id}',
+        ingestion.toJson(),
+        (json) => Ingestion.fromJson(json as Map<String, dynamic>),
+      );
+      await loadIngestions();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   Future<void> deleteIngestion(int id) async {
     try {
       final client = ref.read(apiClientProvider);

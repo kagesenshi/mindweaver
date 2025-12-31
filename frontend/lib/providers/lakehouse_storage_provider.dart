@@ -40,6 +40,20 @@ class LakehouseStorageListNotifier
     }
   }
 
+  Future<void> updateStorage(LakehouseStorage storage) async {
+    try {
+      final client = ref.read(apiClientProvider);
+      await client.put(
+        '/api/v1/lakehouse_storages/${storage.id}',
+        storage.toJson(),
+        (json) => LakehouseStorage.fromJson(json as Map<String, dynamic>),
+      );
+      await loadStorages();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   Future<void> deleteStorage(int id) async {
     try {
       final client = ref.read(apiClientProvider);

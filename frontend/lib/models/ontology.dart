@@ -108,6 +108,32 @@ class Ontology {
     this.relationship_types,
   });
 
+  Ontology copyWith({
+    int? id,
+    String? uuid,
+    DateTime? created,
+    DateTime? modified,
+    String? name,
+    String? title,
+    int? project_id,
+    String? description,
+    List<EntityType>? entity_types,
+    List<RelationshipType>? relationship_types,
+  }) {
+    return Ontology(
+      id: id ?? this.id,
+      uuid: uuid ?? this.uuid,
+      created: created ?? this.created,
+      modified: modified ?? this.modified,
+      name: name ?? this.name,
+      title: title ?? this.title,
+      project_id: project_id ?? this.project_id,
+      description: description ?? this.description,
+      entity_types: entity_types ?? this.entity_types,
+      relationship_types: relationship_types ?? this.relationship_types,
+    );
+  }
+
   factory Ontology.fromJson(Map<String, dynamic> json) =>
       _$OntologyFromJson(json);
   Map<String, dynamic> toJson() => _$OntologyToJson(this);

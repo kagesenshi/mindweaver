@@ -40,6 +40,20 @@ class KnowledgeDBListNotifier
     }
   }
 
+  Future<void> updateDB(KnowledgeDB db) async {
+    try {
+      final client = ref.read(apiClientProvider);
+      await client.put(
+        '/api/v1/knowledge_dbs/${db.id}',
+        db.toJson(),
+        (json) => KnowledgeDB.fromJson(json as Map<String, dynamic>),
+      );
+      await loadDBs();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   Future<void> deleteDB(int id) async {
     try {
       final client = ref.read(apiClientProvider);
