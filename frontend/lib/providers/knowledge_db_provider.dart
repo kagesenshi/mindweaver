@@ -50,7 +50,7 @@ class KnowledgeDBListNotifier
 }
 
 final knowledgeDBListProvider =
-    StateNotifierProvider<
+    StateNotifierProvider.autoDispose<
       KnowledgeDBListNotifier,
       AsyncValue<List<KnowledgeDB>>
     >((ref) {

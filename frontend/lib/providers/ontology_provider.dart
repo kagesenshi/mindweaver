@@ -49,8 +49,9 @@ class OntologyListNotifier extends StateNotifier<AsyncValue<List<Ontology>>> {
 }
 
 final ontologyListProvider =
-    StateNotifierProvider<OntologyListNotifier, AsyncValue<List<Ontology>>>((
-      ref,
-    ) {
+    StateNotifierProvider.autoDispose<
+      OntologyListNotifier,
+      AsyncValue<List<Ontology>>
+    >((ref) {
       return OntologyListNotifier(ref);
     });

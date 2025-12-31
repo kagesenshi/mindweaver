@@ -139,6 +139,7 @@ class AiAgentsPage extends ConsumerWidget {
                   await ref
                       .read(aiAgentListProvider.notifier)
                       .createAgent(newAgent);
+                  ref.invalidate(aiAgentListProvider);
                   if (context.mounted) Navigator.pop(context);
                 } catch (e) {
                   if (context.mounted) {
@@ -206,10 +207,19 @@ class _AgentsList extends StatelessWidget {
             ),
             TextButton(
               onPressed: () async {
-                await ref
-                    .read(aiAgentListProvider.notifier)
-                    .deleteAgent(agent.id!);
-                if (context.mounted) Navigator.pop(context);
+                try {
+                  await ref
+                      .read(aiAgentListProvider.notifier)
+                      .deleteAgent(agent.id!);
+                  ref.invalidate(aiAgentListProvider);
+                  if (context.mounted) Navigator.pop(context);
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error deleting agent: $e')),
+                    );
+                  }
+                }
               },
               child: const Text('Delete', style: TextStyle(color: Colors.red)),
             ),

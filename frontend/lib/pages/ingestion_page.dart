@@ -155,6 +155,7 @@ class IngestionPage extends ConsumerWidget {
                   await ref
                       .read(ingestionListProvider.notifier)
                       .createIngestion(ingestion);
+                  ref.invalidate(ingestionListProvider);
                   if (context.mounted) Navigator.pop(context);
                 } catch (e) {
                   if (context.mounted) {
@@ -335,10 +336,19 @@ class _IngestionsList extends StatelessWidget {
             ),
             TextButton(
               onPressed: () async {
-                await ref
-                    .read(ingestionListProvider.notifier)
-                    .deleteIngestion(ing.id!);
-                if (context.mounted) Navigator.pop(context);
+                try {
+                  await ref
+                      .read(ingestionListProvider.notifier)
+                      .deleteIngestion(ing.id!);
+                  ref.invalidate(ingestionListProvider);
+                  if (context.mounted) Navigator.pop(context);
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error deleting ingestion: $e')),
+                    );
+                  }
+                }
               },
               child: const Text('Delete', style: TextStyle(color: Colors.red)),
             ),

@@ -232,6 +232,7 @@ class DataSourcesPage extends ConsumerWidget {
                   await ref
                       .read(dataSourceListProvider.notifier)
                       .createSource(source);
+                  ref.invalidate(dataSourceListProvider);
                   if (context.mounted) Navigator.pop(context);
                 } catch (e) {
                   if (context.mounted) {
@@ -300,10 +301,19 @@ class _SourcesList extends StatelessWidget {
             ),
             TextButton(
               onPressed: () async {
-                await ref
-                    .read(dataSourceListProvider.notifier)
-                    .deleteSource(src.id!);
-                if (context.mounted) Navigator.pop(context);
+                try {
+                  await ref
+                      .read(dataSourceListProvider.notifier)
+                      .deleteSource(src.id!);
+                  ref.invalidate(dataSourceListProvider);
+                  if (context.mounted) Navigator.pop(context);
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error deleting source: $e')),
+                    );
+                  }
+                }
               },
               child: const Text('Delete', style: TextStyle(color: Colors.red)),
             ),

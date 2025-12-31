@@ -67,7 +67,7 @@ class LakehouseStorageListNotifier
 }
 
 final lakehouseStorageListProvider =
-    StateNotifierProvider<
+    StateNotifierProvider.autoDispose<
       LakehouseStorageListNotifier,
       AsyncValue<List<LakehouseStorage>>
     >((ref) {

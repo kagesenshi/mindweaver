@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/project_provider.dart';
 
 class MainLayout extends StatelessWidget {
   final Widget child;
@@ -16,7 +18,14 @@ class MainLayout extends StatelessWidget {
       body: Row(
         children: [
           _Sidebar(currentPath: currentPath),
-          Expanded(child: child),
+          Expanded(
+            child: Column(
+              children: [
+                const _TopBar(),
+                Expanded(child: child),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -178,6 +187,177 @@ class _SidebarItem extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _TopBar extends ConsumerWidget {
+  const _TopBar();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currentProject = ref.watch(currentProjectProvider);
+
+    return Container(
+      height: 70,
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        border: Border(
+          bottom: BorderSide(
+            color: Theme.of(context).dividerColor.withOpacity(0.1),
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          // Search Box
+          SizedBox(
+            width: 400,
+            child: TextField(
+              decoration: InputDecoration(
+                hintText: 'Search...',
+                prefixIcon: const Icon(Icons.search, size: 20),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide.none,
+                ),
+                filled: true,
+                fillColor: Theme.of(
+                  context,
+                ).colorScheme.surfaceVariant.withOpacity(0.3),
+                contentPadding: const EdgeInsets.symmetric(vertical: 0),
+              ),
+            ),
+          ),
+          const SizedBox(width: 24),
+          // Current Project
+          if (currentProject != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Theme.of(
+                  context,
+                ).colorScheme.primaryContainer.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.folder_shared_outlined,
+                    size: 16,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    currentProject.title,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          const Spacer(),
+          // Notifications
+          PopupMenuButton<String>(
+            offset: const Offset(0, 50),
+            icon: Badge(
+              label: const Text('3'),
+              child: Icon(
+                Icons.notifications_none_rounded,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'notification1',
+                child: Text('You have a new message'),
+              ),
+              const PopupMenuItem(
+                value: 'notification2',
+                child: Text('Project updated'),
+              ),
+            ],
+          ),
+          const SizedBox(width: 16),
+          // User Profile
+          PopupMenuButton<String>(
+            offset: const Offset(0, 50),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 18,
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.primary.withOpacity(0.1),
+                  child: Text(
+                    'JD',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  'John Doe',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                const Icon(Icons.keyboard_arrow_down, size: 20),
+              ],
+            ),
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'profile',
+                onTap: () {
+                  // Navigate to profile
+                },
+                child: const Row(
+                  children: [
+                    Icon(Icons.person_outline, size: 20),
+                    SizedBox(width: 10),
+                    Text('Profile'),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'settings',
+                child: const Row(
+                  children: [
+                    Icon(Icons.settings_outlined, size: 20),
+                    SizedBox(width: 10),
+                    Text('Settings'),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(),
+              PopupMenuItem(
+                value: 'logout',
+                onTap: () {
+                  // Add logout logic here
+                },
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.logout,
+                      size: 20,
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                    const SizedBox(width: 10),
+                    const Text('Logout'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

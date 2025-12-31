@@ -49,8 +49,9 @@ class AIAgentListNotifier extends StateNotifier<AsyncValue<List<AIAgent>>> {
 }
 
 final aiAgentListProvider =
-    StateNotifierProvider<AIAgentListNotifier, AsyncValue<List<AIAgent>>>((
-      ref,
-    ) {
+    StateNotifierProvider.autoDispose<
+      AIAgentListNotifier,
+      AsyncValue<List<AIAgent>>
+    >((ref) {
       return AIAgentListNotifier(ref);
     });

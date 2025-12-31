@@ -132,6 +132,7 @@ class KnowledgeDbPage extends ConsumerWidget {
                   await ref
                       .read(knowledgeDBListProvider.notifier)
                       .createDB(newDb);
+                  ref.invalidate(knowledgeDBListProvider);
                   if (context.mounted) Navigator.pop(context);
                 } catch (e) {
                   if (context.mounted) {
@@ -202,10 +203,19 @@ class _KnowledgeDBList extends StatelessWidget {
             ),
             TextButton(
               onPressed: () async {
-                await ref
-                    .read(knowledgeDBListProvider.notifier)
-                    .deleteDB(db.id!);
-                if (context.mounted) Navigator.pop(context);
+                try {
+                  await ref
+                      .read(knowledgeDBListProvider.notifier)
+                      .deleteDB(db.id!);
+                  ref.invalidate(knowledgeDBListProvider);
+                  if (context.mounted) Navigator.pop(context);
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error deleting database: $e')),
+                    );
+                  }
+                }
               },
               child: const Text('Delete', style: TextStyle(color: Colors.red)),
             ),

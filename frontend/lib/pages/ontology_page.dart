@@ -80,6 +80,7 @@ class OntologyPage extends ConsumerWidget {
                 await ref
                     .read(ontologyListProvider.notifier)
                     .createOntology(ontology);
+                ref.invalidate(ontologyListProvider);
                 if (context.mounted) Navigator.pop(context);
               } catch (e) {
                 if (context.mounted) {
@@ -201,10 +202,19 @@ class _OntologyList extends StatelessWidget {
             ),
             TextButton(
               onPressed: () async {
-                await ref
-                    .read(ontologyListProvider.notifier)
-                    .deleteOntology(o.id!);
-                if (context.mounted) Navigator.pop(context);
+                try {
+                  await ref
+                      .read(ontologyListProvider.notifier)
+                      .deleteOntology(o.id!);
+                  ref.invalidate(ontologyListProvider);
+                  if (context.mounted) Navigator.pop(context);
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error deleting ontology: $e')),
+                    );
+                  }
+                }
               },
               child: const Text('Delete', style: TextStyle(color: Colors.red)),
             ),

@@ -51,9 +51,11 @@ class ChatListNotifier extends StateNotifier<AsyncValue<List<Chat>>> {
 }
 
 final chatListProvider =
-    StateNotifierProvider<ChatListNotifier, AsyncValue<List<Chat>>>((ref) {
-      return ChatListNotifier(ref);
-    });
+    StateNotifierProvider.autoDispose<ChatListNotifier, AsyncValue<List<Chat>>>(
+      (ref) {
+        return ChatListNotifier(ref);
+      },
+    );
 
 class ActiveChatNotifier extends StateNotifier<Chat?> {
   final Ref ref;

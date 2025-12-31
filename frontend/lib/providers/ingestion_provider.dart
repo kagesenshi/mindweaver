@@ -70,8 +70,9 @@ class IngestionListNotifier extends StateNotifier<AsyncValue<List<Ingestion>>> {
 }
 
 final ingestionListProvider =
-    StateNotifierProvider<IngestionListNotifier, AsyncValue<List<Ingestion>>>((
-      ref,
-    ) {
+    StateNotifierProvider.autoDispose<
+      IngestionListNotifier,
+      AsyncValue<List<Ingestion>>
+    >((ref) {
       return IngestionListNotifier(ref);
     });

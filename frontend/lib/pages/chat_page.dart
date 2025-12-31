@@ -54,8 +54,12 @@ class _ChatSidebar extends ConsumerWidget {
                   ref.read(activeChatProvider.notifier).setActiveChat(chat),
               trailing: IconButton(
                 icon: const Icon(Icons.delete, size: 16),
-                onPressed: () =>
-                    ref.read(chatListProvider.notifier).deleteChat(chat.id!),
+                onPressed: () async {
+                  await ref
+                      .read(chatListProvider.notifier)
+                      .deleteChat(chat.id!);
+                  ref.invalidate(chatListProvider);
+                },
               ),
             );
           },
@@ -114,6 +118,7 @@ class _ChatSidebar extends ConsumerWidget {
                 final chat = await ref
                     .read(chatListProvider.notifier)
                     .createChat(titleController.text, selectedAgentId);
+                ref.invalidate(chatListProvider);
                 ref.read(activeChatProvider.notifier).setActiveChat(chat);
                 if (context.mounted) Navigator.pop(context);
               },

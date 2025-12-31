@@ -145,6 +145,7 @@ class LakehouseStoragePage extends ConsumerWidget {
                 await ref
                     .read(lakehouseStorageListProvider.notifier)
                     .createStorage(storage);
+                ref.invalidate(lakehouseStorageListProvider);
                 if (context.mounted) Navigator.pop(context);
               } catch (e) {
                 if (context.mounted) {
@@ -209,10 +210,19 @@ class _StoragesList extends StatelessWidget {
             ),
             TextButton(
               onPressed: () async {
-                await ref
-                    .read(lakehouseStorageListProvider.notifier)
-                    .deleteStorage(st.id!);
-                if (context.mounted) Navigator.pop(context);
+                try {
+                  await ref
+                      .read(lakehouseStorageListProvider.notifier)
+                      .deleteStorage(st.id!);
+                  ref.invalidate(lakehouseStorageListProvider);
+                  if (context.mounted) Navigator.pop(context);
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error deleting storage: $e')),
+                    );
+                  }
+                }
               },
               child: const Text('Delete', style: TextStyle(color: Colors.red)),
             ),

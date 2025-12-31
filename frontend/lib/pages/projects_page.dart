@@ -84,6 +84,7 @@ class ProjectsPage extends ConsumerWidget {
                       titleController.text,
                       descController.text,
                     );
+                ref.invalidate(projectListProvider);
                 if (context.mounted) Navigator.pop(context);
               } catch (e) {
                 if (context.mounted) {
@@ -117,8 +118,8 @@ class _ProjectsGrid extends StatelessWidget {
     return GridView.builder(
       padding: const EdgeInsets.all(20),
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: 300,
-        childAspectRatio: 1.5,
+        maxCrossAxisExtent: 400,
+        childAspectRatio: 1.8,
         crossAxisSpacing: 20,
         mainAxisSpacing: 20,
       ),
@@ -146,49 +147,95 @@ class _ProjectCard extends ConsumerWidget {
           context.go('/overview');
         },
         borderRadius: BorderRadius.circular(15),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+        child: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const FaIcon(
-                    FontAwesomeIcons.folder,
-                    size: 20,
-                    color: Colors.blue,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      project.title,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                  Row(
+                    children: [
+                      const FaIcon(
+                        FontAwesomeIcons.folder,
+                        size: 20,
+                        color: Colors.blue,
                       ),
-                      maxLines: 1,
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          project.title,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    project.name,
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                  ),
+                  const Spacer(),
+                  if (project.description != null &&
+                      project.description!.isNotEmpty)
+                    Text(
+                      project.description!,
+                      style: const TextStyle(fontSize: 14),
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                  ),
                 ],
               ),
-              const SizedBox(height: 10),
-              Text(
-                project.name,
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+            ),
+            Positioned(
+              top: 5,
+              right: 5,
+              child: IconButton(
+                icon: const Icon(Icons.delete, color: Colors.grey, size: 20),
+                onPressed: () => _confirmDelete(context, ref, project),
               ),
-              const Spacer(),
-              if (project.description != null &&
-                  project.description!.isNotEmpty)
-                Text(
-                  project.description!,
-                  style: const TextStyle(fontSize: 14),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-            ],
-          ),
+            ),
+          ],
         ),
+      ),
+    );
+  }
+
+  void _confirmDelete(BuildContext context, WidgetRef ref, Project project) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Project'),
+        content: Text('Are you sure you want to delete "${project.title}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              try {
+                await ref
+                    .read(projectListProvider.notifier)
+                    .deleteProject(project.id!);
+                ref.invalidate(projectListProvider);
+                if (context.mounted) Navigator.pop(context);
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error deleting project: $e')),
+                  );
+                }
+              }
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
       ),
     );
   }

@@ -68,8 +68,9 @@ class DataSourceListNotifier
 }
 
 final dataSourceListProvider =
-    StateNotifierProvider<DataSourceListNotifier, AsyncValue<List<DataSource>>>(
-      (ref) {
-        return DataSourceListNotifier(ref);
-      },
-    );
+    StateNotifierProvider.autoDispose<
+      DataSourceListNotifier,
+      AsyncValue<List<DataSource>>
+    >((ref) {
+      return DataSourceListNotifier(ref);
+    });

@@ -57,11 +57,22 @@ class ProjectListNotifier extends StateNotifier<AsyncValue<List<Project>>> {
       rethrow;
     }
   }
+
+  Future<void> deleteProject(int id) async {
+    try {
+      final client = ref.read(apiClientProvider);
+      await client.delete('/api/v1/projects/$id');
+      await loadProjects();
+    } catch (e) {
+      rethrow;
+    }
+  }
 }
 
 final projectListProvider =
-    StateNotifierProvider<ProjectListNotifier, AsyncValue<List<Project>>>((
-      ref,
-    ) {
+    StateNotifierProvider.autoDispose<
+      ProjectListNotifier,
+      AsyncValue<List<Project>>
+    >((ref) {
       return ProjectListNotifier(ref);
     });
