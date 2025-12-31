@@ -1,0 +1,148 @@
+name: Build Container Images
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-backend:
+    runs-on: mindweaver-runners
+    environment: HOMELAB
+    steps:
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Login to Registry
+        uses: docker/login-action@v3
+        with:
+          registry: registry.kagesenshi.org
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Login to Registry Cache
+        uses: docker/login-action@v3
+        with:
+          registry: registry-1.kagesenshi.org
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: image=registry-1.kagesenshi.org/moby/buildkit:buildx-stable-1
+          buildkitd-config-inline: |
+            [registry."docker.io"]
+              mirrors = ["registry-1.kagesenshi.org"]
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          target: backend
+          build-args: |
+            HTTP_PROXY=${{ vars.PROXY }}
+            HTTPS_PROXY=${{ vars.PROXY }}
+            http_proxy=${{ vars.PROXY }}
+            https_proxy=${{ vars.PROXY }}
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/mindweaver/backend:latest
+            ghcr.io/${{ github.repository_owner }}/mindweaver/backend:${{ github.sha }}
+          cache-from: type=local,src=/cache
+          cache-to: type=local,dest=/cache,mode=max
+
+  build-frontend:
+    runs-on: mindweaver-runners
+    environment: HOMELAB
+    steps:
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Login to Registry
+        uses: docker/login-action@v3
+        with:
+          registry: registry.kagesenshi.org
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Login to Registry Cache
+        uses: docker/login-action@v3
+        with:
+          registry: registry-1.kagesenshi.org
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: image=registry-1.kagesenshi.org/moby/buildkit:buildx-stable-1
+          buildkitd-config-inline: |
+            [registry."docker.io"]
+              mirrors = ["registry-1.kagesenshi.org"]
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          target: frontend
+          build-args: |
+            BACKEND_URL=http://localhost:8000
+            HTTP_PROXY=${{ vars.PROXY }}
+            HTTPS_PROXY=${{ vars.PROXY }}
+            http_proxy=${{ vars.PROXY }}
+            https_proxy=${{ vars.PROXY }}
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/mindweaver/frontend:latest
+            ghcr.io/${{ github.repository_owner }}/mindweaver/frontend:${{ github.sha }}
+          cache-from: type=local,src=/cache
+          cache-to: type=local,dest=/cache,mode=max
+
+  notify-argocd:
+    runs-on: mindweaver-runners
+    needs: [build-backend, build-frontend]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ARGOCD_SERVER != ''
+    environment: HOMELAB
+    steps:
+      - name: Install ArgoCD CLI
+        run: |
+          curl -sSL -o /tmp/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+          chmod +x /tmp/argocd
+          
+      - name: Sync Application with New Images
+        env:
+          ARGOCD_SERVER: ${{ vars.ARGOCD_SERVER }}
+        run: |
+          /tmp/argocd login $ARGOCD_SERVER \
+            --auth-token ${{ secrets.ARGOCD_TOKEN }} \
+            --insecure
+          
+          /tmp/argocd app set mindweaver \
+            --kustomize-image backend=ghcr.io/${{ github.repository_owner }}/mindweaver/backend:${{ github.sha }} \
+            --kustomize-image frontend=ghcr.io/${{ github.repository_owner }}/mindweaver/frontend:${{ github.sha }}
+          
+          /tmp/argocd app sync mindweaver
