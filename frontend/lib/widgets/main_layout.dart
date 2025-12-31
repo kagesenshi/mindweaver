@@ -4,6 +4,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/project_provider.dart';
 import '../models/project.dart';
+import '../providers/feature_flags_provider.dart';
 
 class MainLayout extends StatefulWidget {
   final Widget child;
@@ -144,23 +145,42 @@ class _SidebarState extends State<_Sidebar> {
                         path: '/overview',
                         isCurrent: widget.currentPath == '/overview',
                       ),
-                      _SidebarItem(
-                        icon: FontAwesomeIcons.database,
-                        label: 'Knowledge DB',
-                        path: '/knowledge_db',
-                        isCurrent: widget.currentPath == '/knowledge_db',
-                      ),
-                      _SidebarItem(
-                        icon: FontAwesomeIcons.robot,
-                        label: 'AI Agents',
-                        path: '/agents',
-                        isCurrent: widget.currentPath == '/agents',
-                      ),
-                      _SidebarItem(
-                        icon: FontAwesomeIcons.message,
-                        label: 'Chat',
-                        path: '/chat',
-                        isCurrent: widget.currentPath == '/chat',
+                      Consumer(
+                        builder: (context, ref, child) {
+                          final featureFlags = ref.watch(featureFlagsProvider);
+                          final showKnowledge = featureFlags.when(
+                            data: (f) => f.experimentalKnowledgeDb,
+                            loading: () =>
+                                true, // Show by default while loading to avoid flicker
+                            error: (_, __) => true,
+                          );
+
+                          if (!showKnowledge) return const SizedBox.shrink();
+
+                          return Column(
+                            children: [
+                              _SidebarItem(
+                                icon: FontAwesomeIcons.database,
+                                label: 'Knowledge DB',
+                                path: '/knowledge_db',
+                                isCurrent:
+                                    widget.currentPath == '/knowledge_db',
+                              ),
+                              _SidebarItem(
+                                icon: FontAwesomeIcons.robot,
+                                label: 'AI Agents',
+                                path: '/agents',
+                                isCurrent: widget.currentPath == '/agents',
+                              ),
+                              _SidebarItem(
+                                icon: FontAwesomeIcons.message,
+                                label: 'Chat',
+                                path: '/chat',
+                                isCurrent: widget.currentPath == '/chat',
+                              ),
+                            ],
+                          );
+                        },
                       ),
                       const Divider(color: Colors.white24, height: 40),
                       _SidebarItem(
@@ -181,11 +201,24 @@ class _SidebarState extends State<_Sidebar> {
                         path: '/ingestion',
                         isCurrent: widget.currentPath == '/ingestion',
                       ),
-                      _SidebarItem(
-                        icon: FontAwesomeIcons.diagramProject,
-                        label: 'Ontology',
-                        path: '/ontology',
-                        isCurrent: widget.currentPath == '/ontology',
+                      Consumer(
+                        builder: (context, ref, child) {
+                          final featureFlags = ref.watch(featureFlagsProvider);
+                          final showKnowledge = featureFlags.when(
+                            data: (f) => f.experimentalKnowledgeDb,
+                            loading: () => true,
+                            error: (_, __) => true,
+                          );
+
+                          if (!showKnowledge) return const SizedBox.shrink();
+
+                          return _SidebarItem(
+                            icon: FontAwesomeIcons.diagramProject,
+                            label: 'Ontology',
+                            path: '/ontology',
+                            isCurrent: widget.currentPath == '/ontology',
+                          );
+                        },
                       ),
                       const Spacer(),
                       Padding(

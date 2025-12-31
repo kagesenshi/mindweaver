@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../providers/project_provider.dart';
+import '../providers/feature_flags_provider.dart';
 
 class ProjectOverviewPage extends ConsumerWidget {
   const ProjectOverviewPage({super.key});
@@ -29,6 +30,14 @@ class ProjectOverviewPage extends ConsumerWidget {
       );
     }
 
+    final showKnowledge = ref
+        .watch(featureFlagsProvider)
+        .when(
+          data: (f) => f.experimentalKnowledgeDb,
+          loading: () => true,
+          error: (_, __) => true,
+        );
+
     return Scaffold(
       appBar: AppBar(title: Text(project.title)),
       body: SingleChildScrollView(
@@ -53,27 +62,29 @@ class ProjectOverviewPage extends ConsumerWidget {
               mainAxisSpacing: 20,
               childAspectRatio: 2.5,
               children: [
-                _QuickActionCard(
-                  icon: FontAwesomeIcons.database,
-                  title: 'Knowledge Base',
-                  subtitle: 'Manage yours documents',
-                  color: Colors.blue,
-                  onTap: () => context.go('/knowledge_db'),
-                ),
-                _QuickActionCard(
-                  icon: FontAwesomeIcons.robot,
-                  title: 'AI Agents',
-                  subtitle: 'Configure your agents',
-                  color: Colors.purple,
-                  onTap: () => context.go('/agents'),
-                ),
-                _QuickActionCard(
-                  icon: FontAwesomeIcons.message,
-                  title: 'Chat Terminal',
-                  subtitle: 'Test your agents',
-                  color: Colors.green,
-                  onTap: () => context.go('/chat'),
-                ),
+                if (showKnowledge) ...[
+                  _QuickActionCard(
+                    icon: FontAwesomeIcons.database,
+                    title: 'Knowledge Base',
+                    subtitle: 'Manage yours documents',
+                    color: Colors.blue,
+                    onTap: () => context.go('/knowledge_db'),
+                  ),
+                  _QuickActionCard(
+                    icon: FontAwesomeIcons.robot,
+                    title: 'AI Agents',
+                    subtitle: 'Configure your agents',
+                    color: Colors.purple,
+                    onTap: () => context.go('/agents'),
+                  ),
+                  _QuickActionCard(
+                    icon: FontAwesomeIcons.message,
+                    title: 'Chat Terminal',
+                    subtitle: 'Test your agents',
+                    color: Colors.green,
+                    onTap: () => context.go('/chat'),
+                  ),
+                ],
                 _QuickActionCard(
                   icon: FontAwesomeIcons.plug,
                   title: 'Data Sources',
@@ -88,13 +99,14 @@ class ProjectOverviewPage extends ConsumerWidget {
                   color: Colors.red,
                   onTap: () => context.go('/ingestion'),
                 ),
-                _QuickActionCard(
-                  icon: FontAwesomeIcons.diagramProject,
-                  title: 'Ontology',
-                  subtitle: 'Define your schema',
-                  color: Colors.teal,
-                  onTap: () => context.go('/ontology'),
-                ),
+                if (showKnowledge)
+                  _QuickActionCard(
+                    icon: FontAwesomeIcons.diagramProject,
+                    title: 'Ontology',
+                    subtitle: 'Define your schema',
+                    color: Colors.teal,
+                    onTap: () => context.go('/ontology'),
+                  ),
               ],
             ),
           ],

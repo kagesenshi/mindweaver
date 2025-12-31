@@ -16,13 +16,10 @@ class Settings(BaseSettings):
     enable_db_reset: bool = False
     fernet_key: str | None = None
 
-    experimental_ai_agent: bool = False
     experimental_data_source: bool = False
     experimental_knowledge_db: bool = False
     experimental_lakehouse_storage: bool = False
     experimental_ingestion: bool = False
-    experimental_chat: bool = False
-    experimental_ontology: bool = False
 
     model_config = SettingsConfigDict(
         env_file=".env", env_prefix="mindweaver_", extra="allow"
