@@ -41,13 +41,3 @@ class ProjectScopedService(Service[T]):
     @classmethod
     def extra_dependencies(cls):
         return [Depends(x_project_id)]
-
-    async def all(self) -> list[T]:
-        """
-        Override all to return empty list if project_id is not specified.
-        """
-        project_id = self.get_project_id()
-        if not project_id:
-            return []
-
-        return await super().all()
