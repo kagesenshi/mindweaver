@@ -65,7 +65,7 @@ class DataSourcesPage extends ConsumerWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 DropdownButtonFormField<String>(
-                  value: selectedType,
+                  initialValue: selectedType,
                   decoration: const InputDecoration(labelText: 'Source Type'),
                   items: const [
                     DropdownMenuItem(value: 'API', child: Text('REST API')),
@@ -105,7 +105,7 @@ class DataSourcesPage extends ConsumerWidget {
                   ),
                 ] else if (selectedType == 'Database') ...[
                   DropdownButtonFormField<String>(
-                    value: dbType,
+                    initialValue: dbType,
                     decoration: const InputDecoration(labelText: 'DB Type'),
                     items: const [
                       DropdownMenuItem(
@@ -258,8 +258,9 @@ class _SourcesList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (sources.isEmpty)
+    if (sources.isEmpty) {
       return const Center(child: Text('No data sources found.'));
+    }
 
     return ListView.builder(
       padding: const EdgeInsets.all(20),

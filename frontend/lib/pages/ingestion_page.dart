@@ -70,7 +70,7 @@ class IngestionPage extends ConsumerWidget {
                     const SizedBox(height: 20),
                     sourcesAsync.when(
                       data: (sources) => DropdownButtonFormField<int?>(
-                        value: selectedSourceId,
+                        initialValue: selectedSourceId,
                         decoration: const InputDecoration(
                           labelText: 'Data Source',
                         ),
@@ -91,7 +91,7 @@ class IngestionPage extends ConsumerWidget {
                     const SizedBox(height: 10),
                     storagesAsync.when(
                       data: (storages) => DropdownButtonFormField<int?>(
-                        value: selectedStorageId,
+                        initialValue: selectedStorageId,
                         decoration: const InputDecoration(
                           labelText: 'Lakehouse Storage',
                         ),
@@ -122,7 +122,7 @@ class IngestionPage extends ConsumerWidget {
                       ),
                     ),
                     DropdownButtonFormField<String>(
-                      value: ingestionType,
+                      initialValue: ingestionType,
                       decoration: const InputDecoration(
                         labelText: 'Ingestion Type',
                       ),
@@ -148,8 +148,9 @@ class IngestionPage extends ConsumerWidget {
                 ),
                 ElevatedButton(
                   onPressed: () async {
-                    if (selectedSourceId == null || selectedStorageId == null)
+                    if (selectedSourceId == null || selectedStorageId == null) {
                       return;
+                    }
                     final ingestion = Ingestion(
                       name: nameController.text,
                       title: titleController.text,
@@ -192,8 +193,9 @@ class _IngestionsList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (ingestions.isEmpty)
+    if (ingestions.isEmpty) {
       return const Center(child: Text('No ingestion jobs found.'));
+    }
 
     return ListView.builder(
       padding: const EdgeInsets.all(20),
@@ -286,8 +288,9 @@ class _IngestionsList extends StatelessWidget {
                     return Center(child: Text('Error: ${snapshot.error}'));
                   }
                   final runs = snapshot.data ?? [];
-                  if (runs.isEmpty)
+                  if (runs.isEmpty) {
                     return const Center(child: Text('No runs yet.'));
+                  }
                   return ListView.builder(
                     itemCount: runs.length,
                     itemBuilder: (context, index) {

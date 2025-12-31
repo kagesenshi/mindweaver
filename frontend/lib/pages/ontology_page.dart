@@ -105,8 +105,9 @@ class _OntologyList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (ontologies.isEmpty)
+    if (ontologies.isEmpty) {
       return const Center(child: Text('No ontologies found.'));
+    }
 
     return ListView.builder(
       padding: const EdgeInsets.all(20),

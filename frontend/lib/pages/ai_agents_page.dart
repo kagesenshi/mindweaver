@@ -65,7 +65,7 @@ class AiAgentsPage extends ConsumerWidget {
                       decoration: const InputDecoration(labelText: 'Title'),
                     ),
                     DropdownButtonFormField<String>(
-                      value: selectedModel,
+                      initialValue: selectedModel,
                       decoration: const InputDecoration(labelText: 'Model'),
                       items: const [
                         DropdownMenuItem(

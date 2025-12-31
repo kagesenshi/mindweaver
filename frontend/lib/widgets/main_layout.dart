@@ -289,7 +289,7 @@ class _TopBar extends ConsumerWidget {
                 filled: true,
                 fillColor: Theme.of(
                   context,
-                ).colorScheme.surfaceVariant.withOpacity(0.3),
+                ).colorScheme.surfaceContainerHighest.withOpacity(0.3),
                 contentPadding: const EdgeInsets.symmetric(vertical: 0),
               ),
             ),

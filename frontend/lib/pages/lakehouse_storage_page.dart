@@ -170,8 +170,9 @@ class _StoragesList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (storages.isEmpty)
+    if (storages.isEmpty) {
       return const Center(child: Text('No lakehouse storages found.'));
+    }
 
     return ListView.builder(
       padding: const EdgeInsets.all(20),

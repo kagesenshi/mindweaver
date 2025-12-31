@@ -90,7 +90,7 @@ class _ChatSidebar extends ConsumerWidget {
               const SizedBox(height: 20),
               agentsAsync.when(
                 data: (agents) => DropdownButtonFormField<String?>(
-                  value: selectedAgentId,
+                  initialValue: selectedAgentId,
                   decoration: const InputDecoration(
                     labelText: 'AI Agent (Optional)',
                   ),
