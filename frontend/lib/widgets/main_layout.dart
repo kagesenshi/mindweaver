@@ -145,22 +145,25 @@ class _SidebarState extends State<_Sidebar> {
                         path: '/overview',
                         isCurrent: widget.currentPath == '/overview',
                       ),
+                      const Divider(color: Colors.white24, height: 40),
                       Consumer(
                         builder: (context, ref, child) {
                           final featureFlags = ref.watch(featureFlagsProvider);
                           final showKnowledge = featureFlags.when(
                             data: (f) => f.experimentalKnowledgeDb,
-                            loading: () =>
-                                true, // Show by default while loading to avoid flicker
+                            loading: () => true,
                             error: (_, __) => true,
                           );
 
                           if (!showKnowledge) return const SizedBox.shrink();
 
-                          return Column(
-                            children: [
+                          return _SidebarGroup(
+                            icon: FontAwesomeIcons.lightbulb,
+                            label: 'Knowledge & AI',
+                            currentPath: widget.currentPath,
+                            items: [
                               _SidebarItem(
-                                icon: FontAwesomeIcons.database,
+                                icon: FontAwesomeIcons.book,
                                 label: 'Knowledge DB',
                                 path: '/knowledge_db',
                                 isCurrent:
@@ -178,47 +181,40 @@ class _SidebarState extends State<_Sidebar> {
                                 path: '/chat',
                                 isCurrent: widget.currentPath == '/chat',
                               ),
+                              _SidebarItem(
+                                icon: FontAwesomeIcons.diagramProject,
+                                label: 'Ontology',
+                                path: '/ontology',
+                                isCurrent: widget.currentPath == '/ontology',
+                              ),
                             ],
                           );
                         },
                       ),
-                      const Divider(color: Colors.white24, height: 40),
-                      _SidebarItem(
-                        icon: FontAwesomeIcons.plug,
-                        label: 'Sources',
-                        path: '/sources',
-                        isCurrent: widget.currentPath == '/sources',
-                      ),
-                      _SidebarItem(
-                        icon: FontAwesomeIcons.server,
-                        label: 'Lakehouse',
-                        path: '/lakehouse',
-                        isCurrent: widget.currentPath == '/lakehouse',
-                      ),
-                      _SidebarItem(
-                        icon: FontAwesomeIcons.upload,
-                        label: 'Ingestion',
-                        path: '/ingestion',
-                        isCurrent: widget.currentPath == '/ingestion',
-                      ),
-                      Consumer(
-                        builder: (context, ref, child) {
-                          final featureFlags = ref.watch(featureFlagsProvider);
-                          final showKnowledge = featureFlags.when(
-                            data: (f) => f.experimentalKnowledgeDb,
-                            loading: () => true,
-                            error: (_, __) => true,
-                          );
-
-                          if (!showKnowledge) return const SizedBox.shrink();
-
-                          return _SidebarItem(
-                            icon: FontAwesomeIcons.diagramProject,
-                            label: 'Ontology',
-                            path: '/ontology',
-                            isCurrent: widget.currentPath == '/ontology',
-                          );
-                        },
+                      _SidebarGroup(
+                        icon: FontAwesomeIcons.database,
+                        label: 'Data Management',
+                        currentPath: widget.currentPath,
+                        items: [
+                          _SidebarItem(
+                            icon: FontAwesomeIcons.plug,
+                            label: 'Sources',
+                            path: '/sources',
+                            isCurrent: widget.currentPath == '/sources',
+                          ),
+                          _SidebarItem(
+                            icon: FontAwesomeIcons.server,
+                            label: 'Lakehouse',
+                            path: '/lakehouse',
+                            isCurrent: widget.currentPath == '/lakehouse',
+                          ),
+                          _SidebarItem(
+                            icon: FontAwesomeIcons.upload,
+                            label: 'Ingestion',
+                            path: '/ingestion',
+                            isCurrent: widget.currentPath == '/ingestion',
+                          ),
+                        ],
                       ),
                       const Spacer(),
                       Padding(
@@ -286,6 +282,93 @@ class _SidebarItem extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _SidebarGroup extends StatefulWidget {
+  final IconData icon;
+  final String label;
+  final String? currentPath;
+  final List<_SidebarItem> items;
+
+  const _SidebarGroup({
+    required this.icon,
+    required this.label,
+    this.currentPath,
+    required this.items,
+  });
+
+  @override
+  State<_SidebarGroup> createState() => _SidebarGroupState();
+}
+
+class _SidebarGroupState extends State<_SidebarGroup> {
+  late bool _isExpanded;
+
+  @override
+  void initState() {
+    super.initState();
+    _isExpanded = widget.items.any((item) => item.isCurrent);
+  }
+
+  @override
+  void didUpdateWidget(_SidebarGroup oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.items.any((item) => item.isCurrent)) {
+      _isExpanded = true;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          child: InkWell(
+            onTap: () {
+              setState(() {
+                _isExpanded = !_isExpanded;
+              });
+            },
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+              child: Row(
+                children: [
+                  FaIcon(widget.icon, color: Colors.white, size: 20),
+                  const SizedBox(width: 15),
+                  Expanded(
+                    child: Text(
+                      widget.label,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  FaIcon(
+                    _isExpanded
+                        ? FontAwesomeIcons.chevronDown
+                        : FontAwesomeIcons.chevronRight,
+                    color: Colors.white,
+                    size: 14,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (_isExpanded)
+          ...widget.items.map((item) {
+            return Padding(
+              padding: const EdgeInsets.only(left: 20),
+              child: item,
+            );
+          }).toList(),
+      ],
     );
   }
 }
