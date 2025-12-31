@@ -49,6 +49,21 @@ jobs:
             [registry."docker.io"]
               mirrors = ["registry-1.kagesenshi.org"]
 
+      - name: Run backend tests
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          target: test
+          build-args: |
+            HTTP_PROXY=${{ vars.PROXY }}
+            HTTPS_PROXY=${{ vars.PROXY }}
+            http_proxy=${{ vars.PROXY }}
+            https_proxy=${{ vars.PROXY }}
+          push: false
+          cache-from: type=local,src=/cache
+          cache-to: type=local,dest=/cache,mode=max
+
       - name: Build and push backend image
         uses: docker/build-push-action@v5
         with:

@@ -1,5 +1,5 @@
-# Backend Dockerfile for Mindweaver FastAPI application
-FROM python:3.13-slim AS backend
+# Backend Base Stage for common dependencies
+FROM python:3.13-slim AS backend-base
 
 # Install uv for fast dependency management
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
@@ -10,13 +10,23 @@ WORKDIR /app
 # Copy dependency files
 COPY backend .
 
-# Install dependencies
+# Install dependencies (only production by default)
 RUN uv sync --frozen --no-dev
 
 # Set environment variables
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONUNBUFFERED=1
 
+# Backend Test Stage
+FROM backend-base AS test
+# Install postgresql for pytest-postgresql and dev dependencies
+RUN apt-get update && apt-get install -y postgresql && rm -rf /var/lib/apt/lists/*
+RUN uv sync --frozen
+# Run tests
+RUN uv run pytest tests
+
+# Backend Production Stage
+FROM backend-base AS backend
 # Expose port
 EXPOSE 8000
 
