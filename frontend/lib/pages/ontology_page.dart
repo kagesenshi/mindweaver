@@ -4,6 +4,8 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../providers/ontology_provider.dart';
 import '../models/ontology.dart';
 
+import '../widgets/large_dialog.dart';
+
 class OntologyPage extends ConsumerWidget {
   const OntologyPage({super.key});
 
@@ -42,29 +44,43 @@ class OntologyPage extends ConsumerWidget {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Create Ontology'),
-        content: Column(
+      builder: (context) => LargeDialog(
+        title: 'Create Ontology',
+        child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(labelText: 'Name (ID)'),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: nameController,
+                    decoration: const InputDecoration(labelText: 'Name (ID)'),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: TextField(
+                    controller: titleController,
+                    decoration: const InputDecoration(labelText: 'Title'),
+                  ),
+                ),
+              ],
             ),
-            TextField(
-              controller: titleController,
-              decoration: const InputDecoration(labelText: 'Title'),
-            ),
+            const SizedBox(height: 16),
             TextField(
               controller: descController,
               decoration: const InputDecoration(labelText: 'Description'),
-              maxLines: 3,
+              maxLines: 4,
             ),
           ],
         ),
         actions: [
-          TextButton(
+          OutlinedButton(
             onPressed: () => Navigator.pop(context),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            ),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
@@ -90,6 +106,11 @@ class OntologyPage extends ConsumerWidget {
                 }
               }
             },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF646CFF),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            ),
             child: const Text('Create'),
           ),
         ],

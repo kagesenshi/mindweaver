@@ -4,6 +4,8 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../providers/lakehouse_storage_provider.dart';
 import '../models/lakehouse_storage.dart';
 
+import '../widgets/large_dialog.dart';
+
 class LakehouseStoragePage extends ConsumerWidget {
   const LakehouseStoragePage({super.key});
 
@@ -46,54 +48,93 @@ class LakehouseStoragePage extends ConsumerWidget {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('New Lakehouse Storage'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(labelText: 'Name (ID)'),
-              ),
-              TextField(
-                controller: titleController,
-                decoration: const InputDecoration(labelText: 'Title'),
-              ),
-              const Divider(height: 40),
-              TextField(
-                controller: bucketController,
-                decoration: const InputDecoration(labelText: 'Bucket'),
-              ),
-              TextField(
-                controller: regionController,
-                decoration: const InputDecoration(labelText: 'Region'),
-              ),
-              TextField(
-                controller: accessKeyController,
-                decoration: const InputDecoration(labelText: 'Access Key'),
-              ),
-              TextField(
-                controller: secretKeyController,
-                decoration: const InputDecoration(labelText: 'Secret Key'),
-                obscureText: true,
-              ),
-              TextField(
-                controller: endpointController,
-                decoration: const InputDecoration(
-                  labelText: 'Endpoint URL (Optional)',
-                  hintText: 'e.g. https://minio.example.com',
+      builder: (context) => LargeDialog(
+        title: 'New Lakehouse Storage',
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: nameController,
+                    decoration: const InputDecoration(labelText: 'Name (ID)'),
+                  ),
                 ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: TextField(
+                    controller: titleController,
+                    decoration: const InputDecoration(labelText: 'Title'),
+                  ),
+                ),
+              ],
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Divider(),
+            ),
+            const Text(
+              'S3 Configuration',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: bucketController,
+                    decoration: const InputDecoration(labelText: 'Bucket'),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: TextField(
+                    controller: regionController,
+                    decoration: const InputDecoration(labelText: 'Region'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: accessKeyController,
+                    decoration: const InputDecoration(labelText: 'Access Key'),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: TextField(
+                    controller: secretKeyController,
+                    decoration: const InputDecoration(labelText: 'Secret Key'),
+                    obscureText: true,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: endpointController,
+              decoration: const InputDecoration(
+                labelText: 'Endpoint URL (Optional)',
+                hintText: 'e.g. https://minio.example.com',
               ),
-            ],
-          ),
+            ),
+          ],
         ),
         actions: [
-          TextButton(
+          OutlinedButton(
             onPressed: () => Navigator.pop(context),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            ),
             child: const Text('Cancel'),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () async {
               final params = {
                 'bucket': bucketController.text,
@@ -124,6 +165,11 @@ class LakehouseStoragePage extends ConsumerWidget {
                 }
               }
             },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue.shade700,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            ),
             child: const Text('Test Connection'),
           ),
           ElevatedButton(
@@ -155,6 +201,11 @@ class LakehouseStoragePage extends ConsumerWidget {
                 }
               }
             },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF646CFF),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            ),
             child: const Text('Create'),
           ),
         ],

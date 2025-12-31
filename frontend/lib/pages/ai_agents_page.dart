@@ -5,6 +5,8 @@ import '../providers/ai_agent_provider.dart';
 import '../providers/knowledge_db_provider.dart';
 import '../models/ai_agent.dart';
 
+import '../widgets/large_dialog.dart';
+
 class AiAgentsPage extends ConsumerWidget {
   const AiAgentsPage({super.key});
 
@@ -50,82 +52,120 @@ class AiAgentsPage extends ConsumerWidget {
         builder: (context, setState) => Consumer(
           builder: (context, ref, _) {
             final dbsAsync = ref.watch(knowledgeDBListProvider);
-            return AlertDialog(
-              title: const Text('Create AI Agent'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: nameController,
-                      decoration: const InputDecoration(labelText: 'Name (ID)'),
-                    ),
-                    TextField(
-                      controller: titleController,
-                      decoration: const InputDecoration(labelText: 'Title'),
-                    ),
-                    DropdownButtonFormField<String>(
-                      initialValue: selectedModel,
-                      decoration: const InputDecoration(labelText: 'Model'),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'gpt-4-turbo',
-                          child: Text('GPT-4 Turbo'),
+            return LargeDialog(
+              title: 'Create AI Agent',
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: nameController,
+                          decoration: const InputDecoration(
+                            labelText: 'Name (ID)',
+                          ),
                         ),
-                        DropdownMenuItem(
-                          value: 'gpt-3.5-turbo',
-                          child: Text('GPT-3.5 Turbo'),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: TextField(
+                          controller: titleController,
+                          decoration: const InputDecoration(labelText: 'Title'),
                         ),
-                      ],
-                      onChanged: (val) => setState(() => selectedModel = val!),
-                    ),
-                    const SizedBox(height: 20),
-                    Text('Temperature: ${selectedTemp.toStringAsFixed(1)}'),
-                    Slider(
-                      value: selectedTemp,
-                      onChanged: (val) => setState(() => selectedTemp = val),
-                    ),
-                    TextField(
-                      controller: systemPromptController,
-                      decoration: const InputDecoration(
-                        labelText: 'System Prompt',
                       ),
-                      maxLines: 5,
-                    ),
-                    const SizedBox(height: 20),
-                    const Text(
-                      'Knowledge Databases',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    dbsAsync.when(
-                      data: (dbs) => Wrap(
-                        spacing: 8,
-                        children: dbs.map((db) {
-                          final isSelected = selectedDBIds.contains(db.uuid);
-                          return FilterChip(
-                            label: Text(db.title),
-                            selected: isSelected,
-                            onSelected: (selected) {
-                              setState(() {
-                                if (selected) {
-                                  selectedDBIds.add(db.uuid!);
-                                } else {
-                                  selectedDBIds.remove(db.uuid!);
-                                }
-                              });
-                            },
-                          );
-                        }).toList(),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: selectedModel,
+                          decoration: const InputDecoration(labelText: 'Model'),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'gpt-4-turbo',
+                              child: Text('GPT-4 Turbo'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'gpt-3.5-turbo',
+                              child: Text('GPT-3.5 Turbo'),
+                            ),
+                          ],
+                          onChanged: (val) =>
+                              setState(() => selectedModel = val!),
+                        ),
                       ),
-                      loading: () => const LinearProgressIndicator(),
-                      error: (err, _) => Text('Error loading databases: $err'),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Temperature: ${selectedTemp.toStringAsFixed(1)}',
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            Slider(
+                              value: selectedTemp,
+                              onChanged: (val) =>
+                                  setState(() => selectedTemp = val),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: systemPromptController,
+                    decoration: const InputDecoration(
+                      labelText: 'System Prompt',
                     ),
-                  ],
-                ),
+                    maxLines: 5,
+                  ),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Knowledge Databases',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                  const SizedBox(height: 12),
+                  dbsAsync.when(
+                    data: (dbs) => Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: dbs.map((db) {
+                        final isSelected = selectedDBIds.contains(db.uuid);
+                        return FilterChip(
+                          label: Text(db.title),
+                          selected: isSelected,
+                          onSelected: (selected) {
+                            setState(() {
+                              if (selected) {
+                                selectedDBIds.add(db.uuid!);
+                              } else {
+                                selectedDBIds.remove(db.uuid!);
+                              }
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    loading: () => const LinearProgressIndicator(),
+                    error: (err, _) => Text('Error loading databases: $err'),
+                  ),
+                ],
               ),
               actions: [
-                TextButton(
+                OutlinedButton(
                   onPressed: () => Navigator.pop(context),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 16,
+                    ),
+                  ),
                   child: const Text('Cancel'),
                 ),
                 ElevatedButton(
@@ -152,6 +192,14 @@ class AiAgentsPage extends ConsumerWidget {
                       }
                     }
                   },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF646CFF),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 16,
+                    ),
+                  ),
                   child: const Text('Create'),
                 ),
               ],

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../providers/project_provider.dart';
 import '../models/project.dart';
+import '../widgets/large_dialog.dart';
 
 class ProjectsPage extends ConsumerWidget {
   const ProjectsPage({super.key});
@@ -43,35 +44,63 @@ class ProjectsPage extends ConsumerWidget {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Create Project'),
-        content: Column(
+      builder: (context) => LargeDialog(
+        title: 'Create Project',
+        child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(
-                labelText: 'Name (ID)',
-                hintText: 'e.g. my-awesome-project',
+            const Text(
+              'Project Details',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
               ),
             ),
-            TextField(
-              controller: titleController,
-              decoration: const InputDecoration(
-                labelText: 'Title',
-                hintText: 'e.g. My Awesome Project',
-              ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Name (ID)',
+                      hintText: 'e.g. my-awesome-project',
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: TextField(
+                    controller: titleController,
+                    decoration: const InputDecoration(
+                      labelText: 'Title',
+                      hintText: 'e.g. My Awesome Project',
+                    ),
+                  ),
+                ),
+              ],
             ),
+            const SizedBox(height: 24),
             TextField(
               controller: descController,
-              decoration: const InputDecoration(labelText: 'Description'),
-              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'Description',
+                hintText: 'Enter project description...',
+              ),
+              maxLines: 4,
             ),
           ],
         ),
         actions: [
-          TextButton(
+          OutlinedButton(
             onPressed: () => Navigator.pop(context),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.white,
+              side: const BorderSide(color: Colors.white24),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            ),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
@@ -94,6 +123,11 @@ class ProjectsPage extends ConsumerWidget {
                 }
               }
             },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF646CFF),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            ),
             child: const Text('Create'),
           ),
         ],

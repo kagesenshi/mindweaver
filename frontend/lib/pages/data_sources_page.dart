@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../providers/data_source_provider.dart';
 import '../models/data_source.dart';
+import '../widgets/large_dialog.dart';
 
 class DataSourcesPage extends ConsumerWidget {
   const DataSourcesPage({super.key});
@@ -58,103 +59,172 @@ class DataSourcesPage extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('Create Data Source'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                DropdownButtonFormField<String>(
-                  initialValue: selectedType,
-                  decoration: const InputDecoration(labelText: 'Source Type'),
-                  items: const [
-                    DropdownMenuItem(value: 'API', child: Text('REST API')),
-                    DropdownMenuItem(
-                      value: 'Database',
-                      child: Text('Database'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'Web Scraper',
-                      child: Text('Web Scraper'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'File Upload',
-                      child: Text('File Upload'),
-                    ),
-                  ],
-                  onChanged: (val) => setState(() => selectedType = val!),
-                ),
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Name (ID)'),
-                ),
-                TextField(
-                  controller: titleController,
-                  decoration: const InputDecoration(labelText: 'Title'),
-                ),
-                const Divider(height: 40),
-                if (selectedType == 'API') ...[
-                  TextField(
-                    controller: baseUrlController,
-                    decoration: const InputDecoration(labelText: 'Base URL'),
-                  ),
-                  TextField(
-                    controller: apiKeyController,
-                    decoration: const InputDecoration(labelText: 'API Key'),
-                    obscureText: true,
-                  ),
-                ] else if (selectedType == 'Database') ...[
-                  DropdownButtonFormField<String>(
-                    initialValue: dbType,
-                    decoration: const InputDecoration(labelText: 'DB Type'),
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'postgresql',
-                        child: Text('PostgreSQL'),
+        builder: (context, setState) => LargeDialog(
+          title: 'Create Data Source',
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      value: selectedType,
+                      decoration: const InputDecoration(
+                        labelText: 'Source Type',
                       ),
-                      DropdownMenuItem(value: 'mysql', child: Text('MySQL')),
-                    ],
-                    onChanged: (val) => setState(() => dbType = val!),
-                  ),
-                  TextField(
-                    controller: hostController,
-                    decoration: const InputDecoration(labelText: 'Host'),
-                  ),
-                  TextField(
-                    controller: portController,
-                    decoration: const InputDecoration(labelText: 'Port'),
-                    keyboardType: TextInputType.number,
-                  ),
-                  TextField(
-                    controller: userController,
-                    decoration: const InputDecoration(labelText: 'Username'),
-                  ),
-                  TextField(
-                    controller: passController,
-                    decoration: const InputDecoration(labelText: 'Password'),
-                    obscureText: true,
-                  ),
-                  TextField(
-                    controller: dbNameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Database Name',
+                      items: const [
+                        DropdownMenuItem(value: 'API', child: Text('REST API')),
+                        DropdownMenuItem(
+                          value: 'Database',
+                          child: Text('Database'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Web Scraper',
+                          child: Text('Web Scraper'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'File Upload',
+                          child: Text('File Upload'),
+                        ),
+                      ],
+                      onChanged: (val) => setState(() => selectedType = val!),
                     ),
                   ),
-                ] else if (selectedType == 'Web Scraper') ...[
-                  TextField(
-                    controller: startUrlController,
-                    decoration: const InputDecoration(labelText: 'Start URL'),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextField(
+                      controller: nameController,
+                      decoration: const InputDecoration(labelText: 'Name (ID)'),
+                    ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: titleController,
+                decoration: const InputDecoration(labelText: 'Title'),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Divider(),
+              ),
+              const Text(
+                'Configuration',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              if (selectedType == 'API') ...[
+                TextField(
+                  controller: baseUrlController,
+                  decoration: const InputDecoration(labelText: 'Base URL'),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: apiKeyController,
+                  decoration: const InputDecoration(labelText: 'API Key'),
+                  obscureText: true,
+                ),
+              ] else if (selectedType == 'Database') ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        value: dbType,
+                        decoration: const InputDecoration(labelText: 'DB Type'),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'postgresql',
+                            child: Text('PostgreSQL'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'mysql',
+                            child: Text('MySQL'),
+                          ),
+                        ],
+                        onChanged: (val) => setState(() => dbType = val!),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: TextField(
+                        controller: hostController,
+                        decoration: const InputDecoration(labelText: 'Host'),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: portController,
+                        decoration: const InputDecoration(labelText: 'Port'),
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: TextField(
+                        controller: userController,
+                        decoration: const InputDecoration(
+                          labelText: 'Username',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: passController,
+                        decoration: const InputDecoration(
+                          labelText: 'Password',
+                        ),
+                        obscureText: true,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: TextField(
+                        controller: dbNameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Database Name',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ] else if (selectedType == 'Web Scraper') ...[
+                TextField(
+                  controller: startUrlController,
+                  decoration: const InputDecoration(labelText: 'Start URL'),
+                ),
+              ] else if (selectedType == 'File Upload') ...[
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(20.0),
+                    child: Text('File upload configuration will appear here.'),
+                  ),
+                ),
               ],
-            ),
+            ],
           ),
           actions: [
-            TextButton(
+            OutlinedButton(
               onPressed: () => Navigator.pop(context),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
+              ),
               child: const Text('Cancel'),
             ),
-            TextButton(
+            ElevatedButton(
               onPressed: () async {
                 Map<String, dynamic> params = {};
                 if (selectedType == 'API') {
@@ -199,6 +269,14 @@ class DataSourcesPage extends ConsumerWidget {
                   }
                 }
               },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue.shade700,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
+              ),
               child: const Text('Test Connection'),
             ),
             ElevatedButton(
@@ -242,6 +320,14 @@ class DataSourcesPage extends ConsumerWidget {
                   }
                 }
               },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF646CFF),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
+              ),
               child: const Text('Create'),
             ),
           ],

@@ -4,6 +4,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../providers/chat_provider.dart';
 import '../providers/ai_agent_provider.dart';
 import '../models/chat.dart';
+import '../widgets/large_dialog.dart';
 
 class ChatPage extends ConsumerWidget {
   const ChatPage({super.key});
@@ -78,53 +79,80 @@ class _ChatSidebar extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('New Chat'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: titleController,
-                decoration: const InputDecoration(labelText: 'Chat Title'),
-              ),
-              const SizedBox(height: 20),
-              agentsAsync.when(
-                data: (agents) => DropdownButtonFormField<String?>(
-                  initialValue: selectedAgentId,
-                  decoration: const InputDecoration(
-                    labelText: 'AI Agent (Optional)',
-                  ),
-                  items: [
-                    const DropdownMenuItem(value: null, child: Text('Default')),
-                    ...agents.map(
-                      (a) =>
-                          DropdownMenuItem(value: a.uuid, child: Text(a.title)),
-                    ),
-                  ],
-                  onChanged: (val) => setState(() => selectedAgentId = val),
+        builder: (context, setState) => Consumer(
+          builder: (context, ref, _) => LargeDialog(
+            title: 'New Chat',
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: titleController,
+                  decoration: const InputDecoration(labelText: 'Chat Title'),
                 ),
-                loading: () => const CircularProgressIndicator(),
-                error: (err, _) => Text('Error: $err'),
+                const SizedBox(height: 24),
+                const Text(
+                  'Select AI Agent',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                agentsAsync.when(
+                  data: (agents) => DropdownButtonFormField<String?>(
+                    value: selectedAgentId,
+                    decoration: const InputDecoration(
+                      labelText: 'AI Agent (Optional)',
+                    ),
+                    items: [
+                      const DropdownMenuItem(
+                        value: null,
+                        child: Text('Default'),
+                      ),
+                      ...agents.map(
+                        (a) => DropdownMenuItem(
+                          value: a.uuid,
+                          child: Text(a.title),
+                        ),
+                      ),
+                    ],
+                    onChanged: (val) => setState(() => selectedAgentId = val),
+                  ),
+                  loading: () => const LinearProgressIndicator(),
+                  error: (err, _) => Text('Error: $err'),
+                ),
+              ],
+            ),
+            actions: [
+              OutlinedButton(
+                onPressed: () => Navigator.pop(context),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 16,
+                  ),
+                ),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  final chat = await ref
+                      .read(chatListProvider.notifier)
+                      .createChat(titleController.text, selectedAgentId);
+                  ref.invalidate(chatListProvider);
+                  ref.read(activeChatProvider.notifier).setActiveChat(chat);
+                  if (context.mounted) Navigator.pop(context);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF646CFF),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 16,
+                  ),
+                ),
+                child: const Text('Create'),
               ),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final chat = await ref
-                    .read(chatListProvider.notifier)
-                    .createChat(titleController.text, selectedAgentId);
-                ref.invalidate(chatListProvider);
-                ref.read(activeChatProvider.notifier).setActiveChat(chat);
-                if (context.mounted) Navigator.pop(context);
-              },
-              child: const Text('Create'),
-            ),
-          ],
         ),
       ),
     );

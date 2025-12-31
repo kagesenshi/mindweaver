@@ -5,6 +5,8 @@ import '../providers/knowledge_db_provider.dart';
 import '../providers/ontology_provider.dart';
 import '../models/knowledge_db.dart';
 
+import '../widgets/large_dialog.dart';
+
 class KnowledgeDbPage extends ConsumerWidget {
   const KnowledgeDbPage({super.key});
 
@@ -49,81 +51,108 @@ class KnowledgeDbPage extends ConsumerWidget {
         builder: (context, setState) => Consumer(
           builder: (context, ref, _) {
             final ontologiesAsync = ref.watch(ontologyListProvider);
-            return AlertDialog(
-              title: const Text('Create Knowledge Database'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: nameController,
-                      decoration: const InputDecoration(labelText: 'Name (ID)'),
-                    ),
-                    TextField(
-                      controller: titleController,
-                      decoration: const InputDecoration(labelText: 'Title'),
-                    ),
-                    TextField(
-                      controller: descController,
-                      decoration: const InputDecoration(
-                        labelText: 'Description',
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    DropdownButtonFormField<String>(
-                      initialValue: selectedType,
-                      decoration: const InputDecoration(labelText: 'Type'),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'passage-graph',
-                          child: Text('Passage Graph'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'tree-graph',
-                          child: Text('Tree Graph'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'knowledge-graph',
-                          child: Text('Knowledge Graph'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'textual-knowledge-graph',
-                          child: Text('Textual Knowledge Graph'),
-                        ),
-                      ],
-                      onChanged: (val) => setState(() => selectedType = val!),
-                    ),
-                    const SizedBox(height: 10),
-                    ontologiesAsync.when(
-                      data: (ontologies) => DropdownButtonFormField<int?>(
-                        initialValue: selectedOntologyId,
-                        decoration: const InputDecoration(
-                          labelText: 'Ontology (Optional)',
-                        ),
-                        items: [
-                          const DropdownMenuItem(
-                            value: null,
-                            child: Text('None'),
+            return LargeDialog(
+              title: 'Create Knowledge Database',
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: nameController,
+                          decoration: const InputDecoration(
+                            labelText: 'Name (ID)',
                           ),
-                          ...ontologies.map(
-                            (o) => DropdownMenuItem(
-                              value: o.id,
-                              child: Text(o.title),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: TextField(
+                          controller: titleController,
+                          decoration: const InputDecoration(labelText: 'Title'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: descController,
+                    decoration: const InputDecoration(labelText: 'Description'),
+                  ),
+                  const SizedBox(height: 24),
+                  const Divider(),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: selectedType,
+                          decoration: const InputDecoration(labelText: 'Type'),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'passage-graph',
+                              child: Text('Passage Graph'),
                             ),
-                          ),
-                        ],
-                        onChanged: (val) =>
-                            setState(() => selectedOntologyId = val),
+                            DropdownMenuItem(
+                              value: 'tree-graph',
+                              child: Text('Tree Graph'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'knowledge-graph',
+                              child: Text('Knowledge Graph'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'textual-knowledge-graph',
+                              child: Text('Textual Knowledge Graph'),
+                            ),
+                          ],
+                          onChanged: (val) =>
+                              setState(() => selectedType = val!),
+                        ),
                       ),
-                      loading: () => const LinearProgressIndicator(),
-                      error: (err, _) => Text('Error loading ontologies: $err'),
-                    ),
-                  ],
-                ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: ontologiesAsync.when(
+                          data: (ontologies) => DropdownButtonFormField<int?>(
+                            value: selectedOntologyId,
+                            decoration: const InputDecoration(
+                              labelText: 'Ontology (Optional)',
+                            ),
+                            items: [
+                              const DropdownMenuItem(
+                                value: null,
+                                child: Text('None'),
+                              ),
+                              ...ontologies.map(
+                                (o) => DropdownMenuItem(
+                                  value: o.id,
+                                  child: Text(o.title),
+                                ),
+                              ),
+                            ],
+                            onChanged: (val) =>
+                                setState(() => selectedOntologyId = val),
+                          ),
+                          loading: () => const LinearProgressIndicator(),
+                          error: (err, _) =>
+                              Text('Error loading ontologies: $err'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
               actions: [
-                TextButton(
+                OutlinedButton(
                   onPressed: () => Navigator.pop(context),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 16,
+                    ),
+                  ),
                   child: const Text('Cancel'),
                 ),
                 ElevatedButton(
@@ -152,6 +181,14 @@ class KnowledgeDbPage extends ConsumerWidget {
                       }
                     }
                   },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF646CFF),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 16,
+                    ),
+                  ),
                   child: const Text('Create'),
                 ),
               ],

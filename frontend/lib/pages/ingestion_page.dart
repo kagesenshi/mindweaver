@@ -6,6 +6,8 @@ import '../providers/data_source_provider.dart';
 import '../providers/lakehouse_storage_provider.dart';
 import '../models/ingestion.dart';
 
+import '../widgets/large_dialog.dart';
+
 class IngestionPage extends ConsumerWidget {
   const IngestionPage({super.key});
 
@@ -53,97 +55,133 @@ class IngestionPage extends ConsumerWidget {
           builder: (context, ref, _) {
             final sourcesAsync = ref.watch(dataSourceListProvider);
             final storagesAsync = ref.watch(lakehouseStorageListProvider);
-            return AlertDialog(
-              title: const Text('New Ingestion Job'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: nameController,
-                      decoration: const InputDecoration(labelText: 'Name (ID)'),
-                    ),
-                    TextField(
-                      controller: titleController,
-                      decoration: const InputDecoration(labelText: 'Title'),
-                    ),
-                    const SizedBox(height: 20),
-                    sourcesAsync.when(
-                      data: (sources) => DropdownButtonFormField<int?>(
-                        initialValue: selectedSourceId,
-                        decoration: const InputDecoration(
-                          labelText: 'Data Source',
+            return LargeDialog(
+              title: 'New Ingestion Job',
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: nameController,
+                          decoration: const InputDecoration(
+                            labelText: 'Name (ID)',
+                          ),
                         ),
-                        items: sources
-                            .map(
-                              (s) => DropdownMenuItem(
-                                value: s.id,
-                                child: Text(s.title),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (val) =>
-                            setState(() => selectedSourceId = val),
                       ),
-                      loading: () => const CircularProgressIndicator(),
-                      error: (err, _) => Text('Error: $err'),
-                    ),
-                    const SizedBox(height: 10),
-                    storagesAsync.when(
-                      data: (storages) => DropdownButtonFormField<int?>(
-                        initialValue: selectedStorageId,
-                        decoration: const InputDecoration(
-                          labelText: 'Lakehouse Storage',
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: TextField(
+                          controller: titleController,
+                          decoration: const InputDecoration(labelText: 'Title'),
                         ),
-                        items: storages
-                            .map(
-                              (s) => DropdownMenuItem(
-                                value: s.id,
-                                child: Text(s.title),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (val) =>
-                            setState(() => selectedStorageId = val),
                       ),
-                      loading: () => const CircularProgressIndicator(),
-                      error: (err, _) => Text('Error: $err'),
-                    ),
-                    TextField(
-                      controller: pathController,
-                      decoration: const InputDecoration(
-                        labelText: 'Storage Path',
-                      ),
-                    ),
-                    TextField(
-                      controller: cronController,
-                      decoration: const InputDecoration(
-                        labelText: 'Cron Schedule',
-                      ),
-                    ),
-                    DropdownButtonFormField<String>(
-                      initialValue: ingestionType,
-                      decoration: const InputDecoration(
-                        labelText: 'Ingestion Type',
-                      ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'full_refresh',
-                          child: Text('Full Refresh'),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: sourcesAsync.when(
+                          data: (sources) => DropdownButtonFormField<int?>(
+                            value: selectedSourceId,
+                            decoration: const InputDecoration(
+                              labelText: 'Data Source',
+                            ),
+                            items: sources
+                                .map(
+                                  (s) => DropdownMenuItem(
+                                    value: s.id,
+                                    child: Text(s.title),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (val) =>
+                                setState(() => selectedSourceId = val),
+                          ),
+                          loading: () => const LinearProgressIndicator(),
+                          error: (err, _) => Text('Error: $err'),
                         ),
-                        DropdownMenuItem(
-                          value: 'incremental',
-                          child: Text('Incremental'),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: storagesAsync.when(
+                          data: (storages) => DropdownButtonFormField<int?>(
+                            value: selectedStorageId,
+                            decoration: const InputDecoration(
+                              labelText: 'Lakehouse Storage',
+                            ),
+                            items: storages
+                                .map(
+                                  (s) => DropdownMenuItem(
+                                    value: s.id,
+                                    child: Text(s.title),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (val) =>
+                                setState(() => selectedStorageId = val),
+                          ),
+                          loading: () => const LinearProgressIndicator(),
+                          error: (err, _) => Text('Error: $err'),
                         ),
-                      ],
-                      onChanged: (val) => setState(() => ingestionType = val!),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: pathController,
+                          decoration: const InputDecoration(
+                            labelText: 'Storage Path',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: ingestionType,
+                          decoration: const InputDecoration(
+                            labelText: 'Ingestion Type',
+                          ),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'full_refresh',
+                              child: Text('Full Refresh'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'incremental',
+                              child: Text('Incremental'),
+                            ),
+                          ],
+                          onChanged: (val) =>
+                              setState(() => ingestionType = val!),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: cronController,
+                    decoration: const InputDecoration(
+                      labelText: 'Cron Schedule',
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
               actions: [
-                TextButton(
+                OutlinedButton(
                   onPressed: () => Navigator.pop(context),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 16,
+                    ),
+                  ),
                   child: const Text('Cancel'),
                 ),
                 ElevatedButton(
@@ -175,6 +213,14 @@ class IngestionPage extends ConsumerWidget {
                       }
                     }
                   },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF646CFF),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 16,
+                    ),
+                  ),
                   child: const Text('Create'),
                 ),
               ],
@@ -273,43 +319,46 @@ class _IngestionsList extends StatelessWidget {
           final runsFuture = ref
               .read(ingestionListProvider.notifier)
               .getRuns(ing.id!);
-          return AlertDialog(
-            title: Text('History: ${ing.title}'),
-            content: SizedBox(
-              width: 500,
-              height: 400,
-              child: FutureBuilder<List<IngestionRun>>(
-                future: runsFuture,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  if (snapshot.hasError) {
-                    return Center(child: Text('Error: ${snapshot.error}'));
-                  }
-                  final runs = snapshot.data ?? [];
-                  if (runs.isEmpty) {
-                    return const Center(child: Text('No runs yet.'));
-                  }
-                  return ListView.builder(
-                    itemCount: runs.length,
-                    itemBuilder: (context, index) {
-                      final run = runs[index];
-                      return ListTile(
-                        leading: _getStatusIcon(run.status),
-                        title: Text('Run ID: ${run.id} • ${run.status}'),
-                        subtitle: Text(
-                          'Processed: ${run.records_processed} • ${run.started_at}',
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
+          return LargeDialog(
+            title: 'History: ${ing.title}',
+            child: FutureBuilder<List<IngestionRun>>(
+              future: runsFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
+                final runs = snapshot.data ?? [];
+                if (runs.isEmpty) {
+                  return const Center(child: Text('No runs yet.'));
+                }
+                return ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: runs.length,
+                  itemBuilder: (context, index) {
+                    final run = runs[index];
+                    return ListTile(
+                      leading: _getStatusIcon(run.status),
+                      title: Text('Run ID: ${run.id} • ${run.status}'),
+                      subtitle: Text(
+                        'Processed: ${run.records_processed} • ${run.started_at}',
+                      ),
+                    );
+                  },
+                );
+              },
             ),
             actions: [
-              TextButton(
+              OutlinedButton(
                 onPressed: () => Navigator.pop(context),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 16,
+                  ),
+                ),
                 child: const Text('Close'),
               ),
             ],
