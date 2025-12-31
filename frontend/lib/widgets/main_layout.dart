@@ -91,8 +91,8 @@ class _SidebarState extends State<_Sidebar> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Theme.of(context).colorScheme.primary.withOpacity(0.9),
-            Theme.of(context).colorScheme.primaryContainer,
+            Theme.of(context).colorScheme.primary,
+            Theme.of(context).colorScheme.primary.withOpacity(0.8),
           ],
         ),
       ),
@@ -137,6 +137,7 @@ class _SidebarState extends State<_Sidebar> {
                         path: '/',
                         isCurrent: widget.currentPath == '/',
                       ),
+                      const Divider(color: Colors.white24, height: 40),
                       _SidebarItem(
                         icon: FontAwesomeIcons.chartLine,
                         label: 'Overview',
@@ -274,26 +275,6 @@ class _TopBar extends ConsumerWidget {
       ),
       child: Row(
         children: [
-          // Search Box
-          SizedBox(
-            width: 400,
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Search...',
-                prefixIcon: const Icon(Icons.search, size: 20),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide.none,
-                ),
-                filled: true,
-                fillColor: Theme.of(
-                  context,
-                ).colorScheme.surfaceContainerHighest.withOpacity(0.3),
-                contentPadding: const EdgeInsets.symmetric(vertical: 0),
-              ),
-            ),
-          ),
-          const SizedBox(width: 24),
           const Spacer(),
           // Project Selection Dropdown
           Consumer(
