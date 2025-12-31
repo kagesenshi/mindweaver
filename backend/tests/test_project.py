@@ -124,4 +124,4 @@ def test_project_scoping(client: TestClient):
     assert resp_all.status_code == 200
     recs_all = resp_all.json()["records"]
 
-    assert len(recs_all) == 0
+    assert len(recs_all) == 2

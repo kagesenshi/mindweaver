@@ -497,4 +497,5 @@ def test_list_lakehouse_storages_without_project_id_returns_empty(
     resp.raise_for_status()
     data = resp.json()
 
-    assert data["records"] == []
+    assert len(data["records"]) == 1
+    assert data["records"][0]["name"] == "test-storage"

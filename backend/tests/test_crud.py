@@ -100,7 +100,8 @@ def test_project_scoped_crud(project_scoped_crud_client: TestClient):
 
     # Get the record with project_id header
     resp = client.get(
-        f"/api/v1/project_scoped_models/{record_id}", headers={"X-Project-Id": str(project_id)}
+        f"/api/v1/project_scoped_models/{record_id}",
+        headers={"X-Project-Id": str(project_id)},
     )
     resp.raise_for_status()
     result = resp.json()
@@ -125,11 +126,11 @@ def test_project_scoped_crud(project_scoped_crud_client: TestClient):
     records = resp.json()["records"]
     assert len(records) == 0
 
-    # List all records without project_id - should return empty list
+    # List all records without project_id - should return all records
     resp = client.get("/api/v1/project_scoped_models")
     resp.raise_for_status()
     records = resp.json()["records"]
-    assert len(records) == 0
+    assert len(records) == 1
 
     # Update the record
     record = data["record"]
@@ -160,12 +161,14 @@ def test_project_scoped_crud(project_scoped_crud_client: TestClient):
 
     # Delete the record
     resp = client.delete(
-        f"/api/v1/project_scoped_models/{record_id}", headers={"X-Project-Id": str(project_id)}
+        f"/api/v1/project_scoped_models/{record_id}",
+        headers={"X-Project-Id": str(project_id)},
     )
     resp.raise_for_status()
 
     # Verify the record is deleted
     resp = client.get(
-        f"/api/v1/project_scoped_models/{record_id}", headers={"X-Project-Id": str(project_id)}
+        f"/api/v1/project_scoped_models/{record_id}",
+        headers={"X-Project-Id": str(project_id)},
     )
     assert resp.status_code == 404

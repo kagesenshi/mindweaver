@@ -46,4 +46,5 @@ def test_list_chats_without_project_id_returns_empty(client: TestClient, test_pr
     resp.raise_for_status()
     data = resp.json()
 
-    assert data["records"] == []
+    assert len(data["records"]) == 1
+    assert data["records"][0]["name"] == "chat-session-1"

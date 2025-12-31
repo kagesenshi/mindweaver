@@ -409,7 +409,9 @@ def test_list_all_ingestions(client: TestClient, test_project):
         )
 
     # List all ingestions
-    resp = client.get("/api/v1/ingestions", headers={"X-Project-Id": str(test_project["id"])})
+    resp = client.get(
+        "/api/v1/ingestions", headers={"X-Project-Id": str(test_project["id"])}
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert "records" in data
@@ -1050,4 +1052,5 @@ def test_list_ingestions_without_project_id_returns_empty(
     resp.raise_for_status()
     data = resp.json()
 
-    assert data["records"] == []
+    assert len(data["records"]) == 1
+    assert data["records"][0]["name"] == "test-ingestion"

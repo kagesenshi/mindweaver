@@ -11,17 +11,17 @@ from mindweaver.fw.service import (
 from mindweaver.fw.model import NamedBase
 
 
-class MockModel(NamedBase, table=True):
+class SignatureMockModel(NamedBase, table=True):
     pass
 
 
 def test_valid_signatures():
     try:
 
-        class ValidService(Service[MockModel]):
+        class ValidService(Service[SignatureMockModel]):
             @classmethod
             def model_class(cls):
-                return MockModel
+                return SignatureMockModel
 
             @before_create
             async def hook_before_create(self, data):
@@ -54,10 +54,10 @@ def test_valid_signatures():
 def test_invalid_before_create():
     with pytest.raises(TypeError, match="before_create hook must accept 2 arguments"):
 
-        class InvalidService(Service[MockModel]):
+        class InvalidService(Service[SignatureMockModel]):
             @classmethod
             def model_class(cls):
-                return MockModel
+                return SignatureMockModel
 
             @before_create
             async def hook(self):  # Missing data
@@ -65,10 +65,10 @@ def test_invalid_before_create():
 
     with pytest.raises(TypeError, match="before_create hook must accept 2 arguments"):
 
-        class InvalidService2(Service[MockModel]):
+        class InvalidService2(Service[SignatureMockModel]):
             @classmethod
             def model_class(cls):
-                return MockModel
+                return SignatureMockModel
 
             @before_create
             async def hook(self, data, extra):  # Extra arg
@@ -78,10 +78,10 @@ def test_invalid_before_create():
 def test_invalid_after_create():
     with pytest.raises(TypeError, match="after_create hook must accept 2 arguments"):
 
-        class InvalidService(Service[MockModel]):
+        class InvalidService(Service[SignatureMockModel]):
             @classmethod
             def model_class(cls):
-                return MockModel
+                return SignatureMockModel
 
             @after_create
             async def hook(self):  # Missing model
@@ -91,10 +91,10 @@ def test_invalid_after_create():
 def test_invalid_before_update():
     with pytest.raises(TypeError, match="before_update hook must accept 3 arguments"):
 
-        class InvalidService(Service[MockModel]):
+        class InvalidService(Service[SignatureMockModel]):
             @classmethod
             def model_class(cls):
-                return MockModel
+                return SignatureMockModel
 
             @before_update
             async def hook(self, model):  # Missing data
@@ -104,10 +104,10 @@ def test_invalid_before_update():
 def test_invalid_after_update():
     with pytest.raises(TypeError, match="after_update hook must accept 2 arguments"):
 
-        class InvalidService(Service[MockModel]):
+        class InvalidService(Service[SignatureMockModel]):
             @classmethod
             def model_class(cls):
-                return MockModel
+                return SignatureMockModel
 
             @after_update
             async def hook(self):  # Missing model
@@ -117,10 +117,10 @@ def test_invalid_after_update():
 def test_invalid_before_delete():
     with pytest.raises(TypeError, match="before_delete hook must accept 2 arguments"):
 
-        class InvalidService(Service[MockModel]):
+        class InvalidService(Service[SignatureMockModel]):
             @classmethod
             def model_class(cls):
-                return MockModel
+                return SignatureMockModel
 
             @before_delete
             async def hook(self):  # Missing model
@@ -130,10 +130,10 @@ def test_invalid_before_delete():
 def test_invalid_after_delete():
     with pytest.raises(TypeError, match="after_delete hook must accept 2 arguments"):
 
-        class InvalidService(Service[MockModel]):
+        class InvalidService(Service[SignatureMockModel]):
             @classmethod
             def model_class(cls):
-                return MockModel
+                return SignatureMockModel
 
             @after_delete
             async def hook(self):  # Missing model
