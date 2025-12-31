@@ -4,38 +4,82 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/project_provider.dart';
 
-class MainLayout extends StatelessWidget {
+class MainLayout extends StatefulWidget {
   final Widget child;
 
   const MainLayout({super.key, required this.child});
 
   @override
+  State<MainLayout> createState() => _MainLayoutState();
+}
+
+class _MainLayoutState extends State<MainLayout> {
+  final ScrollController _horizontalController = ScrollController();
+
+  @override
+  void dispose() {
+    _horizontalController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final router = GoRouter.of(context);
     final currentPath = router.routerDelegate.currentConfiguration.fullPath;
+    final screenWidth = MediaQuery.of(context).size.width;
+    const minWidth = 1024.0;
 
     return Scaffold(
-      body: Row(
-        children: [
-          _Sidebar(currentPath: currentPath),
-          Expanded(
-            child: Column(
+      body: Scrollbar(
+        controller: _horizontalController,
+        thumbVisibility: true,
+        child: SingleChildScrollView(
+          controller: _horizontalController,
+          scrollDirection: Axis.horizontal,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minWidth: minWidth,
+              maxWidth: screenWidth > minWidth ? screenWidth : minWidth,
+              minHeight: MediaQuery.of(context).size.height,
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const _TopBar(),
-                Expanded(child: child),
+                _Sidebar(currentPath: currentPath),
+                Expanded(
+                  child: Column(
+                    children: [
+                      const _TopBar(),
+                      Expanded(child: widget.child),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
 }
 
-class _Sidebar extends StatelessWidget {
+class _Sidebar extends StatefulWidget {
   final String? currentPath;
 
   const _Sidebar({this.currentPath});
+
+  @override
+  State<_Sidebar> createState() => _SidebarState();
+}
+
+class _SidebarState extends State<_Sidebar> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,94 +95,113 @@ class _Sidebar extends StatelessWidget {
           ],
         ),
       ),
-      child: Column(
-        children: [
-          const SizedBox(height: 40),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(
-              children: [
-                const FaIcon(
-                  FontAwesomeIcons.brain,
-                  color: Colors.white,
-                  size: 30,
-                ),
-                const SizedBox(width: 15),
-                Text(
-                  'Mindweaver',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return Scrollbar(
+            controller: _scrollController,
+            thumbVisibility: true,
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: IntrinsicHeight(
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 40),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Row(
+                          children: [
+                            const FaIcon(
+                              FontAwesomeIcons.brain,
+                              color: Colors.white,
+                              size: 30,
+                            ),
+                            const SizedBox(width: 15),
+                            Text(
+                              'Mindweaver',
+                              style: Theme.of(context).textTheme.headlineSmall
+                                  ?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 40),
+                      _SidebarItem(
+                        icon: FontAwesomeIcons.folder,
+                        label: 'Projects',
+                        path: '/',
+                        isCurrent: widget.currentPath == '/',
+                      ),
+                      _SidebarItem(
+                        icon: FontAwesomeIcons.chartLine,
+                        label: 'Overview',
+                        path: '/overview',
+                        isCurrent: widget.currentPath == '/overview',
+                      ),
+                      _SidebarItem(
+                        icon: FontAwesomeIcons.database,
+                        label: 'Knowledge DB',
+                        path: '/knowledge_db',
+                        isCurrent: widget.currentPath == '/knowledge_db',
+                      ),
+                      _SidebarItem(
+                        icon: FontAwesomeIcons.robot,
+                        label: 'AI Agents',
+                        path: '/agents',
+                        isCurrent: widget.currentPath == '/agents',
+                      ),
+                      _SidebarItem(
+                        icon: FontAwesomeIcons.message,
+                        label: 'Chat',
+                        path: '/chat',
+                        isCurrent: widget.currentPath == '/chat',
+                      ),
+                      const Divider(color: Colors.white24, height: 40),
+                      _SidebarItem(
+                        icon: FontAwesomeIcons.plug,
+                        label: 'Sources',
+                        path: '/sources',
+                        isCurrent: widget.currentPath == '/sources',
+                      ),
+                      _SidebarItem(
+                        icon: FontAwesomeIcons.server,
+                        label: 'Lakehouse',
+                        path: '/lakehouse',
+                        isCurrent: widget.currentPath == '/lakehouse',
+                      ),
+                      _SidebarItem(
+                        icon: FontAwesomeIcons.upload,
+                        label: 'Ingestion',
+                        path: '/ingestion',
+                        isCurrent: widget.currentPath == '/ingestion',
+                      ),
+                      _SidebarItem(
+                        icon: FontAwesomeIcons.diagramProject,
+                        label: 'Ontology',
+                        path: '/ontology',
+                        isCurrent: widget.currentPath == '/ontology',
+                      ),
+                      const Spacer(),
+                      Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Text(
+                          'v1.0.0',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.5),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
-          const SizedBox(height: 40),
-          _SidebarItem(
-            icon: FontAwesomeIcons.folder,
-            label: 'Projects',
-            path: '/',
-            isCurrent: currentPath == '/',
-          ),
-          _SidebarItem(
-            icon: FontAwesomeIcons.chartLine,
-            label: 'Overview',
-            path: '/overview',
-            isCurrent: currentPath == '/overview',
-          ),
-          _SidebarItem(
-            icon: FontAwesomeIcons.database,
-            label: 'Knowledge DB',
-            path: '/knowledge_db',
-            isCurrent: currentPath == '/knowledge_db',
-          ),
-          _SidebarItem(
-            icon: FontAwesomeIcons.robot,
-            label: 'AI Agents',
-            path: '/agents',
-            isCurrent: currentPath == '/agents',
-          ),
-          _SidebarItem(
-            icon: FontAwesomeIcons.message,
-            label: 'Chat',
-            path: '/chat',
-            isCurrent: currentPath == '/chat',
-          ),
-          const Divider(color: Colors.white24, height: 40),
-          _SidebarItem(
-            icon: FontAwesomeIcons.plug,
-            label: 'Sources',
-            path: '/sources',
-            isCurrent: currentPath == '/sources',
-          ),
-          _SidebarItem(
-            icon: FontAwesomeIcons.server,
-            label: 'Lakehouse',
-            path: '/lakehouse',
-            isCurrent: currentPath == '/lakehouse',
-          ),
-          _SidebarItem(
-            icon: FontAwesomeIcons.upload,
-            label: 'Ingestion',
-            path: '/ingestion',
-            isCurrent: currentPath == '/ingestion',
-          ),
-          _SidebarItem(
-            icon: FontAwesomeIcons.diagramProject,
-            label: 'Ontology',
-            path: '/ontology',
-            isCurrent: currentPath == '/ontology',
-          ),
-          const Spacer(),
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Text(
-              'v1.0.0',
-              style: TextStyle(color: Colors.white.withOpacity(0.5)),
-            ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
