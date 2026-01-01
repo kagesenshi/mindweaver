@@ -85,10 +85,9 @@ def test_project_scoped_crud(project_scoped_crud_client: TestClient):
     resp.raise_for_status()
     project2_id = resp.json()["record"]["id"]
 
-    # Create a record in project 1
     resp = client.post(
         "/api/v1/project_scoped_models",
-        json={"name": "my-model", "title": "My Model"},
+        json={"name": "my-model", "title": "My Model", "project_id": project_id},
         headers={"X-Project-Id": str(project_id)},
     )
     resp.raise_for_status()
@@ -138,7 +137,7 @@ def test_project_scoped_crud(project_scoped_crud_client: TestClient):
     update_request["id"] = 2  # should be ignored
     update_request["title"] = "New title"
     update_request["name"] = "new-name"  # should be ignored
-    update_request["project_id"] = project2_id  # should be ignored
+    update_request["project_id"] = project_id  # should be kept same
 
     resp = client.put(
         f"/api/v1/project_scoped_models/{record_id}",

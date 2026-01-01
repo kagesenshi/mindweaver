@@ -10,6 +10,7 @@ def test_knowledge_db(client: TestClient, test_project):
             "type": "knowledge-graph",
             "description": "A knowledge graph for documentation",
             "parameters": {"embedding_model": "openai", "chunk_size": 1000},
+            "project_id": test_project["id"],
         },
         headers={"X-Project-Id": str(test_project["id"])},
     )
@@ -37,6 +38,7 @@ def test_list_knowledge_dbs_without_project_id_returns_empty(
             "type": "knowledge-graph",
             "description": "Test KB",
             "parameters": {"embedding_model": "openai", "chunk_size": 1000},
+            "project_id": test_project["id"],
         },
         headers={"X-Project-Id": str(test_project["id"])},
     )
@@ -63,6 +65,7 @@ def test_delete_knowledge_db(client: TestClient, test_project):
             "type": "knowledge-graph",
             "description": "A knowledge graph to delete",
             "parameters": {"embedding_model": "openai", "chunk_size": 1000},
+            "project_id": test_project["id"],
         },
         headers={"X-Project-Id": str(test_project["id"])},
     )

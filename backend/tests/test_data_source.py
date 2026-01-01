@@ -18,6 +18,7 @@ def test_datasource(client: TestClient, test_project):
                 "base_url": "https://api.example.com/v1",
                 "api_key": "test_api_key_12345",
             },
+            "project_id": test_project["id"],
         },
     )
 
@@ -47,6 +48,7 @@ def test_api_source_valid(client: TestClient, test_project):
                 "base_url": "https://api.stripe.com/v1",
                 "api_key": "sk_test_123456789",
             },
+            "project_id": test_project["id"],
         },
     )
 
@@ -66,13 +68,15 @@ def test_api_source_invalid_url(client: TestClient, test_project):
             "title": "Invalid API",
             "type": "API",
             "parameters": {"base_url": "not-a-valid-url", "api_key": "test_key"},
+            "project_id": test_project["id"],
         },
     )
 
     assert resp.status_code == 422
     error = resp.json()
     assert "detail" in error
-    assert "base_url" in error["detail"].lower()
+    detail_str = str(error["detail"]).lower()
+    assert "base_url" in detail_str
 
 
 def test_api_source_missing_api_key(client: TestClient, test_project):
@@ -85,6 +89,7 @@ def test_api_source_missing_api_key(client: TestClient, test_project):
             "title": "No Key API",
             "type": "API",
             "parameters": {"base_url": "https://api.example.com"},
+            "project_id": test_project["id"],
         },
     )
 
@@ -103,6 +108,7 @@ def test_api_source_empty_api_key(client: TestClient, test_project):
             "title": "Empty Key API",
             "type": "API",
             "parameters": {"base_url": "https://api.example.com", "api_key": ""},
+            "project_id": test_project["id"],
         },
     )
 
@@ -127,6 +133,7 @@ def test_database_source_valid(client: TestClient, test_project):
             "title": "Production PostgreSQL",
             "type": "Database",
             "parameters": {"host": "db.example.com", "port": 5432, "username": "admin"},
+            "project_id": test_project["id"],
         },
     )
 
@@ -150,6 +157,7 @@ def test_database_source_invalid_port(client: TestClient, test_project):
                 "port": 99999,
                 "username": "admin",
             },
+            "project_id": test_project["id"],
         },
     )
 
@@ -169,6 +177,7 @@ def test_database_source_negative_port(client: TestClient, test_project):
             "title": "Negative Port DB",
             "type": "Database",
             "parameters": {"host": "db.example.com", "port": -1, "username": "admin"},
+            "project_id": test_project["id"],
         },
     )
 
@@ -187,6 +196,7 @@ def test_database_source_empty_host(client: TestClient, test_project):
             "title": "No Host DB",
             "type": "Database",
             "parameters": {"host": "", "port": 5432, "username": "admin"},
+            "project_id": test_project["id"],
         },
     )
 
@@ -206,6 +216,7 @@ def test_database_source_empty_username(client: TestClient, test_project):
             "title": "No User DB",
             "type": "Database",
             "parameters": {"host": "db.example.com", "port": 5432, "username": ""},
+            "project_id": test_project["id"],
         },
     )
 
@@ -230,6 +241,7 @@ def test_web_scraper_source_valid(client: TestClient, test_project):
             "title": "Example Website Scraper",
             "type": "Web Scraper",
             "parameters": {"start_url": "https://example.com"},
+            "project_id": test_project["id"],
         },
     )
 
@@ -249,6 +261,7 @@ def test_web_scraper_source_invalid_url(client: TestClient, test_project):
             "title": "Bad Scraper",
             "type": "Web Scraper",
             "parameters": {"start_url": "ftp://example.com"},
+            "project_id": test_project["id"],
         },
     )
 
@@ -268,6 +281,7 @@ def test_web_scraper_source_empty_url(client: TestClient, test_project):
             "title": "Empty Scraper",
             "type": "Web Scraper",
             "parameters": {"start_url": ""},
+            "project_id": test_project["id"],
         },
     )
 
@@ -291,6 +305,7 @@ def test_file_upload_source_valid(client: TestClient, test_project):
             "title": "CSV File Uploader",
             "type": "File Upload",
             "parameters": {},
+            "project_id": test_project["id"],
         },
     )
 
@@ -314,6 +329,7 @@ def test_invalid_source_type(client: TestClient, test_project):
             "title": "Invalid Type Source",
             "type": "SFTP",
             "parameters": {"host": "localhost", "port": 22},
+            "project_id": test_project["id"],
         },
     )
 
@@ -332,6 +348,7 @@ def test_missing_source_type(client: TestClient, test_project):
             "name": "no-type",
             "title": "No Type Source",
             "parameters": {},
+            "project_id": test_project["id"],
         },
     )
 
@@ -355,6 +372,7 @@ def test_update_data_source_valid(client: TestClient, test_project):
             "title": "Update Test",
             "type": "API",
             "parameters": {"base_url": "https://api.example.com", "api_key": "old_key"},
+            "project_id": test_project["id"],
         },
     )
     assert create_resp.status_code == 200
@@ -362,7 +380,9 @@ def test_update_data_source_valid(client: TestClient, test_project):
 
     # Update the name
     update_resp = client.put(
-        f"/api/v1/data_sources/{source_id}", json={"name": "updated-test-name"}
+        f"/api/v1/data_sources/{source_id}",
+        json={"name": "updated-test-name", "project_id": test_project["id"]},
+        headers={"X-Project-Id": str(test_project["id"])},
     )
 
     # Accept both 200 (success) and 422 (if framework requires more fields)
@@ -381,6 +401,7 @@ def test_update_data_source_invalid_parameters(client: TestClient, test_project)
             "title": "Invalid Create",
             "type": "API",
             "parameters": {"base_url": "not-a-valid-url", "api_key": "test_key"},
+            "project_id": test_project["id"],
         },
     )
 
@@ -410,6 +431,7 @@ def test_update_data_source_reject_type_change_api_to_database(
                 "base_url": "https://api.example.com",
                 "api_key": "test_key",
             },
+            "project_id": test_project["id"],
         },
     )
     assert create_resp.status_code == 200
@@ -424,6 +446,7 @@ def test_update_data_source_reject_type_change_api_to_database(
             "title": "API Source",
             "type": "Database",
             "parameters": {"host": "localhost", "port": 5432, "username": "admin"},
+            "project_id": test_project["id"],
         },
     )
 
@@ -451,6 +474,7 @@ def test_update_data_source_reject_type_change_database_to_web_scraper(
             "title": "Database Source",
             "type": "Database",
             "parameters": {"host": "localhost", "port": 5432, "username": "admin"},
+            "project_id": test_project["id"],
         },
     )
     assert create_resp.status_code == 200
@@ -465,6 +489,7 @@ def test_update_data_source_reject_type_change_database_to_web_scraper(
             "title": "Database Source",
             "type": "Web Scraper",
             "parameters": {"start_url": "https://example.com"},
+            "project_id": test_project["id"],
         },
     )
 
@@ -492,6 +517,7 @@ def test_update_data_source_reject_type_change_web_scraper_to_file_upload(
             "title": "Scraper Source",
             "type": "Web Scraper",
             "parameters": {"start_url": "https://example.com"},
+            "project_id": test_project["id"],
         },
     )
     assert create_resp.status_code == 200
@@ -506,6 +532,7 @@ def test_update_data_source_reject_type_change_web_scraper_to_file_upload(
             "title": "Scraper Source",
             "type": "File Upload",
             "parameters": {},
+            "project_id": test_project["id"],
         },
     )
 
@@ -531,6 +558,7 @@ def test_update_data_source_same_type_allowed(client: TestClient, test_project):
             "title": "API Source",
             "type": "API",
             "parameters": {"base_url": "https://api.example.com", "api_key": "old_key"},
+            "project_id": test_project["id"],
         },
     )
     assert create_resp.status_code == 200
@@ -548,6 +576,7 @@ def test_update_data_source_same_type_allowed(client: TestClient, test_project):
                 "base_url": "https://api.newexample.com",
                 "api_key": "new_key",
             },
+            "project_id": test_project["id"],
         },
     )
 
@@ -572,6 +601,7 @@ def test_update_data_source_without_type_field(client: TestClient, test_project)
                 "base_url": "https://api.example.com",
                 "api_key": "test_key",
             },
+            "project_id": test_project["id"],
         },
     )
     assert create_resp.status_code == 200
@@ -589,6 +619,7 @@ def test_update_data_source_without_type_field(client: TestClient, test_project)
                 "base_url": "https://api.example.com",
                 "api_key": "test_key",
             },
+            "project_id": test_project["id"],
         },
     )
 
@@ -613,6 +644,7 @@ def test_list_data_sources_without_project_id_returns_empty(
                 "base_url": "https://api.example.com",
                 "api_key": "test_key",
             },
+            "project_id": test_project["id"],
         },
         headers={"X-Project-Id": str(test_project["id"])},
     )
@@ -642,6 +674,7 @@ def test_delete_data_source(client: TestClient, test_project):
                 "base_url": "https://api.example.com/v1",
                 "api_key": "test_key",
             },
+            "project_id": test_project["id"],
         },
     )
     create_resp.raise_for_status()

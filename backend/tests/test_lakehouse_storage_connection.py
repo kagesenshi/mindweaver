@@ -29,6 +29,7 @@ def test_lakehouse_storage_test_connection_success(
                 "access_key": "AKIAIOSFODNN7EXAMPLE",
                 "secret_key": "test_secret",
             },
+            "project_id": test_project["id"],
         },
     )
     assert create_resp.status_code == 200
@@ -36,13 +37,15 @@ def test_lakehouse_storage_test_connection_success(
     # Test connection
     test_resp = client.post(
         "/api/v1/lakehouse_storages/test_connection",
+        headers={"X-Project-Id": str(test_project["id"])},
         json={
             "parameters": {
                 "bucket": "test-bucket",
                 "region": "us-east-1",
                 "access_key": "AKIAIOSFODNN7EXAMPLE",
                 "secret_key": "test_secret",
-            }
+            },
+            "project_id": test_project["id"],
         },
     )
 
@@ -52,16 +55,20 @@ def test_lakehouse_storage_test_connection_success(
     assert "test-bucket" in data["message"]
 
 
-def test_lakehouse_storage_test_connection_missing_bucket(client: TestClient):
+def test_lakehouse_storage_test_connection_missing_bucket(
+    client: TestClient, test_project
+):
     """Test connection with missing bucket name."""
     test_resp = client.post(
         "/api/v1/lakehouse_storages/test_connection",
+        headers={"X-Project-Id": str(test_project["id"])},
         json={
             "parameters": {
                 "bucket": "",
                 "region": "us-east-1",
                 "access_key": "AKIAIOSFODNN7EXAMPLE",
-            }
+            },
+            "project_id": test_project["id"],
         },
     )
 
@@ -70,16 +77,20 @@ def test_lakehouse_storage_test_connection_missing_bucket(client: TestClient):
     assert "bucket" in data["detail"].lower()
 
 
-def test_lakehouse_storage_test_connection_missing_region(client: TestClient):
+def test_lakehouse_storage_test_connection_missing_region(
+    client: TestClient, test_project
+):
     """Test connection with missing region."""
     test_resp = client.post(
         "/api/v1/lakehouse_storages/test_connection",
+        headers={"X-Project-Id": str(test_project["id"])},
         json={
             "parameters": {
                 "bucket": "test-bucket",
                 "region": "",
                 "access_key": "AKIAIOSFODNN7EXAMPLE",
-            }
+            },
+            "project_id": test_project["id"],
         },
     )
 
@@ -88,16 +99,20 @@ def test_lakehouse_storage_test_connection_missing_region(client: TestClient):
     assert "region" in data["detail"].lower()
 
 
-def test_lakehouse_storage_test_connection_missing_access_key(client: TestClient):
+def test_lakehouse_storage_test_connection_missing_access_key(
+    client: TestClient, test_project
+):
     """Test connection with missing access key."""
     test_resp = client.post(
         "/api/v1/lakehouse_storages/test_connection",
+        headers={"X-Project-Id": str(test_project["id"])},
         json={
             "parameters": {
                 "bucket": "test-bucket",
                 "region": "us-east-1",
                 "access_key": "",
-            }
+            },
+            "project_id": test_project["id"],
         },
     )
 
@@ -108,7 +123,7 @@ def test_lakehouse_storage_test_connection_missing_access_key(client: TestClient
 
 @patch("mindweaver.service.lakehouse_storage.boto3")
 def test_lakehouse_storage_test_connection_with_endpoint_url(
-    mock_boto3, client: TestClient
+    mock_boto3, client: TestClient, test_project
 ):
     """Test connection with custom endpoint URL (MinIO, etc.)."""
     mock_s3_client = MagicMock()
@@ -117,6 +132,7 @@ def test_lakehouse_storage_test_connection_with_endpoint_url(
 
     test_resp = client.post(
         "/api/v1/lakehouse_storages/test_connection",
+        headers={"X-Project-Id": str(test_project["id"])},
         json={
             "parameters": {
                 "bucket": "minio-bucket",
@@ -124,7 +140,8 @@ def test_lakehouse_storage_test_connection_with_endpoint_url(
                 "access_key": "minioadmin",
                 "secret_key": "minioadmin",
                 "endpoint_url": "https://minio.example.com",
-            }
+            },
+            "project_id": test_project["id"],
         },
     )
 
@@ -140,7 +157,7 @@ def test_lakehouse_storage_test_connection_with_endpoint_url(
 
 @patch("mindweaver.service.lakehouse_storage.boto3")
 def test_lakehouse_storage_test_connection_bucket_not_found(
-    mock_boto3, client: TestClient
+    mock_boto3, client: TestClient, test_project
 ):
     """Test connection when bucket doesn't exist."""
     mock_s3_client = MagicMock()
@@ -152,13 +169,15 @@ def test_lakehouse_storage_test_connection_bucket_not_found(
 
     test_resp = client.post(
         "/api/v1/lakehouse_storages/test_connection",
+        headers={"X-Project-Id": str(test_project["id"])},
         json={
             "parameters": {
                 "bucket": "nonexistent-bucket",
                 "region": "us-east-1",
                 "access_key": "AKIAIOSFODNN7EXAMPLE",
                 "secret_key": "test_secret",
-            }
+            },
+            "project_id": test_project["id"],
         },
     )
 
@@ -169,7 +188,7 @@ def test_lakehouse_storage_test_connection_bucket_not_found(
 
 @patch("mindweaver.service.lakehouse_storage.boto3")
 def test_lakehouse_storage_test_connection_access_denied(
-    mock_boto3, client: TestClient
+    mock_boto3, client: TestClient, test_project
 ):
     """Test connection when access is denied."""
     mock_s3_client = MagicMock()
@@ -181,13 +200,15 @@ def test_lakehouse_storage_test_connection_access_denied(
 
     test_resp = client.post(
         "/api/v1/lakehouse_storages/test_connection",
+        headers={"X-Project-Id": str(test_project["id"])},
         json={
             "parameters": {
                 "bucket": "restricted-bucket",
                 "region": "us-east-1",
                 "access_key": "AKIAIOSFODNN7EXAMPLE",
                 "secret_key": "test_secret",
-            }
+            },
+            "project_id": test_project["id"],
         },
     )
 
@@ -214,6 +235,7 @@ def test_lakehouse_storage_test_connection_with_stored_secret(
                 "access_key": "AKIAIOSFODNN7EXAMPLE",
                 "secret_key": "stored_secret_key",
             },
+            "project_id": test_project["id"],
         },
     )
     assert create_resp.status_code == 200
@@ -235,6 +257,7 @@ def test_lakehouse_storage_test_connection_with_stored_secret(
                 "access_key": "AKIAIOSFODNN7EXAMPLE",
                 # No secret_key provided - should use stored one
             },
+            "project_id": test_project["id"],
         },
     )
 

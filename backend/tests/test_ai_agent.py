@@ -12,6 +12,7 @@ def test_ai_agent(client: TestClient, test_project):
             "system_prompt": "You are a helpful assistant",
             "status": "Active",
             "knowledge_db_ids": ["db-1", "db-2"],
+            "project_id": test_project["id"],
         },
         headers={"X-Project-Id": str(test_project["id"])},
     )
@@ -41,6 +42,7 @@ def test_list_ai_agents_without_project_id_returns_empty(
             "system_prompt": "You are a helpful assistant",
             "status": "Active",
             "knowledge_db_ids": [],
+            "project_id": test_project["id"],
         },
         headers={"X-Project-Id": str(test_project["id"])},
     )
@@ -69,6 +71,7 @@ def test_delete_ai_agent(client: TestClient, test_project):
             "system_prompt": "You are a helpful assistant",
             "status": "Active",
             "knowledge_db_ids": [],
+            "project_id": test_project["id"],
         },
         headers={"X-Project-Id": str(test_project["id"])},
     )

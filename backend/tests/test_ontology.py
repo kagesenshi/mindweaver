@@ -11,6 +11,7 @@ def test_create_ontology(client: TestClient, test_project):
             "name": "test-ontology",
             "title": "Test Ontology",
             "description": "A test ontology",
+            "project_id": test_project["id"],
         },
         headers={"X-Project-ID": str(test_project["id"])},
     )
@@ -25,7 +26,12 @@ def test_list_ontologies(client: TestClient, test_project):
     # Create one first
     client.post(
         "/api/v1/ontologies",
-        json={"name": "ontology-1", "title": "Ontology 1", "description": "Desc 1"},
+        json={
+            "name": "ontology-1",
+            "title": "Ontology 1",
+            "description": "Desc 1",
+            "project_id": test_project["id"],
+        },
         headers={"X-Project-ID": str(test_project["id"])},
     )
 
@@ -42,7 +48,12 @@ def test_list_ontologies(client: TestClient, test_project):
 def test_update_ontology(client: TestClient, test_project):
     create_res = client.post(
         "/api/v1/ontologies",
-        json={"name": "to-update", "title": "To Update", "description": "Old desc"},
+        json={
+            "name": "to-update",
+            "title": "To Update",
+            "description": "Old desc",
+            "project_id": test_project["id"],
+        },
         headers={"X-Project-ID": str(test_project["id"])},
     )
     ontology_id = create_res.json()["record"]["id"]
@@ -50,7 +61,11 @@ def test_update_ontology(client: TestClient, test_project):
     # Update allows both description and title
     response = client.put(
         f"/api/v1/ontologies/{ontology_id}",
-        json={"description": "New desc", "title": "Updated Title"},
+        json={
+            "description": "New desc",
+            "title": "Updated Title",
+            "project_id": test_project["id"],
+        },
         headers={"X-Project-ID": str(test_project["id"])},
     )
     assert response.status_code == 200
@@ -62,7 +77,12 @@ def test_update_ontology(client: TestClient, test_project):
 def test_delete_ontology(client: TestClient, test_project):
     create_res = client.post(
         "/api/v1/ontologies",
-        json={"name": "to-delete", "title": "To Delete", "description": "Desc"},
+        json={
+            "name": "to-delete",
+            "title": "To Delete",
+            "description": "Desc",
+            "project_id": test_project["id"],
+        },
         headers={"X-Project-ID": str(test_project["id"])},
     )
     ontology_id = create_res.json()["record"]["id"]

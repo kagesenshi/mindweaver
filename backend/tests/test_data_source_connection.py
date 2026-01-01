@@ -5,7 +5,7 @@ import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
 
 
-def test_data_source_test_connection_api_success(client: TestClient):
+def test_data_source_test_connection_api_success(client: TestClient, test_project):
     """Test successful API connection test."""
     with patch("mindweaver.service.data_source.httpx.AsyncClient") as mock_client_class:
         mock_client = AsyncMock()
@@ -18,12 +18,14 @@ def test_data_source_test_connection_api_success(client: TestClient):
 
         test_resp = client.post(
             "/api/v1/data_sources/test_connection",
+            headers={"X-Project-Id": str(test_project["id"])},
             json={
                 "type": "API",
                 "parameters": {
                     "base_url": "https://api.example.com",
                     "api_key": "test_api_key",
                 },
+                "project_id": test_project["id"],
             },
         )
 
@@ -33,7 +35,7 @@ def test_data_source_test_connection_api_success(client: TestClient):
         assert "200" in data["message"]
 
 
-def test_data_source_test_connection_database_success(client: TestClient):
+def test_data_source_test_connection_database_success(client: TestClient, test_project):
     """Test successful database connection test."""
     with patch("mindweaver.service.data_source.create_engine") as mock_create_engine:
         mock_engine = MagicMock()
@@ -44,6 +46,7 @@ def test_data_source_test_connection_database_success(client: TestClient):
 
         test_resp = client.post(
             "/api/v1/data_sources/test_connection",
+            headers={"X-Project-Id": str(test_project["id"])},
             json={
                 "type": "Database",
                 "parameters": {
@@ -53,6 +56,7 @@ def test_data_source_test_connection_database_success(client: TestClient):
                     "username": "testuser",
                     "password": "testpass",
                 },
+                "project_id": test_project["id"],
             },
         )
 
@@ -62,7 +66,9 @@ def test_data_source_test_connection_database_success(client: TestClient):
         assert "database" in data["message"].lower()
 
 
-def test_data_source_test_connection_web_scraper_success(client: TestClient):
+def test_data_source_test_connection_web_scraper_success(
+    client: TestClient, test_project
+):
     """Test successful web scraper connection test."""
     with patch("mindweaver.service.data_source.httpx.AsyncClient") as mock_client_class:
         mock_client = AsyncMock()
@@ -75,11 +81,13 @@ def test_data_source_test_connection_web_scraper_success(client: TestClient):
 
         test_resp = client.post(
             "/api/v1/data_sources/test_connection",
+            headers={"X-Project-Id": str(test_project["id"])},
             json={
                 "type": "Web Scraper",
                 "parameters": {
                     "start_url": "https://example.com",
                 },
+                "project_id": test_project["id"],
             },
         )
 
@@ -89,13 +97,15 @@ def test_data_source_test_connection_web_scraper_success(client: TestClient):
         assert "200" in data["message"]
 
 
-def test_data_source_test_connection_file_upload(client: TestClient):
+def test_data_source_test_connection_file_upload(client: TestClient, test_project):
     """Test file upload connection (should always succeed)."""
     test_resp = client.post(
         "/api/v1/data_sources/test_connection",
+        headers={"X-Project-Id": str(test_project["id"])},
         json={
             "type": "File Upload",
             "parameters": {},
+            "project_id": test_project["id"],
         },
     )
 
@@ -105,7 +115,7 @@ def test_data_source_test_connection_file_upload(client: TestClient):
     assert "file upload" in data["message"].lower()
 
 
-def test_data_source_test_connection_api_unreachable(client: TestClient):
+def test_data_source_test_connection_api_unreachable(client: TestClient, test_project):
     """Test API connection when URL is unreachable."""
     with patch("mindweaver.service.data_source.httpx.AsyncClient") as mock_client_class:
         mock_client = AsyncMock()
@@ -118,19 +128,23 @@ def test_data_source_test_connection_api_unreachable(client: TestClient):
 
         test_resp = client.post(
             "/api/v1/data_sources/test_connection",
+            headers={"X-Project-Id": str(test_project["id"])},
             json={
                 "type": "API",
                 "parameters": {
                     "base_url": "https://invalid-url.example.com",
                     "api_key": "test_key",
                 },
+                "project_id": test_project["id"],
             },
         )
 
         assert test_resp.status_code == 400
 
 
-def test_data_source_test_connection_database_invalid_credentials(client: TestClient):
+def test_data_source_test_connection_database_invalid_credentials(
+    client: TestClient, test_project
+):
     """Test database connection with invalid credentials."""
     with patch("mindweaver.service.data_source.create_engine") as mock_create_engine:
         mock_engine = MagicMock()
@@ -145,6 +159,7 @@ def test_data_source_test_connection_database_invalid_credentials(client: TestCl
 
         test_resp = client.post(
             "/api/v1/data_sources/test_connection",
+            headers={"X-Project-Id": str(test_project["id"])},
             json={
                 "type": "Database",
                 "parameters": {
@@ -154,6 +169,7 @@ def test_data_source_test_connection_database_invalid_credentials(client: TestCl
                     "username": "baduser",
                     "password": "badpass",
                 },
+                "project_id": test_project["id"],
             },
         )
 
@@ -162,7 +178,7 @@ def test_data_source_test_connection_database_invalid_credentials(client: TestCl
         assert "failed" in data["detail"].lower()
 
 
-def test_data_source_test_connection_web_scraper_404(client: TestClient):
+def test_data_source_test_connection_web_scraper_404(client: TestClient, test_project):
     """Test web scraper connection when URL returns 404."""
     with patch("mindweaver.service.data_source.httpx.AsyncClient") as mock_client_class:
         mock_client = AsyncMock()
@@ -175,11 +191,13 @@ def test_data_source_test_connection_web_scraper_404(client: TestClient):
 
         test_resp = client.post(
             "/api/v1/data_sources/test_connection",
+            headers={"X-Project-Id": str(test_project["id"])},
             json={
                 "type": "Web Scraper",
                 "parameters": {
                     "start_url": "https://example.com/nonexistent",
                 },
+                "project_id": test_project["id"],
             },
         )
 
@@ -207,6 +225,7 @@ def test_data_source_test_connection_with_stored_password(
                 "username": "testuser",
                 "password": "stored_password",
             },
+            "project_id": test_project["id"],
         },
     )
     assert create_resp.status_code == 200
@@ -233,6 +252,7 @@ def test_data_source_test_connection_with_stored_password(
                     "username": "testuser",
                     # No password provided - should use stored one
                 },
+                "project_id": test_project["id"],
             },
         )
 
@@ -241,7 +261,9 @@ def test_data_source_test_connection_with_stored_password(
         assert data["status"] == "success"
 
 
-def test_data_source_test_connection_database_different_types(client: TestClient):
+def test_data_source_test_connection_database_different_types(
+    client: TestClient, test_project
+):
     """Test database connection for different database types."""
     db_types = ["postgresql", "mysql", "mssql"]
 
@@ -257,6 +279,7 @@ def test_data_source_test_connection_database_different_types(client: TestClient
 
             test_resp = client.post(
                 "/api/v1/data_sources/test_connection",
+                headers={"X-Project-Id": str(test_project["id"])},
                 json={
                     "type": "Database",
                     "parameters": {
@@ -266,6 +289,7 @@ def test_data_source_test_connection_database_different_types(client: TestClient
                         "username": "testuser",
                         "password": "testpass",
                     },
+                    "project_id": test_project["id"],
                 },
             )
 
@@ -274,7 +298,9 @@ def test_data_source_test_connection_database_different_types(client: TestClient
             assert data["status"] == "success"
 
 
-def test_data_source_test_connection_api_with_auth_header(client: TestClient):
+def test_data_source_test_connection_api_with_auth_header(
+    client: TestClient, test_project
+):
     """Test that API connection includes authorization header."""
     with patch("mindweaver.service.data_source.httpx.AsyncClient") as mock_client_class:
         mock_client = AsyncMock()
@@ -286,12 +312,14 @@ def test_data_source_test_connection_api_with_auth_header(client: TestClient):
 
         test_resp = client.post(
             "/api/v1/data_sources/test_connection",
+            headers={"X-Project-Id": str(test_project["id"])},
             json={
                 "type": "API",
                 "parameters": {
                     "base_url": "https://api.example.com",
                     "api_key": "test_api_key_12345",
                 },
+                "project_id": test_project["id"],
             },
         )
 

@@ -16,6 +16,7 @@ def test_lakehouse_storage_create_valid(client: TestClient, test_project):
                 "access_key": "AKIAIOSFODNN7EXAMPLE",
                 "secret_key": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
             },
+            "project_id": test_project["id"],
         },
     )
 
@@ -48,6 +49,7 @@ def test_lakehouse_storage_create_with_endpoint(client: TestClient, test_project
                 "secret_key": "minioadmin",
                 "endpoint_url": "https://minio.example.com",
             },
+            "project_id": test_project["id"],
         },
     )
 
@@ -74,6 +76,7 @@ def test_lakehouse_storage_invalid_bucket_empty(client: TestClient, test_project
                 "region": "us-east-1",
                 "access_key": "AKIAIOSFODNN7EXAMPLE",
             },
+            "project_id": test_project["id"],
         },
     )
 
@@ -98,6 +101,7 @@ def test_lakehouse_storage_invalid_bucket_special_chars(
                 "region": "us-east-1",
                 "access_key": "AKIAIOSFODNN7EXAMPLE",
             },
+            "project_id": test_project["id"],
         },
     )
 
@@ -120,6 +124,7 @@ def test_lakehouse_storage_empty_region(client: TestClient, test_project):
                 "region": "",
                 "access_key": "AKIAIOSFODNN7EXAMPLE",
             },
+            "project_id": test_project["id"],
         },
     )
 
@@ -142,6 +147,7 @@ def test_lakehouse_storage_empty_access_key(client: TestClient, test_project):
                 "region": "us-east-1",
                 "access_key": "",
             },
+            "project_id": test_project["id"],
         },
     )
 
@@ -165,6 +171,7 @@ def test_lakehouse_storage_invalid_endpoint_url(client: TestClient, test_project
                 "access_key": "AKIAIOSFODNN7EXAMPLE",
                 "endpoint_url": "ftp://invalid-endpoint.com",
             },
+            "project_id": test_project["id"],
         },
     )
 
@@ -193,6 +200,7 @@ def test_lakehouse_storage_list(client: TestClient, test_project):
                 "region": "us-west-2",
                 "access_key": "AKIAIOSFODNN7EXAMPLE",
             },
+            "project_id": test_project["id"],
         },
     )
 
@@ -220,6 +228,7 @@ def test_lakehouse_storage_get(client: TestClient, test_project):
                 "region": "eu-west-1",
                 "access_key": "AKIAIOSFODNN7EXAMPLE",
             },
+            "project_id": test_project["id"],
         },
     )
     assert create_resp.status_code == 200
@@ -247,6 +256,7 @@ def test_lakehouse_storage_update(client: TestClient, test_project):
                 "access_key": "AKIAIOSFODNN7EXAMPLE",
                 "secret_key": "old_secret",
             },
+            "project_id": test_project["id"],
         },
     )
     assert create_resp.status_code == 200
@@ -264,6 +274,7 @@ def test_lakehouse_storage_update(client: TestClient, test_project):
                 "region": "us-west-2",
                 "access_key": "AKIAIOSFODNN7EXAMPLE",
             },
+            "project_id": test_project["id"],
         },
     )
 
@@ -289,6 +300,7 @@ def test_lakehouse_storage_update_retain_secret(client: TestClient, test_project
                 "access_key": "AKIAIOSFODNN7EXAMPLE",
                 "secret_key": "original_secret_key",
             },
+            "project_id": test_project["id"],
         },
     )
     assert create_resp.status_code == 200
@@ -307,6 +319,7 @@ def test_lakehouse_storage_update_retain_secret(client: TestClient, test_project
                 "region": "us-east-1",
                 "access_key": "AKIAIOSFODNN7EXAMPLE",
             },
+            "project_id": test_project["id"],
         },
     )
 
@@ -331,6 +344,7 @@ def test_lakehouse_storage_update_clear_secret(client: TestClient, test_project)
                 "access_key": "AKIAIOSFODNN7EXAMPLE",
                 "secret_key": "secret_to_clear",
             },
+            "project_id": test_project["id"],
         },
     )
     assert create_resp.status_code == 200
@@ -349,6 +363,7 @@ def test_lakehouse_storage_update_clear_secret(client: TestClient, test_project)
                 "access_key": "AKIAIOSFODNN7EXAMPLE",
                 "secret_key": "__CLEAR_SECRET_KEY__",
             },
+            "project_id": test_project["id"],
         },
     )
 
@@ -372,6 +387,7 @@ def test_lakehouse_storage_delete(client: TestClient, test_project):
                 "region": "us-east-1",
                 "access_key": "AKIAIOSFODNN7EXAMPLE",
             },
+            "project_id": test_project["id"],
         },
     )
     assert create_resp.status_code == 200
@@ -407,6 +423,7 @@ def test_lakehouse_storage_secret_key_encryption(client: TestClient, test_projec
                 "access_key": "AKIAIOSFODNN7EXAMPLE",
                 "secret_key": plain_secret,
             },
+            "project_id": test_project["id"],
         },
     )
 
@@ -437,6 +454,7 @@ def test_lakehouse_storage_update_new_secret(client: TestClient, test_project):
                 "access_key": "AKIAIOSFODNN7EXAMPLE",
                 "secret_key": "old_secret",
             },
+            "project_id": test_project["id"],
         },
     )
     assert create_resp.status_code == 200
@@ -457,6 +475,7 @@ def test_lakehouse_storage_update_new_secret(client: TestClient, test_project):
                 "access_key": "AKIAIOSFODNN7EXAMPLE",
                 "secret_key": new_secret,
             },
+            "project_id": test_project["id"],
         },
     )
 
@@ -486,6 +505,7 @@ def test_list_lakehouse_storages_without_project_id_returns_empty(
                 "access_key": "AKIAIOSFODNN7EXAMPLE",
                 "secret_key": "test_secret",
             },
+            "project_id": test_project["id"],
         },
         headers={"X-Project-Id": str(test_project["id"])},
     )

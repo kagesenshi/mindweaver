@@ -12,6 +12,7 @@ def test_chat(client: TestClient, test_project):
                 {"role": "user", "content": "Hello"},
                 {"role": "assistant", "content": "Hi there"},
             ],
+            "project_id": test_project["id"],
         },
         headers={"X-Project-Id": str(test_project["id"])},
     )
@@ -35,6 +36,7 @@ def test_list_chats_without_project_id_returns_empty(client: TestClient, test_pr
             "title": "Chat Session 1",
             "agent_id": "agent-123",
             "messages": [],
+            "project_id": test_project["id"],
         },
         headers={"X-Project-Id": str(test_project["id"])},
     )
@@ -60,6 +62,7 @@ def test_delete_chat(client: TestClient, test_project):
             "title": "To Delete Chat",
             "agent_id": "agent-123",
             "messages": [],
+            "project_id": test_project["id"],
         },
         headers={"X-Project-Id": str(test_project["id"])},
     )

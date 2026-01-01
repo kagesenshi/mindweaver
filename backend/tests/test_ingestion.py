@@ -18,6 +18,7 @@ def test_create_ingestion_full_refresh(client: TestClient, test_project):
                 "username": "admin",
                 "database_type": "postgresql",
             },
+            "project_id": test_project["id"],
         },
     )
     assert ds_resp.status_code == 200
@@ -36,6 +37,7 @@ def test_create_ingestion_full_refresh(client: TestClient, test_project):
                 "access_key": "test-key",
                 "secret_key": "test-secret",
             },
+            "project_id": test_project["id"],
         },
     )
     assert ls_resp.status_code == 200
@@ -58,6 +60,7 @@ def test_create_ingestion_full_refresh(client: TestClient, test_project):
                 "table_name": "users",
                 "ingestion_type": "full_refresh",
             },
+            "project_id": test_project["id"],
         },
     )
 
@@ -84,6 +87,7 @@ def test_create_ingestion_incremental(client: TestClient, test_project):
                 "username": "admin",
                 "database_type": "postgresql",
             },
+            "project_id": test_project["id"],
         },
     )
     assert ds_resp.status_code == 200
@@ -102,6 +106,7 @@ def test_create_ingestion_incremental(client: TestClient, test_project):
                 "access_key": "test-key",
                 "secret_key": "test-secret",
             },
+            "project_id": test_project["id"],
         },
     )
     assert ls_resp.status_code == 200
@@ -128,6 +133,7 @@ def test_create_ingestion_incremental(client: TestClient, test_project):
                 "created_column": "created_at",
                 "source_timezone": "America/New_York",
             },
+            "project_id": test_project["id"],
         },
     )
 
@@ -154,6 +160,7 @@ def test_create_ingestion_incremental_missing_fields(client: TestClient, test_pr
                 "username": "admin",
                 "database_type": "postgresql",
             },
+            "project_id": test_project["id"],
         },
     )
     assert ds_resp.status_code == 200
@@ -172,6 +179,7 @@ def test_create_ingestion_incremental_missing_fields(client: TestClient, test_pr
                 "access_key": "test-key",
                 "secret_key": "test-secret",
             },
+            "project_id": test_project["id"],
         },
     )
     assert ls_resp.status_code == 200
@@ -195,6 +203,7 @@ def test_create_ingestion_incremental_missing_fields(client: TestClient, test_pr
                 "ingestion_type": "incremental",
                 # Missing primary_keys, last_modified_column, created_column
             },
+            "project_id": test_project["id"],
         },
     )
 
@@ -224,6 +233,7 @@ def test_execute_ingestion(client: TestClient, test_project):
                 "username": "admin",
                 "database_type": "postgresql",
             },
+            "project_id": test_project["id"],
         },
     )
     assert ds_resp.status_code == 200
@@ -242,6 +252,7 @@ def test_execute_ingestion(client: TestClient, test_project):
                 "access_key": "test-key",
                 "secret_key": "test-secret",
             },
+            "project_id": test_project["id"],
         },
     )
     assert ls_resp.status_code == 200
@@ -264,6 +275,7 @@ def test_execute_ingestion(client: TestClient, test_project):
                 "table_name": "exec_table",
                 "ingestion_type": "full_refresh",
             },
+            "project_id": test_project["id"],
         },
     )
     assert ing_resp.status_code == 200
@@ -293,6 +305,7 @@ def test_list_ingestion_runs(client: TestClient, test_project):
                 "username": "admin",
                 "database_type": "postgresql",
             },
+            "project_id": test_project["id"],
         },
     )
     assert ds_resp.status_code == 200
@@ -311,6 +324,7 @@ def test_list_ingestion_runs(client: TestClient, test_project):
                 "access_key": "test-key",
                 "secret_key": "test-secret",
             },
+            "project_id": test_project["id"],
         },
     )
     assert ls_resp.status_code == 200
@@ -333,6 +347,7 @@ def test_list_ingestion_runs(client: TestClient, test_project):
                 "table_name": "runs_table",
                 "ingestion_type": "full_refresh",
             },
+            "project_id": test_project["id"],
         },
     )
     assert ing_resp.status_code == 200
@@ -366,6 +381,7 @@ def test_list_all_ingestions(client: TestClient, test_project):
                 "username": "admin",
                 "database_type": "postgresql",
             },
+            "project_id": test_project["id"],
         },
     )
     data_source_id = ds_resp.json()["record"]["id"]
@@ -383,6 +399,7 @@ def test_list_all_ingestions(client: TestClient, test_project):
                 "access_key": "test-key",
                 "secret_key": "test-secret",
             },
+            "project_id": test_project["id"],
         },
     )
     lakehouse_storage_id = ls_resp.json()["record"]["id"]
@@ -405,6 +422,7 @@ def test_list_all_ingestions(client: TestClient, test_project):
                     "table_name": f"table_{i}",
                     "ingestion_type": "full_refresh",
                 },
+                "project_id": test_project["id"],
             },
         )
 
@@ -434,6 +452,7 @@ def test_get_single_ingestion(client: TestClient, test_project):
                 "username": "admin",
                 "database_type": "postgresql",
             },
+            "project_id": test_project["id"],
         },
     )
     data_source_id = ds_resp.json()["record"]["id"]
@@ -451,6 +470,7 @@ def test_get_single_ingestion(client: TestClient, test_project):
                 "access_key": "test-key",
                 "secret_key": "test-secret",
             },
+            "project_id": test_project["id"],
         },
     )
     lakehouse_storage_id = ls_resp.json()["record"]["id"]
@@ -472,6 +492,7 @@ def test_get_single_ingestion(client: TestClient, test_project):
                 "table_name": "get_table",
                 "ingestion_type": "full_refresh",
             },
+            "project_id": test_project["id"],
         },
     )
     ingestion_id = create_resp.json()["record"]["id"]
@@ -500,6 +521,7 @@ def test_update_ingestion(client: TestClient, test_project):
                 "username": "admin",
                 "database_type": "postgresql",
             },
+            "project_id": test_project["id"],
         },
     )
     data_source_id = ds_resp.json()["record"]["id"]
@@ -517,6 +539,7 @@ def test_update_ingestion(client: TestClient, test_project):
                 "access_key": "test-key",
                 "secret_key": "test-secret",
             },
+            "project_id": test_project["id"],
         },
     )
     lakehouse_storage_id = ls_resp.json()["record"]["id"]
@@ -538,6 +561,7 @@ def test_update_ingestion(client: TestClient, test_project):
                 "table_name": "update_table",
                 "ingestion_type": "full_refresh",
             },
+            "project_id": test_project["id"],
         },
     )
     ingestion_id = create_resp.json()["record"]["id"]
@@ -559,6 +583,7 @@ def test_update_ingestion(client: TestClient, test_project):
                 "table_name": "updated_table",
                 "ingestion_type": "full_refresh",
             },
+            "project_id": test_project["id"],
         },
     )
     assert update_resp.status_code == 200
@@ -586,6 +611,7 @@ def test_delete_ingestion(client: TestClient, test_project):
                 "username": "admin",
                 "database_type": "postgresql",
             },
+            "project_id": test_project["id"],
         },
     )
     data_source_id = ds_resp.json()["record"]["id"]
@@ -603,6 +629,7 @@ def test_delete_ingestion(client: TestClient, test_project):
                 "access_key": "test-key",
                 "secret_key": "test-secret",
             },
+            "project_id": test_project["id"],
         },
     )
     lakehouse_storage_id = ls_resp.json()["record"]["id"]
@@ -624,6 +651,7 @@ def test_delete_ingestion(client: TestClient, test_project):
                 "table_name": "delete_table",
                 "ingestion_type": "full_refresh",
             },
+            "project_id": test_project["id"],
         },
     )
     ingestion_id = create_resp.json()["record"]["id"]
@@ -654,6 +682,7 @@ def test_create_ingestion_with_date_range(client: TestClient, test_project):
                 "username": "admin",
                 "database_type": "postgresql",
             },
+            "project_id": test_project["id"],
         },
     )
     data_source_id = ds_resp.json()["record"]["id"]
@@ -671,6 +700,7 @@ def test_create_ingestion_with_date_range(client: TestClient, test_project):
                 "access_key": "test-key",
                 "secret_key": "test-secret",
             },
+            "project_id": test_project["id"],
         },
     )
     lakehouse_storage_id = ls_resp.json()["record"]["id"]
@@ -694,6 +724,7 @@ def test_create_ingestion_with_date_range(client: TestClient, test_project):
                 "table_name": "date_table",
                 "ingestion_type": "full_refresh",
             },
+            "project_id": test_project["id"],
         },
     )
 
@@ -720,6 +751,7 @@ def test_create_ingestion_with_complex_cron(client: TestClient, test_project):
                 "username": "admin",
                 "database_type": "postgresql",
             },
+            "project_id": test_project["id"],
         },
     )
     data_source_id = ds_resp.json()["record"]["id"]
@@ -737,6 +769,7 @@ def test_create_ingestion_with_complex_cron(client: TestClient, test_project):
                 "access_key": "test-key",
                 "secret_key": "test-secret",
             },
+            "project_id": test_project["id"],
         },
     )
     lakehouse_storage_id = ls_resp.json()["record"]["id"]
@@ -766,6 +799,7 @@ def test_create_ingestion_with_complex_cron(client: TestClient, test_project):
                     "table_name": f"cron_table_{i}",
                     "ingestion_type": "full_refresh",
                 },
+                "project_id": test_project["id"],
             },
         )
         if resp.status_code != 200:
@@ -790,6 +824,7 @@ def test_create_ingestion_with_invalid_cron_schedule(client: TestClient, test_pr
                 "username": "admin",
                 "database_type": "postgresql",
             },
+            "project_id": test_project["id"],
         },
     )
     data_source_id = ds_resp.json()["record"]["id"]
@@ -807,6 +842,7 @@ def test_create_ingestion_with_invalid_cron_schedule(client: TestClient, test_pr
                 "access_key": "test-key",
                 "secret_key": "test-secret",
             },
+            "project_id": test_project["id"],
         },
     )
     lakehouse_storage_id = ls_resp.json()["record"]["id"]
@@ -852,8 +888,9 @@ def test_create_ingestion_with_invalid_cron_schedule(client: TestClient, test_pr
         error = resp.json()
         assert "detail" in error
         # Check that the error mentions cron or schedule
+        detail_str = str(error["detail"]).lower()
         assert (
-            "cron" in error["detail"].lower() or "schedule" in error["detail"].lower()
+            "cron" in detail_str or "schedule" in detail_str
         ), f"Error message should mention cron/schedule for '{cron}': {error['detail']}"
 
 
@@ -873,6 +910,7 @@ def test_create_ingestion_with_multiple_primary_keys(client: TestClient, test_pr
                 "username": "admin",
                 "database_type": "postgresql",
             },
+            "project_id": test_project["id"],
         },
     )
     data_source_id = ds_resp.json()["record"]["id"]
@@ -890,6 +928,7 @@ def test_create_ingestion_with_multiple_primary_keys(client: TestClient, test_pr
                 "access_key": "test-key",
                 "secret_key": "test-secret",
             },
+            "project_id": test_project["id"],
         },
     )
     lakehouse_storage_id = ls_resp.json()["record"]["id"]
@@ -915,6 +954,7 @@ def test_create_ingestion_with_multiple_primary_keys(client: TestClient, test_pr
                 "created_column": "created_at",
                 "source_timezone": "UTC",
             },
+            "project_id": test_project["id"],
         },
     )
 
@@ -940,6 +980,7 @@ def test_ingestion_with_different_timezones(client: TestClient, test_project):
                 "username": "admin",
                 "database_type": "postgresql",
             },
+            "project_id": test_project["id"],
         },
     )
     data_source_id = ds_resp.json()["record"]["id"]
@@ -957,6 +998,7 @@ def test_ingestion_with_different_timezones(client: TestClient, test_project):
                 "access_key": "test-key",
                 "secret_key": "test-secret",
             },
+            "project_id": test_project["id"],
         },
     )
     lakehouse_storage_id = ls_resp.json()["record"]["id"]
@@ -980,6 +1022,7 @@ def test_ingestion_with_different_timezones(client: TestClient, test_project):
                     "table_name": f"tz_table_{i}",
                     "ingestion_type": "full_refresh",
                 },
+                "project_id": test_project["id"],
             },
         )
         assert resp.status_code == 200
@@ -1004,6 +1047,7 @@ def test_list_ingestions_without_project_id_returns_empty(
                 "username": "admin",
                 "database_type": "postgresql",
             },
+            "project_id": test_project["id"],
         },
     )
     data_source_id = ds_resp.json()["record"]["id"]
@@ -1021,6 +1065,7 @@ def test_list_ingestions_without_project_id_returns_empty(
                 "access_key": "test-key",
                 "secret_key": "test-secret",
             },
+            "project_id": test_project["id"],
         },
     )
     lakehouse_storage_id = ls_resp.json()["record"]["id"]
@@ -1041,6 +1086,7 @@ def test_list_ingestions_without_project_id_returns_empty(
                 "table_name": "test_table",
                 "ingestion_type": "full_refresh",
             },
+            "project_id": test_project["id"],
         },
         headers={"X-Project-Id": str(test_project["id"])},
     )
