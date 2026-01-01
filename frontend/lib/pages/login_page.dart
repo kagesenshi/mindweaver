@@ -22,12 +22,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   void initState() {
     super.initState();
     if (widget.code != null) {
-      _handleCallback(widget.code!);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _handleCallback(widget.code!);
+      });
     }
     if (widget.error != null) {
-      setState(() {
-        _errorMessage = widget.error;
-      });
+      _errorMessage = widget.error;
     }
   }
 

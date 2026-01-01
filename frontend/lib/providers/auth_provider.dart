@@ -63,7 +63,9 @@ class AuthNotifier extends StateNotifier<AsyncValue<User?>> {
   }
 
   Future<void> handleCallback(String code, String redirectUrl) async {
-    state = const AsyncValue.loading();
+    // We delay the state update to avoid the "modify a provider while building" error
+    // which can happen if this is called from initState.
+    await Future.microtask(() => state = const AsyncValue.loading());
     try {
       final client = http.Client();
       const baseUrl = 'http://localhost:8000/api/v1';
