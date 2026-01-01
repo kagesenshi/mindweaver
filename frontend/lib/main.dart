@@ -71,6 +71,13 @@ class MindweaverApp extends StatelessWidget {
         useMaterial3: true,
       ),
       routerConfig: _router,
+      builder: (context, child) {
+        return Overlay(
+          initialEntries: [
+            OverlayEntry(builder: (context) => SelectionArea(child: child!)),
+          ],
+        );
+      },
     );
   }
 }
