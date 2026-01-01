@@ -401,15 +401,20 @@ class _TopBar extends ConsumerWidget {
               final currentProject = ref.watch(currentProjectProvider);
               final projectsAsync = ref.watch(projectListProvider);
 
-              return PopupMenuButton<Project?>(
+              return PopupMenuButton<int?>(
                 offset: const Offset(0, 50),
-                onSelected: (project) {
-                  if (project == null) {
+                onSelected: (projectId) {
+                  if (projectId == null || projectId == -1) {
                     ref.read(currentProjectProvider.notifier).clearProject();
                   } else {
-                    ref
-                        .read(currentProjectProvider.notifier)
-                        .setProject(project);
+                    projectsAsync.whenData((projects) {
+                      final selectedProject = projects.firstWhere(
+                        (p) => p.id == projectId,
+                      );
+                      ref
+                          .read(currentProjectProvider.notifier)
+                          .setProject(selectedProject);
+                    });
                   }
                 },
                 child: Container(
@@ -450,9 +455,9 @@ class _TopBar extends ConsumerWidget {
                   ),
                 ),
                 itemBuilder: (context) {
-                  final List<PopupMenuEntry<Project?>> items = [
-                    const PopupMenuItem<Project?>(
-                      value: null,
+                  final List<PopupMenuEntry<int?>> items = [
+                    const PopupMenuItem<int?>(
+                      value: -1,
                       child: Row(
                         children: [
                           Icon(Icons.all_inclusive, size: 20),
@@ -467,8 +472,8 @@ class _TopBar extends ConsumerWidget {
                   projectsAsync.whenData((projects) {
                     items.addAll(
                       projects.map(
-                        (project) => PopupMenuItem<Project?>(
-                          value: project,
+                        (project) => PopupMenuItem<int?>(
+                          value: project.id,
                           child: Row(
                             children: [
                               const Icon(
