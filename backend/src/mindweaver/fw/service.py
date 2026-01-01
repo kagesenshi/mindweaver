@@ -366,7 +366,7 @@ class Service(Generic[S], abc.ABC):
         try:
             await self.session.flush()
         except saexc.IntegrityError as e:
-            raise ModelValidationError(message=e.args[0])
+            self._handle_integrity_error(e)
         await self.session.refresh(model)
 
         # Execute after_create hooks
@@ -416,7 +416,10 @@ class Service(Generic[S], abc.ABC):
         newdata.update(data.model_dump(exclude_unset=True))
         newdata["modified"] = ts_now()
         model.sqlmodel_update(newdata)
-        await self.session.flush()
+        try:
+            await self.session.flush()
+        except saexc.IntegrityError as e:
+            self._handle_integrity_error(e)
         await self.session.refresh(model)
 
         # Execute after_update hooks
@@ -462,6 +465,66 @@ class Service(Generic[S], abc.ABC):
     async def validate_data(self, data: NamedBase) -> NamedBase:
         # raise error if fail
         return data
+
+    def _handle_integrity_error(self, e: saexc.IntegrityError):
+        msg = str(e.orig)
+
+        # Postgres (asyncpg) / SQLite generic handling
+        if (
+            "UNIQUE constraint failed" in msg
+            or "UniqueViolationError" in msg
+            or "duplicate key value" in msg
+        ):
+            # Try to extract the field/key name
+            if "duplicate key value violates unique constraint" in msg:
+                # Postgres style: ... violates unique constraint "..." Detail: Key (name)=(asd) already exists.
+                import re
+
+                match = re.search(r"Key \((.*?)\)=\(.*\) already exists", msg)
+                if match:
+                    field = match.group(1)
+                    raise ModelValidationError(
+                        message=f"Value for '{field}' already exists"
+                    )
+
+            parts = msg.split(":")
+            if len(parts) > 1:
+                field = parts[1].strip().split(".")[-1]
+                raise ModelValidationError(
+                    message=f"Value for '{field}' already exists"
+                )
+            raise ModelValidationError(message="Unique constraint failed")
+
+        elif (
+            "NOT NULL constraint failed" in msg
+            or "NotNullViolationError" in msg
+            or "violates not-null constraint" in msg
+        ):
+            if "violates not-null constraint" in msg:
+                # Postgres style: null value in column "project_id" ... violates not-null constraint
+                import re
+
+                match = re.search(r'column "(.*?)"', msg)
+                if match:
+                    field = match.group(1)
+                    raise ModelValidationError(message=f"Field '{field}' is required")
+
+            parts = msg.split(":")
+            if len(parts) > 1:
+                field = parts[1].strip().split(".")[-1]
+                raise ModelValidationError(message=f"Field '{field}' is required")
+            raise ModelValidationError(message="Required field missing")
+
+        elif (
+            "FOREIGN KEY constraint failed" in msg
+            or "ForeignKeyViolationError" in msg
+            or "violates foreign key constraint" in msg
+        ):
+            raise ModelValidationError(message="Referenced record does not exist")
+
+        # Fallback to a cleaner version of the raw message
+        clean_msg = msg.split(":", 1)[-1].strip() if ":" in msg else msg
+        raise ModelValidationError(message=clean_msg)
 
     @classmethod
     async def get_model(cls, request: fastapi.Request, db: AsyncSession, id: int) -> S:
