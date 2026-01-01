@@ -23,7 +23,7 @@ FROM backend-base AS test
 RUN apt-get update && apt-get install -y postgresql && rm -rf /var/lib/apt/lists/*
 RUN uv sync --frozen
 # Run tests
-RUN uv run pytest tests
+CMD ["uv", "run", "pytest", "tests"]
 
 # Backend Production Stage
 FROM backend-base AS backend
