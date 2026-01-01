@@ -3,12 +3,18 @@ FROM python:3.13-slim AS backend-base
 
 # Install uv for fast dependency management
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+# Create a non-root user and group
+RUN groupadd --system app \
+ && useradd --system --gid app --create-home --home-dir /home/app app
 
+RUN apt-get update && apt-get install -y postgresql && rm -rf /var/lib/apt/lists/*
+
+USER app
 # Set working directory
 WORKDIR /app
 
 # Copy dependency files
-COPY backend .
+COPY --chown=app:app backend .
 
 # Install dependencies (only production by default)
 RUN uv sync --frozen --no-dev
@@ -19,10 +25,8 @@ ENV PYTHONUNBUFFERED=1
 
 # Backend Test Stage
 FROM backend-base AS test
-# Install postgresql for pytest-postgresql and dev dependencies
-RUN apt-get update && apt-get install -y postgresql && rm -rf /var/lib/apt/lists/*
+
 RUN uv sync --frozen
-# Run tests
 CMD ["uv", "run", "pytest", "tests"]
 
 # Backend Production Stage
