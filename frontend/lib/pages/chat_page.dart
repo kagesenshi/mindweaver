@@ -4,6 +4,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../providers/chat_provider.dart';
 import '../providers/ai_agent_provider.dart';
 import '../providers/project_provider.dart';
+import '../models/chat.dart';
 import '../widgets/large_dialog.dart';
 
 class ChatPage extends ConsumerWidget {

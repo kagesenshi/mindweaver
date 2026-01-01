@@ -20,9 +20,6 @@ class MockApiClient implements APIClient {
   @override
   void removeHeader(String key) {}
 
-  @override
-  void setToken(String? token) {}
-
   void setMockResponse(dynamic response) {
     mockResponse = response;
     shouldThrowError = false;

@@ -12,14 +12,6 @@ class APIClient {
     : baseUrl = baseUrl ?? Settings.apiBaseUrl,
       timeout = timeout ?? Settings.apiTimeout;
 
-  void setToken(String? token) {
-    if (token != null) {
-      _headers['Authorization'] = 'Bearer $token';
-    } else {
-      _headers.remove('Authorization');
-    }
-  }
-
   void setHeader(String key, String value) {
     _headers[key] = value;
   }

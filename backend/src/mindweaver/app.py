@@ -11,7 +11,6 @@ from .service.ingestion import (
     run_router as ingestion_run_router,
 )
 from .service.project import router as project_router
-from .service.auth import router as auth_router
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -42,7 +41,6 @@ async def feature_flags():
 
 
 app.include_router(project_router, prefix="/api/v1")
-app.include_router(auth_router, prefix="/api/v1")
 
 if settings.experimental_data_source:
     app.include_router(ds_router, prefix="/api/v1")

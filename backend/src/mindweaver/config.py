@@ -21,15 +21,6 @@ class Settings(BaseSettings):
     experimental_lakehouse_storage: bool = False
     experimental_ingestion: bool = False
 
-    oidc_client_id: str | None = None
-    oidc_client_secret: str | None = None
-    oidc_discovery_url: str | None = None
-    oidc_redirect_uri: str = "http://localhost:8000/api/v1/auth/callback"
-
-    jwt_secret: str = "change-me-in-production"
-    jwt_algorithm: str = "HS256"
-    jwt_expires_minutes: int = 60 * 24  # 24 hours
-
     model_config = SettingsConfigDict(
         env_file=".env", env_prefix="mindweaver_", extra="allow"
     )

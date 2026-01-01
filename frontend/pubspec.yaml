@@ -39,6 +39,7 @@ dependencies:
   font_awesome_flutter: ^10.7.0
   json_annotation: ^4.9.0
   shared_preferences: ^2.5.4
+  crypto: ^3.0.7
 
 dev_dependencies:
   flutter_test:

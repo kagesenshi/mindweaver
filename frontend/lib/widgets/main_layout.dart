@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/project_provider.dart';
+import '../models/project.dart';
 import '../providers/feature_flags_provider.dart';
 
 class MainLayout extends StatefulWidget {
