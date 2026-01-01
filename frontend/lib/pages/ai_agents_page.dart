@@ -174,7 +174,7 @@ class AiAgentsPage extends ConsumerWidget {
                           children: [
                             Text(
                               'Temperature: ${selectedTemp.toStringAsFixed(1)}',
-                              style: const TextStyle(fontSize: 12),
+                              style: const TextStyle(fontSize: 10),
                             ),
                             Slider(
                               value: selectedTemp,
@@ -197,7 +197,7 @@ class AiAgentsPage extends ConsumerWidget {
                   const SizedBox(height: 24),
                   const Text(
                     'Knowledge Databases',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                   ),
                   const SizedBox(height: 12),
                   dbsAsync.when(

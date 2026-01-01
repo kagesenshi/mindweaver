@@ -201,7 +201,7 @@ class LakehouseStoragePage extends ConsumerWidget {
                   ),
                   const Text(
                     'S3 Configuration',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 16),
                   Row(
@@ -401,7 +401,7 @@ class LakehouseStoragePage extends ConsumerWidget {
                   ),
                   const Text(
                     'S3 Configuration',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 16),
                   Row(

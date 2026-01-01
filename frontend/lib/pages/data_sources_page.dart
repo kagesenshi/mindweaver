@@ -262,7 +262,7 @@ class DataSourcesPage extends ConsumerWidget {
                   ),
                   const Text(
                     'Configuration',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 16),
                   if (selectedType == 'API') ...[
@@ -570,7 +570,7 @@ class DataSourcesPage extends ConsumerWidget {
                   ),
                   const Text(
                     'Configuration',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 16),
                   if (selectedType == 'API') ...[

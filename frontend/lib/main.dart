@@ -69,15 +69,25 @@ class MindweaverApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
+        textTheme: const TextTheme(
+          displayLarge: TextStyle(fontSize: 55),
+          displayMedium: TextStyle(fontSize: 43),
+          displaySmall: TextStyle(fontSize: 34),
+          headlineLarge: TextStyle(fontSize: 30),
+          headlineMedium: TextStyle(fontSize: 26),
+          headlineSmall: TextStyle(fontSize: 22),
+          titleLarge: TextStyle(fontSize: 20),
+          titleMedium: TextStyle(fontSize: 14),
+          titleSmall: TextStyle(fontSize: 12),
+          bodyLarge: TextStyle(fontSize: 14),
+          bodyMedium: TextStyle(fontSize: 12),
+          bodySmall: TextStyle(fontSize: 10),
+          labelLarge: TextStyle(fontSize: 12),
+          labelMedium: TextStyle(fontSize: 10),
+          labelSmall: TextStyle(fontSize: 9),
+        ),
       ),
       routerConfig: _router,
-      builder: (context, child) {
-        return Overlay(
-          initialEntries: [
-            OverlayEntry(builder: (context) => SelectionArea(child: child!)),
-          ],
-        );
-      },
     );
   }
 }

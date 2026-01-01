@@ -150,7 +150,7 @@ class _ProjectHeader extends StatelessWidget {
                     Text(
                       project.title,
                       style: Theme.of(context).textTheme.headlineMedium
-                          ?.copyWith(fontWeight: FontWeight.bold),
+                          ?.copyWith(fontWeight: FontWeight.bold, fontSize: 10),
                     ),
                     Text(
                       project.name,
@@ -226,7 +226,7 @@ class _QuickActionCard extends StatelessWidget {
                       title,
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                        fontSize: 14,
                       ),
                     ),
                     Text(

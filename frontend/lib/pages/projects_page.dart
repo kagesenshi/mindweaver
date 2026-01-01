@@ -90,7 +90,7 @@ class ProjectsPage extends ConsumerWidget {
             const Text(
               'Project Details',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
@@ -191,7 +191,7 @@ class ProjectsPage extends ConsumerWidget {
             const Text(
               'Project Details',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),

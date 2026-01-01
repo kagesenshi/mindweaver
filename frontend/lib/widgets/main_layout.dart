@@ -277,7 +277,7 @@ class _SidebarItem extends StatelessWidget {
                 label,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 16,
+                  fontSize: 14,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -347,7 +347,7 @@ class _SidebarGroupState extends State<_SidebarGroup> {
                       widget.label,
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 16,
+                        fontSize: 14,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -436,7 +436,7 @@ class _TopBar extends ConsumerWidget {
                         currentProject?.title ?? 'All Projects',
                         style: TextStyle(
                           color: Theme.of(context).colorScheme.primary,
-                          fontSize: 14,
+                          fontSize: 12,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -525,7 +525,7 @@ class _TopBar extends ConsumerWidget {
                   child: Text(
                     'JD',
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 12,
                       fontWeight: FontWeight.bold,
                       color: Theme.of(context).colorScheme.primary,
                     ),
