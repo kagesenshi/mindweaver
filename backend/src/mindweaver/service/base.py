@@ -35,7 +35,6 @@ class ProjectScopedService(Service[T]):
         return redefine_model(
             f"{cls.model_class().__name__}Schema",
             cls.model_class(),
-            exclude=["project_id"],
         )
 
     @classmethod
