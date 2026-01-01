@@ -15,6 +15,7 @@ import 'pages/ontology_page.dart';
 import 'pages/data_sources_page.dart';
 import 'pages/lakehouse_storage_page.dart';
 import 'pages/ingestion_page.dart';
+import 'pages/callback_page.dart';
 import 'providers/auth_provider.dart';
 
 void main() {
@@ -30,9 +31,7 @@ final _routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final isLoggedIn = authState.value != null;
       final isLoggingIn = state.uri.path == '/login';
-      final isCallback =
-          state.uri.path ==
-          '/auth/callback'; // handled by /login with params? or separate?
+      final isCallback = state.uri.path == '/callback';
 
       // Allow /login and /auth/callback
       if (isLoggingIn || isCallback) {
@@ -86,12 +85,17 @@ final _routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/login',
         builder: (context, state) {
+          final error = state.uri.queryParameters['error'];
+          return LoginPage(error: error);
+        },
+      ),
+      GoRoute(
+        path: '/callback',
+        builder: (context, state) {
           final code = state.uri.queryParameters['code'];
-          final error = state.uri.queryParameters['error']; // OIDC error param
-          if (code != null || error != null) {
-            return LoginPage(code: code, error: error);
-          }
-          return const LoginPage();
+          final stateParam = state.uri.queryParameters['state'];
+          final error = state.uri.queryParameters['error'];
+          return CallbackPage(code: code, state: stateParam, error: error);
         },
       ),
     ],

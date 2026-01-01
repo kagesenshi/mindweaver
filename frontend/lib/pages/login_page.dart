@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'dart:html' as html; // For web redirection
 import '../providers/auth_provider.dart';
 
@@ -21,47 +20,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   @override
   void initState() {
     super.initState();
-    if (widget.code != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _handleCallback(widget.code!);
-      });
-    }
     if (widget.error != null) {
       _errorMessage = widget.error;
-    }
-  }
-
-  Future<void> _handleCallback(String code) async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      // The redirect URL must match exactly what was sent during login
-      // We need to construct it same way.
-      // Assuming the app is handling this route, the URL is window.location.href (without query)
-      // or we can reconstruct it.
-      // For simplicity, we assume http://localhost:PORT/login (or whatever the route is)
-      // But actually, we need to send the EXACT url that was used as redirect_uri.
-      // If we use `html.window.location.href` it might contain the code.
-      // We should pass the BASE redirect url (e.g. http://localhost:8080/login)
-
-      final currentUrl = Uri.base;
-      // Remove query params to get the base redirect URL
-      final redirectUrl = currentUrl.replace(queryParameters: {}).toString();
-
-      await ref.read(authProvider.notifier).handleCallback(code, redirectUrl);
-
-      if (mounted) {
-        context.go('/'); // Redirect to home on success
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = 'Login failed: $e';
-          _isLoading = false;
-        });
-      }
     }
   }
 
@@ -73,7 +33,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
     try {
       final currentUrl = Uri.base;
-      final redirectUrl = currentUrl.replace(queryParameters: {}).toString();
+      // Redirect to /callback instead of /login
+      final redirectUrl = currentUrl
+          .replace(path: '/callback', queryParameters: {})
+          .toString();
 
       final loginUrl = await ref
           .read(authProvider.notifier)
