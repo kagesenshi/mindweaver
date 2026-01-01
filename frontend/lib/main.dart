@@ -11,59 +11,122 @@ import 'pages/data_sources_page.dart';
 import 'pages/lakehouse_storage_page.dart';
 import 'pages/ingestion_page.dart';
 import 'pages/ontology_page.dart';
+import 'pages/login_page.dart';
+import 'providers/auth_provider.dart';
 
 void main() {
   runApp(const ProviderScope(child: MindweaverApp()));
 }
 
-final _router = GoRouter(
-  initialLocation: '/',
-  routes: [
-    ShellRoute(
-      builder: (context, state, child) {
-        return MainLayout(child: child);
-      },
-      routes: [
-        GoRoute(path: '/', builder: (context, state) => const ProjectsPage()),
-        GoRoute(
-          path: '/overview',
-          builder: (context, state) => const ProjectOverviewPage(),
-        ),
-        GoRoute(
-          path: '/knowledge_db',
-          builder: (context, state) => const KnowledgeDbPage(),
-        ),
-        GoRoute(
-          path: '/agents',
-          builder: (context, state) => const AiAgentsPage(),
-        ),
-        GoRoute(path: '/chat', builder: (context, state) => const ChatPage()),
-        GoRoute(
-          path: '/sources',
-          builder: (context, state) => const DataSourcesPage(),
-        ),
-        GoRoute(
-          path: '/lakehouse',
-          builder: (context, state) => const LakehouseStoragePage(),
-        ),
-        GoRoute(
-          path: '/ingestion',
-          builder: (context, state) => const IngestionPage(),
-        ),
-        GoRoute(
-          path: '/ontology',
-          builder: (context, state) => const OntologyPage(),
-        ),
-      ],
-    ),
-  ],
-);
+final _routerProvider = Provider<GoRouter>((ref) {
+  final authState = ref.watch(authProvider);
 
-class MindweaverApp extends StatelessWidget {
-  const MindweaverApp({super.key});
+  return GoRouter(
+    initialLocation: '/',
+    redirect: (context, state) {
+      final loggingIn = state.matchedLocation == '/login';
+      final authSuccess = state.matchedLocation == '/auth/success';
+
+      if (authState.status == AuthStatus.loading) return null;
+
+      if (authState.status == AuthStatus.unauthenticated &&
+          !loggingIn &&
+          !authSuccess) {
+        return '/login';
+      }
+
+      if (authState.status == AuthStatus.authenticated &&
+          (loggingIn || authSuccess)) {
+        return '/';
+      }
+
+      return null;
+    },
+    routes: [
+      GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
+      GoRoute(
+        path: '/auth/success',
+        builder: (context, state) {
+          final token = state.uri.queryParameters['token'];
+          if (token != null) {
+            // We need to trigger the login in the provider
+            // Since this is a builder, we can't do it directly.
+            // We use a Future.delayed or similar, but better is a separate widget or a hook.
+            return _AuthSuccessHandler(token: token);
+          }
+          return const LoginPage();
+        },
+      ),
+      ShellRoute(
+        builder: (context, state, child) {
+          return MainLayout(child: child);
+        },
+        routes: [
+          GoRoute(path: '/', builder: (context, state) => const ProjectsPage()),
+          GoRoute(
+            path: '/overview',
+            builder: (context, state) => const ProjectOverviewPage(),
+          ),
+          GoRoute(
+            path: '/knowledge_db',
+            builder: (context, state) => const KnowledgeDbPage(),
+          ),
+          GoRoute(
+            path: '/agents',
+            builder: (context, state) => const AiAgentsPage(),
+          ),
+          GoRoute(path: '/chat', builder: (context, state) => const ChatPage()),
+          GoRoute(
+            path: '/sources',
+            builder: (context, state) => const DataSourcesPage(),
+          ),
+          GoRoute(
+            path: '/lakehouse',
+            builder: (context, state) => const LakehouseStoragePage(),
+          ),
+          GoRoute(
+            path: '/ingestion',
+            builder: (context, state) => const IngestionPage(),
+          ),
+          GoRoute(
+            path: '/ontology',
+            builder: (context, state) => const OntologyPage(),
+          ),
+        ],
+      ),
+    ],
+  );
+});
+
+class _AuthSuccessHandler extends ConsumerStatefulWidget {
+  final String token;
+  const _AuthSuccessHandler({required this.token});
+
+  @override
+  ConsumerState<_AuthSuccessHandler> createState() =>
+      _AuthSuccessHandlerState();
+}
+
+class _AuthSuccessHandlerState extends ConsumerState<_AuthSuccessHandler> {
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      ref.read(authProvider.notifier).login(widget.token);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    return const Scaffold(body: Center(child: CircularProgressIndicator()));
+  }
+}
+
+class MindweaverApp extends ConsumerWidget {
+  const MindweaverApp({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp.router(
       title: 'Mindweaver',
       theme: ThemeData(
@@ -87,7 +150,7 @@ class MindweaverApp extends StatelessWidget {
           labelSmall: TextStyle(fontSize: 9),
         ),
       ),
-      routerConfig: _router,
+      routerConfig: ref.watch(_routerProvider),
     );
   }
 }

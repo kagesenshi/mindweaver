@@ -16,3 +16,4 @@ command to start frontend: `flutter run -d chrome` in `frontend` folder
 
 remember to run `uv run pytest tests` in `backend` after modifying `backend`. You do not have to run this test if you only modifying `frontend`
 
+remember to add unit tests whenever creating new feature in `backend`
