@@ -19,8 +19,7 @@ class DataSourcesPage extends ConsumerWidget {
         title: const Text('Data Sources'),
         actions: [
           IconButton(
-            onPressed: () =>
-                ref.read(dataSourceListProvider.notifier).loadSources(),
+            onPressed: () => ref.invalidate(dataSourceListProvider),
             icon: const Icon(Icons.refresh),
           ),
         ],
@@ -58,13 +57,14 @@ class DataSourcesPage extends ConsumerWidget {
     // Web Scraper specific
     final startUrlController = TextEditingController();
 
+    int? selectedProjectId = ref.read(currentProjectProvider)?.id;
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => Consumer(
           builder: (context, ref, _) {
             final projectsAsync = ref.watch(projectListProvider);
-            int? selectedProjectId = ref.read(currentProjectProvider)?.id;
 
             return LargeDialog(
               title: 'Create Data Source',
@@ -418,13 +418,14 @@ class DataSourcesPage extends ConsumerWidget {
       text: source.parameters['start_url']?.toString(),
     );
 
+    int? selectedProjectId = source.project_id;
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => Consumer(
           builder: (context, ref, _) {
             final projectsAsync = ref.watch(projectListProvider);
-            int? selectedProjectId = source.project_id;
 
             return LargeDialog(
               title: 'Edit Data Source',

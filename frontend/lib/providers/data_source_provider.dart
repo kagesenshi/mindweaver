@@ -34,7 +34,6 @@ class DataSourceListNotifier
         source.toJson(),
         (json) => DataSource.fromJson(json as Map<String, dynamic>),
       );
-      await loadSources();
     } catch (e) {
       rethrow;
     }
@@ -48,7 +47,6 @@ class DataSourceListNotifier
         source.toJson(),
         (json) => DataSource.fromJson(json as Map<String, dynamic>),
       );
-      await loadSources();
     } catch (e) {
       rethrow;
     }
@@ -58,7 +56,6 @@ class DataSourceListNotifier
     try {
       final client = ref.read(apiClientProvider);
       await client.delete('/api/v1/data_sources/$id');
-      await loadSources();
     } catch (e) {
       rethrow;
     }

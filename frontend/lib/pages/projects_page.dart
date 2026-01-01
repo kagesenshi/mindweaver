@@ -18,8 +18,7 @@ class ProjectsPage extends ConsumerWidget {
         title: const Text('Projects'),
         actions: [
           IconButton(
-            onPressed: () =>
-                ref.read(projectListProvider.notifier).loadProjects(),
+            onPressed: () => ref.invalidate(projectListProvider),
             icon: const Icon(Icons.refresh),
           ),
         ],

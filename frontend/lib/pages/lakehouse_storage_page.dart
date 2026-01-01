@@ -20,8 +20,7 @@ class LakehouseStoragePage extends ConsumerWidget {
         title: const Text('Lakehouse Storage'),
         actions: [
           IconButton(
-            onPressed: () =>
-                ref.read(lakehouseStorageListProvider.notifier).loadStorages(),
+            onPressed: () => ref.invalidate(lakehouseStorageListProvider),
             icon: const Icon(Icons.refresh),
           ),
         ],
@@ -48,13 +47,14 @@ class LakehouseStoragePage extends ConsumerWidget {
     final secretKeyController = TextEditingController();
     final endpointController = TextEditingController();
 
+    int? selectedProjectId = ref.read(currentProjectProvider)?.id;
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => Consumer(
           builder: (context, ref, _) {
             final projectsAsync = ref.watch(projectListProvider);
-            int? selectedProjectId = ref.read(currentProjectProvider)?.id;
 
             return LargeDialog(
               title: 'New Lakehouse Storage',
@@ -286,13 +286,14 @@ class LakehouseStoragePage extends ConsumerWidget {
       text: storage.parameters['endpoint_url']?.toString(),
     );
 
+    int? selectedProjectId = storage.project_id;
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => Consumer(
           builder: (context, ref, _) {
             final projectsAsync = ref.watch(projectListProvider);
-            int? selectedProjectId = storage.project_id;
 
             return LargeDialog(
               title: 'Edit Lakehouse Storage',

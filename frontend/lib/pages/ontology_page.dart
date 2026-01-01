@@ -20,8 +20,7 @@ class OntologyPage extends ConsumerWidget {
         title: const Text('Ontologies'),
         actions: [
           IconButton(
-            onPressed: () =>
-                ref.read(ontologyListProvider.notifier).loadOntologies(),
+            onPressed: () => ref.invalidate(ontologyListProvider),
             icon: const Icon(Icons.refresh),
           ),
         ],
@@ -44,13 +43,14 @@ class OntologyPage extends ConsumerWidget {
     final titleController = TextEditingController();
     final descController = TextEditingController();
 
+    int? selectedProjectId = ref.read(currentProjectProvider)?.id;
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => Consumer(
           builder: (context, ref, _) {
             final projectsAsync = ref.watch(projectListProvider);
-            int? selectedProjectId = ref.read(currentProjectProvider)?.id;
 
             return LargeDialog(
               title: 'Create Ontology',
@@ -166,13 +166,14 @@ class OntologyPage extends ConsumerWidget {
     final titleController = TextEditingController(text: ontology.title);
     final descController = TextEditingController(text: ontology.description);
 
+    int? selectedProjectId = ontology.project_id;
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => Consumer(
           builder: (context, ref, _) {
             final projectsAsync = ref.watch(projectListProvider);
-            int? selectedProjectId = ontology.project_id;
 
             return LargeDialog(
               title: 'Edit Ontology',

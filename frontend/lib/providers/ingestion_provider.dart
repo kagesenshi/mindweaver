@@ -33,7 +33,6 @@ class IngestionListNotifier extends StateNotifier<AsyncValue<List<Ingestion>>> {
         ingestion.toJson(),
         (json) => Ingestion.fromJson(json as Map<String, dynamic>),
       );
-      await loadIngestions();
     } catch (e) {
       rethrow;
     }
@@ -47,7 +46,6 @@ class IngestionListNotifier extends StateNotifier<AsyncValue<List<Ingestion>>> {
         ingestion.toJson(),
         (json) => Ingestion.fromJson(json as Map<String, dynamic>),
       );
-      await loadIngestions();
     } catch (e) {
       rethrow;
     }
@@ -57,7 +55,6 @@ class IngestionListNotifier extends StateNotifier<AsyncValue<List<Ingestion>>> {
     try {
       final client = ref.read(apiClientProvider);
       await client.delete('/api/v1/ingestions/$id');
-      await loadIngestions();
     } catch (e) {
       rethrow;
     }

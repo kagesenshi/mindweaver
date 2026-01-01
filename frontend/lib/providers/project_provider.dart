@@ -54,7 +54,6 @@ class ProjectListNotifier extends StateNotifier<AsyncValue<List<Project>>> {
         'title': title,
         'description': description,
       }, (json) => Project.fromJson(json as Map<String, dynamic>));
-      await loadProjects();
     } catch (e) {
       rethrow;
     }
@@ -68,7 +67,6 @@ class ProjectListNotifier extends StateNotifier<AsyncValue<List<Project>>> {
         {'title': title, 'description': description},
         (json) => Project.fromJson(json as Map<String, dynamic>),
       );
-      await loadProjects();
     } catch (e) {
       rethrow;
     }
@@ -78,7 +76,6 @@ class ProjectListNotifier extends StateNotifier<AsyncValue<List<Project>>> {
     try {
       final client = ref.read(apiClientProvider);
       await client.delete('/api/v1/projects/$id');
-      await loadProjects();
     } catch (e) {
       rethrow;
     }

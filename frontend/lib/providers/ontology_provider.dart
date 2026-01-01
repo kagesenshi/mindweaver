@@ -33,7 +33,6 @@ class OntologyListNotifier extends StateNotifier<AsyncValue<List<Ontology>>> {
         ontology.toJson(),
         (json) => Ontology.fromJson(json as Map<String, dynamic>),
       );
-      await loadOntologies();
     } catch (e) {
       rethrow;
     }
@@ -47,7 +46,6 @@ class OntologyListNotifier extends StateNotifier<AsyncValue<List<Ontology>>> {
         ontology.toJson(),
         (json) => Ontology.fromJson(json as Map<String, dynamic>),
       );
-      await loadOntologies();
     } catch (e) {
       rethrow;
     }
@@ -57,7 +55,6 @@ class OntologyListNotifier extends StateNotifier<AsyncValue<List<Ontology>>> {
     try {
       final client = ref.read(apiClientProvider);
       await client.delete('/api/v1/ontologies/$id');
-      await loadOntologies();
     } catch (e) {
       rethrow;
     }

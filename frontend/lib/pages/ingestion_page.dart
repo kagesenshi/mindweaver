@@ -21,8 +21,7 @@ class IngestionPage extends ConsumerWidget {
         title: const Text('Data Ingestion'),
         actions: [
           IconButton(
-            onPressed: () =>
-                ref.read(ingestionListProvider.notifier).loadIngestions(),
+            onPressed: () => ref.invalidate(ingestionListProvider),
             icon: const Icon(Icons.refresh),
           ),
         ],

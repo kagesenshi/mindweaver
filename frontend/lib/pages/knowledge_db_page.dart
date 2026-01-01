@@ -21,8 +21,7 @@ class KnowledgeDbPage extends ConsumerWidget {
         title: const Text('Knowledge Databases'),
         actions: [
           IconButton(
-            onPressed: () =>
-                ref.read(knowledgeDBListProvider.notifier).loadDBs(),
+            onPressed: () => ref.invalidate(knowledgeDBListProvider),
             icon: const Icon(Icons.refresh),
           ),
         ],

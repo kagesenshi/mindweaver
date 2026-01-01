@@ -39,7 +39,6 @@ class ChatListNotifier extends StateNotifier<AsyncValue<List<Chat>>> {
         'project_id': project_id,
         'messages': [],
       }, (json) => Chat.fromJson(json as Map<String, dynamic>));
-      await loadChats();
       return response.record!;
     } catch (e) {
       rethrow;
@@ -50,7 +49,6 @@ class ChatListNotifier extends StateNotifier<AsyncValue<List<Chat>>> {
     try {
       final client = ref.read(apiClientProvider);
       await client.delete('/api/v1/chats/$id');
-      await loadChats();
     } catch (e) {
       rethrow;
     }

@@ -21,8 +21,7 @@ class AiAgentsPage extends ConsumerWidget {
         title: const Text('AI Agents'),
         actions: [
           IconButton(
-            onPressed: () =>
-                ref.read(aiAgentListProvider.notifier).loadAgents(),
+            onPressed: () => ref.invalidate(aiAgentListProvider),
             icon: const Icon(Icons.refresh),
           ),
         ],

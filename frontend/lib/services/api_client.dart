@@ -32,6 +32,12 @@ class APIClient {
         )
         .timeout(Duration(milliseconds: timeout));
 
+    if (response.statusCode != 200) {
+      throw Exception(
+        'Failed to load records: ${response.statusCode} ${response.body}',
+      );
+    }
+
     final data = jsonDecode(response.body);
     final List<dynamic> records = data['records'] ?? [];
     return records.map((e) => fromJsonT(e)).toList();
@@ -48,6 +54,12 @@ class APIClient {
           headers: {..._headers, ...?headers},
         )
         .timeout(Duration(milliseconds: timeout));
+
+    if (response.statusCode != 200) {
+      throw Exception(
+        'Failed to get record: ${response.statusCode} ${response.body}',
+      );
+    }
 
     return APIResponse<T>.fromJson(jsonDecode(response.body), fromJsonT);
   }
@@ -66,6 +78,12 @@ class APIClient {
         )
         .timeout(Duration(milliseconds: timeout));
 
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception(
+        'Failed to create record: ${response.statusCode} ${response.body}',
+      );
+    }
+
     return APIResponse<T>.fromJson(jsonDecode(response.body), fromJsonT);
   }
 
@@ -83,6 +101,12 @@ class APIClient {
         )
         .timeout(Duration(milliseconds: timeout));
 
+    if (response.statusCode != 200) {
+      throw Exception(
+        'Failed to update record: ${response.statusCode} ${response.body}',
+      );
+    }
+
     return APIResponse<T>.fromJson(jsonDecode(response.body), fromJsonT);
   }
 
@@ -94,7 +118,18 @@ class APIClient {
         )
         .timeout(Duration(milliseconds: timeout));
 
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      throw Exception(
+        'Failed to delete record: ${response.statusCode} ${response.body}',
+      );
+    }
+
     final data = jsonDecode(response.body);
-    return data['status'] == 'success';
+    if (data['status'] != 'success') {
+      throw Exception(
+        'Failed to delete record: ${data['detail'] ?? 'Unknown error'}',
+      );
+    }
+    return true;
   }
 }

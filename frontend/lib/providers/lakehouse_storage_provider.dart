@@ -34,7 +34,6 @@ class LakehouseStorageListNotifier
         storage.toJson(),
         (json) => LakehouseStorage.fromJson(json as Map<String, dynamic>),
       );
-      await loadStorages();
     } catch (e) {
       rethrow;
     }
@@ -48,7 +47,6 @@ class LakehouseStorageListNotifier
         storage.toJson(),
         (json) => LakehouseStorage.fromJson(json as Map<String, dynamic>),
       );
-      await loadStorages();
     } catch (e) {
       rethrow;
     }
@@ -58,7 +56,6 @@ class LakehouseStorageListNotifier
     try {
       final client = ref.read(apiClientProvider);
       await client.delete('/api/v1/lakehouse_storages/$id');
-      await loadStorages();
     } catch (e) {
       rethrow;
     }

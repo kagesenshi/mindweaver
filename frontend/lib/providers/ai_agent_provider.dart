@@ -33,7 +33,6 @@ class AIAgentListNotifier extends StateNotifier<AsyncValue<List<AIAgent>>> {
         agent.toJson(),
         (json) => AIAgent.fromJson(json as Map<String, dynamic>),
       );
-      await loadAgents();
     } catch (e) {
       rethrow;
     }
@@ -47,7 +46,6 @@ class AIAgentListNotifier extends StateNotifier<AsyncValue<List<AIAgent>>> {
         agent.toJson(),
         (json) => AIAgent.fromJson(json as Map<String, dynamic>),
       );
-      await loadAgents();
     } catch (e) {
       rethrow;
     }
@@ -57,7 +55,6 @@ class AIAgentListNotifier extends StateNotifier<AsyncValue<List<AIAgent>>> {
     try {
       final client = ref.read(apiClientProvider);
       await client.delete('/api/v1/ai_agents/$id');
-      await loadAgents();
     } catch (e) {
       rethrow;
     }
