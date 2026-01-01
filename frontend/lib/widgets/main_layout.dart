@@ -3,8 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/project_provider.dart';
-import '../models/project.dart';
 import '../providers/feature_flags_provider.dart';
+import '../providers/auth_provider.dart';
 
 class MainLayout extends StatefulWidget {
   final Widget child;
@@ -520,31 +520,40 @@ class _TopBar extends ConsumerWidget {
           // User Profile
           PopupMenuButton<String>(
             offset: const Offset(0, 50),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 18,
-                  backgroundColor: Theme.of(
-                    context,
-                  ).colorScheme.primary.withOpacity(0.1),
-                  child: Text(
-                    'JD',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.primary,
+            child: Consumer(
+              builder: (context, ref, _) {
+                final userAsync = ref.watch(authProvider);
+                final user = userAsync.value;
+                final name = user?.name ?? 'User';
+                final initial = name.isNotEmpty ? name[0].toUpperCase() : 'U';
+
+                return Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 18,
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.primary.withOpacity(0.1),
+                      child: Text(
+                        initial,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  'John Doe',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-                ),
-                const Icon(Icons.keyboard_arrow_down, size: 20),
-              ],
+                    const SizedBox(width: 10),
+                    Text(
+                      name,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const Icon(Icons.keyboard_arrow_down, size: 20),
+                  ],
+                );
+              },
             ),
             itemBuilder: (context) => [
               PopupMenuItem(
@@ -574,7 +583,12 @@ class _TopBar extends ConsumerWidget {
               PopupMenuItem(
                 value: 'logout',
                 onTap: () {
-                  // Add logout logic here
+                  // We need to use ref here, but we are in builder.
+                  // The onTap callback doesn't give ref.
+                  // We can wrap the PopupMenuButton with Consumer, which we did for the child.
+                  // But itemBuilder is independent.
+                  // We need to access ref from context? Or wrap entire widget.
+                  // _TopBar is ConsumerWidget, so we have ref.
                 },
                 child: Row(
                   children: [
@@ -589,6 +603,12 @@ class _TopBar extends ConsumerWidget {
                 ),
               ),
             ],
+            onSelected: (value) {
+              if (value == 'logout') {
+                ref.read(authProvider.notifier).logout();
+                context.go('/login');
+              }
+            },
           ),
         ],
       ),

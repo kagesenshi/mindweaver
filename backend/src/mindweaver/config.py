@@ -15,11 +15,16 @@ class Settings(BaseSettings):
     timezone: str = "Asia/Kuala_Lumpur"
     enable_db_reset: bool = False
     fernet_key: str | None = None
+    jwt_secret: str = "unsafe-secret-key-change-me"
 
     experimental_data_source: bool = False
     experimental_knowledge_db: bool = False
     experimental_lakehouse_storage: bool = False
     experimental_ingestion: bool = False
+
+    oidc_issuer: str | None = None
+    oidc_client_id: str | None = None
+    oidc_client_secret: str | None = None
 
     model_config = SettingsConfigDict(
         env_file=".env", env_prefix="mindweaver_", extra="allow"

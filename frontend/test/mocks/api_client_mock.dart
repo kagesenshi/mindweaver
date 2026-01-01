@@ -8,6 +8,8 @@ class MockApiClient implements APIClient {
   dynamic mockResponse;
   bool shouldThrowError = false;
 
+  final Future<String?> Function()? getToken = null;
+
   @override
   String get baseUrl => 'http://mock-api';
 

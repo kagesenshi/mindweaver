@@ -9,6 +9,7 @@ This project uses following stack:
 - fastapi (for backend)
 - python environment is managed using uv
 - this project interacts with kubernetes for service deployment
+- this project prefers async rather than sync
 
 command to start backend: `uv run mindweaver run --port 8000` in `backend` folder
 

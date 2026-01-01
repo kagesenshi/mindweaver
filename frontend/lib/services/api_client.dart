@@ -8,7 +8,9 @@ class APIClient {
   final int timeout;
   final Map<String, String> _headers = {'Content-Type': 'application/json'};
 
-  APIClient({String? baseUrl, int? timeout})
+  final Future<String?> Function()? getToken;
+
+  APIClient({String? baseUrl, int? timeout, this.getToken})
     : baseUrl = baseUrl ?? Settings.apiBaseUrl,
       timeout = timeout ?? Settings.apiTimeout;
 
@@ -25,11 +27,14 @@ class APIClient {
     T Function(Object? json) fromJsonT, {
     Map<String, String>? headers,
   }) async {
+    final headersMap = {..._headers, ...?headers};
+    if (getToken != null) {
+      final token = await getToken!();
+      if (token != null) headersMap['Authorization'] = 'Bearer $token';
+    }
+
     final response = await http
-        .get(
-          Uri.parse('$baseUrl$endpoint'),
-          headers: {..._headers, ...?headers},
-        )
+        .get(Uri.parse('$baseUrl$endpoint'), headers: headersMap)
         .timeout(Duration(milliseconds: timeout));
 
     if (response.statusCode != 200) {
@@ -48,11 +53,14 @@ class APIClient {
     T Function(Object? json) fromJsonT, {
     Map<String, String>? headers,
   }) async {
+    final headersMap = {..._headers, ...?headers};
+    if (getToken != null) {
+      final token = await getToken!();
+      if (token != null) headersMap['Authorization'] = 'Bearer $token';
+    }
+
     final response = await http
-        .get(
-          Uri.parse('$baseUrl$endpoint'),
-          headers: {..._headers, ...?headers},
-        )
+        .get(Uri.parse('$baseUrl$endpoint'), headers: headersMap)
         .timeout(Duration(milliseconds: timeout));
 
     if (response.statusCode != 200) {
@@ -70,10 +78,16 @@ class APIClient {
     T Function(Object? json) fromJsonT, {
     Map<String, String>? headers,
   }) async {
+    final headersMap = {..._headers, ...?headers};
+    if (getToken != null) {
+      final token = await getToken!();
+      if (token != null) headersMap['Authorization'] = 'Bearer $token';
+    }
+
     final response = await http
         .post(
           Uri.parse('$baseUrl$endpoint'),
-          headers: {..._headers, ...?headers},
+          headers: headersMap,
           body: jsonEncode(data),
         )
         .timeout(Duration(milliseconds: timeout));
@@ -93,10 +107,16 @@ class APIClient {
     T Function(Object? json) fromJsonT, {
     Map<String, String>? headers,
   }) async {
+    final headersMap = {..._headers, ...?headers};
+    if (getToken != null) {
+      final token = await getToken!();
+      if (token != null) headersMap['Authorization'] = 'Bearer $token';
+    }
+
     final response = await http
         .put(
           Uri.parse('$baseUrl$endpoint'),
-          headers: {..._headers, ...?headers},
+          headers: headersMap,
           body: jsonEncode(data),
         )
         .timeout(Duration(milliseconds: timeout));
@@ -111,11 +131,14 @@ class APIClient {
   }
 
   Future<bool> delete(String endpoint, {Map<String, String>? headers}) async {
+    final headersMap = {..._headers, ...?headers};
+    if (getToken != null) {
+      final token = await getToken!();
+      if (token != null) headersMap['Authorization'] = 'Bearer $token';
+    }
+
     final response = await http
-        .delete(
-          Uri.parse('$baseUrl$endpoint'),
-          headers: {..._headers, ...?headers},
-        )
+        .delete(Uri.parse('$baseUrl$endpoint'), headers: headersMap)
         .timeout(Duration(milliseconds: timeout));
 
     if (response.statusCode != 200 && response.statusCode != 204) {
