@@ -276,7 +276,10 @@ run_router = IngestionRunService.router()
 
 
 # Custom endpoints
-@router.post(f"{IngestionService.service_path()}/{{ingestion_id}}/execute")
+@router.post(
+    f"{IngestionService.service_path()}/{{ingestion_id}}/execute",
+    tags=IngestionService.path_tags(),
+)
 async def execute_ingestion(
     ingestion_id: int,
     svc: IngestionService = Depends(IngestionService.get_service),
@@ -314,7 +317,10 @@ async def execute_ingestion(
     }
 
 
-@router.get(f"{IngestionService.service_path()}/{{ingestion_id}}/runs")
+@router.get(
+    f"{IngestionService.service_path()}/{{ingestion_id}}/runs",
+    tags=IngestionService.path_tags(),
+)
 async def list_ingestion_runs(
     ingestion_id: int,
     svc: IngestionService = Depends(IngestionService.get_service),

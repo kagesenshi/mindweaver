@@ -285,7 +285,10 @@ class TestConnectionRequest(BaseModel):
     source_id: Optional[int] = None  # Optional ID to fetch stored password
 
 
-@router.post(f"{DataSourceService.service_path()}/test_connection")
+@router.post(
+    f"{DataSourceService.service_path()}/test_connection",
+    tags=DataSourceService.path_tags(),
+)
 async def test_connection(
     data: TestConnectionRequest,
     svc: DataSourceService = Depends(DataSourceService.get_service),

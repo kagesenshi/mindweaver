@@ -213,7 +213,10 @@ class TestConnectionRequest(BaseModel):
     storage_id: Optional[int] = None  # Optional ID to fetch stored secret
 
 
-@router.post(f"{LakehouseStorageService.service_path()}/test_connection")
+@router.post(
+    f"{LakehouseStorageService.service_path()}/test_connection",
+    tags=LakehouseStorageService.path_tags(),
+)
 async def test_connection(
     data: TestConnectionRequest,
     svc: LakehouseStorageService = Depends(LakehouseStorageService.get_service),
