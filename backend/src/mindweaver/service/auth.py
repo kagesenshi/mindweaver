@@ -169,8 +169,8 @@ class AuthService(Service[User]):
                 else:
                     # Update info if changed
                     changed = False
-                    if payload.get("name") and user.name != payload.get("name"):
-                        user.name = payload.get("name")
+                    if payload.get("name") and user.display_name != payload.get("name"):
+                        user.display_name = payload.get("name")
                         changed = True
                     if payload.get(
                         "preferred_username"
