@@ -20,6 +20,35 @@ from mindweaver.config import settings
 
 
 from mindweaver.app import app
+from mindweaver.service.project import ProjectService
+
+
+class Model(NamedBase, table=True):
+    __tablename__ = "crud_test"
+
+
+class ModelService(Service[Model]):
+
+    @classmethod
+    def model_class(cls):
+        return Model
+
+
+class ProjectScopedModel(ProjectScopedNamedBase, table=True):
+    __tablename__ = "project_scoped_crud_test"
+
+
+class ProjectScopedModelService(ProjectScopedService[ProjectScopedModel]):
+
+    @classmethod
+    def model_class(cls):
+        return ProjectScopedModel
+
+
+# Register routers at the module level
+app.include_router(ModelService.router(), prefix="/api/v1")
+app.include_router(ProjectService.router(), prefix="/api/v1")
+app.include_router(ProjectScopedModelService.router(), prefix="/api/v1")
 
 
 @pytest.fixture(scope="function")
@@ -60,18 +89,6 @@ def crud_client(postgresql_proc: PostgreSQLExecutor, postgresql: Connection):
     settings.db_user = postgresql_proc.user
     settings.db_pass = postgresql_proc.password
 
-    class Model(NamedBase, table=True):
-        __tablename__ = "crud_test"
-
-    class ModelService(Service[Model]):
-
-        @classmethod
-        def model_class(cls):
-            return Model
-
-    router = ModelService.router()
-    app.include_router(router, prefix="/api/v1")
-
     engine = create_engine(settings.db_uri)
     SQLModel.metadata.create_all(engine)
     yield TestClient(app=app)
@@ -92,22 +109,6 @@ def project_scoped_crud_client(
     settings.db_pass = postgresql_proc.password
     # Set a test encryption key for password encryption
     settings.fernet_key = "EFw4cCjDgHhGuZAGlwXmQhXg134ZdHjb9SeqcszWeSU="
-
-    class ProjectScopedModel(ProjectScopedNamedBase, table=True):
-        __tablename__ = "project_scoped_crud_test"
-
-    class ProjectScopedModelService(ProjectScopedService[ProjectScopedModel]):
-
-        @classmethod
-        def model_class(cls):
-            return ProjectScopedModel
-
-    # Register both the project service and the project-scoped model service
-    project_router = ProjectService.router()
-    app.include_router(project_router, prefix="/api/v1")
-
-    model_router = ProjectScopedModelService.router()
-    app.include_router(model_router, prefix="/api/v1")
 
     engine = create_engine(settings.db_uri)
     SQLModel.metadata.create_all(engine)
