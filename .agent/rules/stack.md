@@ -10,6 +10,7 @@ This project uses following stack:
 - python environment is managed using uv
 - this project interacts with kubernetes for service deployment
 - this project prefers async rather than sync
+- this project uses SQLModel as base ORM
 
 command to start backend: `uv run mindweaver run --port 8000` in `backend` folder
 
