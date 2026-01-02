@@ -12,6 +12,7 @@ from .service.ingestion import (
 )
 from .service.project import router as project_router
 from .service.auth import router as auth_router
+from .service.k8s_cluster import router as k8s_router
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -43,6 +44,7 @@ async def feature_flags():
 
 app.include_router(project_router, prefix="/api/v1")
 app.include_router(auth_router, prefix="/api/v1")
+app.include_router(k8s_router, prefix="/api/v1")
 
 if settings.experimental_data_source:
     app.include_router(ds_router, prefix="/api/v1")

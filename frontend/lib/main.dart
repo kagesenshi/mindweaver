@@ -15,6 +15,7 @@ import 'pages/ontology_page.dart';
 import 'pages/data_sources_page.dart';
 import 'pages/lakehouse_storage_page.dart';
 import 'pages/ingestion_page.dart';
+import 'pages/k8s_clusters_page.dart';
 import 'pages/callback_page.dart';
 import 'providers/auth_provider.dart';
 
@@ -79,6 +80,10 @@ final _routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/ingestion',
             builder: (context, state) => const IngestionPage(),
+          ),
+          GoRoute(
+            path: '/k8s_clusters',
+            builder: (context, state) => const K8sClustersPage(),
           ),
         ],
       ),

@@ -1,4 +1,4 @@
-from . import NamedBase
+from . import Base
 from . import Service
 from sqlmodel import Field, Session, select
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -12,7 +12,7 @@ from typing import Optional
 from pydantic import BaseModel
 
 
-class User(NamedBase, table=True):
+class User(Base, table=True):
     __tablename__ = "mw_user"
     email: str = Field(index=True, unique=True)
     preferred_username: str = Field(nullable=True)

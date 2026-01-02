@@ -51,7 +51,7 @@ class _MainLayoutState extends State<MainLayout> {
                 Expanded(
                   child: Column(
                     children: [
-                      const _TopBar(),
+                      _TopBar(currentPath: currentPath),
                       Expanded(child: widget.child),
                     ],
                   ),
@@ -217,6 +217,12 @@ class _SidebarState extends State<_Sidebar> {
                             path: '/ingestion',
                             isCurrent: widget.currentPath == '/ingestion',
                           ),
+                          _SidebarItem(
+                            icon: FontAwesomeIcons.dharmachakra,
+                            label: 'K8s Clusters',
+                            path: '/k8s_clusters',
+                            isCurrent: widget.currentPath == '/k8s_clusters',
+                          ),
                         ],
                       ),
                       const Spacer(),
@@ -377,10 +383,13 @@ class _SidebarGroupState extends State<_SidebarGroup> {
 }
 
 class _TopBar extends ConsumerWidget {
-  const _TopBar();
+  final String? currentPath;
+  const _TopBar({this.currentPath});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isProjectsPage = currentPath == '/';
+
     return Container(
       height: 70,
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -396,104 +405,105 @@ class _TopBar extends ConsumerWidget {
         children: [
           const Spacer(),
           // Project Selection Dropdown
-          Consumer(
-            builder: (context, ref, child) {
-              final currentProject = ref.watch(currentProjectProvider);
-              final projectsAsync = ref.watch(projectListProvider);
+          if (!isProjectsPage)
+            Consumer(
+              builder: (context, ref, child) {
+                final currentProject = ref.watch(currentProjectProvider);
+                final projectsAsync = ref.watch(projectListProvider);
 
-              return PopupMenuButton<int?>(
-                offset: const Offset(0, 50),
-                onSelected: (projectId) {
-                  if (projectId == null || projectId == -1) {
-                    ref.read(currentProjectProvider.notifier).clearProject();
-                  } else {
-                    projectsAsync.whenData((projects) {
-                      final selectedProject = projects.firstWhere(
-                        (p) => p.id == projectId,
-                      );
-                      ref
-                          .read(currentProjectProvider.notifier)
-                          .setProject(selectedProject);
-                    });
-                  }
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.primaryContainer.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.folder_shared_outlined,
-                        size: 18,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        currentProject?.title ?? 'All Projects',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Icon(
-                        Icons.keyboard_arrow_down,
-                        size: 18,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ],
-                  ),
-                ),
-                itemBuilder: (context) {
-                  final List<PopupMenuEntry<int?>> items = [
-                    const PopupMenuItem<int?>(
-                      value: -1,
-                      child: Row(
-                        children: [
-                          Icon(Icons.all_inclusive, size: 20),
-                          SizedBox(width: 10),
-                          Text('All Projects'),
-                        ],
-                      ),
+                return PopupMenuButton<int?>(
+                  offset: const Offset(0, 50),
+                  onSelected: (projectId) {
+                    if (projectId == null || projectId == -1) {
+                      ref.read(currentProjectProvider.notifier).clearProject();
+                    } else {
+                      projectsAsync.whenData((projects) {
+                        final selectedProject = projects.firstWhere(
+                          (p) => p.id == projectId,
+                        );
+                        ref
+                            .read(currentProjectProvider.notifier)
+                            .setProject(selectedProject);
+                      });
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
                     ),
-                    const PopupMenuDivider(),
-                  ];
-
-                  projectsAsync.whenData((projects) {
-                    items.addAll(
-                      projects.map(
-                        (project) => PopupMenuItem<int?>(
-                          value: project.id,
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.folder_shared_outlined,
-                                size: 20,
-                              ),
-                              const SizedBox(width: 10),
-                              Text(project.title),
-                            ],
+                    decoration: BoxDecoration(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.primaryContainer.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.folder_shared_outlined,
+                          size: 18,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          currentProject?.title ?? 'All Projects',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.primary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.keyboard_arrow_down,
+                          size: 18,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ],
+                    ),
+                  ),
+                  itemBuilder: (context) {
+                    final List<PopupMenuEntry<int?>> items = [
+                      const PopupMenuItem<int?>(
+                        value: -1,
+                        child: Row(
+                          children: [
+                            Icon(Icons.all_inclusive, size: 20),
+                            SizedBox(width: 10),
+                            Text('All Projects'),
+                          ],
+                        ),
                       ),
-                    );
-                  });
+                      const PopupMenuDivider(),
+                    ];
 
-                  return items;
-                },
-              );
-            },
-          ),
+                    projectsAsync.whenData((projects) {
+                      items.addAll(
+                        projects.map(
+                          (project) => PopupMenuItem<int?>(
+                            value: project.id,
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.folder_shared_outlined,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 10),
+                                Text(project.title),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    });
+
+                    return items;
+                  },
+                );
+              },
+            ),
           const SizedBox(width: 16),
           // Notifications
           PopupMenuButton<String>(
