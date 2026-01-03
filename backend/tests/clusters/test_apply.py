@@ -1,0 +1,126 @@
+import pytest
+import os
+import tempfile
+from unittest.mock import MagicMock, patch
+from fastapi.testclient import TestClient
+from mindweaver.app import app
+from mindweaver.cluster_service.base import ClusterBase, ClusterService
+
+
+# Define a concrete model for testing
+class MockApplyModel(ClusterBase, table=True):
+    __tablename__ = "mw_mock_apply_model"
+    extra_field: str = "hello"
+
+
+# Define a concrete service for testing
+class MockApplyService(ClusterService[MockApplyModel]):
+    @classmethod
+    def model_class(cls):
+        return MockApplyModel
+
+
+# Register router for testing
+router = MockApplyService.router()
+app.include_router(router, prefix="/api/v1")
+
+
+def test_cluster_service_apply(client: TestClient, test_project):
+    # 1. Setup K8sCluster
+    cluster_data = {
+        "name": "test-cluster",
+        "title": "Test Cluster",
+        "type": "remote",
+        "kubeconfig": 'apiVersion: v1\nkind: Config\nclusters: []\ncontexts: []\ncurrent-context: ""\nusers: []',
+        "project_id": test_project["id"],
+    }
+    resp = client.post(
+        "/api/v1/k8s_clusters",
+        json=cluster_data,
+        headers={"X-Project-Id": str(test_project["id"])},
+    )
+    resp.raise_for_status()
+    cluster_id = resp.json()["record"]["id"]
+
+    # 2. Setup Model
+    model_data = {
+        "name": "test-svc",
+        "title": "Test Svc",
+        "project_id": test_project["id"],
+        "k8s_cluster_id": cluster_id,
+        "extra_field": "world",
+    }
+    resp = client.post(
+        "/api/v1/mock_apply_models",
+        json=model_data,
+        headers={"X-Project-Id": str(test_project["id"])},
+    )
+    resp.raise_for_status()
+    model_id = resp.json()["record"]["id"]
+
+    # 3. Setup Templates
+    with tempfile.TemporaryDirectory() as tmpdir:
+        template_file = os.path.join(tmpdir, "deploy.yaml")
+        with open(template_file, "w") as f:
+            f.write("kind: Deployment\nname: {{ name }}\nextra: {{ extra_field }}")
+
+        with patch.object(MockApplyService, "template_directory", tmpdir):
+            # 4. Mock Kubernetes library
+            with patch(
+                "kubernetes.config.new_client_from_config"
+            ) as mock_new_client, patch(
+                "kubernetes.utils.create_from_yaml"
+            ) as mock_create:
+
+                resp = client.post(
+                    f"/api/v1/mock_apply_models/{model_id}/apply",
+                    headers={"X-Project-Id": str(test_project["id"])},
+                )
+                resp.raise_for_status()
+
+                # Verify kubernetes library was called
+                mock_new_client.assert_called_once()
+                mock_create.assert_called_once()
+
+                # We don't check manifest file content here because the temp file is deleted
+                # before we can read it in the test.
+                # We trust the rendering logic which was tested before.
+
+
+def test_cluster_service_apply_missing_dir(client: TestClient, test_project):
+    # 1. Setup K8sCluster
+    cluster_data = {
+        "name": "test-cluster-missing",
+        "title": "Test Cluster Missing",
+        "type": "remote",
+        "kubeconfig": 'apiVersion: v1\nkind: Config\nclusters: []\ncontexts: []\ncurrent-context: ""\nusers: []',
+        "project_id": test_project["id"],
+    }
+    resp = client.post(
+        "/api/v1/k8s_clusters",
+        json=cluster_data,
+        headers={"X-Project-Id": str(test_project["id"])},
+    )
+    resp.raise_for_status()
+    cluster_id = resp.json()["record"]["id"]
+
+    model_data = {
+        "name": "test-svc-missing",
+        "title": "Test Svc Missing",
+        "project_id": test_project["id"],
+        "k8s_cluster_id": cluster_id,
+    }
+    resp = client.post(
+        "/api/v1/mock_apply_models",
+        json=model_data,
+        headers={"X-Project-Id": str(test_project["id"])},
+    )
+    resp.raise_for_status()
+    model_id = resp.json()["record"]["id"]
+
+    with patch.object(MockApplyService, "template_directory", "/non/existent/path"):
+        with pytest.raises(ValueError, match="does not exist"):
+            client.post(
+                f"/api/v1/mock_apply_models/{model_id}/apply",
+                headers={"X-Project-Id": str(test_project["id"])},
+            )
