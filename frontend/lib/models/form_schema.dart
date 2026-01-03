@@ -24,6 +24,7 @@ class FormSchema {
 @JsonSerializable()
 class WidgetMetadata {
   final String type;
+  final String? label;
   final String? endpoint;
   final String? field;
   final bool? multiselect;
@@ -34,6 +35,7 @@ class WidgetMetadata {
 
   WidgetMetadata({
     required this.type,
+    this.label,
     this.endpoint,
     this.field,
     this.multiselect,

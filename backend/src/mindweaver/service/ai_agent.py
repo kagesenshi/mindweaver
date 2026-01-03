@@ -30,6 +30,7 @@ class AIAgentService(ProjectScopedService[AIAgent]):
                 "defaultValue": 0.7,
             },
             "knowledge_db_ids": {
+                "label": "Knowledge DBs",
                 "type": "relationship",
                 "endpoint": "/api/v1/knowledge_dbs",
                 "field": "id",

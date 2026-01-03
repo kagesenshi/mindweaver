@@ -30,6 +30,7 @@ Map<String, dynamic> _$FormSchemaToJson(FormSchema instance) =>
 WidgetMetadata _$WidgetMetadataFromJson(Map<String, dynamic> json) =>
     WidgetMetadata(
       type: json['type'] as String,
+      label: json['label'] as String?,
       endpoint: json['endpoint'] as String?,
       field: json['field'] as String?,
       multiselect: json['multiselect'] as bool?,
@@ -44,6 +45,7 @@ WidgetMetadata _$WidgetMetadataFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$WidgetMetadataToJson(WidgetMetadata instance) =>
     <String, dynamic>{
       'type': instance.type,
+      'label': instance.label,
       'endpoint': instance.endpoint,
       'field': instance.field,
       'multiselect': instance.multiselect,

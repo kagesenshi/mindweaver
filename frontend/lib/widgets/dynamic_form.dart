@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/form_schema.dart';
 import '../providers/api_providers.dart';
+import 'searchable_multiselect.dart';
 
 class DynamicForm extends ConsumerStatefulWidget {
   final FormSchema schema;
@@ -163,7 +164,7 @@ class DynamicFormState extends ConsumerState<DynamicForm> {
     bool isImmutable,
     bool isRequired,
   ) {
-    final label = schema['title'] ?? name;
+    final label = metadata?.label ?? schema['title'] ?? name;
     final type = schema['type'];
 
     if (metadata != null) {
@@ -266,41 +267,29 @@ class DynamicFormState extends ConsumerState<DynamicForm> {
     final isMultiselect = metadata.multiselect ?? false;
 
     if (isMultiselect) {
-      final List<dynamic> selectedValues =
+      final List<dynamic> selectedIds =
           (_formData[name] as List<dynamic>?) ?? [];
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: Theme.of(context).textTheme.bodySmall),
-          const SizedBox(height: 8),
-          if (options.isEmpty)
-            const LinearProgressIndicator()
-          else
-            Wrap(
-              spacing: 8,
-              children: options.map((opt) {
-                final id = opt[metadata.field ?? 'id'];
-                final title = opt['title'] ?? opt['name'] ?? id.toString();
-                final isSelected = selectedValues.contains(id);
-                return FilterChip(
-                  label: Text(title),
-                  selected: isSelected,
-                  onSelected: isImmutable
-                      ? null
-                      : (selected) {
-                          setState(() {
-                            if (selected) {
-                              selectedValues.add(id);
-                            } else {
-                              selectedValues.remove(id);
-                            }
-                            _formData[name] = List.from(selectedValues);
-                          });
-                        },
-                );
-              }).toList(),
-            ),
-        ],
+      final selectedItems = options
+          .where((opt) => selectedIds.contains(opt[metadata.field ?? 'id']))
+          .toList();
+
+      return SearchableMultiSelect<Map<String, dynamic>>(
+        label: label,
+        items: options,
+        selectedItems: selectedItems,
+        itemLabel: (opt) =>
+            opt['title'] ??
+            opt['name'] ??
+            opt[metadata.field ?? 'id'].toString(),
+        itemId: (opt) => opt[metadata.field ?? 'id'],
+        isImmutable: isImmutable,
+        onChanged: (newItems) {
+          setState(() {
+            _formData[name] = newItems
+                .map((i) => i[metadata.field ?? 'id'])
+                .toList();
+          });
+        },
       );
     } else {
       return DropdownButtonFormField<dynamic>(
