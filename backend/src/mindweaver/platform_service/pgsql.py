@@ -1,10 +1,10 @@
-from mindweaver.cluster_service.base import ClusterBase, ClusterService
+from mindweaver.platform_service.base import PlatformBase, PlatformService
 from sqlmodel import Field
 import os
 
 
-class PgSqlCluster(ClusterBase, table=True):
-    __tablename__ = "mw_pgsql_cluster"
+class PgSqlPlatform(PlatformBase, table=True):
+    __tablename__ = "mw_pgsql_platform"
 
     instances: int = Field(default=3)
     storage_size: str = Field(default="1Gi")
@@ -19,20 +19,20 @@ class PgSqlCluster(ClusterBase, table=True):
     enable_postgis: bool = Field(default=False)
 
 
-class PgSqlClusterService(ClusterService[PgSqlCluster]):
+class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
     template_directory: str = os.path.join(
         os.path.dirname(__file__), "templates", "pgsql"
     )
 
     @classmethod
-    def model_class(cls) -> type[PgSqlCluster]:
-        return PgSqlCluster
+    def model_class(cls) -> type[PgSqlPlatform]:
+        return PgSqlPlatform
 
     @classmethod
     def service_path(cls) -> str:
-        return "/cluster/pgsql"
+        return "/platform/pgsql"
 
-    async def template_vars(self, model: PgSqlCluster) -> dict:
+    async def template_vars(self, model: PgSqlPlatform) -> dict:
         vars = model.model_dump()
         if model.s3_storage_id:
             from mindweaver.service.s3_storage import S3StorageService
@@ -44,4 +44,4 @@ class PgSqlClusterService(ClusterService[PgSqlCluster]):
         return vars
 
 
-router = PgSqlClusterService.router()
+router = PgSqlPlatformService.router()

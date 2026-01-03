@@ -13,7 +13,7 @@ from .service.ingestion import (
 from .service.project import router as project_router
 from .service.auth import router as auth_router
 from .service.k8s_cluster import router as k8s_router
-from .cluster_service.pgsql import router as pgsql_router
+from .platform_service.pgsql import router as pgsql_router
 
 from fastapi.middleware.cors import CORSMiddleware
 

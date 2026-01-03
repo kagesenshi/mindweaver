@@ -2,10 +2,10 @@ import pytest
 from unittest.mock import patch
 from fastapi.testclient import TestClient
 from mindweaver.app import app
-from mindweaver.cluster_service.pgsql import PgSqlClusterService
+from mindweaver.platform_service.pgsql import PgSqlPlatformService
 
 
-def test_pgsql_cluster_crud(client: TestClient, test_project):
+def test_pgsql_platform_crud(client: TestClient, test_project):
     # 1. Setup K8sCluster
     cluster_data = {
         "name": "test-cluster-pg",
@@ -56,7 +56,7 @@ def test_pgsql_cluster_crud(client: TestClient, test_project):
         "enable_postgis": True,
     }
     resp = client.post(
-        "/api/v1/cluster/pgsql",
+        "/api/v1/platform/pgsql",
         json=model_data,
         headers={"X-Project-Id": str(test_project["id"])},
     )
@@ -72,7 +72,7 @@ def test_pgsql_cluster_crud(client: TestClient, test_project):
     ) as mock_create:
 
         resp = client.post(
-            f"/api/v1/cluster/pgsql/{model_id}/apply",
+            f"/api/v1/platform/pgsql/{model_id}/apply",
             headers={"X-Project-Id": str(test_project["id"])},
         )
         resp.raise_for_status()
@@ -93,7 +93,7 @@ def test_pgsql_cluster_crud(client: TestClient, test_project):
         "enable_citus": True,
     }
     resp = client.put(
-        f"/api/v1/cluster/pgsql/{model_id}",
+        f"/api/v1/platform/pgsql/{model_id}",
         json=update_data,
         headers={"X-Project-Id": str(test_project["id"])},
     )
@@ -103,7 +103,7 @@ def test_pgsql_cluster_crud(client: TestClient, test_project):
 
     # 5. Delete
     resp = client.delete(
-        f"/api/v1/cluster/pgsql/{model_id}",
+        f"/api/v1/platform/pgsql/{model_id}",
         headers={"X-Project-Id": str(test_project["id"])},
     )
     resp.raise_for_status()

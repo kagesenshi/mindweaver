@@ -18,14 +18,14 @@ from kubernetes import client, config, utils
 logger = logging.getLogger(__name__)
 
 
-class ClusterBase(ProjectScopedNamedBase):
+class PlatformBase(ProjectScopedNamedBase):
     k8s_cluster_id: int = Field(foreign_key="mw_k8s_cluster.id", index=True)
 
 
-T = TypeVar("T", bound=ClusterBase)
+T = TypeVar("T", bound=PlatformBase)
 
 
-class ClusterService(ProjectScopedService[T]):
+class PlatformService(ProjectScopedService[T]):
     """Base service for cluster services"""
 
     template_directory: str | None = None

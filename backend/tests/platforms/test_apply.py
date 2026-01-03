@@ -4,28 +4,28 @@ import tempfile
 from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
 from mindweaver.app import app
-from mindweaver.cluster_service.base import ClusterBase, ClusterService
+from mindweaver.platform_service.base import PlatformBase, PlatformService
 
 
 # Define a concrete model for testing
-class MockApplyModel(ClusterBase, table=True):
-    __tablename__ = "mw_mock_apply_model"
+class MockApplyPlatformModel(PlatformBase, table=True):
+    __tablename__ = "mw_mock_apply_platform_model"
     extra_field: str = "hello"
 
 
 # Define a concrete service for testing
-class MockApplyService(ClusterService[MockApplyModel]):
+class MockApplyPlatformService(PlatformService[MockApplyPlatformModel]):
     @classmethod
     def model_class(cls):
-        return MockApplyModel
+        return MockApplyPlatformModel
 
 
 # Register router for testing
-router = MockApplyService.router()
+router = MockApplyPlatformService.router()
 app.include_router(router, prefix="/api/v1")
 
 
-def test_cluster_service_apply(client: TestClient, test_project):
+def test_platform_service_apply(client: TestClient, test_project):
     # 1. Setup K8sCluster
     cluster_data = {
         "name": "test-cluster",
@@ -51,7 +51,7 @@ def test_cluster_service_apply(client: TestClient, test_project):
         "extra_field": "world",
     }
     resp = client.post(
-        "/api/v1/mock_apply_models",
+        "/api/v1/mock_apply_platform_models",
         json=model_data,
         headers={"X-Project-Id": str(test_project["id"])},
     )
@@ -64,7 +64,7 @@ def test_cluster_service_apply(client: TestClient, test_project):
         with open(template_file, "w") as f:
             f.write("kind: Deployment\nname: {{ name }}\nextra: {{ extra_field }}")
 
-        with patch.object(MockApplyService, "template_directory", tmpdir):
+        with patch.object(MockApplyPlatformService, "template_directory", tmpdir):
             # 4. Mock Kubernetes library
             with patch(
                 "kubernetes.config.new_client_from_config"
@@ -73,7 +73,7 @@ def test_cluster_service_apply(client: TestClient, test_project):
             ) as mock_create:
 
                 resp = client.post(
-                    f"/api/v1/mock_apply_models/{model_id}/apply",
+                    f"/api/v1/mock_apply_platform_models/{model_id}/apply",
                     headers={"X-Project-Id": str(test_project["id"])},
                 )
                 resp.raise_for_status()
@@ -87,7 +87,7 @@ def test_cluster_service_apply(client: TestClient, test_project):
                 # We trust the rendering logic which was tested before.
 
 
-def test_cluster_service_apply_missing_dir(client: TestClient, test_project):
+def test_platform_service_apply_missing_dir(client: TestClient, test_project):
     # 1. Setup K8sCluster
     cluster_data = {
         "name": "test-cluster-missing",
@@ -111,16 +111,18 @@ def test_cluster_service_apply_missing_dir(client: TestClient, test_project):
         "k8s_cluster_id": cluster_id,
     }
     resp = client.post(
-        "/api/v1/mock_apply_models",
+        "/api/v1/mock_apply_platform_models",
         json=model_data,
         headers={"X-Project-Id": str(test_project["id"])},
     )
     resp.raise_for_status()
     model_id = resp.json()["record"]["id"]
 
-    with patch.object(MockApplyService, "template_directory", "/non/existent/path"):
+    with patch.object(
+        MockApplyPlatformService, "template_directory", "/non/existent/path"
+    ):
         with pytest.raises(ValueError, match="does not exist"):
             client.post(
-                f"/api/v1/mock_apply_models/{model_id}/apply",
+                f"/api/v1/mock_apply_platform_models/{model_id}/apply",
                 headers={"X-Project-Id": str(test_project["id"])},
             )

@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 from mindweaver.app import app
-from mindweaver.cluster_service.base import ClusterBase, ClusterService
+from mindweaver.platform_service.base import PlatformBase, PlatformService
 from mindweaver.service.k8s_cluster import K8sCluster
 from mindweaver.service.project import Project
 from typing import Annotated
@@ -9,40 +9,40 @@ from fastapi import Depends
 
 
 # Define a concrete model for testing
-class SampleClusterModel(ClusterBase, table=True):
-    __tablename__ = "mw_sample_cluster_model"
+class SamplePlatformModel(PlatformBase, table=True):
+    __tablename__ = "mw_sample_platform_model"
 
 
 # Define a concrete service for testing
-class SampleClusterService(ClusterService[SampleClusterModel]):
+class SamplePlatformService(PlatformService[SamplePlatformModel]):
     @classmethod
     def model_class(cls):
-        return SampleClusterModel
+        return SamplePlatformModel
 
 
 # Register router for testing
-router = SampleClusterService.router()
+router = SamplePlatformService.router()
 
 
 @router.get(
-    f"{SampleClusterService.model_path()}/test/kubeconfig",
+    f"{SamplePlatformService.model_path()}/test/kubeconfig",
     tags=["Test"],
 )
 async def api_test_kubeconfig(
-    model: Annotated[SampleClusterModel, Depends(SampleClusterService.get_model)],
-    svc: Annotated[SampleClusterService, Depends(SampleClusterService.get_service)],
+    model: Annotated[SamplePlatformModel, Depends(SamplePlatformService.get_model)],
+    svc: Annotated[SamplePlatformService, Depends(SamplePlatformService.get_service)],
 ):
     """Internal endpoint for testing kubeconfig method"""
     return {"kubeconfig": await svc.kubeconfig(model)}
 
 
 @router.get(
-    f"{SampleClusterService.model_path()}/test/cluster_name",
+    f"{SamplePlatformService.model_path()}/test/cluster_name",
     tags=["Test"],
 )
 async def api_test_cluster_name(
-    model: Annotated[SampleClusterModel, Depends(SampleClusterService.get_model)],
-    svc: Annotated[SampleClusterService, Depends(SampleClusterService.get_service)],
+    model: Annotated[SamplePlatformModel, Depends(SamplePlatformService.get_model)],
+    svc: Annotated[SamplePlatformService, Depends(SamplePlatformService.get_service)],
 ):
     """Internal endpoint for testing k8s_cluster method"""
     cluster = await svc.k8s_cluster(model)
@@ -77,7 +77,7 @@ def test_cluster_service_api(client: TestClient, test_project):
         "project_id": test_project["id"],
     }
     resp = client.post(
-        "/api/v1/sample_cluster_models",
+        "/api/v1/sample_platform_models",
         json=svc_data,
         headers={"X-Project-Id": str(test_project["id"])},
     )
@@ -86,7 +86,7 @@ def test_cluster_service_api(client: TestClient, test_project):
 
     # 3. Test k8s_cluster retrieval via API
     resp = client.get(
-        f"/api/v1/sample_cluster_models/{svc_id}/test/cluster_name",
+        f"/api/v1/sample_platform_models/{svc_id}/test/cluster_name",
         headers={"X-Project-Id": str(test_project["id"])},
     )
     resp.raise_for_status()
@@ -94,7 +94,7 @@ def test_cluster_service_api(client: TestClient, test_project):
 
     # 4. Test kubeconfig retrieval via API
     resp = client.get(
-        f"/api/v1/sample_cluster_models/{svc_id}/test/kubeconfig",
+        f"/api/v1/sample_platform_models/{svc_id}/test/kubeconfig",
         headers={"X-Project-Id": str(test_project["id"])},
     )
     resp.raise_for_status()
@@ -126,7 +126,7 @@ def test_cluster_service_kubeconfig_missing_api(client: TestClient, test_project
         "project_id": test_project["id"],
     }
     resp = client.post(
-        "/api/v1/sample_cluster_models",
+        "/api/v1/sample_platform_models",
         json=svc_data,
         headers={"X-Project-Id": str(test_project["id"])},
     )
@@ -137,6 +137,6 @@ def test_cluster_service_kubeconfig_missing_api(client: TestClient, test_project
     # Since the method raises ValueError and TestClient propagates it, we use pytest.raises
     with pytest.raises(ValueError, match="has no kubeconfig"):
         client.get(
-            f"/api/v1/sample_cluster_models/{svc_id}/test/kubeconfig",
+            f"/api/v1/sample_platform_models/{svc_id}/test/kubeconfig",
             headers={"X-Project-Id": str(test_project["id"])},
         )
