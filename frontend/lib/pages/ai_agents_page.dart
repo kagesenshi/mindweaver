@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../providers/ai_agent_provider.dart';
-import '../providers/knowledge_db_provider.dart';
 import '../providers/project_provider.dart';
 import '../models/ai_agent.dart';
 
 import '../widgets/large_dialog.dart';
 import '../widgets/project_pill.dart';
+import '../widgets/dynamic_form.dart';
+import '../providers/form_provider.dart';
 
 class AiAgentsPage extends ConsumerWidget {
   const AiAgentsPage({super.key});
@@ -40,46 +41,42 @@ class AiAgentsPage extends ConsumerWidget {
   }
 
   void _showCreateAgentDialog(BuildContext context, WidgetRef ref) {
-    final nameController = TextEditingController();
-    final titleController = TextEditingController();
-    final systemPromptController = TextEditingController();
-    String selectedModel = 'gpt-4-turbo';
-    double selectedTemp = 0.7;
-    List<String> selectedDBIds = [];
-    int? selectedProjectId = ref.read(currentProjectProvider)?.id;
-
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => Consumer(
           builder: (context, ref, _) {
-            final dbsAsync = ref.watch(knowledgeDBListProvider);
-            final projectsAsync = ref.watch(projectListProvider);
+            final schemaAsync = ref.watch(
+              createFormSchemaProvider('/api/v1/ai_agents'),
+            );
+            final formKey = GlobalKey<DynamicFormState>();
+
             return LargeDialog(
               title: 'Create AI Agent',
               actions: [
                 OutlinedButton(
                   onPressed: () => Navigator.pop(context),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 16,
-                    ),
-                  ),
                   child: const Text('Cancel'),
                 ),
                 ElevatedButton(
-                  onPressed: () async {
+                  onPressed: () => formKey.currentState?.submit(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF646CFF),
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Create'),
+                ),
+              ],
+              child: schemaAsync.when(
+                data: (schema) => DynamicForm(
+                  key: formKey,
+                  schema: schema,
+                  initialValues: {
+                    'project_id': ref.read(currentProjectProvider)?.id,
+                  },
+                  onSaved: (data) async {
                     try {
-                      final newAgent = AIAgent(
-                        name: nameController.text,
-                        title: titleController.text,
-                        model: selectedModel,
-                        temperature: selectedTemp,
-                        system_prompt: systemPromptController.text,
-                        knowledge_db_ids: selectedDBIds,
-                        project_id: selectedProjectId,
-                      );
+                      final newAgent = AIAgent.fromJson(data);
                       await ref
                           .read(aiAgentListProvider.notifier)
                           .createAgent(newAgent);
@@ -93,138 +90,15 @@ class AiAgentsPage extends ConsumerWidget {
                       }
                     }
                   },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF646CFF),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 16,
-                    ),
-                  ),
-                  child: const Text('Create'),
                 ),
-              ],
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  projectsAsync.when(
-                    data: (projects) => DropdownButtonFormField<int>(
-                      value: selectedProjectId,
-                      decoration: const InputDecoration(labelText: 'Project'),
-                      items: projects
-                          .map(
-                            (p) => DropdownMenuItem(
-                              value: p.id,
-                              child: Text(p.title),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (val) =>
-                          setState(() => selectedProjectId = val),
-                    ),
-                    loading: () => const LinearProgressIndicator(),
-                    error: (err, _) => Text('Error loading projects: $err'),
+                loading: () => const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(32.0),
+                    child: CircularProgressIndicator(),
                   ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: nameController,
-                          decoration: const InputDecoration(
-                            labelText: 'Name (ID)',
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: TextField(
-                          controller: titleController,
-                          decoration: const InputDecoration(labelText: 'Title'),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          value: selectedModel,
-                          decoration: const InputDecoration(labelText: 'Model'),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'gpt-4-turbo',
-                              child: Text('GPT-4 Turbo'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'gpt-3.5-turbo',
-                              child: Text('GPT-3.5 Turbo'),
-                            ),
-                          ],
-                          onChanged: (val) =>
-                              setState(() => selectedModel = val!),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Temperature: ${selectedTemp.toStringAsFixed(1)}',
-                              style: const TextStyle(fontSize: 10),
-                            ),
-                            Slider(
-                              value: selectedTemp,
-                              onChanged: (val) =>
-                                  setState(() => selectedTemp = val),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: systemPromptController,
-                    decoration: const InputDecoration(
-                      labelText: 'System Prompt',
-                    ),
-                    maxLines: 5,
-                  ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'Knowledge Databases',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                  ),
-                  const SizedBox(height: 12),
-                  dbsAsync.when(
-                    data: (dbs) => Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: dbs.map((db) {
-                        final isSelected = selectedDBIds.contains(db.uuid);
-                        return FilterChip(
-                          label: Text(db.title),
-                          selected: isSelected,
-                          onSelected: (selected) {
-                            setState(() {
-                              if (selected) {
-                                selectedDBIds.add(db.uuid!);
-                              } else {
-                                selectedDBIds.remove(db.uuid!);
-                              }
-                            });
-                          },
-                        );
-                      }).toList(),
-                    ),
-                    loading: () => const LinearProgressIndicator(),
-                    error: (err, _) => Text('Error loading databases: $err'),
-                  ),
-                ],
+                ),
+                error: (err, _) =>
+                    Center(child: Text('Error loading form: $err')),
               ),
             );
           },
@@ -238,50 +112,43 @@ class AiAgentsPage extends ConsumerWidget {
     WidgetRef ref,
     AIAgent agent,
   ) {
-    final nameController = TextEditingController(text: agent.name);
-    final titleController = TextEditingController(text: agent.title);
-    final systemPromptController = TextEditingController(
-      text: agent.system_prompt,
-    );
-    String selectedModel = agent.model;
-    double selectedTemperature = agent.temperature;
-    String selectedStatus = agent.status;
-    List<String> selectedKnowledgeDBNames = List.from(agent.knowledge_db_ids);
-    int? selectedProjectId = agent.project_id;
-
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => Consumer(
           builder: (context, ref, _) {
-            final knowledgeDBsAsync = ref.watch(knowledgeDBListProvider);
-            final projectsAsync = ref.watch(projectListProvider);
+            final schemaAsync = ref.watch(
+              editFormSchemaProvider('/api/v1/ai_agents'),
+            );
+            final formKey = GlobalKey<DynamicFormState>();
 
             return LargeDialog(
               title: 'Edit AI Agent',
               actions: [
                 OutlinedButton(
                   onPressed: () => Navigator.pop(context),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 16,
-                    ),
-                  ),
                   child: const Text('Cancel'),
                 ),
                 ElevatedButton(
-                  onPressed: () async {
+                  onPressed: () => formKey.currentState?.submit(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF646CFF),
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Save'),
+                ),
+              ],
+              child: schemaAsync.when(
+                data: (schema) => DynamicForm(
+                  key: formKey,
+                  schema: schema,
+                  isEdit: true,
+                  initialValues: agent.toJson(),
+                  onSaved: (data) async {
                     try {
-                      final updatedAgent = agent.copyWith(
-                        title: titleController.text,
-                        model: selectedModel,
-                        temperature: selectedTemperature,
-                        system_prompt: systemPromptController.text,
-                        status: selectedStatus,
-                        knowledge_db_ids: selectedKnowledgeDBNames,
-                        project_id: selectedProjectId,
-                      );
+                      final updatedAgent = AIAgent.fromJson(
+                        data,
+                      ).copyWith(id: agent.id);
                       await ref
                           .read(aiAgentListProvider.notifier)
                           .updateAgent(updatedAgent);
@@ -295,160 +162,15 @@ class AiAgentsPage extends ConsumerWidget {
                       }
                     }
                   },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF646CFF),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 16,
-                    ),
-                  ),
-                  child: const Text('Save'),
                 ),
-              ],
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  projectsAsync.when(
-                    data: (projects) => DropdownButtonFormField<int>(
-                      value: selectedProjectId,
-                      decoration: const InputDecoration(labelText: 'Project'),
-                      items: projects
-                          .map(
-                            (p) => DropdownMenuItem(
-                              value: p.id,
-                              child: Text(p.title),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (val) =>
-                          setState(() => selectedProjectId = val),
-                    ),
-                    loading: () => const LinearProgressIndicator(),
-                    error: (err, _) => Text('Error loading projects: $err'),
+                loading: () => const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(32.0),
+                    child: CircularProgressIndicator(),
                   ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: nameController,
-                          enabled: false,
-                          decoration: const InputDecoration(
-                            labelText: 'Name (ID)',
-                            filled: true,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: TextField(
-                          controller: titleController,
-                          decoration: const InputDecoration(labelText: 'Title'),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          value: selectedModel,
-                          decoration: const InputDecoration(labelText: 'Model'),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'gpt-4-turbo',
-                              child: Text('GPT-4 Turbo'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'gpt-4',
-                              child: Text('GPT-4'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'gpt-3.5-turbo',
-                              child: Text('GPT-3.5 Turbo'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'claude-3-opus',
-                              child: Text('Claude 3 Opus'),
-                            ),
-                          ],
-                          onChanged: (val) =>
-                              setState(() => selectedModel = val!),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          value: selectedStatus,
-                          decoration: const InputDecoration(
-                            labelText: 'Status',
-                            filled: true,
-                          ),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'Active',
-                              child: Text('Active'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'Inactive',
-                              child: Text('Inactive'),
-                            ),
-                          ],
-                          onChanged: (val) =>
-                              setState(() => selectedStatus = val!),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Temperature: ${selectedTemperature.toStringAsFixed(1)}',
-                  ),
-                  Slider(
-                    value: selectedTemperature,
-                    min: 0,
-                    max: 1,
-                    onChanged: (val) =>
-                        setState(() => selectedTemperature = val),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: systemPromptController,
-                    decoration: const InputDecoration(
-                      labelText: 'System Prompt',
-                    ),
-                    maxLines: 4,
-                  ),
-                  const SizedBox(height: 16),
-                  knowledgeDBsAsync.when(
-                    data: (dbs) => Wrap(
-                      spacing: 8,
-                      children: dbs.map((db) {
-                        final isSelected = selectedKnowledgeDBNames.contains(
-                          db.name,
-                        );
-                        return FilterChip(
-                          label: Text(db.title),
-                          selected: isSelected,
-                          onSelected: (selected) {
-                            setState(() {
-                              if (selected) {
-                                selectedKnowledgeDBNames.add(db.name);
-                              } else {
-                                selectedKnowledgeDBNames.remove(db.name);
-                              }
-                            });
-                          },
-                        );
-                      }).toList(),
-                    ),
-                    loading: () => const LinearProgressIndicator(),
-                    error: (err, _) => Text('Error loading DBs: $err'),
-                  ),
-                ],
+                ),
+                error: (err, _) =>
+                    Center(child: Text('Error loading form: $err')),
               ),
             );
           },

@@ -23,12 +23,18 @@ class AIAgentService(ProjectScopedService[AIAgent]):
     @classmethod
     def widgets(cls) -> dict[str, Any]:
         return {
+            "temperature": {
+                "type": "range",
+                "min": 0.0,
+                "max": 1.0,
+                "defaultValue": 0.7,
+            },
             "knowledge_db_ids": {
                 "type": "relationship",
                 "endpoint": "/api/v1/knowledge_dbs",
                 "field": "id",
                 "multiselect": True,
-            }
+            },
         }
 
 

@@ -39,6 +39,17 @@ class Result(BaseResult, Generic[T]):
     record: T
 
 
+class FormSchema(BaseModel):
+    jsonschema: dict[str, Any]
+    widgets: dict[str, Any]
+    immutable_fields: list[str]
+    internal_fields: list[str]
+
+
+class FormResult(BaseResult):
+    record: FormSchema
+
+
 class PaginationMeta(BaseModel):
     page_num: int | None = None
     page_size: int | None = None
@@ -673,12 +684,14 @@ class Service(Generic[S], abc.ABC):
             dependencies=extra_deps,
             tags=path_tags,
         )
-        async def get_create_form() -> dict:
+        async def get_create_form() -> FormResult:
             return {
-                "jsonschema": CreateModel.model_json_schema(),
-                "widgets": cls.get_widgets(),
-                "immutable_fields": cls.immutable_fields(),
-                "internal_fields": cls.internal_fields(),
+                "record": {
+                    "jsonschema": CreateModel.model_json_schema(),
+                    "widgets": cls.get_widgets(),
+                    "immutable_fields": cls.immutable_fields(),
+                    "internal_fields": cls.internal_fields(),
+                }
             }
 
         if UpdateModel.model_fields:
@@ -689,12 +702,14 @@ class Service(Generic[S], abc.ABC):
                 dependencies=extra_deps,
                 tags=path_tags,
             )
-            async def get_edit_form() -> dict:
+            async def get_edit_form() -> FormResult:
                 return {
-                    "jsonschema": UpdateModel.model_json_schema(),
-                    "widgets": cls.get_widgets(),
-                    "immutable_fields": cls.immutable_fields(),
-                    "internal_fields": cls.internal_fields(),
+                    "record": {
+                        "jsonschema": UpdateModel.model_json_schema(),
+                        "widgets": cls.get_widgets(),
+                        "immutable_fields": cls.immutable_fields(),
+                        "internal_fields": cls.internal_fields(),
+                    }
                 }
 
         @router.post(
