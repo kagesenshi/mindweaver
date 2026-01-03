@@ -40,3 +40,7 @@ class ProjectScopedService(Service[T]):
     @classmethod
     def extra_dependencies(cls):
         return [Depends(x_project_id)]
+
+    @classmethod
+    def immutable_fields(cls) -> list[str]:
+        return super().immutable_fields() + ["project_id"]

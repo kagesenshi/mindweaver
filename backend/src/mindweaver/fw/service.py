@@ -299,6 +299,8 @@ class Service(Generic[S], abc.ABC):
 
     @classmethod
     def internal_fields(cls) -> list[str]:
+        # fields that are internal to the system , can be exposed to the user, but user should
+        # not be able to set or change the values of this field.
         return ["uuid", "id", "created", "modified"]
 
     @classmethod
@@ -311,7 +313,7 @@ class Service(Generic[S], abc.ABC):
 
     @classmethod
     def immutable_fields(cls) -> list[str]:
-        # fields that can't be updated, but not internal fields
+        # fields that can't be updated after object has been created
         return ["name"]
 
     @classmethod

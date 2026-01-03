@@ -171,3 +171,58 @@ def test_project_scoped_crud(project_scoped_crud_client: TestClient):
         headers={"X-Project-Id": str(project_id)},
     )
     assert resp.status_code == 404
+
+
+def test_project_id_immutability(project_scoped_crud_client: TestClient):
+    """Test that project_id is immutable after creation."""
+    client = project_scoped_crud_client
+
+    # Create two test projects
+    resp = client.post(
+        "/api/v1/projects",
+        json={"name": "p1", "title": "Project 1"},
+    )
+    resp.raise_for_status()
+    p1_id = resp.json()["record"]["id"]
+
+    resp = client.post(
+        "/api/v1/projects",
+        json={"name": "p2", "title": "Project 2"},
+    )
+    resp.raise_for_status()
+    p2_id = resp.json()["record"]["id"]
+
+    # Create a record in p1
+    resp = client.post(
+        "/api/v1/project_scoped_models",
+        json={"name": "m1", "title": "Model 1", "project_id": p1_id},
+        headers={"X-Project-Id": str(p1_id)},
+    )
+    resp.raise_for_status()
+    record = resp.json()["record"]
+    record_id = record["id"]
+    assert record["project_id"] == p1_id
+
+    # Attempt to update the record and change project_id to p2_id
+    # Even if we send p2_id in the payload, it should be ignored by the service update logic
+    resp = client.put(
+        f"/api/v1/project_scoped_models/{record_id}",
+        json={
+            "title": "Updated Title",
+            "project_id": p2_id,
+        },
+        headers={"X-Project-Id": str(p1_id)},
+    )
+    resp.raise_for_status()
+    updated_record = resp.json()["record"]
+
+    # Verify project_id remained p1_id
+    assert updated_record["project_id"] == p1_id
+    assert updated_record["title"] == "Updated Title"
+
+    # Verify that the record is still NOT accessible from p2
+    resp = client.get(
+        f"/api/v1/project_scoped_models/{record_id}",
+        headers={"X-Project-Id": str(p2_id)},
+    )
+    assert resp.status_code == 404
