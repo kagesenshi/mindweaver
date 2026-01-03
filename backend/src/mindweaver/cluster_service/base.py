@@ -30,7 +30,7 @@ class ClusterService(ProjectScopedService[T]):
 
     template_directory: str | None = None
 
-    def template_vars(self, model: T) -> dict:
+    async def template_vars(self, model: T) -> dict:
         """returns the variables to be used in the template"""
         return model.model_dump()
 
@@ -51,10 +51,10 @@ class ClusterService(ProjectScopedService[T]):
         templates = env.list_templates()
 
         rendered_manifests = []
-        vars = self.template_vars(model)
+        vars = await self.template_vars(model)
 
         for template_name in templates:
-            if not template_name.endswith((".yaml", ".yml")):
+            if not template_name.endswith((".yaml", ".yml", ".yml.j2", ".yaml.j2")):
                 continue
             template = env.get_template(template_name)
             rendered = template.render(**vars)

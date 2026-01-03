@@ -1,4 +1,4 @@
-"""Tests for lakehouse storage test_connection endpoint."""
+"""Tests for s3 storage test_connection endpoint."""
 
 from fastapi.testclient import TestClient
 import pytest
@@ -6,8 +6,8 @@ from unittest.mock import patch, MagicMock
 from botocore.exceptions import ClientError, NoCredentialsError
 
 
-@patch("mindweaver.service.lakehouse_storage.boto3")
-def test_lakehouse_storage_test_connection_success(
+@patch("mindweaver.service.s3_storage.boto3")
+def test_s3_storage_test_connection_success(
     mock_boto3, client: TestClient, test_project
 ):
     """Test successful S3 connection test."""
@@ -18,7 +18,7 @@ def test_lakehouse_storage_test_connection_success(
 
     # Create a storage first
     create_resp = client.post(
-        "/api/v1/lakehouse_storages",
+        "/api/v1/s3_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-storage",
@@ -36,7 +36,7 @@ def test_lakehouse_storage_test_connection_success(
 
     # Test connection
     test_resp = client.post(
-        "/api/v1/lakehouse_storages/test_connection",
+        "/api/v1/s3_storages/test_connection",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "parameters": {
@@ -55,12 +55,12 @@ def test_lakehouse_storage_test_connection_success(
     assert "test-bucket" in data["message"]
 
 
-def test_lakehouse_storage_test_connection_missing_bucket(
+def test_s3_storage_test_connection_missing_bucket(
     client: TestClient, test_project
 ):
     """Test connection with missing bucket name."""
     test_resp = client.post(
-        "/api/v1/lakehouse_storages/test_connection",
+        "/api/v1/s3_storages/test_connection",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "parameters": {
@@ -77,12 +77,12 @@ def test_lakehouse_storage_test_connection_missing_bucket(
     assert "bucket" in data["detail"].lower()
 
 
-def test_lakehouse_storage_test_connection_missing_region(
+def test_s3_storage_test_connection_missing_region(
     client: TestClient, test_project
 ):
     """Test connection with missing region."""
     test_resp = client.post(
-        "/api/v1/lakehouse_storages/test_connection",
+        "/api/v1/s3_storages/test_connection",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "parameters": {
@@ -99,12 +99,12 @@ def test_lakehouse_storage_test_connection_missing_region(
     assert "region" in data["detail"].lower()
 
 
-def test_lakehouse_storage_test_connection_missing_access_key(
+def test_s3_storage_test_connection_missing_access_key(
     client: TestClient, test_project
 ):
     """Test connection with missing access key."""
     test_resp = client.post(
-        "/api/v1/lakehouse_storages/test_connection",
+        "/api/v1/s3_storages/test_connection",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "parameters": {
@@ -121,8 +121,8 @@ def test_lakehouse_storage_test_connection_missing_access_key(
     assert "access key" in data["detail"].lower()
 
 
-@patch("mindweaver.service.lakehouse_storage.boto3")
-def test_lakehouse_storage_test_connection_with_endpoint_url(
+@patch("mindweaver.service.s3_storage.boto3")
+def test_s3_storage_test_connection_with_endpoint_url(
     mock_boto3, client: TestClient, test_project
 ):
     """Test connection with custom endpoint URL (MinIO, etc.)."""
@@ -131,7 +131,7 @@ def test_lakehouse_storage_test_connection_with_endpoint_url(
     mock_s3_client.head_bucket.return_value = {}
 
     test_resp = client.post(
-        "/api/v1/lakehouse_storages/test_connection",
+        "/api/v1/s3_storages/test_connection",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "parameters": {
@@ -155,8 +155,8 @@ def test_lakehouse_storage_test_connection_with_endpoint_url(
     assert call_kwargs["endpoint_url"] == "https://minio.example.com"
 
 
-@patch("mindweaver.service.lakehouse_storage.boto3")
-def test_lakehouse_storage_test_connection_bucket_not_found(
+@patch("mindweaver.service.s3_storage.boto3")
+def test_s3_storage_test_connection_bucket_not_found(
     mock_boto3, client: TestClient, test_project
 ):
     """Test connection when bucket doesn't exist."""
@@ -168,7 +168,7 @@ def test_lakehouse_storage_test_connection_bucket_not_found(
     mock_s3_client.head_bucket.side_effect = ClientError(error_response, "HeadBucket")
 
     test_resp = client.post(
-        "/api/v1/lakehouse_storages/test_connection",
+        "/api/v1/s3_storages/test_connection",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "parameters": {
@@ -186,8 +186,8 @@ def test_lakehouse_storage_test_connection_bucket_not_found(
     assert "not found" in data["detail"].lower()
 
 
-@patch("mindweaver.service.lakehouse_storage.boto3")
-def test_lakehouse_storage_test_connection_access_denied(
+@patch("mindweaver.service.s3_storage.boto3")
+def test_s3_storage_test_connection_access_denied(
     mock_boto3, client: TestClient, test_project
 ):
     """Test connection when access is denied."""
@@ -199,7 +199,7 @@ def test_lakehouse_storage_test_connection_access_denied(
     mock_s3_client.head_bucket.side_effect = ClientError(error_response, "HeadBucket")
 
     test_resp = client.post(
-        "/api/v1/lakehouse_storages/test_connection",
+        "/api/v1/s3_storages/test_connection",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "parameters": {
@@ -217,14 +217,14 @@ def test_lakehouse_storage_test_connection_access_denied(
     assert "access denied" in data["detail"].lower()
 
 
-@patch("mindweaver.service.lakehouse_storage.boto3")
-def test_lakehouse_storage_test_connection_with_stored_secret(
+@patch("mindweaver.service.s3_storage.boto3")
+def test_s3_storage_test_connection_with_stored_secret(
     mock_boto3, client: TestClient, test_project
 ):
     """Test connection using stored encrypted secret key."""
     # Create a storage with secret key
     create_resp = client.post(
-        "/api/v1/lakehouse_storages",
+        "/api/v1/s3_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "stored-secret-test",
@@ -247,7 +247,7 @@ def test_lakehouse_storage_test_connection_with_stored_secret(
     mock_s3_client.head_bucket.return_value = {}
 
     test_resp = client.post(
-        "/api/v1/lakehouse_storages/test_connection",
+        "/api/v1/s3_storages/test_connection",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "storage_id": storage_id,

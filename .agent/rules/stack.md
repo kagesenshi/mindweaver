@@ -12,10 +12,11 @@ This project uses following stack:
 - this project prefers async rather than sync
 - this project uses SQLModel as base ORM
 
-command to start backend: `uv run mindweaver run --port 8000` in `backend` folder
+Notes:
+- command to start backend: `uv run mindweaver run --port 8000` in `backend` folder
+- command to start frontend: `flutter run -d chrome` in `frontend` folder
+- remember to run `uv run pytest tests` in `backend` after modifying `backend`. You do not have to run this test if you only modifying `frontend`
+- remember to add unit tests whenever creating new feature in `backend`
+- jinja2 yaml templates should use .yml.j2 extension
 
-command to start frontend: `flutter run -d chrome` in `frontend` folder
 
-remember to run `uv run pytest tests` in `backend` after modifying `backend`. You do not have to run this test if you only modifying `frontend`
-
-remember to add unit tests whenever creating new feature in `backend`

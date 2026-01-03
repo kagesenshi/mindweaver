@@ -19,7 +19,7 @@ class Settings(BaseSettings):
 
     experimental_data_source: bool = False
     experimental_knowledge_db: bool = False
-    experimental_lakehouse_storage: bool = False
+    experimental_s3_storage: bool = False
     experimental_ingestion: bool = False
 
     oidc_issuer: str | None = None

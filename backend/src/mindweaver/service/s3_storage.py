@@ -14,7 +14,7 @@ from botocore.exceptions import ClientError, NoCredentialsError
 
 # S3 Configuration schema
 class S3Config(BaseModel):
-    """Configuration schema for S3-based lakehouse storage."""
+    """Configuration schema for S3-based storage."""
 
     bucket: str
     region: str
@@ -60,16 +60,16 @@ class S3Config(BaseModel):
 
 
 # Database model
-class LakehouseStorage(ProjectScopedNamedBase, table=True):
-    __tablename__ = "mw_lakehouse_storage"
+class S3Storage(ProjectScopedNamedBase, table=True):
+    __tablename__ = "mw_s3_storage"
     parameters: dict[str, Any] = Field(sa_type=JSONType())
 
 
-class LakehouseStorageService(ProjectScopedService[LakehouseStorage]):
+class S3StorageService(ProjectScopedService[S3Storage]):
 
     @classmethod
-    def model_class(cls) -> type[LakehouseStorage]:
-        return LakehouseStorage
+    def model_class(cls) -> type[S3Storage]:
+        return S3Storage
 
     def _validate_parameters(
         self,
@@ -121,15 +121,15 @@ class LakehouseStorageService(ProjectScopedService[LakehouseStorage]):
                 detail=f"Parameter validation failed: {'; '.join(error_messages)}",
             )
 
-    async def create(self, data: NamedBase) -> LakehouseStorage:
+    async def create(self, data: NamedBase) -> S3Storage:
         """
-        Create a new lakehouse storage with parameter validation.
+        Create a new S3 storage with parameter validation.
 
         Args:
             data: NamedBase model containing name, title, and parameters
 
         Returns:
-            Created LakehouseStorage instance
+            Created S3Storage instance
 
         Raises:
             HTTPException: If validation fails
@@ -148,16 +148,16 @@ class LakehouseStorageService(ProjectScopedService[LakehouseStorage]):
         # Call parent create method
         return await super().create(data)
 
-    async def update(self, model_id: int, data: NamedBase) -> LakehouseStorage:
+    async def update(self, model_id: int, data: NamedBase) -> S3Storage:
         """
-        Update an existing lakehouse storage with parameter validation.
+        Update an existing S3 storage with parameter validation.
 
         Args:
-            model_id: ID of the lakehouse storage to update
+            model_id: ID of the S3 storage to update
             data: NamedBase model containing fields to update
 
         Returns:
-            Updated LakehouseStorage instance
+            Updated S3Storage instance
 
         Raises:
             HTTPException: If validation fails
@@ -172,7 +172,7 @@ class LakehouseStorageService(ProjectScopedService[LakehouseStorage]):
         # Fetch existing record to get current values
         existing = await self.get(model_id)
         if not existing:
-            raise HTTPException(status_code=404, detail="Lakehouse storage not found")
+            raise HTTPException(status_code=404, detail="S3 storage not found")
 
         # If parameters are being updated, validate them
         if "parameters" in data_dict:
@@ -205,7 +205,7 @@ class LakehouseStorageService(ProjectScopedService[LakehouseStorage]):
         return await super().update(model_id, data)
 
 
-router = LakehouseStorageService.router()
+router = S3StorageService.router()
 
 
 class TestConnectionRequest(BaseModel):
@@ -214,12 +214,12 @@ class TestConnectionRequest(BaseModel):
 
 
 @router.post(
-    f"{LakehouseStorageService.service_path()}/test_connection",
-    tags=LakehouseStorageService.path_tags(),
+    f"{S3StorageService.service_path()}/test_connection",
+    tags=S3StorageService.path_tags(),
 )
 async def test_connection(
     data: TestConnectionRequest,
-    svc: LakehouseStorageService = Depends(LakehouseStorageService.get_service),
+    svc: S3StorageService = Depends(S3StorageService.get_service),
 ):
     """
     Test connection to S3 storage.

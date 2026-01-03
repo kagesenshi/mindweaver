@@ -63,7 +63,7 @@ class Ingestion(ProjectScopedNamedBase, table=True):
     __tablename__ = "mw_ingestion"
 
     data_source_id: int = Field(foreign_key="mw_datasource.id", index=True)
-    lakehouse_storage_id: int = Field(foreign_key="mw_lakehouse_storage.id", index=True)
+    s3_storage_id: int = Field(foreign_key="mw_s3_storage.id", index=True)
     storage_path: str = Field(max_length=500)
     cron_schedule: str = Field(max_length=100)
     start_date: Optional[datetime] = Field(default=None)
@@ -179,9 +179,9 @@ class IngestionService(ProjectScopedService[Ingestion]):
         # Validate required fields
         if not data_dict.get("data_source_id"):
             raise HTTPException(status_code=422, detail="Data source ID is required")
-        if not data_dict.get("lakehouse_storage_id"):
+        if not data_dict.get("s3_storage_id"):
             raise HTTPException(
-                status_code=422, detail="Lakehouse storage ID is required"
+                status_code=422, detail="S3 storage ID is required"
             )
         if not data_dict.get("storage_path"):
             raise HTTPException(status_code=422, detail="Storage path is required")

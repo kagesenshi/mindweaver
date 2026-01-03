@@ -24,9 +24,9 @@ def test_create_ingestion_full_refresh(client: TestClient, test_project):
     assert ds_resp.status_code == 200
     data_source_id = ds_resp.json()["record"]["id"]
 
-    # Create a lakehouse storage
+    # Create a s3 storage
     ls_resp = client.post(
-        "/api/v1/lakehouse_storages",
+        "/api/v1/s3_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-s3",
@@ -41,7 +41,7 @@ def test_create_ingestion_full_refresh(client: TestClient, test_project):
         },
     )
     assert ls_resp.status_code == 200
-    lakehouse_storage_id = ls_resp.json()["record"]["id"]
+    s3_storage_id = ls_resp.json()["record"]["id"]
 
     # Create ingestion
     resp = client.post(
@@ -51,7 +51,7 @@ def test_create_ingestion_full_refresh(client: TestClient, test_project):
             "name": "daily-users",
             "title": "Daily User Sync",
             "data_source_id": data_source_id,
-            "lakehouse_storage_id": lakehouse_storage_id,
+            "s3_storage_id": s3_storage_id,
             "storage_path": "/data/users/",
             "cron_schedule": "0 2 * * *",
             "timezone": "UTC",
@@ -93,9 +93,9 @@ def test_create_ingestion_incremental(client: TestClient, test_project):
     assert ds_resp.status_code == 200
     data_source_id = ds_resp.json()["record"]["id"]
 
-    # Create lakehouse storage
+    # Create s3 storage
     ls_resp = client.post(
-        "/api/v1/lakehouse_storages",
+        "/api/v1/s3_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-s3-inc",
@@ -110,7 +110,7 @@ def test_create_ingestion_incremental(client: TestClient, test_project):
         },
     )
     assert ls_resp.status_code == 200
-    lakehouse_storage_id = ls_resp.json()["record"]["id"]
+    s3_storage_id = ls_resp.json()["record"]["id"]
 
     # Create incremental ingestion
     resp = client.post(
@@ -120,7 +120,7 @@ def test_create_ingestion_incremental(client: TestClient, test_project):
             "name": "incremental-orders",
             "title": "Incremental Order Sync",
             "data_source_id": data_source_id,
-            "lakehouse_storage_id": lakehouse_storage_id,
+            "s3_storage_id": s3_storage_id,
             "storage_path": "/data/orders/",
             "cron_schedule": "0 */4 * * *",
             "timezone": "America/New_York",
@@ -166,9 +166,9 @@ def test_create_ingestion_incremental_missing_fields(client: TestClient, test_pr
     assert ds_resp.status_code == 200
     data_source_id = ds_resp.json()["record"]["id"]
 
-    # Create lakehouse storage
+    # Create s3 storage
     ls_resp = client.post(
-        "/api/v1/lakehouse_storages",
+        "/api/v1/s3_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-s3-fail",
@@ -183,7 +183,7 @@ def test_create_ingestion_incremental_missing_fields(client: TestClient, test_pr
         },
     )
     assert ls_resp.status_code == 200
-    lakehouse_storage_id = ls_resp.json()["record"]["id"]
+    s3_storage_id = ls_resp.json()["record"]["id"]
 
     # Try to create incremental ingestion without primary keys
     resp = client.post(
@@ -193,7 +193,7 @@ def test_create_ingestion_incremental_missing_fields(client: TestClient, test_pr
             "name": "bad-incremental",
             "title": "Bad Incremental Sync",
             "data_source_id": data_source_id,
-            "lakehouse_storage_id": lakehouse_storage_id,
+            "s3_storage_id": s3_storage_id,
             "storage_path": "/data/bad/",
             "cron_schedule": "0 2 * * *",
             "timezone": "UTC",
@@ -239,9 +239,9 @@ def test_execute_ingestion(client: TestClient, test_project):
     assert ds_resp.status_code == 200
     data_source_id = ds_resp.json()["record"]["id"]
 
-    # Create lakehouse storage
+    # Create s3 storage
     ls_resp = client.post(
-        "/api/v1/lakehouse_storages",
+        "/api/v1/s3_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-s3-exec",
@@ -256,7 +256,7 @@ def test_execute_ingestion(client: TestClient, test_project):
         },
     )
     assert ls_resp.status_code == 200
-    lakehouse_storage_id = ls_resp.json()["record"]["id"]
+    s3_storage_id = ls_resp.json()["record"]["id"]
 
     # Create ingestion
     ing_resp = client.post(
@@ -266,7 +266,7 @@ def test_execute_ingestion(client: TestClient, test_project):
             "name": "exec-test",
             "title": "Execution Test",
             "data_source_id": data_source_id,
-            "lakehouse_storage_id": lakehouse_storage_id,
+            "s3_storage_id": s3_storage_id,
             "storage_path": "/data/exec/",
             "cron_schedule": "0 2 * * *",
             "timezone": "UTC",
@@ -311,9 +311,9 @@ def test_list_ingestion_runs(client: TestClient, test_project):
     assert ds_resp.status_code == 200
     data_source_id = ds_resp.json()["record"]["id"]
 
-    # Create lakehouse storage
+    # Create s3 storage
     ls_resp = client.post(
-        "/api/v1/lakehouse_storages",
+        "/api/v1/s3_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-s3-runs",
@@ -328,7 +328,7 @@ def test_list_ingestion_runs(client: TestClient, test_project):
         },
     )
     assert ls_resp.status_code == 200
-    lakehouse_storage_id = ls_resp.json()["record"]["id"]
+    s3_storage_id = ls_resp.json()["record"]["id"]
 
     # Create ingestion
     ing_resp = client.post(
@@ -338,7 +338,7 @@ def test_list_ingestion_runs(client: TestClient, test_project):
             "name": "runs-test",
             "title": "Runs Test",
             "data_source_id": data_source_id,
-            "lakehouse_storage_id": lakehouse_storage_id,
+            "s3_storage_id": s3_storage_id,
             "storage_path": "/data/runs/",
             "cron_schedule": "0 2 * * *",
             "timezone": "UTC",
@@ -386,9 +386,9 @@ def test_list_all_ingestions(client: TestClient, test_project):
     )
     data_source_id = ds_resp.json()["record"]["id"]
 
-    # Create lakehouse storage
+    # Create s3 storage
     ls_resp = client.post(
-        "/api/v1/lakehouse_storages",
+        "/api/v1/s3_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-s3-list",
@@ -402,7 +402,7 @@ def test_list_all_ingestions(client: TestClient, test_project):
             "project_id": test_project["id"],
         },
     )
-    lakehouse_storage_id = ls_resp.json()["record"]["id"]
+    s3_storage_id = ls_resp.json()["record"]["id"]
 
     # Create multiple ingestions
     for i in range(3):
@@ -413,7 +413,7 @@ def test_list_all_ingestions(client: TestClient, test_project):
                 "name": f"ingestion-{i}",
                 "title": f"Ingestion {i}",
                 "data_source_id": data_source_id,
-                "lakehouse_storage_id": lakehouse_storage_id,
+                "s3_storage_id": s3_storage_id,
                 "storage_path": f"/data/ing{i}/",
                 "cron_schedule": "0 2 * * *",
                 "timezone": "UTC",
@@ -457,9 +457,9 @@ def test_get_single_ingestion(client: TestClient, test_project):
     )
     data_source_id = ds_resp.json()["record"]["id"]
 
-    # Create lakehouse storage
+    # Create s3 storage
     ls_resp = client.post(
-        "/api/v1/lakehouse_storages",
+        "/api/v1/s3_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-s3-get",
@@ -473,7 +473,7 @@ def test_get_single_ingestion(client: TestClient, test_project):
             "project_id": test_project["id"],
         },
     )
-    lakehouse_storage_id = ls_resp.json()["record"]["id"]
+    s3_storage_id = ls_resp.json()["record"]["id"]
 
     # Create ingestion
     create_resp = client.post(
@@ -483,7 +483,7 @@ def test_get_single_ingestion(client: TestClient, test_project):
             "name": "get-test",
             "title": "Get Test",
             "data_source_id": data_source_id,
-            "lakehouse_storage_id": lakehouse_storage_id,
+            "s3_storage_id": s3_storage_id,
             "storage_path": "/data/get/",
             "cron_schedule": "0 2 * * *",
             "timezone": "UTC",
@@ -526,9 +526,9 @@ def test_update_ingestion(client: TestClient, test_project):
     )
     data_source_id = ds_resp.json()["record"]["id"]
 
-    # Create lakehouse storage
+    # Create s3 storage
     ls_resp = client.post(
-        "/api/v1/lakehouse_storages",
+        "/api/v1/s3_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-s3-update",
@@ -542,7 +542,7 @@ def test_update_ingestion(client: TestClient, test_project):
             "project_id": test_project["id"],
         },
     )
-    lakehouse_storage_id = ls_resp.json()["record"]["id"]
+    s3_storage_id = ls_resp.json()["record"]["id"]
 
     # Create ingestion
     create_resp = client.post(
@@ -552,7 +552,7 @@ def test_update_ingestion(client: TestClient, test_project):
             "name": "update-test",
             "title": "Update Test",
             "data_source_id": data_source_id,
-            "lakehouse_storage_id": lakehouse_storage_id,
+            "s3_storage_id": s3_storage_id,
             "storage_path": "/data/update/",
             "cron_schedule": "0 2 * * *",
             "timezone": "UTC",
@@ -574,7 +574,7 @@ def test_update_ingestion(client: TestClient, test_project):
             "name": "updated-test",
             "title": "Updated Test",
             "data_source_id": data_source_id,
-            "lakehouse_storage_id": lakehouse_storage_id,
+            "s3_storage_id": s3_storage_id,
             "storage_path": "/data/updated/",
             "cron_schedule": "0 4 * * *",
             "timezone": "America/New_York",
@@ -616,9 +616,9 @@ def test_delete_ingestion(client: TestClient, test_project):
     )
     data_source_id = ds_resp.json()["record"]["id"]
 
-    # Create lakehouse storage
+    # Create s3 storage
     ls_resp = client.post(
-        "/api/v1/lakehouse_storages",
+        "/api/v1/s3_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-s3-delete",
@@ -632,7 +632,7 @@ def test_delete_ingestion(client: TestClient, test_project):
             "project_id": test_project["id"],
         },
     )
-    lakehouse_storage_id = ls_resp.json()["record"]["id"]
+    s3_storage_id = ls_resp.json()["record"]["id"]
 
     # Create ingestion
     create_resp = client.post(
@@ -642,7 +642,7 @@ def test_delete_ingestion(client: TestClient, test_project):
             "name": "delete-test",
             "title": "Delete Test",
             "data_source_id": data_source_id,
-            "lakehouse_storage_id": lakehouse_storage_id,
+            "s3_storage_id": s3_storage_id,
             "storage_path": "/data/delete/",
             "cron_schedule": "0 2 * * *",
             "timezone": "UTC",
@@ -687,9 +687,9 @@ def test_create_ingestion_with_date_range(client: TestClient, test_project):
     )
     data_source_id = ds_resp.json()["record"]["id"]
 
-    # Create lakehouse storage
+    # Create s3 storage
     ls_resp = client.post(
-        "/api/v1/lakehouse_storages",
+        "/api/v1/s3_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-s3-dates",
@@ -703,7 +703,7 @@ def test_create_ingestion_with_date_range(client: TestClient, test_project):
             "project_id": test_project["id"],
         },
     )
-    lakehouse_storage_id = ls_resp.json()["record"]["id"]
+    s3_storage_id = ls_resp.json()["record"]["id"]
 
     # Create ingestion with date range
     resp = client.post(
@@ -713,7 +713,7 @@ def test_create_ingestion_with_date_range(client: TestClient, test_project):
             "name": "date-range-test",
             "title": "Date Range Test",
             "data_source_id": data_source_id,
-            "lakehouse_storage_id": lakehouse_storage_id,
+            "s3_storage_id": s3_storage_id,
             "storage_path": "/data/dates/",
             "cron_schedule": "0 2 * * *",
             "start_date": "2025-01-01",
@@ -756,9 +756,9 @@ def test_create_ingestion_with_complex_cron(client: TestClient, test_project):
     )
     data_source_id = ds_resp.json()["record"]["id"]
 
-    # Create lakehouse storage
+    # Create s3 storage
     ls_resp = client.post(
-        "/api/v1/lakehouse_storages",
+        "/api/v1/s3_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-s3-cron",
@@ -772,7 +772,7 @@ def test_create_ingestion_with_complex_cron(client: TestClient, test_project):
             "project_id": test_project["id"],
         },
     )
-    lakehouse_storage_id = ls_resp.json()["record"]["id"]
+    s3_storage_id = ls_resp.json()["record"]["id"]
 
     # Test various cron schedules
     cron_schedules = [
@@ -790,7 +790,7 @@ def test_create_ingestion_with_complex_cron(client: TestClient, test_project):
                 "name": f"cron-test-{i}",
                 "title": f"Cron Test {i}",
                 "data_source_id": data_source_id,
-                "lakehouse_storage_id": lakehouse_storage_id,
+                "s3_storage_id": s3_storage_id,
                 "storage_path": f"/data/cron{i}/",
                 "cron_schedule": cron,
                 "timezone": "UTC",
@@ -829,9 +829,9 @@ def test_create_ingestion_with_invalid_cron_schedule(client: TestClient, test_pr
     )
     data_source_id = ds_resp.json()["record"]["id"]
 
-    # Create lakehouse storage
+    # Create s3 storage
     ls_resp = client.post(
-        "/api/v1/lakehouse_storages",
+        "/api/v1/s3_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-s3-invalid-cron",
@@ -845,7 +845,7 @@ def test_create_ingestion_with_invalid_cron_schedule(client: TestClient, test_pr
             "project_id": test_project["id"],
         },
     )
-    lakehouse_storage_id = ls_resp.json()["record"]["id"]
+    s3_storage_id = ls_resp.json()["record"]["id"]
 
     # Test various invalid cron schedules
     invalid_cron_schedules = [
@@ -870,7 +870,7 @@ def test_create_ingestion_with_invalid_cron_schedule(client: TestClient, test_pr
                 "name": f"invalid-cron-test-{i}",
                 "title": f"Invalid Cron Test {i}",
                 "data_source_id": data_source_id,
-                "lakehouse_storage_id": lakehouse_storage_id,
+                "s3_storage_id": s3_storage_id,
                 "storage_path": f"/data/invalid-cron{i}/",
                 "cron_schedule": cron,
                 "timezone": "UTC",
@@ -915,9 +915,9 @@ def test_create_ingestion_with_multiple_primary_keys(client: TestClient, test_pr
     )
     data_source_id = ds_resp.json()["record"]["id"]
 
-    # Create lakehouse storage
+    # Create s3 storage
     ls_resp = client.post(
-        "/api/v1/lakehouse_storages",
+        "/api/v1/s3_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-s3-multi-pk",
@@ -931,7 +931,7 @@ def test_create_ingestion_with_multiple_primary_keys(client: TestClient, test_pr
             "project_id": test_project["id"],
         },
     )
-    lakehouse_storage_id = ls_resp.json()["record"]["id"]
+    s3_storage_id = ls_resp.json()["record"]["id"]
 
     # Create incremental ingestion with multiple primary keys
     resp = client.post(
@@ -941,7 +941,7 @@ def test_create_ingestion_with_multiple_primary_keys(client: TestClient, test_pr
             "name": "multi-pk-test",
             "title": "Multi PK Test",
             "data_source_id": data_source_id,
-            "lakehouse_storage_id": lakehouse_storage_id,
+            "s3_storage_id": s3_storage_id,
             "storage_path": "/data/multi-pk/",
             "cron_schedule": "0 2 * * *",
             "timezone": "UTC",
@@ -985,9 +985,9 @@ def test_ingestion_with_different_timezones(client: TestClient, test_project):
     )
     data_source_id = ds_resp.json()["record"]["id"]
 
-    # Create lakehouse storage
+    # Create s3 storage
     ls_resp = client.post(
-        "/api/v1/lakehouse_storages",
+        "/api/v1/s3_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-s3-tz",
@@ -1001,7 +1001,7 @@ def test_ingestion_with_different_timezones(client: TestClient, test_project):
             "project_id": test_project["id"],
         },
     )
-    lakehouse_storage_id = ls_resp.json()["record"]["id"]
+    s3_storage_id = ls_resp.json()["record"]["id"]
 
     timezones = ["UTC", "America/New_York", "Europe/London", "Asia/Tokyo"]
 
@@ -1013,7 +1013,7 @@ def test_ingestion_with_different_timezones(client: TestClient, test_project):
                 "name": f"tz-test-{i}",
                 "title": f"TZ Test {i}",
                 "data_source_id": data_source_id,
-                "lakehouse_storage_id": lakehouse_storage_id,
+                "s3_storage_id": s3_storage_id,
                 "storage_path": f"/data/tz{i}/",
                 "cron_schedule": "0 2 * * *",
                 "timezone": tz,
@@ -1052,9 +1052,9 @@ def test_list_ingestions_without_project_id_returns_empty(
     )
     data_source_id = ds_resp.json()["record"]["id"]
 
-    # Create lakehouse storage
+    # Create s3 storage
     ls_resp = client.post(
-        "/api/v1/lakehouse_storages",
+        "/api/v1/s3_storages",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "test-s3",
@@ -1068,7 +1068,7 @@ def test_list_ingestions_without_project_id_returns_empty(
             "project_id": test_project["id"],
         },
     )
-    lakehouse_storage_id = ls_resp.json()["record"]["id"]
+    s3_storage_id = ls_resp.json()["record"]["id"]
 
     # Create an ingestion in the project
     resp = client.post(
@@ -1077,7 +1077,7 @@ def test_list_ingestions_without_project_id_returns_empty(
             "name": "test-ingestion",
             "title": "Test Ingestion",
             "data_source_id": data_source_id,
-            "lakehouse_storage_id": lakehouse_storage_id,
+            "s3_storage_id": s3_storage_id,
             "storage_path": "/data/test/",
             "cron_schedule": "0 2 * * *",
             "timezone": "UTC",
