@@ -13,7 +13,7 @@ class K8sClusterType(str, enum.Enum):
 
 class K8sCluster(ProjectScopedNamedBase, table=True):
     __tablename__ = "mw_k8s_cluster"
-    type: str = Field(default=K8sClusterType.REMOTE.value, sa_type=String)
+    type: K8sClusterType = Field(default=K8sClusterType.REMOTE, sa_type=String)
     kubeconfig: Optional[str] = Field(default=None, sa_type=String)
 
 

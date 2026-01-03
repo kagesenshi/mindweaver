@@ -20,5 +20,16 @@ class AIAgentService(ProjectScopedService[AIAgent]):
     def model_class(cls) -> type[AIAgent]:
         return AIAgent
 
+    @classmethod
+    def widgets(cls) -> dict[str, Any]:
+        return {
+            "knowledge_db_ids": {
+                "type": "relationship",
+                "endpoint": "/api/v1/knowledge_dbs",
+                "field": "id",
+                "multiselect": True,
+            }
+        }
+
 
 router = AIAgentService.router()

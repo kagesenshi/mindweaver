@@ -8,13 +8,14 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 import sqlalchemy.exc as saexc
 from .model import AsyncSession, ts_now, NamedBase
 from .exc import ModelValidationError, AlreadyExistError
-from typing import Generic, TypeVar, Any, Literal, Annotated, Union, List
+import enum
 import abc
 import jinja2 as j2
 from .exc import NotFoundError
 from .util import camel_to_snake
 import graphlib
 import inspect
+from typing import Generic, TypeVar, Any, Literal, Annotated, Union, List, Dict
 
 T = TypeVar("T", bound=NamedBase)
 S = TypeVar("S", bound=SQLModel)
@@ -199,6 +200,7 @@ class Service(Generic[S], abc.ABC):
     _after_update_hooks: list[Any] = []
     _before_delete_hooks: list[Any] = []
     _after_delete_hooks: list[Any] = []
+    _registry: Dict[str, type["Service"]] = {}
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
@@ -242,6 +244,15 @@ class Service(Generic[S], abc.ABC):
         cls._after_update_hooks = _sort_hooks(list(collected_after_update.values()))
         cls._before_delete_hooks = _sort_hooks(list(collected_before_delete.values()))
         cls._after_delete_hooks = _sort_hooks(list(collected_after_delete.values()))
+
+        # Register service by table name
+        if not abc.ABC in cls.__bases__:
+            try:
+                model_class = cls.model_class()
+                if hasattr(model_class, "__tablename__"):
+                    Service._registry[model_class.__tablename__] = cls
+            except (NotImplementedError, AttributeError):
+                pass
 
     @classmethod
     @abc.abstractmethod
@@ -325,6 +336,70 @@ class Service(Generic[S], abc.ABC):
     def entity_type(cls) -> str:
         model_class = cls.model_class()
         return camel_to_snake(model_class.__name__)
+
+    @classmethod
+    def get_widgets(cls) -> Dict[str, Any]:
+        """
+        Infer widgets from model fields (relationships and enums).
+        """
+        widgets = {}
+        model_class = cls.model_class()
+
+        for name, field in model_class.model_fields.items():
+            # Handle Relationships
+            if hasattr(field, "json_schema_extra") and field.json_schema_extra:
+                # This might not be the best way to detect relationship if not using Relationship()
+                pass
+
+            # Check for foreign keys in FieldInfo
+            if (
+                hasattr(field, "foreign_key")
+                and field.foreign_key
+                and isinstance(field.foreign_key, str)
+            ):
+                table_name = field.foreign_key.split(".")[0]
+                if table_name in Service._registry:
+                    target_svc = Service._registry[table_name]
+                    widgets[name] = {
+                        "type": "relationship",
+                        "endpoint": f"/api/v1{target_svc.service_path()}",
+                        "field": "id",
+                    }
+
+            # Handle Enums
+            annotation = field.annotation
+            # Handle Optional[Enum]
+            if hasattr(annotation, "__origin__") and annotation.__origin__ is Union:
+                args = annotation.__args__
+                for arg in args:
+                    if (
+                        isinstance(arg, type)
+                        and issubclass(arg, enum.Enum)
+                        and arg is not type(None)
+                    ):
+                        annotation = arg
+                        break
+
+            if isinstance(annotation, type) and issubclass(annotation, enum.Enum):
+                options = []
+                for item in annotation:
+                    label = item.value.replace("-", " ").replace("_", " ").title()
+                    options.append({"value": item.value, "label": label})
+                widgets[name] = {
+                    "type": "select",
+                    "options": options,
+                }
+
+        # Merge with manual widgets
+        widgets.update(cls.widgets())
+        return widgets
+
+    @classmethod
+    def widgets(cls) -> Dict[str, Any]:
+        """
+        Override this to manually define or override widgets.
+        """
+        return {}
 
     def __init__(self, request: fastapi.Request, session: AsyncSession):
         self.request = request
@@ -599,7 +674,12 @@ class Service(Generic[S], abc.ABC):
             tags=path_tags,
         )
         async def get_create_form() -> dict:
-            return CreateModel.model_json_schema()
+            return {
+                "jsonschema": CreateModel.model_json_schema(),
+                "widgets": cls.get_widgets(),
+                "immutable_fields": cls.immutable_fields(),
+                "internal_fields": cls.internal_fields(),
+            }
 
         if UpdateModel.model_fields:
 
@@ -610,7 +690,12 @@ class Service(Generic[S], abc.ABC):
                 tags=path_tags,
             )
             async def get_edit_form() -> dict:
-                return UpdateModel.model_json_schema()
+                return {
+                    "jsonschema": UpdateModel.model_json_schema(),
+                    "widgets": cls.get_widgets(),
+                    "immutable_fields": cls.immutable_fields(),
+                    "internal_fields": cls.internal_fields(),
+                }
 
         @router.post(
             service_path,
