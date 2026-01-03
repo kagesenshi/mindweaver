@@ -1,26 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import '../providers/lakehouse_storage_provider.dart';
+import '../providers/s3_storage_provider.dart';
 import '../providers/project_provider.dart';
-import '../models/lakehouse_storage.dart';
+import '../models/s3_storage.dart';
 
 import '../widgets/large_dialog.dart';
 import '../widgets/project_pill.dart';
 
-class LakehouseStoragePage extends ConsumerWidget {
-  const LakehouseStoragePage({super.key});
+class S3StoragePage extends ConsumerWidget {
+  const S3StoragePage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final storagesAsync = ref.watch(lakehouseStorageListProvider);
+    final storagesAsync = ref.watch(s3StorageListProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Lakehouse Storage'),
+        title: const Text('S3 Storage'),
         actions: [
           IconButton(
-            onPressed: () => ref.invalidate(lakehouseStorageListProvider),
+            onPressed: () => ref.invalidate(s3StorageListProvider),
             icon: const Icon(Icons.refresh),
           ),
         ],
@@ -57,7 +57,7 @@ class LakehouseStoragePage extends ConsumerWidget {
             final projectsAsync = ref.watch(projectListProvider);
 
             return LargeDialog(
-              title: 'New Lakehouse Storage',
+              title: 'New S3 Storage',
               actions: [
                 OutlinedButton(
                   onPressed: () => Navigator.pop(context),
@@ -82,7 +82,7 @@ class LakehouseStoragePage extends ConsumerWidget {
                     };
                     try {
                       final result = await ref
-                          .read(lakehouseStorageListProvider.notifier)
+                          .read(s3StorageListProvider.notifier)
                           .testConnection(params);
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -114,7 +114,7 @@ class LakehouseStoragePage extends ConsumerWidget {
                 ),
                 ElevatedButton(
                   onPressed: () async {
-                    final storage = LakehouseStorage(
+                    final storage = S3Storage(
                       name: nameController.text,
                       title: titleController.text,
                       parameters: {
@@ -130,9 +130,9 @@ class LakehouseStoragePage extends ConsumerWidget {
                     );
                     try {
                       await ref
-                          .read(lakehouseStorageListProvider.notifier)
+                          .read(s3StorageListProvider.notifier)
                           .createStorage(storage);
-                      ref.invalidate(lakehouseStorageListProvider);
+                      ref.invalidate(s3StorageListProvider);
                       if (context.mounted) Navigator.pop(context);
                     } catch (e) {
                       if (context.mounted) {
@@ -268,7 +268,7 @@ class LakehouseStoragePage extends ConsumerWidget {
   static void showEditStorageDialog(
     BuildContext context,
     WidgetRef ref,
-    LakehouseStorage storage,
+    S3Storage storage,
   ) {
     final nameController = TextEditingController(text: storage.name);
     final titleController = TextEditingController(text: storage.title);
@@ -296,7 +296,7 @@ class LakehouseStoragePage extends ConsumerWidget {
             final projectsAsync = ref.watch(projectListProvider);
 
             return LargeDialog(
-              title: 'Edit Lakehouse Storage',
+              title: 'Edit S3 Storage',
               actions: [
                 OutlinedButton(
                   onPressed: () => Navigator.pop(context),
@@ -328,9 +328,9 @@ class LakehouseStoragePage extends ConsumerWidget {
                         project_id: selectedProjectId,
                       );
                       await ref
-                          .read(lakehouseStorageListProvider.notifier)
+                          .read(s3StorageListProvider.notifier)
                           .updateStorage(updatedStorage);
-                      ref.invalidate(lakehouseStorageListProvider);
+                      ref.invalidate(s3StorageListProvider);
                       if (context.mounted) Navigator.pop(context);
                     } catch (e) {
                       if (context.mounted) {
@@ -468,14 +468,14 @@ class LakehouseStoragePage extends ConsumerWidget {
 }
 
 class _StoragesList extends ConsumerWidget {
-  final List<LakehouseStorage> storages;
+  final List<S3Storage> storages;
 
   const _StoragesList({required this.storages});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (storages.isEmpty) {
-      return const Center(child: Text('No lakehouse storages found.'));
+      return const Center(child: Text('No S3 storages found.'));
     }
 
     return ListView.builder(
@@ -497,11 +497,8 @@ class _StoragesList extends ConsumerWidget {
                 ProjectPill(projectId: st.project_id),
                 IconButton(
                   icon: const Icon(Icons.edit, color: Colors.grey),
-                  onPressed: () => LakehouseStoragePage.showEditStorageDialog(
-                    context,
-                    ref,
-                    st,
-                  ),
+                  onPressed: () =>
+                      S3StoragePage.showEditStorageDialog(context, ref, st),
                 ),
                 IconButton(
                   icon: const Icon(Icons.delete, color: Colors.red),
@@ -515,7 +512,7 @@ class _StoragesList extends ConsumerWidget {
     );
   }
 
-  void _confirmDelete(BuildContext context, LakehouseStorage st) {
+  void _confirmDelete(BuildContext context, S3Storage st) {
     showDialog(
       context: context,
       builder: (context) => Consumer(
@@ -531,9 +528,9 @@ class _StoragesList extends ConsumerWidget {
               onPressed: () async {
                 try {
                   await ref
-                      .read(lakehouseStorageListProvider.notifier)
+                      .read(s3StorageListProvider.notifier)
                       .deleteStorage(st.id!);
-                  ref.invalidate(lakehouseStorageListProvider);
+                  ref.invalidate(s3StorageListProvider);
                   if (context.mounted) Navigator.pop(context);
                 } catch (e) {
                   if (context.mounted) {

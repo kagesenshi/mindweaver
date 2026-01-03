@@ -12,7 +12,7 @@ class Ingestion {
   final String title;
   final int? project_id;
   final int data_source_id;
-  final int lakehouse_storage_id;
+  final int s3_storage_id;
   final String storage_path;
   final String cron_schedule;
   final DateTime? start_date;
@@ -30,7 +30,7 @@ class Ingestion {
     required this.title,
     this.project_id,
     required this.data_source_id,
-    required this.lakehouse_storage_id,
+    required this.s3_storage_id,
     required this.storage_path,
     required this.cron_schedule,
     this.start_date,
@@ -49,7 +49,7 @@ class Ingestion {
     String? title,
     int? project_id,
     int? data_source_id,
-    int? lakehouse_storage_id,
+    int? s3_storage_id,
     String? storage_path,
     String? cron_schedule,
     DateTime? start_date,
@@ -67,7 +67,7 @@ class Ingestion {
       title: title ?? this.title,
       project_id: project_id ?? this.project_id,
       data_source_id: data_source_id ?? this.data_source_id,
-      lakehouse_storage_id: lakehouse_storage_id ?? this.lakehouse_storage_id,
+      s3_storage_id: s3_storage_id ?? this.s3_storage_id,
       storage_path: storage_path ?? this.storage_path,
       cron_schedule: cron_schedule ?? this.cron_schedule,
       start_date: start_date ?? this.start_date,

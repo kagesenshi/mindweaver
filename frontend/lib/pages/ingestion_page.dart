@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../providers/ingestion_provider.dart';
 import '../providers/data_source_provider.dart';
-import '../providers/lakehouse_storage_provider.dart';
+import '../providers/s3_storage_provider.dart';
 import '../providers/project_provider.dart';
 import '../models/ingestion.dart';
 import '../widgets/large_dialog.dart';
@@ -42,7 +42,7 @@ class IngestionPage extends ConsumerWidget {
   void _showCreateIngestionDialog(BuildContext context, WidgetRef ref) {
     final nameController = TextEditingController();
     final titleController = TextEditingController();
-    final pathController = TextEditingController(text: '/lakehouse/data');
+    final pathController = TextEditingController(text: '/s3/data');
     final cronController = TextEditingController(text: '0 0 * * *');
     String ingestionType = 'full_refresh';
     int? selectedSourceId;
@@ -55,7 +55,7 @@ class IngestionPage extends ConsumerWidget {
         builder: (context, setState) => Consumer(
           builder: (context, ref, _) {
             final sourcesAsync = ref.watch(dataSourceListProvider);
-            final storagesAsync = ref.watch(lakehouseStorageListProvider);
+            final storagesAsync = ref.watch(s3StorageListProvider);
             final projectsAsync = ref.watch(projectListProvider);
             return LargeDialog(
               title: 'New Ingestion Job',
@@ -79,7 +79,7 @@ class IngestionPage extends ConsumerWidget {
                       name: nameController.text,
                       title: titleController.text,
                       data_source_id: selectedSourceId!,
-                      lakehouse_storage_id: selectedStorageId!,
+                      s3_storage_id: selectedStorageId!,
                       storage_path: pathController.text,
                       cron_schedule: cronController.text,
                       ingestion_type: ingestionType,
@@ -184,7 +184,7 @@ class IngestionPage extends ConsumerWidget {
                           data: (storages) => DropdownButtonFormField<int?>(
                             value: selectedStorageId,
                             decoration: const InputDecoration(
-                              labelText: 'Lakehouse Storage',
+                              labelText: 'S3 Storage',
                             ),
                             items: storages
                                 .map(
@@ -264,7 +264,7 @@ class IngestionPage extends ConsumerWidget {
     final cronController = TextEditingController(text: ingestion.cron_schedule);
     String ingestionType = ingestion.ingestion_type;
     int? selectedSourceId = ingestion.data_source_id;
-    int? selectedStorageId = ingestion.lakehouse_storage_id;
+    int? selectedStorageId = ingestion.s3_storage_id;
     int? selectedProjectId = ingestion.project_id;
 
     showDialog(
@@ -273,7 +273,7 @@ class IngestionPage extends ConsumerWidget {
         builder: (context, setState) => Consumer(
           builder: (context, ref, _) {
             final sourcesAsync = ref.watch(dataSourceListProvider);
-            final storagesAsync = ref.watch(lakehouseStorageListProvider);
+            final storagesAsync = ref.watch(s3StorageListProvider);
             final projectsAsync = ref.watch(projectListProvider);
             return LargeDialog(
               title: 'Edit Ingestion Job',
@@ -297,7 +297,7 @@ class IngestionPage extends ConsumerWidget {
                       final updatedIngestion = ingestion.copyWith(
                         title: titleController.text,
                         data_source_id: selectedSourceId,
-                        lakehouse_storage_id: selectedStorageId,
+                        s3_storage_id: selectedStorageId,
                         storage_path: pathController.text,
                         cron_schedule: cronController.text,
                         ingestion_type: ingestionType,
@@ -402,7 +402,7 @@ class IngestionPage extends ConsumerWidget {
                           data: (storages) => DropdownButtonFormField<int?>(
                             value: selectedStorageId,
                             decoration: const InputDecoration(
-                              labelText: 'Lakehouse Storage',
+                              labelText: 'S3 Storage',
                             ),
                             items: storages
                                 .map(

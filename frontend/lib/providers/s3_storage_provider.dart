@@ -1,12 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../models/lakehouse_storage.dart';
+import '../models/s3_storage.dart';
 import 'api_providers.dart';
 
-class LakehouseStorageListNotifier
-    extends StateNotifier<AsyncValue<List<LakehouseStorage>>> {
+class S3StorageListNotifier extends StateNotifier<AsyncValue<List<S3Storage>>> {
   final Ref ref;
 
-  LakehouseStorageListNotifier(this.ref) : super(const AsyncValue.loading()) {
+  S3StorageListNotifier(this.ref) : super(const AsyncValue.loading()) {
     loadStorages();
   }
 
@@ -15,8 +14,8 @@ class LakehouseStorageListNotifier
     try {
       final client = ref.read(apiClientProvider);
       final response = await client.listAll(
-        '/api/v1/lakehouse_storages',
-        (json) => LakehouseStorage.fromJson(json as Map<String, dynamic>),
+        '/api/v1/s3_storages',
+        (json) => S3Storage.fromJson(json as Map<String, dynamic>),
       );
       if (!mounted) return;
       state = AsyncValue.data(response);
@@ -26,26 +25,26 @@ class LakehouseStorageListNotifier
     }
   }
 
-  Future<void> createStorage(LakehouseStorage storage) async {
+  Future<void> createStorage(S3Storage storage) async {
     try {
       final client = ref.read(apiClientProvider);
       await client.post(
-        '/api/v1/lakehouse_storages',
+        '/api/v1/s3_storages',
         storage.toJson(),
-        (json) => LakehouseStorage.fromJson(json as Map<String, dynamic>),
+        (json) => S3Storage.fromJson(json as Map<String, dynamic>),
       );
     } catch (e) {
       rethrow;
     }
   }
 
-  Future<void> updateStorage(LakehouseStorage storage) async {
+  Future<void> updateStorage(S3Storage storage) async {
     try {
       final client = ref.read(apiClientProvider);
       await client.put(
-        '/api/v1/lakehouse_storages/${storage.id}',
+        '/api/v1/s3_storages/${storage.id}',
         storage.toJson(),
-        (json) => LakehouseStorage.fromJson(json as Map<String, dynamic>),
+        (json) => S3Storage.fromJson(json as Map<String, dynamic>),
       );
     } catch (e) {
       rethrow;
@@ -55,7 +54,7 @@ class LakehouseStorageListNotifier
   Future<void> deleteStorage(int id) async {
     try {
       final client = ref.read(apiClientProvider);
-      await client.delete('/api/v1/lakehouse_storages/$id');
+      await client.delete('/api/v1/s3_storages/$id');
     } catch (e) {
       rethrow;
     }
@@ -68,7 +67,7 @@ class LakehouseStorageListNotifier
     try {
       final client = ref.read(apiClientProvider);
       final response = await client.post(
-        '/api/v1/lakehouse_storages/test_connection',
+        '/api/v1/s3_storages/test_connection',
         {'parameters': params, 'storage_id': storageId},
         (json) => json as Map<String, dynamic>,
       );
@@ -79,11 +78,11 @@ class LakehouseStorageListNotifier
   }
 }
 
-final lakehouseStorageListProvider =
+final s3StorageListProvider =
     StateNotifierProvider.autoDispose<
-      LakehouseStorageListNotifier,
-      AsyncValue<List<LakehouseStorage>>
+      S3StorageListNotifier,
+      AsyncValue<List<S3Storage>>
     >((ref) {
       ref.watch(apiClientProvider);
-      return LakehouseStorageListNotifier(ref);
+      return S3StorageListNotifier(ref);
     });

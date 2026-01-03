@@ -1,9 +1,9 @@
 import 'package:json_annotation/json_annotation.dart';
 
-part 'lakehouse_storage.g.dart';
+part 's3_storage.g.dart';
 
 @JsonSerializable()
-class LakehouseStorage {
+class S3Storage {
   final int? id;
   final String? uuid;
   final DateTime? created;
@@ -13,7 +13,7 @@ class LakehouseStorage {
   final int? project_id;
   final Map<String, dynamic> parameters;
 
-  LakehouseStorage({
+  S3Storage({
     this.id,
     this.uuid,
     this.created,
@@ -24,7 +24,7 @@ class LakehouseStorage {
     required this.parameters,
   });
 
-  LakehouseStorage copyWith({
+  S3Storage copyWith({
     int? id,
     String? uuid,
     DateTime? created,
@@ -34,7 +34,7 @@ class LakehouseStorage {
     int? project_id,
     Map<String, dynamic>? parameters,
   }) {
-    return LakehouseStorage(
+    return S3Storage(
       id: id ?? this.id,
       uuid: uuid ?? this.uuid,
       created: created ?? this.created,
@@ -46,7 +46,7 @@ class LakehouseStorage {
     );
   }
 
-  factory LakehouseStorage.fromJson(Map<String, dynamic> json) =>
-      _$LakehouseStorageFromJson(json);
-  Map<String, dynamic> toJson() => _$LakehouseStorageToJson(this);
+  factory S3Storage.fromJson(Map<String, dynamic> json) =>
+      _$S3StorageFromJson(json);
+  Map<String, dynamic> toJson() => _$S3StorageToJson(this);
 }

@@ -19,7 +19,7 @@ Ingestion _$IngestionFromJson(Map<String, dynamic> json) => Ingestion(
   title: json['title'] as String,
   project_id: (json['project_id'] as num?)?.toInt(),
   data_source_id: (json['data_source_id'] as num).toInt(),
-  lakehouse_storage_id: (json['lakehouse_storage_id'] as num).toInt(),
+  s3_storage_id: (json['s3_storage_id'] as num).toInt(),
   storage_path: json['storage_path'] as String,
   cron_schedule: json['cron_schedule'] as String,
   start_date: json['start_date'] == null
@@ -42,7 +42,7 @@ Map<String, dynamic> _$IngestionToJson(Ingestion instance) => <String, dynamic>{
   'title': instance.title,
   'project_id': instance.project_id,
   'data_source_id': instance.data_source_id,
-  'lakehouse_storage_id': instance.lakehouse_storage_id,
+  's3_storage_id': instance.s3_storage_id,
   'storage_path': instance.storage_path,
   'cron_schedule': instance.cron_schedule,
   'start_date': instance.start_date?.toIso8601String(),

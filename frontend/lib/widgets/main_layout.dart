@@ -207,9 +207,9 @@ class _SidebarState extends State<_Sidebar> {
                           ),
                           _SidebarItem(
                             icon: FontAwesomeIcons.server,
-                            label: 'Lakehouse',
-                            path: '/lakehouse',
-                            isCurrent: widget.currentPath == '/lakehouse',
+                            label: 'S3 Storage',
+                            path: '/s3_storage',
+                            isCurrent: widget.currentPath == '/s3_storage',
                           ),
                           _SidebarItem(
                             icon: FontAwesomeIcons.upload,

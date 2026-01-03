@@ -13,7 +13,7 @@ import 'pages/ai_agents_page.dart';
 import 'pages/chat_page.dart';
 import 'pages/ontology_page.dart';
 import 'pages/data_sources_page.dart';
-import 'pages/lakehouse_storage_page.dart';
+import 'pages/s3_storage_page.dart';
 import 'pages/ingestion_page.dart';
 import 'pages/k8s_clusters_page.dart';
 import 'pages/callback_page.dart';
@@ -74,8 +74,8 @@ final _routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const DataSourcesPage(),
           ),
           GoRoute(
-            path: '/lakehouse',
-            builder: (context, state) => const LakehouseStoragePage(),
+            path: '/s3_storage',
+            builder: (context, state) => const S3StoragePage(),
           ),
           GoRoute(
             path: '/ingestion',

@@ -29,7 +29,7 @@ void main() {
           'name': 'Ingest 1',
           'title': 'My Ingestion',
           'data_source_id': 1,
-          'lakehouse_storage_id': 2,
+          's3_storage_id': 2,
           'storage_path': '/path',
           'cron_schedule': '0 0 * * *',
           'ingestion_type': 'full',
@@ -53,7 +53,7 @@ void main() {
         name: 'New Ingest',
         title: 'New Title',
         data_source_id: 10,
-        lakehouse_storage_id: 20,
+        s3_storage_id: 20,
         storage_path: 's3://bucket/path',
         cron_schedule: '@daily',
         ingestion_type: 'incremental',
@@ -71,7 +71,7 @@ void main() {
       expect(body['name'], 'New Ingest');
       expect(body['cron_schedule'], '@daily');
       expect(body['data_source_id'], 10);
-      expect(body['lakehouse_storage_id'], 20);
+      expect(body['s3_storage_id'], 20);
     });
 
     test('updateIngestion sends correct data', () async {
@@ -81,7 +81,7 @@ void main() {
         name: 'Updated Ingest',
         title: 'Title',
         data_source_id: 1,
-        lakehouse_storage_id: 2,
+        s3_storage_id: 2,
         storage_path: '/new/path',
         cron_schedule: '@hourly',
         ingestion_type: 'full',

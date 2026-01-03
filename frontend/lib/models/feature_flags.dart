@@ -8,15 +8,15 @@ class FeatureFlags {
   final bool experimentalDataSource;
   @JsonKey(name: 'experimental_knowledge_db')
   final bool experimentalKnowledgeDb;
-  @JsonKey(name: 'experimental_lakehouse_storage')
-  final bool experimentalLakehouseStorage;
+  @JsonKey(name: 'experimental_s3_storage')
+  final bool experimentalS3Storage;
   @JsonKey(name: 'experimental_ingestion')
   final bool experimentalIngestion;
 
   FeatureFlags({
     this.experimentalDataSource = false,
     this.experimentalKnowledgeDb = false,
-    this.experimentalLakehouseStorage = false,
+    this.experimentalS3Storage = false,
     this.experimentalIngestion = false,
   });
 

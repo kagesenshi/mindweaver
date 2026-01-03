@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mindweaver_flutter/models/lakehouse_storage.dart';
+import 'package:mindweaver_flutter/models/s3_storage.dart';
 import 'package:mindweaver_flutter/providers/api_providers.dart';
-import 'package:mindweaver_flutter/providers/lakehouse_storage_provider.dart';
+import 'package:mindweaver_flutter/providers/s3_storage_provider.dart';
 import 'mocks/api_client_mock.dart';
 
 void main() {
@@ -20,9 +20,9 @@ void main() {
     container.dispose();
   });
 
-  group('LakehouseStorageListNotifier', () {
+  group('S3StorageListNotifier', () {
     test('loadStorages fetches data correctly', () async {
-      final notifier = container.read(lakehouseStorageListProvider.notifier);
+      final notifier = container.read(s3StorageListProvider.notifier);
       final storageData = [
         {
           'id': 1,
@@ -39,12 +39,12 @@ void main() {
       expect(notifier.state.value!.length, 1);
       expect(notifier.state.value!.first.name, 'S3 Storage');
       expect(mockClient.lastMethod, 'GET_LIST');
-      expect(mockClient.lastEndpoint, '/api/v1/lakehouse_storages');
+      expect(mockClient.lastEndpoint, '/api/v1/s3_storages');
     });
 
     test('createStorage sends correct parameters', () async {
-      final notifier = container.read(lakehouseStorageListProvider.notifier);
-      final newStorage = LakehouseStorage(
+      final notifier = container.read(s3StorageListProvider.notifier);
+      final newStorage = S3Storage(
         name: 'New S3',
         title: 'New Storage',
         parameters: {'bucket': 'new-bucket', 'access_key': 'xyz'},
@@ -55,7 +55,7 @@ void main() {
       await notifier.createStorage(newStorage);
 
       expect(mockClient.lastMethod, 'POST');
-      expect(mockClient.lastEndpoint, '/api/v1/lakehouse_storages');
+      expect(mockClient.lastEndpoint, '/api/v1/s3_storages');
       expect(mockClient.lastBody, isA<Map>());
       final body = mockClient.lastBody as Map<String, dynamic>;
       expect(body['name'], 'New S3');
@@ -63,8 +63,8 @@ void main() {
     });
 
     test('updateStorage sends correct data', () async {
-      final notifier = container.read(lakehouseStorageListProvider.notifier);
-      final storageToUpdate = LakehouseStorage(
+      final notifier = container.read(s3StorageListProvider.notifier);
+      final storageToUpdate = S3Storage(
         id: 11,
         name: 'Updated Storage',
         title: 'Title',
@@ -76,22 +76,22 @@ void main() {
       await notifier.updateStorage(storageToUpdate);
 
       expect(mockClient.lastMethod, 'PUT');
-      expect(mockClient.lastEndpoint, '/api/v1/lakehouse_storages/11');
+      expect(mockClient.lastEndpoint, '/api/v1/s3_storages/11');
       final body = mockClient.lastBody as Map<String, dynamic>;
       expect(body['name'], 'Updated Storage');
     });
 
     test('deleteStorage calls correct endpoint', () async {
-      final notifier = container.read(lakehouseStorageListProvider.notifier);
+      final notifier = container.read(s3StorageListProvider.notifier);
 
       await notifier.deleteStorage(88);
 
       expect(mockClient.lastMethod, 'DELETE');
-      expect(mockClient.lastEndpoint, '/api/v1/lakehouse_storages/88');
+      expect(mockClient.lastEndpoint, '/api/v1/s3_storages/88');
     });
 
     test('testConnection sends correct parameters', () async {
-      final notifier = container.read(lakehouseStorageListProvider.notifier);
+      final notifier = container.read(s3StorageListProvider.notifier);
       final params = {'bucket': 'test'};
 
       mockClient.setMockResponse({'status': 'connected'});
@@ -99,10 +99,7 @@ void main() {
       final result = await notifier.testConnection(params);
 
       expect(mockClient.lastMethod, 'POST');
-      expect(
-        mockClient.lastEndpoint,
-        '/api/v1/lakehouse_storages/test_connection',
-      );
+      expect(mockClient.lastEndpoint, '/api/v1/s3_storages/test_connection');
       final body = mockClient.lastBody as Map<String, dynamic>;
       expect(body['parameters'], params);
       expect(result['status'], 'connected');

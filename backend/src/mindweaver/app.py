@@ -47,6 +47,7 @@ app.include_router(project_router, prefix="/api/v1")
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(k8s_router, prefix="/api/v1")
 app.include_router(pgsql_router, prefix="/api/v1")
+app.include_router(s3_router, prefix="/api/v1")
 
 if settings.experimental_data_source:
     app.include_router(ds_router, prefix="/api/v1")
@@ -56,8 +57,6 @@ if settings.experimental_knowledge_db:
     app.include_router(agent_router, prefix="/api/v1")
     app.include_router(chat_router, prefix="/api/v1")
 
-if settings.experimental_s3_storage:
-    app.include_router(s3_router, prefix="/api/v1")
 if settings.experimental_ingestion:
     app.include_router(ingestion_router, prefix="/api/v1")
     app.include_router(ingestion_run_router, prefix="/api/v1")
