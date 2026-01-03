@@ -592,6 +592,26 @@ class Service(Generic[S], abc.ABC):
         async def list_all(svc: Annotated[cls, Depends(cls.get_service)]) -> ListResult[model_class]:  # type: ignore
             return {"records": await svc.all()}
 
+        @router.get(
+            f"{service_path}/+create-form",
+            operation_id=f"mw-create-form-{entity_type}",
+            dependencies=extra_deps,
+            tags=path_tags,
+        )
+        async def get_create_form() -> dict:
+            return CreateModel.model_json_schema()
+
+        if UpdateModel.model_fields:
+
+            @router.get(
+                f"{service_path}/+edit-form",
+                operation_id=f"mw-edit-form-{entity_type}",
+                dependencies=extra_deps,
+                tags=path_tags,
+            )
+            async def get_edit_form() -> dict:
+                return UpdateModel.model_json_schema()
+
         @router.post(
             service_path,
             operation_id=f"mw-create-{entity_type}",

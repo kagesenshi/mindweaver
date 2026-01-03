@@ -257,3 +257,21 @@ def test_project_id_immutability(project_scoped_crud_client: TestClient):
         headers={"X-Project-Id": str(p2_id)},
     )
     assert resp.status_code == 404
+
+
+def test_form_schemas(crud_client: TestClient):
+    client = crud_client
+
+    # Test create form
+    resp = client.get("/api/v1/models/+create-form")
+    resp.raise_for_status()
+    schema = resp.json()
+    assert schema["type"] == "object"
+    assert "name" in schema["properties"]
+
+    # Test edit form
+    resp = client.get("/api/v1/models/+edit-form")
+    resp.raise_for_status()
+    schema = resp.json()
+    assert schema["type"] == "object"
+    assert "title" in schema["properties"]
