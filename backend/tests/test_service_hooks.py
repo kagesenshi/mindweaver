@@ -193,7 +193,7 @@ async def test_update_delete_hooks():
     mock_session.delete = AsyncMock()
 
     # Test Update
-    update_data = MockModel(name="updated")
+    update_data = MockModel(name="existing", title="updated")
     updated_model = await service.update(1, update_data)
 
     # Verify before_update hook

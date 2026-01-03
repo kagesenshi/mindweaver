@@ -278,7 +278,7 @@ class Service(Generic[S], abc.ABC):
         return redefine_model(
             f"Update {model_class.__name__}",
             schema_class,
-            exclude=cls.internal_fields() + cls.immutable_fields(),
+            exclude=cls.internal_fields(),
         )
 
     @classmethod
@@ -412,6 +412,19 @@ class Service(Generic[S], abc.ABC):
         # Execute before_update hooks
         for hook in self._before_update_hooks:
             await hook(self, model, data)
+
+        # Check for immutable fields
+        immutable_fields = self.immutable_fields()
+        if immutable_fields:
+            update_data = data.model_dump(exclude_unset=True)
+            for field in immutable_fields:
+                if field in update_data:
+                    new_val = update_data[field]
+                    old_val = getattr(model, field)
+                    if new_val != old_val:
+                        raise ModelValidationError(
+                            message=f"Field '{field}' is immutable"
+                        )
 
         model_class = self.model_class()
         newdata = model.model_dump(exclude=self.noninheritable_fields())

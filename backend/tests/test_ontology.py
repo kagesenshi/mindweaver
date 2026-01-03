@@ -62,6 +62,7 @@ def test_update_ontology(client: TestClient, test_project):
     response = client.put(
         f"/api/v1/ontologies/{ontology_id}",
         json={
+            "name": "to-update",
             "description": "New desc",
             "title": "Updated Title",
             "project_id": test_project["id"],

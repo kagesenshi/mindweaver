@@ -49,11 +49,11 @@ def test_update_project(client: TestClient):
 
     response = client.put(
         f"/api/v1/projects/{project_id}",
-        json={"name": "p1-updated", "title": "P1 Updated"},
+        json={"name": "p1", "title": "P1 Updated"},
     )
     assert response.status_code == 200
     data = response.json()["record"]
-    assert data["name"] == "p1"  # Name is immutable
+    assert data["name"] == "p1"
     assert data["title"] == "P1 Updated"
 
 

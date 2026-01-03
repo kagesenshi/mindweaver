@@ -57,6 +57,7 @@ def test_k8s_cluster_crud(project_scoped_crud_client: TestClient):
 
     # 4. Update K8s Cluster
     update_data = {
+        "name": "test-cluster",
         "title": "Updated Test Cluster",
         "type": "remote",
         "kubeconfig": cluster_data["kubeconfig"],

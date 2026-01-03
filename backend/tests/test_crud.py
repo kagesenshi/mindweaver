@@ -29,11 +29,17 @@ def test_crud(crud_client: TestClient):
     record = data["record"]
     update_request = copy.deepcopy(record)
 
-    update_request["id"] = 2  # should be ignored
+    update_request["id"] = record_id
     update_request["title"] = "New title"
-    update_request["name"] = "new-name"  # should be ignored
+    update_request["name"] = "new-name"
     resp = client.put(f"/api/v1/models/{record_id}", json=update_request)
 
+    assert resp.status_code == 422
+    assert "immutable" in resp.json()["detail"][0]["msg"]
+
+    # Now update without changing name
+    update_request["name"] = record["name"]
+    resp = client.put(f"/api/v1/models/{record_id}", json=update_request)
     resp.raise_for_status()
 
     updated_record = resp.json()["record"]
@@ -134,17 +140,28 @@ def test_project_scoped_crud(project_scoped_crud_client: TestClient):
     # Update the record
     record = data["record"]
     update_request = copy.deepcopy(record)
-    update_request["id"] = 2  # should be ignored
+    update_request["id"] = record_id
     update_request["title"] = "New title"
-    update_request["name"] = "new-name"  # should be ignored
-    update_request["project_id"] = project_id  # should be kept same
+    update_request["name"] = "new-name"
+    update_request["project_id"] = project_id
 
     resp = client.put(
         f"/api/v1/project_scoped_models/{record_id}",
         json=update_request,
         headers={"X-Project-Id": str(project_id)},
     )
+    assert resp.status_code == 422
+    assert "immutable" in resp.json()["detail"][0]["msg"]
+
+    # Now update without changing name
+    update_request["name"] = record["name"]
+    resp = client.put(
+        f"/api/v1/project_scoped_models/{record_id}",
+        json=update_request,
+        headers={"X-Project-Id": str(project_id)},
+    )
     resp.raise_for_status()
+
     updated_record = resp.json()["record"]
 
     # Verify immutable fields remain the same
@@ -152,7 +169,7 @@ def test_project_scoped_crud(project_scoped_crud_client: TestClient):
     assert updated_record["uuid"] == record["uuid"]
     assert updated_record["name"] == record["name"]
     assert updated_record["created"] == record["created"]
-    assert updated_record["project_id"] == project_id  # should not change
+    assert updated_record["project_id"] == project_id
 
     # Verify mutable fields changed
     assert updated_record["title"] == "New title"
@@ -204,12 +221,26 @@ def test_project_id_immutability(project_scoped_crud_client: TestClient):
     assert record["project_id"] == p1_id
 
     # Attempt to update the record and change project_id to p2_id
-    # Even if we send p2_id in the payload, it should be ignored by the service update logic
+    # This should now raise a 422 error
     resp = client.put(
         f"/api/v1/project_scoped_models/{record_id}",
         json={
+            "name": record["name"],
             "title": "Updated Title",
             "project_id": p2_id,
+        },
+        headers={"X-Project-Id": str(p1_id)},
+    )
+    assert resp.status_code == 422
+    assert "immutable" in resp.json()["detail"][0]["msg"]
+
+    # Verify that updating without changing project_id still works
+    resp = client.put(
+        f"/api/v1/project_scoped_models/{record_id}",
+        json={
+            "name": record["name"],
+            "title": "Updated Title",
+            "project_id": p1_id,
         },
         headers={"X-Project-Id": str(p1_id)},
     )

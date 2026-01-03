@@ -571,7 +571,7 @@ def test_update_ingestion(client: TestClient, test_project):
         f"/api/v1/ingestions/{ingestion_id}",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
-            "name": "updated-test",
+            "name": "update-test",
             "title": "Updated Test",
             "data_source_id": data_source_id,
             "s3_storage_id": s3_storage_id,

@@ -84,6 +84,7 @@ def test_pgsql_platform_crud(client: TestClient, test_project):
 
     # 4. Update
     update_data = {
+        "name": "my-pg",
         "title": "My Postgres Updated",
         "instances": 5,
         "storage_size": "2Gi",
