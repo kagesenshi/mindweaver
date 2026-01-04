@@ -16,6 +16,7 @@ import 'pages/data_sources_page.dart';
 import 'pages/s3_storage_page.dart';
 import 'pages/ingestion_page.dart';
 import 'pages/k8s_clusters_page.dart';
+import 'pages/platform/pgsql_page.dart';
 import 'pages/callback_page.dart';
 import 'providers/auth_provider.dart';
 
@@ -84,6 +85,10 @@ final _routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/k8s_clusters',
             builder: (context, state) => const K8sClustersPage(),
+          ),
+          GoRoute(
+            path: '/platform/pgsql',
+            builder: (context, state) => const PgSqlPage(),
           ),
         ],
       ),

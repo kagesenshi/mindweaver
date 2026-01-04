@@ -225,6 +225,19 @@ class _SidebarState extends State<_Sidebar> {
                           ),
                         ],
                       ),
+                      _SidebarGroup(
+                        icon: FontAwesomeIcons.layerGroup,
+                        label: 'Platform',
+                        currentPath: widget.currentPath,
+                        items: [
+                          _SidebarItem(
+                            icon: FontAwesomeIcons.database,
+                            label: 'PostgreSQL',
+                            path: '/platform/pgsql',
+                            isCurrent: widget.currentPath == '/platform/pgsql',
+                          ),
+                        ],
+                      ),
                       const Spacer(),
                       Padding(
                         padding: const EdgeInsets.all(20),
