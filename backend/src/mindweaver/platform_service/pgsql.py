@@ -1,5 +1,6 @@
 from mindweaver.platform_service.base import PlatformBase, PlatformService
 from sqlmodel import Field
+from typing import Any
 import os
 
 
@@ -10,6 +11,7 @@ class PgSqlPlatform(PlatformBase, table=True):
     storage_size: str = Field(default="1Gi")
 
     # Backup configuration (using Barman Cloud Object Store)
+    enable_backup: bool = Field(default=False)
     backup_destination: str | None = Field(default=None)
     backup_retention_policy: str = Field(default="30d")
     s3_storage_id: int | None = Field(default=None, foreign_key="mw_s3_storage.id")
@@ -31,6 +33,19 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
     @classmethod
     def service_path(cls) -> str:
         return "/platform/pgsql"
+
+    @classmethod
+    def widgets(cls) -> dict[str, Any]:
+        return {
+            "instances": {"order": 10},
+            "storage_size": {"order": 11},
+            "enable_backup": {"order": 12, "type": "boolean"},
+            "backup_destination": {"order": 13},
+            "backup_retention_policy": {"order": 14},
+            "s3_storage_id": {"order": 15},
+            "enable_citus": {"order": 16},
+            "enable_postgis": {"order": 17},
+        }
 
     async def template_vars(self, model: PgSqlPlatform) -> dict:
         vars = model.model_dump()

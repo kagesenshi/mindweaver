@@ -49,6 +49,7 @@ def test_pgsql_platform_crud(client: TestClient, test_project):
         "k8s_cluster_id": cluster_id,
         "instances": 3,
         "storage_size": "2Gi",
+        "enable_backup": True,
         "backup_destination": "s3://my-bucket/backups",
         "s3_storage_id": s3_id,
         "enable_postgis": True,
