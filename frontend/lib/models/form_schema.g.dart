@@ -29,7 +29,7 @@ Map<String, dynamic> _$FormSchemaToJson(FormSchema instance) =>
 
 WidgetMetadata _$WidgetMetadataFromJson(Map<String, dynamic> json) =>
     WidgetMetadata(
-      type: json['type'] as String,
+      type: json['type'] as String?,
       label: json['label'] as String?,
       endpoint: json['endpoint'] as String?,
       field: json['field'] as String?,
@@ -40,6 +40,8 @@ WidgetMetadata _$WidgetMetadataFromJson(Map<String, dynamic> json) =>
       options: (json['options'] as List<dynamic>?)
           ?.map((e) => SelectOption.fromJson(e as Map<String, dynamic>))
           .toList(),
+      order: (json['order'] as num?)?.toInt(),
+      columnSpan: (json['column_span'] as num?)?.toInt(),
     );
 
 Map<String, dynamic> _$WidgetMetadataToJson(WidgetMetadata instance) =>
@@ -53,6 +55,8 @@ Map<String, dynamic> _$WidgetMetadataToJson(WidgetMetadata instance) =>
       'max': instance.max,
       'defaultValue': instance.defaultValue,
       'options': instance.options,
+      'order': instance.order,
+      'column_span': instance.columnSpan,
     };
 
 SelectOption _$SelectOptionFromJson(Map<String, dynamic> json) => SelectOption(

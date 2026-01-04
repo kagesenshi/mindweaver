@@ -96,54 +96,94 @@ class DynamicFormState extends ConsumerState<DynamicForm> {
             ?.cast<String>() ??
         [];
 
-    final fields = properties.entries
-        .where((e) => !widget.schema.internal_fields.contains(e.key))
-        .map((e) {
-          final fieldName = e.key;
-          final fieldSchema = e.value as Map<String, dynamic>;
-          final metadata = widget.schema.widgets[fieldName];
-          final isImmutable =
-              widget.isEdit &&
-              widget.schema.immutable_fields.contains(fieldName);
-          final isRequired = requiredFields.contains(fieldName);
+    final List<({String name, Widget widget, WidgetMetadata? metadata})>
+    fieldWidgets = [];
 
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 16.0),
-            child: _buildField(
-              fieldName,
-              fieldSchema,
-              metadata,
-              isImmutable,
-              isRequired,
-            ),
-          );
-        })
-        .toList();
+    for (var entry in properties.entries) {
+      final fieldName = entry.key;
+      if (widget.schema.internal_fields.contains(fieldName)) continue;
+
+      final fieldSchema = entry.value as Map<String, dynamic>;
+      final metadata = widget.schema.widgets[fieldName];
+      final isImmutable =
+          widget.isEdit && widget.schema.immutable_fields.contains(fieldName);
+      final isRequired = requiredFields.contains(fieldName);
+
+      fieldWidgets.add((
+        name: fieldName,
+        metadata: metadata,
+        widget: Padding(
+          padding: const EdgeInsets.only(bottom: 16.0),
+          child: _buildField(
+            fieldName,
+            fieldSchema,
+            metadata,
+            isImmutable,
+            isRequired,
+          ),
+        ),
+      ));
+    }
+
+    // Sort by order
+    fieldWidgets.sort((a, b) {
+      final orderA = a.metadata?.order ?? 999;
+      final orderB = b.metadata?.order ?? 999;
+      return orderA.compareTo(orderB);
+    });
 
     final List<Widget> rows = [];
-    for (var i = 0; i < fields.length; i += 2) {
-      if (i + 1 < fields.length) {
+    List<Widget> currentRowItems = [];
+    int currentSpan = 0;
+
+    for (var field in fieldWidgets) {
+      final span = field.metadata?.columnSpan ?? 2;
+
+      if (currentSpan + span > 2) {
+        // Close current row
+        if (currentSpan == 1) {
+          currentRowItems.add(const SizedBox(width: 16));
+          currentRowItems.add(const Expanded(child: SizedBox()));
+        }
         rows.add(
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(child: fields[i]),
-              const SizedBox(width: 16),
-              Expanded(child: fields[i + 1]),
-            ],
+            children: currentRowItems,
           ),
         );
-      } else {
+        currentRowItems = [];
+        currentSpan = 0;
+      }
+
+      if (currentRowItems.isNotEmpty) {
+        currentRowItems.add(const SizedBox(width: 16));
+      }
+      currentRowItems.add(Expanded(flex: span, child: field.widget));
+      currentSpan += span;
+
+      if (currentSpan >= 2) {
         rows.add(
           Row(
-            children: [
-              Expanded(child: fields[i]),
-              const SizedBox(width: 16),
-              const Expanded(child: SizedBox()),
-            ],
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: currentRowItems,
           ),
         );
+        currentRowItems = [];
+        currentSpan = 0;
       }
+    }
+
+    if (currentRowItems.isNotEmpty) {
+      if (currentSpan == 1) {
+        currentRowItems.add(const SizedBox(width: 16));
+        currentRowItems.add(const Expanded(child: SizedBox()));
+      }
+      rows.add(
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: currentRowItems,
+        ),
+      );
     }
 
     return Form(
@@ -226,6 +266,8 @@ class DynamicFormState extends ConsumerState<DynamicForm> {
               name.contains('config') ||
               name.contains('kubeconfig')
           ? 5
+          : name.contains('description')
+          ? 3
           : 1,
       onSaved: (val) => _formData[name] = val,
       validator: isRequired

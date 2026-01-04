@@ -23,7 +23,7 @@ class FormSchema {
 
 @JsonSerializable()
 class WidgetMetadata {
-  final String type;
+  final String? type;
   final String? label;
   final String? endpoint;
   final String? field;
@@ -32,6 +32,9 @@ class WidgetMetadata {
   final double? max;
   final dynamic defaultValue;
   final List<SelectOption>? options;
+  final int? order;
+  @JsonKey(name: 'column_span')
+  final int? columnSpan;
 
   WidgetMetadata({
     required this.type,
@@ -43,6 +46,8 @@ class WidgetMetadata {
     this.max,
     this.defaultValue,
     this.options,
+    this.order,
+    this.columnSpan,
   });
 
   factory WidgetMetadata.fromJson(Map<String, dynamic> json) =>

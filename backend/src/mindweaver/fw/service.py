@@ -258,12 +258,14 @@ class Service(Generic[S], abc.ABC):
 
         # Register service by table name
         if not abc.ABC in cls.__bases__:
-            try:
+            # Use getattr to avoid potential issues with classmethods in some Python versions/contexts
+            model_class_method = getattr(cls, "model_class", None)
+            if model_class_method and not getattr(
+                model_class_method, "__isabstractmethod__", False
+            ):
                 model_class = cls.model_class()
                 if hasattr(model_class, "__tablename__"):
                     Service._registry[model_class.__tablename__] = cls
-            except (NotImplementedError, AttributeError):
-                pass
 
     @classmethod
     @abc.abstractmethod
@@ -357,6 +359,12 @@ class Service(Generic[S], abc.ABC):
         model_class = cls.model_class()
 
         for name, field in model_class.model_fields.items():
+            # Default metadata
+            field_metadata = {
+                "order": 100 + list(model_class.model_fields.keys()).index(name),
+                "column_span": 2,
+            }
+
             # Handle Relationships
             if hasattr(field, "json_schema_extra") and field.json_schema_extra:
                 # This might not be the best way to detect relationship if not using Relationship()
@@ -371,11 +379,13 @@ class Service(Generic[S], abc.ABC):
                 table_name = field.foreign_key.split(".")[0]
                 if table_name in Service._registry:
                     target_svc = Service._registry[table_name]
-                    widgets[name] = {
-                        "type": "relationship",
-                        "endpoint": f"/api/v1{target_svc.service_path()}",
-                        "field": "id",
-                    }
+                    field_metadata.update(
+                        {
+                            "type": "relationship",
+                            "endpoint": f"/api/v1{target_svc.service_path()}",
+                            "field": "id",
+                        }
+                    )
 
             # Handle Enums
             annotation = field.annotation
@@ -396,13 +406,43 @@ class Service(Generic[S], abc.ABC):
                 for item in annotation:
                     label = item.value.replace("-", " ").replace("_", " ").title()
                     options.append({"value": item.value, "label": label})
-                widgets[name] = {
-                    "type": "select",
-                    "options": options,
-                }
+                field_metadata.update(
+                    {
+                        "type": "select",
+                        "options": options,
+                    }
+                )
+
+            # Preferred Defaults
+            if name == "project_id":
+                field_metadata.update({"order": 0, "column_span": 1})
+            elif name == "name":
+                field_metadata.update({"order": 1, "column_span": 1})
+            elif name == "title":
+                field_metadata.update({"order": 2, "column_span": 2})
+            elif name == "description":
+                field_metadata.update({"order": 3, "column_span": 2})
+
+            # Ensure 'type' is present if we are adding it to widgets
+            if name in ["project_id", "name", "title", "description"]:
+                if "type" not in field_metadata:
+                    field_metadata["type"] = "text"
+                widgets[name] = field_metadata
+            elif "type" in field_metadata:
+                widgets[name] = field_metadata
 
         # Merge with manual widgets
-        widgets.update(cls.widgets())
+        manual_widgets = cls.widgets()
+        for name, meta in manual_widgets.items():
+            if name in widgets:
+                widgets[name].update(meta)
+            else:
+                # If not in inferred widgets, we still need basic order/span if missing
+                if "order" not in meta:
+                    meta["order"] = 999
+                if "column_span" not in meta:
+                    meta["column_span"] = 2
+                widgets[name] = meta
         return widgets
 
     @classmethod
