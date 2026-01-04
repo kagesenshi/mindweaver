@@ -266,7 +266,7 @@ def test_form_schemas(crud_client: TestClient):
     resp = client.get("/api/v1/models/+create-form")
     resp.raise_for_status()
     data = resp.json()
-    schema = data["jsonschema"]
+    schema = data["record"]["jsonschema"]
     assert schema["type"] == "object"
     assert "name" in schema["properties"]
 
@@ -274,6 +274,6 @@ def test_form_schemas(crud_client: TestClient):
     resp = client.get("/api/v1/models/+edit-form")
     resp.raise_for_status()
     data = resp.json()
-    schema = data["jsonschema"]
+    schema = data["record"]["jsonschema"]
     assert schema["type"] == "object"
     assert "title" in schema["properties"]

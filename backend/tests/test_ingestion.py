@@ -31,12 +31,10 @@ def test_create_ingestion_full_refresh(client: TestClient, test_project):
         json={
             "name": "test-s3",
             "title": "Test S3 Storage",
-            "parameters": {
-                "bucket": "test-bucket",
-                "region": "us-east-1",
-                "access_key": "test-key",
-                "secret_key": "test-secret",
-            },
+            "bucket": "test-bucket",
+            "region": "us-east-1",
+            "access_key": "test-key",
+            "secret_key": "test-secret",
             "project_id": test_project["id"],
         },
     )
@@ -100,12 +98,10 @@ def test_create_ingestion_incremental(client: TestClient, test_project):
         json={
             "name": "test-s3-inc",
             "title": "Test S3 Storage Inc",
-            "parameters": {
-                "bucket": "test-bucket-inc",
-                "region": "us-east-1",
-                "access_key": "test-key",
-                "secret_key": "test-secret",
-            },
+            "bucket": "test-bucket-inc",
+            "region": "us-east-1",
+            "access_key": "test-key",
+            "secret_key": "test-secret",
             "project_id": test_project["id"],
         },
     )
@@ -173,12 +169,10 @@ def test_create_ingestion_incremental_missing_fields(client: TestClient, test_pr
         json={
             "name": "test-s3-fail",
             "title": "Test S3 Storage Fail",
-            "parameters": {
-                "bucket": "test-bucket-fail",
-                "region": "us-east-1",
-                "access_key": "test-key",
-                "secret_key": "test-secret",
-            },
+            "bucket": "test-bucket-fail",
+            "region": "us-east-1",
+            "access_key": "test-key",
+            "secret_key": "test-secret",
             "project_id": test_project["id"],
         },
     )
@@ -246,12 +240,10 @@ def test_execute_ingestion(client: TestClient, test_project):
         json={
             "name": "test-s3-exec",
             "title": "Test S3 Storage Exec",
-            "parameters": {
-                "bucket": "test-bucket-exec",
-                "region": "us-east-1",
-                "access_key": "test-key",
-                "secret_key": "test-secret",
-            },
+            "bucket": "test-bucket-exec",
+            "region": "us-east-1",
+            "access_key": "test-key",
+            "secret_key": "test-secret",
             "project_id": test_project["id"],
         },
     )
@@ -318,12 +310,10 @@ def test_list_ingestion_runs(client: TestClient, test_project):
         json={
             "name": "test-s3-runs",
             "title": "Test S3 Storage Runs",
-            "parameters": {
-                "bucket": "test-bucket-runs",
-                "region": "us-east-1",
-                "access_key": "test-key",
-                "secret_key": "test-secret",
-            },
+            "bucket": "test-bucket-runs",
+            "region": "us-east-1",
+            "access_key": "test-key",
+            "secret_key": "test-secret",
             "project_id": test_project["id"],
         },
     )
@@ -393,12 +383,10 @@ def test_list_all_ingestions(client: TestClient, test_project):
         json={
             "name": "test-s3-list",
             "title": "Test S3 Storage List",
-            "parameters": {
-                "bucket": "test-bucket-list",
-                "region": "us-east-1",
-                "access_key": "test-key",
-                "secret_key": "test-secret",
-            },
+            "bucket": "test-bucket-list",
+            "region": "us-east-1",
+            "access_key": "test-key",
+            "secret_key": "test-secret",
             "project_id": test_project["id"],
         },
     )
@@ -464,12 +452,10 @@ def test_get_single_ingestion(client: TestClient, test_project):
         json={
             "name": "test-s3-get",
             "title": "Test S3 Storage Get",
-            "parameters": {
-                "bucket": "test-bucket-get",
-                "region": "us-east-1",
-                "access_key": "test-key",
-                "secret_key": "test-secret",
-            },
+            "bucket": "test-bucket-get",
+            "region": "us-east-1",
+            "access_key": "test-key",
+            "secret_key": "test-secret",
             "project_id": test_project["id"],
         },
     )
@@ -533,12 +519,10 @@ def test_update_ingestion(client: TestClient, test_project):
         json={
             "name": "test-s3-update",
             "title": "Test S3 Storage Update",
-            "parameters": {
-                "bucket": "test-bucket-update",
-                "region": "us-east-1",
-                "access_key": "test-key",
-                "secret_key": "test-secret",
-            },
+            "bucket": "test-bucket-update",
+            "region": "us-east-1",
+            "access_key": "test-key",
+            "secret_key": "test-secret",
             "project_id": test_project["id"],
         },
     )
@@ -623,12 +607,10 @@ def test_delete_ingestion(client: TestClient, test_project):
         json={
             "name": "test-s3-delete",
             "title": "Test S3 Storage Delete",
-            "parameters": {
-                "bucket": "test-bucket-delete",
-                "region": "us-east-1",
-                "access_key": "test-key",
-                "secret_key": "test-secret",
-            },
+            "bucket": "test-bucket-delete",
+            "region": "us-east-1",
+            "access_key": "test-key",
+            "secret_key": "test-secret",
             "project_id": test_project["id"],
         },
     )
@@ -694,12 +676,10 @@ def test_create_ingestion_with_date_range(client: TestClient, test_project):
         json={
             "name": "test-s3-dates",
             "title": "Test S3 Storage Dates",
-            "parameters": {
-                "bucket": "test-bucket-dates",
-                "region": "us-east-1",
-                "access_key": "test-key",
-                "secret_key": "test-secret",
-            },
+            "bucket": "test-bucket-dates",
+            "region": "us-east-1",
+            "access_key": "test-key",
+            "secret_key": "test-secret",
             "project_id": test_project["id"],
         },
     )
@@ -763,12 +743,10 @@ def test_create_ingestion_with_complex_cron(client: TestClient, test_project):
         json={
             "name": "test-s3-cron",
             "title": "Test S3 Storage Cron",
-            "parameters": {
-                "bucket": "test-bucket-cron",
-                "region": "us-east-1",
-                "access_key": "test-key",
-                "secret_key": "test-secret",
-            },
+            "bucket": "test-bucket-cron",
+            "region": "us-east-1",
+            "access_key": "test-key",
+            "secret_key": "test-secret",
             "project_id": test_project["id"],
         },
     )
@@ -836,12 +814,10 @@ def test_create_ingestion_with_invalid_cron_schedule(client: TestClient, test_pr
         json={
             "name": "test-s3-invalid-cron",
             "title": "Test S3 Storage Invalid Cron",
-            "parameters": {
-                "bucket": "test-bucket-invalid-cron",
-                "region": "us-east-1",
-                "access_key": "test-key",
-                "secret_key": "test-secret",
-            },
+            "bucket": "test-bucket-invalid-cron",
+            "region": "us-east-1",
+            "access_key": "test-key",
+            "secret_key": "test-secret",
             "project_id": test_project["id"],
         },
     )
@@ -922,12 +898,10 @@ def test_create_ingestion_with_multiple_primary_keys(client: TestClient, test_pr
         json={
             "name": "test-s3-multi-pk",
             "title": "Test S3 Storage Multi PK",
-            "parameters": {
-                "bucket": "test-bucket-multi-pk",
-                "region": "us-east-1",
-                "access_key": "test-key",
-                "secret_key": "test-secret",
-            },
+            "bucket": "test-bucket-multi-pk",
+            "region": "us-east-1",
+            "access_key": "test-key",
+            "secret_key": "test-secret",
             "project_id": test_project["id"],
         },
     )
@@ -992,12 +966,10 @@ def test_ingestion_with_different_timezones(client: TestClient, test_project):
         json={
             "name": "test-s3-tz",
             "title": "Test S3 Storage TZ",
-            "parameters": {
-                "bucket": "test-bucket-tz",
-                "region": "us-east-1",
-                "access_key": "test-key",
-                "secret_key": "test-secret",
-            },
+            "bucket": "test-bucket-tz",
+            "region": "us-east-1",
+            "access_key": "test-key",
+            "secret_key": "test-secret",
             "project_id": test_project["id"],
         },
     )
@@ -1059,12 +1031,10 @@ def test_list_ingestions_without_project_id_returns_empty(
         json={
             "name": "test-s3",
             "title": "Test S3 Storage",
-            "parameters": {
-                "bucket": "test-bucket",
-                "region": "us-east-1",
-                "access_key": "test-key",
-                "secret_key": "test-secret",
-            },
+            "bucket": "test-bucket",
+            "region": "us-east-1",
+            "access_key": "test-key",
+            "secret_key": "test-secret",
             "project_id": test_project["id"],
         },
     )

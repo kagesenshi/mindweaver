@@ -26,13 +26,11 @@ def test_pgsql_platform_crud(client: TestClient, test_project):
     s3_data = {
         "name": "test-s3",
         "title": "Test S3",
-        "parameters": {
-            "bucket": "my-bucket",
-            "region": "us-east-1",
-            "access_key": "my-access-key",
-            "secret_key": "my-secret-key",
-            "endpoint_url": "http://minio:9000",
-        },
+        "bucket": "my-bucket",
+        "region": "us-east-1",
+        "access_key": "my-access-key",
+        "secret_key": "my-secret-key",
+        "endpoint_url": "http://minio:9000",
         "project_id": test_project["id"],
     }
     resp = client.post(
