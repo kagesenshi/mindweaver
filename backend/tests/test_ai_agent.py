@@ -11,7 +11,7 @@ def test_ai_agent(client: TestClient, test_project):
             "temperature": 0.5,
             "system_prompt": "You are a helpful assistant",
             "status": "Active",
-            "knowledge_db_ids": ["db-1", "db-2"],
+            "knowledge_db_ids": [1, 2],
             "project_id": test_project["id"],
         },
         headers={"X-Project-Id": str(test_project["id"])},

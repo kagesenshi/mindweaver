@@ -15,7 +15,7 @@ class AIAgent {
   final double temperature;
   final String system_prompt;
   final String status;
-  final List<String> knowledge_db_ids;
+  final List<int> knowledge_db_ids;
 
   AIAgent({
     this.id,
@@ -44,7 +44,7 @@ class AIAgent {
     double? temperature,
     String? system_prompt,
     String? status,
-    List<String>? knowledge_db_ids,
+    List<int>? knowledge_db_ids,
   }) {
     return AIAgent(
       id: id ?? this.id,

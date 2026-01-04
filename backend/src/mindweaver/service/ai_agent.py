@@ -12,7 +12,7 @@ class AIAgent(ProjectScopedNamedBase, table=True):
     temperature: float = Field(default=0.7)
     system_prompt: str = Field(default="")
     status: str = Field(default="Inactive")
-    knowledge_db_ids: list[str] = Field(default=[], sa_type=JSONType())
+    knowledge_db_ids: list[int] = Field(default=[], sa_type=JSONType())
 
 
 class AIAgentService(ProjectScopedService[AIAgent]):

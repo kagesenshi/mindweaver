@@ -23,7 +23,7 @@ AIAgent _$AIAgentFromJson(Map<String, dynamic> json) => AIAgent(
   system_prompt: json['system_prompt'] as String? ?? "",
   status: json['status'] as String? ?? "Inactive",
   knowledge_db_ids: (json['knowledge_db_ids'] as List<dynamic>)
-      .map((e) => e as String)
+      .map((e) => (e as num).toInt())
       .toList(),
 );
 

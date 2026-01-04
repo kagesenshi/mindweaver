@@ -32,7 +32,7 @@ void main() {
           'temperature': 0.7,
           'system_prompt': 'You are a helper',
           'status': 'Active',
-          'knowledge_db_ids': ['1', '2'],
+          'knowledge_db_ids': [1, 2],
         },
       ];
       mockClient.setMockResponse(agentData);
@@ -73,7 +73,7 @@ void main() {
         id: 10,
         name: 'Updated Agent',
         title: 'Title',
-        knowledge_db_ids: ['5'],
+        knowledge_db_ids: [5],
       );
 
       mockClient.setMockResponse(agentToUpdate.toJson());
@@ -84,7 +84,7 @@ void main() {
       expect(mockClient.lastEndpoint, '/api/v1/ai_agents/10');
       final body = mockClient.lastBody as Map<String, dynamic>;
       expect(body['name'], 'Updated Agent');
-      expect(body['knowledge_db_ids'], ['5']);
+      expect(body['knowledge_db_ids'], [5]);
     });
 
     test('deleteAgent calls correct endpoint', () async {
