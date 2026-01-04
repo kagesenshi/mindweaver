@@ -23,12 +23,15 @@ void main() {
   group('S3StorageListNotifier', () {
     test('loadStorages fetches data correctly', () async {
       final notifier = container.read(s3StorageListProvider.notifier);
-      final storageData = [
+      final storageData = <Map<String, dynamic>>[
         {
           'id': 1,
           'name': 'S3 Storage',
           'title': 'My S3',
-          'parameters': {'bucket': 'my-bucket', 'region': 'us-east-1'},
+          'bucket': 'my-bucket',
+          'region': 'us-east-1',
+          'access_key': 'AKIA...',
+          'parameters': <String, dynamic>{},
         },
       ];
       mockClient.setMockResponse(storageData);
@@ -47,7 +50,10 @@ void main() {
       final newStorage = S3Storage(
         name: 'New S3',
         title: 'New Storage',
-        parameters: {'bucket': 'new-bucket', 'access_key': 'xyz'},
+        bucket: 'new-bucket',
+        region: 'us-east-1',
+        access_key: 'xyz',
+        parameters: {},
       );
 
       mockClient.setMockResponse(newStorage.toJson());
@@ -59,7 +65,7 @@ void main() {
       expect(mockClient.lastBody, isA<Map>());
       final body = mockClient.lastBody as Map<String, dynamic>;
       expect(body['name'], 'New S3');
-      expect(body['parameters']['bucket'], 'new-bucket');
+      expect(body['bucket'], 'new-bucket');
     });
 
     test('updateStorage sends correct data', () async {
@@ -68,7 +74,10 @@ void main() {
         id: 11,
         name: 'Updated Storage',
         title: 'Title',
-        parameters: {'bucket': 'updated'},
+        bucket: 'updated',
+        region: 'us-east-1',
+        access_key: 'xyz',
+        parameters: {},
       );
 
       mockClient.setMockResponse(storageToUpdate.toJson());
@@ -101,7 +110,7 @@ void main() {
       expect(mockClient.lastMethod, 'POST');
       expect(mockClient.lastEndpoint, '/api/v1/s3_storages/test_connection');
       final body = mockClient.lastBody as Map<String, dynamic>;
-      expect(body['parameters'], params);
+      expect(body['bucket'], 'test');
       expect(result['status'], 'connected');
     });
   });

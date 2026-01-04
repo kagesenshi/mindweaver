@@ -17,6 +17,11 @@ S3Storage _$S3StorageFromJson(Map<String, dynamic> json) => S3Storage(
       : DateTime.parse(json['modified'] as String),
   name: json['name'] as String,
   title: json['title'] as String,
+  bucket: json['bucket'] as String,
+  region: json['region'] as String,
+  access_key: json['access_key'] as String,
+  secret_key: json['secret_key'] as String?,
+  endpoint_url: json['endpoint_url'] as String?,
   project_id: (json['project_id'] as num?)?.toInt(),
   parameters: json['parameters'] as Map<String, dynamic>,
 );
@@ -28,6 +33,11 @@ Map<String, dynamic> _$S3StorageToJson(S3Storage instance) => <String, dynamic>{
   'modified': instance.modified?.toIso8601String(),
   'name': instance.name,
   'title': instance.title,
+  'bucket': instance.bucket,
+  'region': instance.region,
+  'access_key': instance.access_key,
+  'secret_key': instance.secret_key,
+  'endpoint_url': instance.endpoint_url,
   'project_id': instance.project_id,
   'parameters': instance.parameters,
 };

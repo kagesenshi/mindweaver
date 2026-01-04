@@ -607,6 +607,13 @@ class Service(Generic[S], abc.ABC):
         # raise error if fail
         return data
 
+    def post_process_model(self, model: S) -> S:
+        """
+        Post-process model before returning it to the client.
+        Default is identity. Override this to redact sensitive fields.
+        """
+        return model
+
     def _handle_integrity_error(self, e: saexc.IntegrityError):
         msg = str(e.orig)
 
@@ -716,7 +723,8 @@ class Service(Generic[S], abc.ABC):
             tags=path_tags,
         )
         async def list_all(svc: Annotated[cls, Depends(cls.get_service)]) -> ListResult[model_class]:  # type: ignore
-            return {"records": await svc.all()}
+            records = await svc.all()
+            return {"records": [svc.post_process_model(r) for r in records]}
 
         @router.get(
             f"{service_path}/+create-form",
@@ -760,7 +768,7 @@ class Service(Generic[S], abc.ABC):
         )
         async def create(svc: Annotated[cls, Depends(cls.get_service)], data: CreateModel) -> Result[model_class]:  # type: ignore
             created_model = await svc.create(data)
-            return {"record": created_model}
+            return {"record": svc.post_process_model(created_model)}
 
         @router.get(
             model_path,
@@ -768,8 +776,11 @@ class Service(Generic[S], abc.ABC):
             dependencies=cls.extra_dependencies(),
             tags=path_tags,
         )
-        async def get(model: Annotated[model_class, Depends(cls.get_model)]) -> Result[model_class]:  # type: ignore
-            return {"record": model}
+        async def get(
+            svc: Annotated[cls, Depends(cls.get_service)],
+            model: Annotated[model_class, Depends(cls.get_model)],
+        ) -> Result[model_class]:  # type: ignore
+            return {"record": svc.post_process_model(model)}
 
         if UpdateModel.model_fields:
 
@@ -785,7 +796,7 @@ class Service(Generic[S], abc.ABC):
                 data: UpdateModel,
             ) -> Result[model_class]:  # type: ignore
                 updated_model = await svc.update(model.id, data)
-                return {"record": updated_model}
+                return {"record": svc.post_process_model(updated_model)}
 
         @router.delete(
             model_path,

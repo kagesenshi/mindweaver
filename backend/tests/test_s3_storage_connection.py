@@ -23,12 +23,10 @@ def test_s3_storage_test_connection_success(
         json={
             "name": "test-storage",
             "title": "Test Storage",
-            "parameters": {
-                "bucket": "test-bucket",
-                "region": "us-east-1",
-                "access_key": "AKIAIOSFODNN7EXAMPLE",
-                "secret_key": "test_secret",
-            },
+            "bucket": "test-bucket",
+            "region": "us-east-1",
+            "access_key": "AKIAIOSFODNN7EXAMPLE",
+            "secret_key": "test_secret",
             "project_id": test_project["id"],
         },
     )
@@ -39,12 +37,10 @@ def test_s3_storage_test_connection_success(
         "/api/v1/s3_storages/test_connection",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
-            "parameters": {
-                "bucket": "test-bucket",
-                "region": "us-east-1",
-                "access_key": "AKIAIOSFODNN7EXAMPLE",
-                "secret_key": "test_secret",
-            },
+            "bucket": "test-bucket",
+            "region": "us-east-1",
+            "access_key": "AKIAIOSFODNN7EXAMPLE",
+            "secret_key": "test_secret",
             "project_id": test_project["id"],
         },
     )
@@ -55,19 +51,15 @@ def test_s3_storage_test_connection_success(
     assert "test-bucket" in data["message"]
 
 
-def test_s3_storage_test_connection_missing_bucket(
-    client: TestClient, test_project
-):
+def test_s3_storage_test_connection_missing_bucket(client: TestClient, test_project):
     """Test connection with missing bucket name."""
     test_resp = client.post(
         "/api/v1/s3_storages/test_connection",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
-            "parameters": {
-                "bucket": "",
-                "region": "us-east-1",
-                "access_key": "AKIAIOSFODNN7EXAMPLE",
-            },
+            "bucket": "",
+            "region": "us-east-1",
+            "access_key": "AKIAIOSFODNN7EXAMPLE",
             "project_id": test_project["id"],
         },
     )
@@ -77,19 +69,15 @@ def test_s3_storage_test_connection_missing_bucket(
     assert "bucket" in data["detail"].lower()
 
 
-def test_s3_storage_test_connection_missing_region(
-    client: TestClient, test_project
-):
+def test_s3_storage_test_connection_missing_region(client: TestClient, test_project):
     """Test connection with missing region."""
     test_resp = client.post(
         "/api/v1/s3_storages/test_connection",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
-            "parameters": {
-                "bucket": "test-bucket",
-                "region": "",
-                "access_key": "AKIAIOSFODNN7EXAMPLE",
-            },
+            "bucket": "test-bucket",
+            "region": "",
+            "access_key": "AKIAIOSFODNN7EXAMPLE",
             "project_id": test_project["id"],
         },
     )
@@ -107,11 +95,9 @@ def test_s3_storage_test_connection_missing_access_key(
         "/api/v1/s3_storages/test_connection",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
-            "parameters": {
-                "bucket": "test-bucket",
-                "region": "us-east-1",
-                "access_key": "",
-            },
+            "bucket": "test-bucket",
+            "region": "us-east-1",
+            "access_key": "",
             "project_id": test_project["id"],
         },
     )
@@ -134,13 +120,11 @@ def test_s3_storage_test_connection_with_endpoint_url(
         "/api/v1/s3_storages/test_connection",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
-            "parameters": {
-                "bucket": "minio-bucket",
-                "region": "us-east-1",
-                "access_key": "minioadmin",
-                "secret_key": "minioadmin",
-                "endpoint_url": "https://minio.example.com",
-            },
+            "bucket": "minio-bucket",
+            "region": "us-east-1",
+            "access_key": "minioadmin",
+            "secret_key": "minioadmin",
+            "endpoint_url": "https://minio.example.com",
             "project_id": test_project["id"],
         },
     )
@@ -171,12 +155,10 @@ def test_s3_storage_test_connection_bucket_not_found(
         "/api/v1/s3_storages/test_connection",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
-            "parameters": {
-                "bucket": "nonexistent-bucket",
-                "region": "us-east-1",
-                "access_key": "AKIAIOSFODNN7EXAMPLE",
-                "secret_key": "test_secret",
-            },
+            "bucket": "nonexistent-bucket",
+            "region": "us-east-1",
+            "access_key": "AKIAIOSFODNN7EXAMPLE",
+            "secret_key": "test_secret",
             "project_id": test_project["id"],
         },
     )
@@ -202,12 +184,10 @@ def test_s3_storage_test_connection_access_denied(
         "/api/v1/s3_storages/test_connection",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
-            "parameters": {
-                "bucket": "restricted-bucket",
-                "region": "us-east-1",
-                "access_key": "AKIAIOSFODNN7EXAMPLE",
-                "secret_key": "test_secret",
-            },
+            "bucket": "restricted-bucket",
+            "region": "us-east-1",
+            "access_key": "AKIAIOSFODNN7EXAMPLE",
+            "secret_key": "test_secret",
             "project_id": test_project["id"],
         },
     )
@@ -229,12 +209,10 @@ def test_s3_storage_test_connection_with_stored_secret(
         json={
             "name": "stored-secret-test",
             "title": "Stored Secret Test",
-            "parameters": {
-                "bucket": "test-bucket",
-                "region": "us-east-1",
-                "access_key": "AKIAIOSFODNN7EXAMPLE",
-                "secret_key": "stored_secret_key",
-            },
+            "bucket": "test-bucket",
+            "region": "us-east-1",
+            "access_key": "AKIAIOSFODNN7EXAMPLE",
+            "secret_key": "stored_secret_key",
             "project_id": test_project["id"],
         },
     )
@@ -251,12 +229,10 @@ def test_s3_storage_test_connection_with_stored_secret(
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "storage_id": storage_id,
-            "parameters": {
-                "bucket": "test-bucket",
-                "region": "us-east-1",
-                "access_key": "AKIAIOSFODNN7EXAMPLE",
-                # No secret_key provided - should use stored one
-            },
+            "bucket": "test-bucket",
+            "region": "us-east-1",
+            "access_key": "AKIAIOSFODNN7EXAMPLE",
+            # No secret_key provided - should use stored one
             "project_id": test_project["id"],
         },
     )

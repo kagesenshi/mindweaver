@@ -1,10 +1,12 @@
 from . import NamedBase, Base
 from .base import ProjectScopedNamedBase, ProjectScopedService
+from mindweaver.config import settings
 from sqlalchemy import String
 from sqlalchemy_utils import JSONType
 from sqlmodel import Field, Relationship
-from typing import Any, Literal, Union, Optional
+from typing import Any, Literal, Union, Optional, Annotated
 from pydantic import BaseModel, HttpUrl, field_validator, ValidationError
+import fastapi
 from fastapi import HTTPException, Depends
 from mindweaver.crypto import encrypt_password, decrypt_password, EncryptionError
 import httpx
@@ -62,7 +64,26 @@ class S3Config(BaseModel):
 # Database model
 class S3Storage(ProjectScopedNamedBase, table=True):
     __tablename__ = "mw_s3_storage"
-    parameters: dict[str, Any] = Field(sa_type=JSONType())
+    bucket: str = Field(index=True)
+    region: str
+    access_key: str
+    secret_key: Optional[str] = Field(default=None)
+    endpoint_url: Optional[str] = Field(default=None)
+    parameters: dict[str, Any] = Field(sa_type=JSONType(), default_factory=dict)
+
+
+class VerifyEncryptedRequest(BaseModel):
+    secret_key: str
+
+
+class TestConnectionRequest(BaseModel):
+    bucket: Optional[str] = None
+    region: Optional[str] = None
+    access_key: Optional[str] = None
+    secret_key: Optional[str] = None
+    endpoint_url: Optional[str] = None
+    parameters: dict[str, Any] = Field(default_factory=dict)
+    storage_id: Optional[int] = None
 
 
 class S3StorageService(ProjectScopedService[S3Storage]):
@@ -71,45 +92,16 @@ class S3StorageService(ProjectScopedService[S3Storage]):
     def model_class(cls) -> type[S3Storage]:
         return S3Storage
 
-    def _validate_parameters(
-        self,
-        parameters: dict[str, Any],
-        encrypt_passwords: bool = True,
-    ) -> dict[str, Any]:
+    async def create(self, data: S3Storage) -> S3Storage:
         """
-        Validate S3 configuration parameters.
-
-        Args:
-            parameters: The parameters to validate
-            encrypt_passwords: Whether to encrypt secret_key field (default: True)
-
-        Returns:
-            Validated parameters as a dictionary
-
-        Raises:
-            HTTPException: If validation fails
+        Create a new S3 storage with validation.
         """
+        # Validate core fields using S3Config
         try:
-            config = S3Config(**parameters)
-            # Encrypt secret_key if present and encryption is enabled
-            if encrypt_passwords and config.secret_key:
-                try:
-                    encrypted_secret = encrypt_password(config.secret_key)
-                    # Return dict with encrypted secret
-                    validated_dict = config.model_dump()
-                    validated_dict["secret_key"] = encrypted_secret
-                    return validated_dict
-                except EncryptionError as e:
-                    raise HTTPException(
-                        status_code=500,
-                        detail=f"Failed to encrypt secret key: {str(e)}",
-                    )
-
-            # Return validated parameters as dict
-            return config.model_dump()
-
+            # We dump the data to dict and validate with S3Config
+            # Note: secret_key is not yet encrypted here
+            S3Config(**data.model_dump())
         except ValidationError as e:
-            # Extract validation errors and format them nicely
             error_messages = []
             for error in e.errors():
                 field = error["loc"][0] if error["loc"] else "unknown"
@@ -121,96 +113,137 @@ class S3StorageService(ProjectScopedService[S3Storage]):
                 detail=f"Parameter validation failed: {'; '.join(error_messages)}",
             )
 
-    async def create(self, data: NamedBase) -> S3Storage:
-        """
-        Create a new S3 storage with parameter validation.
-
-        Args:
-            data: NamedBase model containing name, title, and parameters
-
-        Returns:
-            Created S3Storage instance
-
-        Raises:
-            HTTPException: If validation fails
-        """
-        # Convert to dict to access fields
-        data_dict = data.model_dump() if hasattr(data, "model_dump") else dict(data)
-
-        # Extract and validate parameters
-        parameters = data_dict.get("parameters", {})
-        validated_parameters = self._validate_parameters(parameters)
-
-        # Update the data object with validated parameters
-        if hasattr(data, "parameters"):
-            data.parameters = validated_parameters
+        # Encrypt secret_key if present
+        if data.secret_key:
+            try:
+                data.secret_key = encrypt_password(data.secret_key)
+            except EncryptionError as e:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to encrypt secret key: {str(e)}",
+                )
 
         # Call parent create method
         return await super().create(data)
 
-    async def update(self, model_id: int, data: NamedBase) -> S3Storage:
+    async def update(self, model_id: int, data: S3Storage) -> S3Storage:
         """
-        Update an existing S3 storage with parameter validation.
-
-        Args:
-            model_id: ID of the S3 storage to update
-            data: NamedBase model containing fields to update
-
-        Returns:
-            Updated S3Storage instance
-
-        Raises:
-            HTTPException: If validation fails
+        Update an existing S3 storage with validation.
         """
-        # Convert to dict to access fields
+        # Fetch existing record
+        existing = await self.get(model_id)
+        if not existing:
+            raise HTTPException(status_code=404, detail="S3 storage not found")
+
+        # Convert to dict to check fields
         data_dict = (
             data.model_dump(exclude_unset=True)
             if hasattr(data, "model_dump")
             else dict(data)
         )
 
-        # Fetch existing record to get current values
-        existing = await self.get(model_id)
-        if not existing:
-            raise HTTPException(status_code=404, detail="S3 storage not found")
+        # Merge with existing for validation
+        merged_data = existing.model_dump()
+        merged_data.update(data_dict)
 
-        # If parameters are being updated, validate them
-        if "parameters" in data_dict:
-            parameters = data_dict.get("parameters", {})
-
-            # Special handling for secret_key to manage password retention
-            secret_key = parameters.get("secret_key")
-            retain_existing_secret = False
-
-            # If secret_key is the special marker, clear it
+        # Handle secret_key logic
+        secret_is_encrypted = True
+        if "secret_key" in data_dict:
+            secret_key = data_dict["secret_key"]
             if secret_key == "__CLEAR_SECRET_KEY__":
-                parameters["secret_key"] = ""
-            # If secret_key is empty or not provided, retain existing secret_key
-            elif not secret_key:
-                # Get existing secret_key from stored parameters
-                existing_secret = existing.parameters.get("secret_key", "")
-                parameters["secret_key"] = existing_secret
-                retain_existing_secret = True  # Don't re-encrypt
-            # Otherwise, secret_key is being updated (will be encrypted in validation)
+                data.secret_key = ""
+                merged_data["secret_key"] = ""
+            elif not secret_key or secret_key == "__REDACTED__":
+                # Retain existing secret_key
+                data.secret_key = existing.secret_key
+                merged_data["secret_key"] = existing.secret_key
+            else:
+                # New secret key provided (not yet encrypted in merged_data)
+                merged_data["secret_key"] = secret_key
+                secret_is_encrypted = False
 
-            # Validate parameters, but skip encryption if retaining existing secret
-            validated_parameters = self._validate_parameters(
-                parameters, encrypt_passwords=not retain_existing_secret
+        # Validate core fields
+        try:
+            # If secret is already encrypted, we might want to skip validating its format
+            # but decrypting it for validation might be overkill if it was already valid.
+            v_data = merged_data.copy()
+            if secret_is_encrypted and v_data.get("secret_key"):
+                # Use a dummy secret for validation if it's already encrypted
+                v_data["secret_key"] = "dummy"
+
+            S3Config(**v_data)
+        except ValidationError as e:
+            error_messages = []
+            for error in e.errors():
+                field = error["loc"][0] if error["loc"] else "unknown"
+                message = error["msg"]
+                error_messages.append(f"{field}: {message}")
+
+            raise HTTPException(
+                status_code=422,
+                detail=f"Parameter validation failed: {'; '.join(error_messages)}",
             )
-            # Update the data object with validated parameters
-            if hasattr(data, "parameters"):
-                data.parameters = validated_parameters
+
+        # Now encrypt the secret_key if it's a new one
+        if "secret_key" in data_dict and data.secret_key and not secret_is_encrypted:
+            try:
+                data.secret_key = encrypt_password(data.secret_key)
+            except EncryptionError as e:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to encrypt secret key: {str(e)}",
+                )
 
         # Call parent update method
         return await super().update(model_id, data)
 
+    def post_process_model(self, model: S3Storage) -> S3Storage:
+        """
+        Redact the secret key before returning to the client.
+        """
+        if model.secret_key:
+            # Create a detached copy to avoid affecting the session
+            model_dict = model.model_dump()
+            if model_dict.get("secret_key"):
+                model_dict["secret_key"] = "__REDACTED__"
+            return S3Storage.model_validate(model_dict)
+        return model
+
+    def verify_secret_key(self, model: S3Storage, secret_key: str) -> bool:
+        """
+        Verify if the provided secret key matches the encrypted one in the model.
+        """
+        if not model.secret_key:
+            return False
+        try:
+            return decrypt_password(model.secret_key) == secret_key
+        except EncryptionError:
+            return False
+
+    @classmethod
+    def register_views(
+        cls, router: fastapi.APIRouter, service_path: str, model_path: str
+    ):
+        super().register_views(router, service_path, model_path)
+
+        path_tags = cls.path_tags()
+
+        if settings.enable_test_views:
+
+            @router.post(
+                f"{model_path}/+verify-encrypted",
+                operation_id=f"mw-verify-encrypted-{cls.entity_type()}",
+                tags=path_tags,
+            )
+            async def verify_encrypted(
+                svc: Annotated[cls, Depends(cls.get_service)],
+                model: Annotated[S3Storage, Depends(cls.get_model)],
+                data: VerifyEncryptedRequest,
+            ) -> bool:
+                return svc.verify_secret_key(model, data.secret_key)
+
 
 router = S3StorageService.router()
-
-
-class TestConnectionRequest(BaseModel):
-    parameters: dict[str, Any]
-    storage_id: Optional[int] = None  # Optional ID to fetch stored secret
 
 
 @router.post(
@@ -225,33 +258,26 @@ async def test_connection(
     Test connection to S3 storage.
     If storage_id is provided and secret_key is missing, use stored secret.
     """
-    parameters = data.parameters.copy()  # Make a copy to avoid mutating original
+    # Initialize variables from request
+    bucket = data.bucket or data.parameters.get("bucket")
+    region = data.region or data.parameters.get("region")
+    access_key = data.access_key or data.parameters.get("access_key")
+    secret_key = data.secret_key or data.parameters.get("secret_key")
+    endpoint_url = data.endpoint_url or data.parameters.get("endpoint_url")
 
-    # If storage_id is provided, check for stored secret_key
+    # If storage_id is provided, check for stored secret_key if missing in request
     if data.storage_id:
-        secret_key = parameters.get("secret_key")
-        # If no secret_key provided, fetch from database
-        if not secret_key:
-            existing = await svc.get(data.storage_id)
-            if existing and existing.parameters.get("secret_key"):
-                # Use the stored encrypted secret
-                stored_secret = existing.parameters.get("secret_key")
-                # Decrypt it for testing
-                try:
-                    decrypted_secret = decrypt_password(stored_secret)
-                    parameters["secret_key"] = decrypted_secret
-                except EncryptionError:
-                    # If decryption fails, continue without secret
-                    pass
+        existing = await svc.get(data.storage_id)
+        if existing and existing.secret_key and not secret_key:
+            try:
+                # Note: svc.get now returns redacted secret_key, but we need the raw one.
+                # However, svc.get calls super().get() which returns the raw one from the session.
+                # Wait, svc.get is now NOT redacted anymore because I removed the override.
+                secret_key = decrypt_password(existing.secret_key)
+            except EncryptionError:
+                pass
 
     try:
-        # Validate S3 configuration
-        bucket = parameters.get("bucket")
-        region = parameters.get("region")
-        access_key = parameters.get("access_key")
-        secret_key = parameters.get("secret_key")
-        endpoint_url = parameters.get("endpoint_url")
-
         if not bucket:
             raise ValueError("Bucket name is required")
         if not region:

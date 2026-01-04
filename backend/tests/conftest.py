@@ -6,6 +6,7 @@ os.environ["MINDWEAVER_EXPERIMENTAL_KNOWLEDGE_DB"] = "true"
 os.environ["MINDWEAVER_EXPERIMENTAL_S3_STORAGE"] = "true"
 os.environ["MINDWEAVER_EXPERIMENTAL_INGESTION"] = "true"
 os.environ["MINDWEAVER_EXPERIMENTAL_CHAT"] = "true"
+os.environ["MINDWEAVER_ENABLE_TEST_VIEWS"] = "true"
 
 import pytest
 import pytest_postgresql

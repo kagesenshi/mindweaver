@@ -117,16 +117,15 @@ class S3StoragePage extends ConsumerWidget {
                     final storage = S3Storage(
                       name: nameController.text,
                       title: titleController.text,
-                      parameters: {
-                        'bucket': bucketController.text,
-                        'region': regionController.text,
-                        'access_key': accessKeyController.text,
-                        'secret_key': secretKeyController.text,
-                        'endpoint_url': endpointController.text.isEmpty
-                            ? null
-                            : endpointController.text,
-                      },
+                      bucket: bucketController.text,
+                      region: regionController.text,
+                      access_key: accessKeyController.text,
+                      secret_key: secretKeyController.text,
+                      endpoint_url: endpointController.text.isEmpty
+                          ? null
+                          : endpointController.text,
                       project_id: selectedProjectId,
+                      parameters: {},
                     );
                     try {
                       await ref
@@ -272,18 +271,12 @@ class S3StoragePage extends ConsumerWidget {
   ) {
     final nameController = TextEditingController(text: storage.name);
     final titleController = TextEditingController(text: storage.title);
-    final bucketController = TextEditingController(
-      text: storage.parameters['bucket']?.toString(),
-    );
-    final regionController = TextEditingController(
-      text: storage.parameters['region']?.toString() ?? 'us-east-1',
-    );
-    final accessKeyController = TextEditingController(
-      text: storage.parameters['access_key']?.toString(),
-    );
+    final bucketController = TextEditingController(text: storage.bucket);
+    final regionController = TextEditingController(text: storage.region);
+    final accessKeyController = TextEditingController(text: storage.access_key);
     final secretKeyController = TextEditingController(); // Empty for security
     final endpointController = TextEditingController(
-      text: storage.parameters['endpoint_url']?.toString(),
+      text: storage.endpoint_url,
     );
 
     int? selectedProjectId = storage.project_id;
@@ -310,21 +303,18 @@ class S3StoragePage extends ConsumerWidget {
                 ),
                 ElevatedButton(
                   onPressed: () async {
-                    final params = {
-                      'bucket': bucketController.text,
-                      'region': regionController.text,
-                      'access_key': accessKeyController.text,
-                      'secret_key': secretKeyController.text.isEmpty
-                          ? null
-                          : secretKeyController.text,
-                      'endpoint_url': endpointController.text.isEmpty
-                          ? null
-                          : endpointController.text,
-                    };
                     try {
                       final updatedStorage = storage.copyWith(
                         title: titleController.text,
-                        parameters: params,
+                        bucket: bucketController.text,
+                        region: regionController.text,
+                        access_key: accessKeyController.text,
+                        secret_key: secretKeyController.text.isEmpty
+                            ? null
+                            : secretKeyController.text,
+                        endpoint_url: endpointController.text.isEmpty
+                            ? null
+                            : endpointController.text,
                         project_id: selectedProjectId,
                       );
                       await ref
@@ -488,9 +478,7 @@ class _StoragesList extends ConsumerWidget {
           child: ListTile(
             leading: const FaIcon(FontAwesomeIcons.server, color: Colors.blue),
             title: Text(st.title),
-            subtitle: Text(
-              'S3 Bucket: ${st.parameters['bucket']} • ${st.name}',
-            ),
+            subtitle: Text('S3 Bucket: ${st.bucket} • ${st.name}'),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [

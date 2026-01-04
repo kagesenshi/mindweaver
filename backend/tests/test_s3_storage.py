@@ -10,12 +10,10 @@ def test_s3_storage_create_valid(client: TestClient, test_project):
         json={
             "name": "production-s3",
             "title": "Production S3 Storage",
-            "parameters": {
-                "bucket": "my-s3-bucket",
-                "region": "us-east-1",
-                "access_key": "AKIAIOSFODNN7EXAMPLE",
-                "secret_key": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
-            },
+            "bucket": "my-s3-bucket",
+            "region": "us-east-1",
+            "access_key": "AKIAIOSFODNN7EXAMPLE",
+            "secret_key": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
             "project_id": test_project["id"],
         },
     )
@@ -25,13 +23,10 @@ def test_s3_storage_create_valid(client: TestClient, test_project):
     assert resp.status_code == 200
     data = resp.json()
     assert data["record"]["name"] == "production-s3"
-    assert data["record"]["parameters"]["bucket"] == "my-s3-bucket"
-    assert data["record"]["parameters"]["region"] == "us-east-1"
+    assert data["record"]["bucket"] == "my-s3-bucket"
+    assert data["record"]["region"] == "us-east-1"
     # Secret key should be encrypted
-    assert (
-        data["record"]["parameters"]["secret_key"]
-        != "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
-    )
+    assert data["record"]["secret_key"] != "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 
 
 def test_s3_storage_create_with_endpoint(client: TestClient, test_project):
@@ -42,20 +37,18 @@ def test_s3_storage_create_with_endpoint(client: TestClient, test_project):
         json={
             "name": "minio-s3",
             "title": "MinIO S3 Storage",
-            "parameters": {
-                "bucket": "minio-bucket",
-                "region": "us-east-1",
-                "access_key": "minioadmin",
-                "secret_key": "minioadmin",
-                "endpoint_url": "https://minio.example.com",
-            },
+            "bucket": "minio-bucket",
+            "region": "us-east-1",
+            "access_key": "minioadmin",
+            "secret_key": "minioadmin",
+            "endpoint_url": "https://minio.example.com",
             "project_id": test_project["id"],
         },
     )
 
     assert resp.status_code == 200
     data = resp.json()
-    assert data["record"]["parameters"]["endpoint_url"] == "https://minio.example.com"
+    assert data["record"]["endpoint_url"] == "https://minio.example.com"
 
 
 # ============================================================================
@@ -71,11 +64,9 @@ def test_s3_storage_invalid_bucket_empty(client: TestClient, test_project):
         json={
             "name": "invalid-storage",
             "title": "Invalid Storage",
-            "parameters": {
-                "bucket": "",
-                "region": "us-east-1",
-                "access_key": "AKIAIOSFODNN7EXAMPLE",
-            },
+            "bucket": "",
+            "region": "us-east-1",
+            "access_key": "AKIAIOSFODNN7EXAMPLE",
             "project_id": test_project["id"],
         },
     )
@@ -83,12 +74,11 @@ def test_s3_storage_invalid_bucket_empty(client: TestClient, test_project):
     assert resp.status_code == 422
     error = resp.json()
     assert "detail" in error
-    assert "bucket" in error["detail"].lower()
+    detail = str(error["detail"])
+    assert "bucket" in detail.lower()
 
 
-def test_s3_storage_invalid_bucket_special_chars(
-    client: TestClient, test_project
-):
+def test_s3_storage_invalid_bucket_special_chars(client: TestClient, test_project):
     """Test s3 storage with invalid bucket name (special characters)."""
     resp = client.post(
         "/api/v1/s3_storages",
@@ -96,11 +86,9 @@ def test_s3_storage_invalid_bucket_special_chars(
         json={
             "name": "invalid-storage",
             "title": "Invalid Storage",
-            "parameters": {
-                "bucket": "my_bucket@123!",
-                "region": "us-east-1",
-                "access_key": "AKIAIOSFODNN7EXAMPLE",
-            },
+            "bucket": "my_bucket@123!",
+            "region": "us-east-1",
+            "access_key": "AKIAIOSF0DNN7EXAMPLE",
             "project_id": test_project["id"],
         },
     )
@@ -108,7 +96,8 @@ def test_s3_storage_invalid_bucket_special_chars(
     assert resp.status_code == 422
     error = resp.json()
     assert "detail" in error
-    assert "bucket" in error["detail"].lower()
+    detail = str(error["detail"])
+    assert "bucket" in detail.lower()
 
 
 def test_s3_storage_empty_region(client: TestClient, test_project):
@@ -119,11 +108,9 @@ def test_s3_storage_empty_region(client: TestClient, test_project):
         json={
             "name": "invalid-storage",
             "title": "Invalid Storage",
-            "parameters": {
-                "bucket": "my-bucket",
-                "region": "",
-                "access_key": "AKIAIOSFODNN7EXAMPLE",
-            },
+            "bucket": "my-bucket",
+            "region": "",
+            "access_key": "AKIAIOSFODNN7EXAMPLE",
             "project_id": test_project["id"],
         },
     )
@@ -131,7 +118,8 @@ def test_s3_storage_empty_region(client: TestClient, test_project):
     assert resp.status_code == 422
     error = resp.json()
     assert "detail" in error
-    assert "region" in error["detail"].lower()
+    detail = str(error["detail"])
+    assert "region" in detail.lower()
 
 
 def test_s3_storage_empty_access_key(client: TestClient, test_project):
@@ -142,11 +130,9 @@ def test_s3_storage_empty_access_key(client: TestClient, test_project):
         json={
             "name": "invalid-storage",
             "title": "Invalid Storage",
-            "parameters": {
-                "bucket": "my-bucket",
-                "region": "us-east-1",
-                "access_key": "",
-            },
+            "bucket": "my-bucket",
+            "region": "us-east-1",
+            "access_key": "",
             "project_id": test_project["id"],
         },
     )
@@ -154,7 +140,8 @@ def test_s3_storage_empty_access_key(client: TestClient, test_project):
     assert resp.status_code == 422
     error = resp.json()
     assert "detail" in error
-    assert "access_key" in error["detail"].lower()
+    detail = str(error["detail"])
+    assert "access_key" in detail.lower()
 
 
 def test_s3_storage_invalid_endpoint_url(client: TestClient, test_project):
@@ -165,12 +152,10 @@ def test_s3_storage_invalid_endpoint_url(client: TestClient, test_project):
         json={
             "name": "invalid-storage",
             "title": "Invalid Storage",
-            "parameters": {
-                "bucket": "my-bucket",
-                "region": "us-east-1",
-                "access_key": "AKIAIOSFODNN7EXAMPLE",
-                "endpoint_url": "ftp://invalid-endpoint.com",
-            },
+            "bucket": "my-bucket",
+            "region": "us-east-1",
+            "access_key": "AKIAIOSFODNN7EXAMPLE",
+            "endpoint_url": "ftp://invalid-endpoint.com",
             "project_id": test_project["id"],
         },
     )
@@ -178,7 +163,8 @@ def test_s3_storage_invalid_endpoint_url(client: TestClient, test_project):
     assert resp.status_code == 422
     error = resp.json()
     assert "detail" in error
-    assert "endpoint" in error["detail"].lower()
+    detail = str(error["detail"])
+    assert "endpoint" in detail.lower()
 
 
 # ============================================================================
@@ -195,11 +181,9 @@ def test_s3_storage_list(client: TestClient, test_project):
         json={
             "name": "test-storage",
             "title": "Test Storage",
-            "parameters": {
-                "bucket": "test-bucket",
-                "region": "us-west-2",
-                "access_key": "AKIAIOSFODNN7EXAMPLE",
-            },
+            "bucket": "test-bucket",
+            "region": "us-west-2",
+            "access_key": "AKIAIOSFODNN7EXAMPLE",
             "project_id": test_project["id"],
         },
     )
@@ -223,11 +207,9 @@ def test_s3_storage_get(client: TestClient, test_project):
         json={
             "name": "get-test-storage",
             "title": "Get Test Storage",
-            "parameters": {
-                "bucket": "get-test-bucket",
-                "region": "eu-west-1",
-                "access_key": "AKIAIOSFODNN7EXAMPLE",
-            },
+            "bucket": "get-test-bucket",
+            "region": "eu-west-1",
+            "access_key": "AKIAIOSFODNN7EXAMPLE",
             "project_id": test_project["id"],
         },
     )
@@ -250,12 +232,10 @@ def test_s3_storage_update(client: TestClient, test_project):
         json={
             "name": "update-test",
             "title": "Update Test",
-            "parameters": {
-                "bucket": "old-bucket",
-                "region": "us-east-1",
-                "access_key": "AKIAIOSFODNN7EXAMPLE",
-                "secret_key": "old_secret",
-            },
+            "bucket": "old-bucket",
+            "region": "us-east-1",
+            "access_key": "AKIAIOSFODNN7EXAMPLE",
+            "secret_key": "old_secret",
             "project_id": test_project["id"],
         },
     )
@@ -269,11 +249,9 @@ def test_s3_storage_update(client: TestClient, test_project):
         json={
             "name": "update-test",
             "title": "Updated Test",
-            "parameters": {
-                "bucket": "new-bucket",
-                "region": "us-west-2",
-                "access_key": "AKIAIOSFODNN7EXAMPLE",
-            },
+            "bucket": "new-bucket",
+            "region": "us-west-2",
+            "access_key": "AKIAIOSFODNN7EXAMPLE",
             "project_id": test_project["id"],
         },
     )
@@ -281,8 +259,8 @@ def test_s3_storage_update(client: TestClient, test_project):
     assert update_resp.status_code == 200
     data = update_resp.json()
     assert data["record"]["title"] == "Updated Test"
-    assert data["record"]["parameters"]["bucket"] == "new-bucket"
-    assert data["record"]["parameters"]["region"] == "us-west-2"
+    assert data["record"]["bucket"] == "new-bucket"
+    assert data["record"]["region"] == "us-west-2"
 
 
 def test_s3_storage_update_retain_secret(client: TestClient, test_project):
@@ -294,18 +272,16 @@ def test_s3_storage_update_retain_secret(client: TestClient, test_project):
         json={
             "name": "secret-test",
             "title": "Secret Test",
-            "parameters": {
-                "bucket": "secret-bucket",
-                "region": "us-east-1",
-                "access_key": "AKIAIOSFODNN7EXAMPLE",
-                "secret_key": "original_secret_key",
-            },
+            "bucket": "secret-bucket",
+            "region": "us-east-1",
+            "access_key": "AKIAIOSFODNN7EXAMPLE",
+            "secret_key": "original_secret_key",
             "project_id": test_project["id"],
         },
     )
     assert create_resp.status_code == 200
     storage_id = create_resp.json()["record"]["id"]
-    original_encrypted_secret = create_resp.json()["record"]["parameters"]["secret_key"]
+    original_encrypted_secret = create_resp.json()["record"]["secret_key"]
 
     # Update without providing secret_key
     update_resp = client.put(
@@ -314,11 +290,9 @@ def test_s3_storage_update_retain_secret(client: TestClient, test_project):
         json={
             "name": "secret-test",
             "title": "Secret Test Updated",
-            "parameters": {
-                "bucket": "secret-bucket",
-                "region": "us-east-1",
-                "access_key": "AKIAIOSFODNN7EXAMPLE",
-            },
+            "bucket": "secret-bucket",
+            "region": "us-east-1",
+            "access_key": "AKIAIOSFODNN7EXAMPLE",
             "project_id": test_project["id"],
         },
     )
@@ -326,7 +300,7 @@ def test_s3_storage_update_retain_secret(client: TestClient, test_project):
     assert update_resp.status_code == 200
     data = update_resp.json()
     # Secret should be retained (same encrypted value)
-    assert data["record"]["parameters"]["secret_key"] == original_encrypted_secret
+    assert data["record"]["secret_key"] == original_encrypted_secret
 
 
 def test_s3_storage_update_clear_secret(client: TestClient, test_project):
@@ -338,12 +312,10 @@ def test_s3_storage_update_clear_secret(client: TestClient, test_project):
         json={
             "name": "clear-secret-test",
             "title": "Clear Secret Test",
-            "parameters": {
-                "bucket": "clear-bucket",
-                "region": "us-east-1",
-                "access_key": "AKIAIOSFODNN7EXAMPLE",
-                "secret_key": "secret_to_clear",
-            },
+            "bucket": "clear-bucket",
+            "region": "us-east-1",
+            "access_key": "AKIAIOSFODNN7EXAMPLE",
+            "secret_key": "secret_to_clear",
             "project_id": test_project["id"],
         },
     )
@@ -357,12 +329,10 @@ def test_s3_storage_update_clear_secret(client: TestClient, test_project):
         json={
             "name": "clear-secret-test",
             "title": "Clear Secret Test",
-            "parameters": {
-                "bucket": "clear-bucket",
-                "region": "us-east-1",
-                "access_key": "AKIAIOSFODNN7EXAMPLE",
-                "secret_key": "__CLEAR_SECRET_KEY__",
-            },
+            "bucket": "clear-bucket",
+            "region": "us-east-1",
+            "access_key": "AKIAIOSFODNN7EXAMPLE",
+            "secret_key": "__CLEAR_SECRET_KEY__",
             "project_id": test_project["id"],
         },
     )
@@ -370,7 +340,7 @@ def test_s3_storage_update_clear_secret(client: TestClient, test_project):
     assert update_resp.status_code == 200
     data = update_resp.json()
     # Secret should be cleared
-    assert data["record"]["parameters"]["secret_key"] == ""
+    assert data["record"]["secret_key"] == ""
 
 
 def test_s3_storage_delete(client: TestClient, test_project):
@@ -382,11 +352,9 @@ def test_s3_storage_delete(client: TestClient, test_project):
         json={
             "name": "delete-test",
             "title": "Delete Test",
-            "parameters": {
-                "bucket": "delete-bucket",
-                "region": "us-east-1",
-                "access_key": "AKIAIOSFODNN7EXAMPLE",
-            },
+            "bucket": "delete-bucket",
+            "region": "us-east-1",
+            "access_key": "AKIAIOSFODNN7EXAMPLE",
             "project_id": test_project["id"],
         },
     )
@@ -417,26 +385,20 @@ def test_s3_storage_secret_key_encryption(client: TestClient, test_project):
         json={
             "name": "encryption-test",
             "title": "Encryption Test",
-            "parameters": {
-                "bucket": "encryption-bucket",
-                "region": "us-east-1",
-                "access_key": "AKIAIOSFODNN7EXAMPLE",
-                "secret_key": plain_secret,
-            },
+            "bucket": "encryption-bucket",
+            "region": "us-east-1",
+            "access_key": "AKIAIOSFODNN7EXAMPLE",
+            "secret_key": plain_secret,
             "project_id": test_project["id"],
         },
     )
 
     assert resp.status_code == 200
     data = resp.json()
-    stored_secret = data["record"]["parameters"]["secret_key"]
+    stored_secret = data["record"]["secret_key"]
 
-    # Stored secret should not match plain text
-    assert stored_secret != plain_secret
-    # Stored secret should not be empty
-    assert stored_secret != ""
-    # Stored secret should be longer (encrypted)
-    assert len(stored_secret) > len(plain_secret)
+    # Stored secret should be redacted when returned to client
+    assert stored_secret == "__REDACTED__"
 
 
 def test_s3_storage_update_new_secret(client: TestClient, test_project):
@@ -448,18 +410,16 @@ def test_s3_storage_update_new_secret(client: TestClient, test_project):
         json={
             "name": "new-secret-test",
             "title": "New Secret Test",
-            "parameters": {
-                "bucket": "new-secret-bucket",
-                "region": "us-east-1",
-                "access_key": "AKIAIOSFODNN7EXAMPLE",
-                "secret_key": "old_secret",
-            },
+            "bucket": "new-secret-bucket",
+            "region": "us-east-1",
+            "access_key": "AKIAIOSFODNN7EXAMPLE",
+            "secret_key": "old_secret",
             "project_id": test_project["id"],
         },
     )
     assert create_resp.status_code == 200
     storage_id = create_resp.json()["record"]["id"]
-    old_encrypted_secret = create_resp.json()["record"]["parameters"]["secret_key"]
+    old_encrypted_secret = create_resp.json()["record"]["secret_key"]
 
     # Update with new secret
     new_secret = "brand_new_secret_key"
@@ -469,24 +429,108 @@ def test_s3_storage_update_new_secret(client: TestClient, test_project):
         json={
             "name": "new-secret-test",
             "title": "New Secret Test",
-            "parameters": {
-                "bucket": "new-secret-bucket",
-                "region": "us-east-1",
-                "access_key": "AKIAIOSFODNN7EXAMPLE",
-                "secret_key": new_secret,
-            },
+            "bucket": "new-secret-bucket",
+            "region": "us-east-1",
+            "access_key": "AKIAIOSFODNN7EXAMPLE",
+            "secret_key": new_secret,
             "project_id": test_project["id"],
         },
     )
 
     assert update_resp.status_code == 200
     data = update_resp.json()
-    new_encrypted_secret = data["record"]["parameters"]["secret_key"]
+    new_encrypted_secret = data["record"]["secret_key"]
 
-    # New encrypted secret should be different from old
-    assert new_encrypted_secret != old_encrypted_secret
-    # New encrypted secret should not be plain text
+    # New secret should also be redacted
+    assert new_encrypted_secret == "__REDACTED__"
     assert new_encrypted_secret != new_secret
+
+
+def test_s3_storage_verify_encrypted(client: TestClient, test_project):
+    """Test the +verify-encrypted endpoint."""
+    plain_secret = "verify_me_123"
+
+    # Create storage
+    resp = client.post(
+        "/api/v1/s3_storages",
+        headers={"X-Project-Id": str(test_project["id"])},
+        json={
+            "name": "verify-test",
+            "title": "Verify Test",
+            "bucket": "verify-bucket",
+            "region": "us-east-1",
+            "access_key": "AKIA...",
+            "secret_key": plain_secret,
+            "project_id": test_project["id"],
+        },
+    )
+    assert resp.status_code == 200
+    storage_id = resp.json()["record"]["id"]
+
+    # Verify correct secret
+    verify_resp = client.post(
+        f"/api/v1/s3_storages/{storage_id}/+verify-encrypted",
+        headers={"X-Project-Id": str(test_project["id"])},
+        json={"secret_key": plain_secret},
+    )
+    assert verify_resp.status_code == 200
+    assert verify_resp.json() is True
+
+    # Verify incorrect secret
+    verify_resp = client.post(
+        f"/api/v1/s3_storages/{storage_id}/+verify-encrypted",
+        headers={"X-Project-Id": str(test_project["id"])},
+        json={"secret_key": "wrong_secret"},
+    )
+    assert verify_resp.status_code == 200
+    assert verify_resp.json() is False
+
+
+def test_s3_storage_update_with_redacted_secret(client: TestClient, test_project):
+    """Test updating with __REDACTED__ secret_key retains old secret."""
+    # Create storage
+    secret = "my_secret_key"
+    resp = client.post(
+        "/api/v1/s3_storages",
+        headers={"X-Project-Id": str(test_project["id"])},
+        json={
+            "name": "redacted-update-test",
+            "title": "Redacted Update Test",
+            "bucket": "redacted-bucket",
+            "region": "us-east-1",
+            "access_key": "AKIA...",
+            "secret_key": secret,
+            "project_id": test_project["id"],
+        },
+    )
+    assert resp.status_code == 200
+    storage_id = resp.json()["record"]["id"]
+
+    # Update with __REDACTED__
+    update_resp = client.put(
+        f"/api/v1/s3_storages/{storage_id}",
+        headers={"X-Project-Id": str(test_project["id"])},
+        json={
+            "name": "redacted-update-test",
+            "title": "Redacted Update Test",
+            "bucket": "redacted-bucket",
+            "region": "us-east-1",
+            "access_key": "AKIA...",
+            "secret_key": "__REDACTED__",
+            "project_id": test_project["id"],
+        },
+    )
+    assert update_resp.status_code == 200
+
+    # Verify secret is still valid using the verification endpoint
+    # Note: verification endpoint needs MINDWEAVER_ENABLE_TEST_VIEWS=true
+    verify_resp = client.post(
+        f"/api/v1/s3_storages/{storage_id}/+verify-encrypted",
+        headers={"X-Project-Id": str(test_project["id"])},
+        json={"secret_key": secret},
+    )
+    assert verify_resp.status_code == 200
+    assert verify_resp.json() is True
 
 
 def test_list_s3_storages_without_project_id_returns_empty(
@@ -499,12 +543,10 @@ def test_list_s3_storages_without_project_id_returns_empty(
         json={
             "name": "test-storage",
             "title": "Test Storage",
-            "parameters": {
-                "bucket": "test-bucket",
-                "region": "us-east-1",
-                "access_key": "AKIAIOSFODNN7EXAMPLE",
-                "secret_key": "test_secret",
-            },
+            "bucket": "test-bucket",
+            "region": "us-east-1",
+            "access_key": "AKIAIOSFODNN7EXAMPLE",
+            "secret_key": "test_secret",
             "project_id": test_project["id"],
         },
         headers={"X-Project-Id": str(test_project["id"])},
