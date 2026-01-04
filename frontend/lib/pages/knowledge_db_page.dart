@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../providers/knowledge_db_provider.dart';
-import '../providers/ontology_provider.dart';
 import '../providers/project_provider.dart';
 import '../models/knowledge_db.dart';
 
 import '../widgets/large_dialog.dart';
 import '../widgets/project_pill.dart';
+import '../widgets/dynamic_form.dart';
+import '../providers/form_provider.dart';
 
 class KnowledgeDbPage extends ConsumerWidget {
   const KnowledgeDbPage({super.key});
@@ -40,184 +41,81 @@ class KnowledgeDbPage extends ConsumerWidget {
   }
 
   void _showCreateDBDialog(BuildContext context, WidgetRef ref) {
-    final nameController = TextEditingController();
-    final titleController = TextEditingController();
-    final descController = TextEditingController();
-    String selectedType = 'passage-graph';
-    int? selectedOntologyId;
-    int? selectedProjectId = ref.read(currentProjectProvider)?.id;
-
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => Consumer(
-          builder: (context, ref, _) {
-            final ontologiesAsync = ref.watch(ontologyListProvider);
-            final projectsAsync = ref.watch(projectListProvider);
-            return LargeDialog(
-              title: 'Create Knowledge Database',
-              actions: [
-                OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 16,
-                    ),
+      builder: (context) => Consumer(
+        builder: (context, ref, _) {
+          final schemaAsync = ref.watch(
+            createFormSchemaProvider('/api/v1/knowledge_dbs'),
+          );
+          final formKey = GlobalKey<DynamicFormState>();
+
+          return LargeDialog(
+            title: 'Create Knowledge Database',
+            actions: [
+              OutlinedButton(
+                onPressed: () => Navigator.pop(context),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 16,
                   ),
-                  child: const Text('Cancel'),
                 ),
-                ElevatedButton(
-                  onPressed: () async {
-                    try {
-                      final newDb = KnowledgeDB(
-                        name: nameController.text,
-                        title: titleController.text,
-                        description: descController.text,
-                        type: selectedType,
-                        ontology_id: selectedOntologyId,
-                        parameters: {},
-                        project_id: selectedProjectId,
-                      );
-                      await ref
-                          .read(knowledgeDBListProvider.notifier)
-                          .createDB(newDb);
-                      ref.invalidate(knowledgeDBListProvider);
-                      if (context.mounted) Navigator.pop(context);
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Error creating database: $e'),
-                          ),
-                        );
-                      }
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF646CFF),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 16,
-                    ),
-                  ),
-                  child: const Text('Create'),
-                ),
-              ],
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  projectsAsync.when(
-                    data: (projects) => DropdownButtonFormField<int>(
-                      value: selectedProjectId,
-                      decoration: const InputDecoration(labelText: 'Project'),
-                      items: projects
-                          .map(
-                            (p) => DropdownMenuItem(
-                              value: p.id,
-                              child: Text(p.title),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (val) =>
-                          setState(() => selectedProjectId = val),
-                    ),
-                    loading: () => const LinearProgressIndicator(),
-                    error: (err, _) => Text('Error loading projects: $err'),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: nameController,
-                          decoration: const InputDecoration(
-                            labelText: 'Name (ID)',
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: TextField(
-                          controller: titleController,
-                          decoration: const InputDecoration(labelText: 'Title'),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: descController,
-                    decoration: const InputDecoration(labelText: 'Description'),
-                  ),
-                  const SizedBox(height: 24),
-                  const Divider(),
-                  const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          value: selectedType,
-                          decoration: const InputDecoration(labelText: 'Type'),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'passage-graph',
-                              child: Text('Passage Graph'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'tree-graph',
-                              child: Text('Tree Graph'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'knowledge-graph',
-                              child: Text('Knowledge Graph'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'textual-knowledge-graph',
-                              child: Text('Textual Knowledge Graph'),
-                            ),
-                          ],
-                          onChanged: (val) =>
-                              setState(() => selectedType = val!),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: ontologiesAsync.when(
-                          data: (ontologies) => DropdownButtonFormField<int?>(
-                            value: selectedOntologyId,
-                            decoration: const InputDecoration(
-                              labelText: 'Ontology (Optional)',
-                            ),
-                            items: [
-                              const DropdownMenuItem(
-                                value: null,
-                                child: Text('None'),
-                              ),
-                              ...ontologies.map(
-                                (o) => DropdownMenuItem(
-                                  value: o.id,
-                                  child: Text(o.title),
-                                ),
-                              ),
-                            ],
-                            onChanged: (val) =>
-                                setState(() => selectedOntologyId = val),
-                          ),
-                          loading: () => const LinearProgressIndicator(),
-                          error: (err, _) =>
-                              Text('Error loading ontologies: $err'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                child: const Text('Cancel'),
               ),
-            );
-          },
-        ),
+              ElevatedButton(
+                onPressed: () => formKey.currentState?.submit(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF646CFF),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 16,
+                  ),
+                ),
+                child: const Text('Create'),
+              ),
+            ],
+            child: schemaAsync.when(
+              data: (schema) => DynamicForm(
+                key: formKey,
+                schema: schema,
+                initialValues: {
+                  'project_id': ref.read(currentProjectProvider)?.id,
+                  'parameters': <String, dynamic>{},
+                },
+                onSaved: (data) async {
+                  try {
+                    final newDb = KnowledgeDB.fromJson({
+                      ...data,
+                      if (!data.containsKey('parameters'))
+                        'parameters': <String, dynamic>{},
+                    });
+                    await ref
+                        .read(knowledgeDBListProvider.notifier)
+                        .createDB(newDb);
+                    ref.invalidate(knowledgeDBListProvider);
+                    if (context.mounted) Navigator.pop(context);
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error creating database: $e')),
+                      );
+                    }
+                  }
+                },
+              ),
+              loading: () => const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32.0),
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+              error: (err, _) =>
+                  Center(child: Text('Error loading form: $err')),
+            ),
+          );
+        },
       ),
     );
   }
@@ -227,184 +125,78 @@ class KnowledgeDbPage extends ConsumerWidget {
     WidgetRef ref,
     KnowledgeDB db,
   ) {
-    final nameController = TextEditingController(text: db.name);
-    final titleController = TextEditingController(text: db.title);
-    final descController = TextEditingController(text: db.description);
-    String selectedType = db.type;
-    int? selectedOntologyId = db.ontology_id;
-    int? selectedProjectId = db.project_id;
-
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => Consumer(
-          builder: (context, ref, _) {
-            final ontologiesAsync = ref.watch(ontologyListProvider);
-            final projectsAsync = ref.watch(projectListProvider);
-            return LargeDialog(
-              title: 'Edit Knowledge Database',
-              actions: [
-                OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 16,
-                    ),
+      builder: (context) => Consumer(
+        builder: (context, ref, _) {
+          final schemaAsync = ref.watch(
+            editFormSchemaProvider('/api/v1/knowledge_dbs'),
+          );
+          final formKey = GlobalKey<DynamicFormState>();
+
+          return LargeDialog(
+            title: 'Edit Knowledge Database',
+            actions: [
+              OutlinedButton(
+                onPressed: () => Navigator.pop(context),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 16,
                   ),
-                  child: const Text('Cancel'),
                 ),
-                ElevatedButton(
-                  onPressed: () async {
-                    try {
-                      final updatedDb = db.copyWith(
-                        title: titleController.text,
-                        description: descController.text,
-                        type: selectedType,
-                        ontology_id: selectedOntologyId,
-                        project_id: selectedProjectId,
-                      );
-                      await ref
-                          .read(knowledgeDBListProvider.notifier)
-                          .updateDB(updatedDb);
-                      ref.invalidate(knowledgeDBListProvider);
-                      if (context.mounted) Navigator.pop(context);
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Error updating database: $e'),
-                          ),
-                        );
-                      }
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF646CFF),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 16,
-                    ),
-                  ),
-                  child: const Text('Save'),
-                ),
-              ],
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  projectsAsync.when(
-                    data: (projects) => DropdownButtonFormField<int>(
-                      value: selectedProjectId,
-                      decoration: const InputDecoration(labelText: 'Project'),
-                      items: projects
-                          .map(
-                            (p) => DropdownMenuItem(
-                              value: p.id,
-                              child: Text(p.title),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (val) =>
-                          setState(() => selectedProjectId = val),
-                    ),
-                    loading: () => const LinearProgressIndicator(),
-                    error: (err, _) => Text('Error loading projects: $err'),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: nameController,
-                          enabled: false,
-                          decoration: const InputDecoration(
-                            labelText: 'Name (ID)',
-                            filled: true,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: TextField(
-                          controller: titleController,
-                          decoration: const InputDecoration(labelText: 'Title'),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: descController,
-                    decoration: const InputDecoration(labelText: 'Description'),
-                  ),
-                  const SizedBox(height: 24),
-                  const Divider(),
-                  const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          value: selectedType,
-                          decoration: const InputDecoration(labelText: 'Type'),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'passage-graph',
-                              child: Text('Passage Graph'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'tree-graph',
-                              child: Text('Tree Graph'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'knowledge-graph',
-                              child: Text('Knowledge Graph'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'textual-knowledge-graph',
-                              child: Text('Textual Knowledge Graph'),
-                            ),
-                          ],
-                          onChanged: (val) =>
-                              setState(() => selectedType = val!),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: ontologiesAsync.when(
-                          data: (ontologies) => DropdownButtonFormField<int?>(
-                            value: selectedOntologyId,
-                            decoration: const InputDecoration(
-                              labelText: 'Ontology (Optional)',
-                            ),
-                            items: [
-                              const DropdownMenuItem(
-                                value: null,
-                                child: Text('None'),
-                              ),
-                              ...ontologies.map(
-                                (o) => DropdownMenuItem(
-                                  value: o.id,
-                                  child: Text(o.title),
-                                ),
-                              ),
-                            ],
-                            onChanged: (val) =>
-                                setState(() => selectedOntologyId = val),
-                          ),
-                          loading: () => const LinearProgressIndicator(),
-                          error: (err, _) =>
-                              Text('Error loading ontologies: $err'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                child: const Text('Cancel'),
               ),
-            );
-          },
-        ),
+              ElevatedButton(
+                onPressed: () => formKey.currentState?.submit(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF646CFF),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 16,
+                  ),
+                ),
+                child: const Text('Save'),
+              ),
+            ],
+            child: schemaAsync.when(
+              data: (schema) => DynamicForm(
+                key: formKey,
+                schema: schema,
+                isEdit: true,
+                initialValues: db.toJson(),
+                onSaved: (data) async {
+                  try {
+                    final updatedDb = KnowledgeDB.fromJson({
+                      ...db.toJson(),
+                      ...data,
+                    });
+                    await ref
+                        .read(knowledgeDBListProvider.notifier)
+                        .updateDB(updatedDb);
+                    ref.invalidate(knowledgeDBListProvider);
+                    if (context.mounted) Navigator.pop(context);
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error updating database: $e')),
+                      );
+                    }
+                  }
+                },
+              ),
+              loading: () => const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32.0),
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+              error: (err, _) =>
+                  Center(child: Text('Error loading form: $err')),
+            ),
+          );
+        },
       ),
     );
   }

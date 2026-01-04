@@ -180,9 +180,7 @@ class IngestionService(ProjectScopedService[Ingestion]):
         if not data_dict.get("data_source_id"):
             raise HTTPException(status_code=422, detail="Data source ID is required")
         if not data_dict.get("s3_storage_id"):
-            raise HTTPException(
-                status_code=422, detail="S3 storage ID is required"
-            )
+            raise HTTPException(status_code=422, detail="S3 storage ID is required")
         if not data_dict.get("storage_path"):
             raise HTTPException(status_code=422, detail="Storage path is required")
         if not data_dict.get("cron_schedule"):
