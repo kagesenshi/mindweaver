@@ -28,7 +28,6 @@ void main() {
           'id': 1,
           'name': 'S3 Storage',
           'title': 'My S3',
-          'bucket': 'my-bucket',
           'region': 'us-east-1',
           'access_key': 'AKIA...',
           'parameters': <String, dynamic>{},
@@ -50,7 +49,6 @@ void main() {
       final newStorage = S3Storage(
         name: 'New S3',
         title: 'New Storage',
-        bucket: 'new-bucket',
         region: 'us-east-1',
         access_key: 'xyz',
         parameters: {},
@@ -65,7 +63,7 @@ void main() {
       expect(mockClient.lastBody, isA<Map>());
       final body = mockClient.lastBody as Map<String, dynamic>;
       expect(body['name'], 'New S3');
-      expect(body['bucket'], 'new-bucket');
+      expect(body['name'], 'New S3');
     });
 
     test('updateStorage sends correct data', () async {
@@ -74,7 +72,6 @@ void main() {
         id: 11,
         name: 'Updated Storage',
         title: 'Title',
-        bucket: 'updated',
         region: 'us-east-1',
         access_key: 'xyz',
         parameters: {},
@@ -101,16 +98,16 @@ void main() {
 
     test('testConnection sends correct parameters', () async {
       final notifier = container.read(s3StorageListProvider.notifier);
-      final params = {'bucket': 'test'};
+      final params = {'region': 'us-east-1'};
 
       mockClient.setMockResponse({'status': 'connected'});
 
       final result = await notifier.testConnection(params);
 
       expect(mockClient.lastMethod, 'POST');
-      expect(mockClient.lastEndpoint, '/api/v1/s3_storages/test_connection');
+      expect(mockClient.lastEndpoint, '/api/v1/s3_storages/+test-connection');
       final body = mockClient.lastBody as Map<String, dynamic>;
-      expect(body['bucket'], 'test');
+      expect(body['region'], 'us-east-1');
       expect(result['status'], 'connected');
     });
   });

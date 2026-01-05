@@ -85,21 +85,27 @@ class MockApiClient implements APIClient {
       throw Exception('Mock Error');
     }
 
-    // For test connection which returns Map<String, dynamic> directly (wrapped in record)
-    if (endpoint.endsWith('/test_connection')) {
-      // Ideally the notifier expects the record to be the response map
-      // The real client returns APIResponse<T>, so we should return that.
-      // The notifier calls .record! on it.
-      return APIResponse<T>(
-        status: "success",
-        record: fromJsonT(mockResponse ?? {'status': 'success'}),
-      );
-    }
-
     return APIResponse<T>(
       status: "success",
       record: fromJsonT(mockResponse ?? data),
     );
+  }
+
+  @override
+  Future<Map<String, dynamic>> postRaw(
+    String endpoint,
+    dynamic data, {
+    Map<String, String>? headers,
+  }) async {
+    lastMethod = 'POST_RAW';
+    lastEndpoint = endpoint;
+    lastBody = data;
+
+    if (shouldThrowError) {
+      throw Exception('Mock Error');
+    }
+
+    return (mockResponse ?? {'status': 'success'}) as Map<String, dynamic>;
   }
 
   @override

@@ -18,23 +18,10 @@ from botocore.exceptions import ClientError, NoCredentialsError
 class S3Config(BaseModel):
     """Configuration schema for S3-based storage."""
 
-    bucket: str
     region: str
     access_key: str
     secret_key: Optional[str] = None
     endpoint_url: Optional[str] = None  # For S3-compatible services
-
-    @field_validator("bucket")
-    @classmethod
-    def validate_bucket(cls, v: str) -> str:
-        if not v or not v.strip():
-            raise ValueError("Bucket name cannot be empty")
-        # Basic bucket name validation (lowercase, no spaces, etc.)
-        if not v.replace("-", "").replace(".", "").isalnum():
-            raise ValueError(
-                "Bucket name must contain only lowercase letters, numbers, hyphens, and dots"
-            )
-        return v.strip().lower()
 
     @field_validator("region")
     @classmethod
@@ -64,7 +51,6 @@ class S3Config(BaseModel):
 # Database model
 class S3Storage(ProjectScopedNamedBase, table=True):
     __tablename__ = "mw_s3_storage"
-    bucket: str = Field(index=True)
     region: str
     access_key: str
     secret_key: Optional[str] = Field(default=None)
@@ -77,7 +63,6 @@ class VerifyEncryptedRequest(BaseModel):
 
 
 class TestConnectionRequest(BaseModel):
-    bucket: Optional[str] = None
     region: Optional[str] = None
     access_key: Optional[str] = None
     secret_key: Optional[str] = None
@@ -259,7 +244,6 @@ async def test_connection(
     If storage_id is provided and secret_key is missing, use stored secret.
     """
     # Initialize variables from request
-    bucket = data.bucket or data.parameters.get("bucket")
     region = data.region or data.parameters.get("region")
     access_key = data.access_key or data.parameters.get("access_key")
     secret_key = data.secret_key or data.parameters.get("secret_key")
@@ -278,8 +262,6 @@ async def test_connection(
                 pass
 
     try:
-        if not bucket:
-            raise ValueError("Bucket name is required")
         if not region:
             raise ValueError("Region is required")
         if not access_key:
@@ -301,22 +283,20 @@ async def test_connection(
 
             s3_client = boto3.client("s3", **s3_config)
 
-            # Try to head the bucket to verify access
-            s3_client.head_bucket(Bucket=bucket)
+            # Try to list buckets to verify access
+            s3_client.list_buckets()
 
             return {
                 "status": "success",
-                "message": f"Successfully connected to S3 bucket '{bucket}' in region '{region}'",
+                "message": f"Successfully connected to S3 in region '{region}'",
             }
 
         except NoCredentialsError:
             raise ValueError("Invalid AWS credentials")
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code", "Unknown")
-            if error_code == "404":
-                raise ValueError(f"Bucket '{bucket}' not found")
-            elif error_code == "403":
-                raise ValueError(f"Access denied to bucket '{bucket}'")
+            if error_code == "403":
+                raise ValueError(f"Access denied: {str(e)}")
             else:
                 raise ValueError(f"S3 connection failed: {str(e)}")
 

@@ -27,6 +27,18 @@ class ErrorDetail(BaseModel):
     type: str | None = None
 
 
+class ValidationErrorDetail(BaseModel):
+    msg: str
+    type: str
+    loc: list[str]
+
+
+class Error(BaseModel):
+    status: str
+    type: str
+    detail: str | ValidationErrorDetail
+
+
 STATUSES = Literal["success", "error"]
 
 

@@ -92,13 +92,35 @@ class APIClient {
         )
         .timeout(Duration(milliseconds: timeout));
 
+    return APIResponse<T>.fromJson(jsonDecode(response.body), fromJsonT);
+  }
+
+  Future<Map<String, dynamic>> postRaw(
+    String endpoint,
+    dynamic data, {
+    Map<String, String>? headers,
+  }) async {
+    final headersMap = {..._headers, ...?headers};
+    if (getToken != null) {
+      final token = await getToken!();
+      if (token != null) headersMap['Authorization'] = 'Bearer $token';
+    }
+
+    final response = await http
+        .post(
+          Uri.parse('$baseUrl$endpoint'),
+          headers: headersMap,
+          body: jsonEncode(data),
+        )
+        .timeout(Duration(milliseconds: timeout));
+
     if (response.statusCode != 200 && response.statusCode != 201) {
       throw Exception(
-        'Failed to create record: ${response.statusCode} ${response.body}',
+        'Request failed: ${response.statusCode} ${response.body}',
       );
     }
 
-    return APIResponse<T>.fromJson(jsonDecode(response.body), fromJsonT);
+    return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
   Future<APIResponse<T>> put<T>(

@@ -205,10 +205,8 @@ def test_create_ingestion_incremental_missing_fields(client: TestClient, test_pr
     error = resp.json()
     assert "detail" in error
     # Check that the error mentions the validation failure
-    assert (
-        "primary keys" in error["detail"].lower()
-        or "incremental" in error["detail"].lower()
-    )
+    detail_str = str(error["detail"]).lower()
+    assert "primary keys" in detail_str or "incremental" in detail_str
 
 
 def test_execute_ingestion(client: TestClient, test_project):
@@ -855,6 +853,7 @@ def test_create_ingestion_with_invalid_cron_schedule(client: TestClient, test_pr
                     "table_name": f"invalid_cron_table_{i}",
                     "ingestion_type": "full_refresh",
                 },
+                "project_id": test_project["id"],
             },
         )
         # Should fail with validation error

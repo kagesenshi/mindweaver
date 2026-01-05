@@ -35,7 +35,7 @@ def test_crud(crud_client: TestClient):
     resp = client.put(f"/api/v1/models/{record_id}", json=update_request)
 
     assert resp.status_code == 422
-    assert "immutable" in resp.json()["detail"][0]["msg"]
+    assert "immutable" in resp.json()["detail"]
 
     # Now update without changing name
     update_request["name"] = record["name"]
@@ -151,7 +151,7 @@ def test_project_scoped_crud(project_scoped_crud_client: TestClient):
         headers={"X-Project-Id": str(project_id)},
     )
     assert resp.status_code == 422
-    assert "immutable" in resp.json()["detail"][0]["msg"]
+    assert "immutable" in resp.json()["detail"]
 
     # Now update without changing name
     update_request["name"] = record["name"]
@@ -232,7 +232,7 @@ def test_project_id_immutability(project_scoped_crud_client: TestClient):
         headers={"X-Project-Id": str(p1_id)},
     )
     assert resp.status_code == 422
-    assert "immutable" in resp.json()["detail"][0]["msg"]
+    assert "immutable" in resp.json()["detail"]
 
     # Verify that updating without changing project_id still works
     resp = client.put(

@@ -10,7 +10,6 @@ class S3Storage {
   final DateTime? modified;
   final String name;
   final String title;
-  final String bucket;
   final String region;
   final String access_key;
   final String? secret_key;
@@ -25,7 +24,6 @@ class S3Storage {
     this.modified,
     required this.name,
     required this.title,
-    required this.bucket,
     required this.region,
     required this.access_key,
     this.secret_key,
@@ -41,7 +39,6 @@ class S3Storage {
     DateTime? modified,
     String? name,
     String? title,
-    String? bucket,
     String? region,
     String? access_key,
     String? secret_key,
@@ -56,7 +53,6 @@ class S3Storage {
       modified: modified ?? this.modified,
       name: name ?? this.name,
       title: title ?? this.title,
-      bucket: bucket ?? this.bucket,
       region: region ?? this.region,
       access_key: access_key ?? this.access_key,
       secret_key: secret_key ?? this.secret_key,

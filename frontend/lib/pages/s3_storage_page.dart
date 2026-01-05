@@ -41,7 +41,6 @@ class S3StoragePage extends ConsumerWidget {
   void _showCreateStorageDialog(BuildContext context, WidgetRef ref) {
     final nameController = TextEditingController();
     final titleController = TextEditingController();
-    final bucketController = TextEditingController();
     final regionController = TextEditingController(text: 'us-east-1');
     final accessKeyController = TextEditingController();
     final secretKeyController = TextEditingController();
@@ -72,7 +71,6 @@ class S3StoragePage extends ConsumerWidget {
                 ElevatedButton(
                   onPressed: () async {
                     final params = {
-                      'bucket': bucketController.text,
                       'region': regionController.text,
                       'access_key': accessKeyController.text,
                       'secret_key': secretKeyController.text,
@@ -117,7 +115,6 @@ class S3StoragePage extends ConsumerWidget {
                     final storage = S3Storage(
                       name: nameController.text,
                       title: titleController.text,
-                      bucket: bucketController.text,
                       region: regionController.text,
                       access_key: accessKeyController.text,
                       secret_key: secretKeyController.text,
@@ -203,26 +200,9 @@ class S3StoragePage extends ConsumerWidget {
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: bucketController,
-                          decoration: const InputDecoration(
-                            labelText: 'Bucket',
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: TextField(
-                          controller: regionController,
-                          decoration: const InputDecoration(
-                            labelText: 'Region',
-                          ),
-                        ),
-                      ),
-                    ],
+                  TextField(
+                    controller: regionController,
+                    decoration: const InputDecoration(labelText: 'Region'),
                   ),
                   const SizedBox(height: 16),
                   Row(
@@ -271,7 +251,6 @@ class S3StoragePage extends ConsumerWidget {
   ) {
     final nameController = TextEditingController(text: storage.name);
     final titleController = TextEditingController(text: storage.title);
-    final bucketController = TextEditingController(text: storage.bucket);
     final regionController = TextEditingController(text: storage.region);
     final accessKeyController = TextEditingController(text: storage.access_key);
     final secretKeyController = TextEditingController(); // Empty for security
@@ -306,7 +285,6 @@ class S3StoragePage extends ConsumerWidget {
                     try {
                       final updatedStorage = storage.copyWith(
                         title: titleController.text,
-                        bucket: bucketController.text,
                         region: regionController.text,
                         access_key: accessKeyController.text,
                         secret_key: secretKeyController.text.isEmpty
@@ -394,26 +372,9 @@ class S3StoragePage extends ConsumerWidget {
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: bucketController,
-                          decoration: const InputDecoration(
-                            labelText: 'Bucket',
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: TextField(
-                          controller: regionController,
-                          decoration: const InputDecoration(
-                            labelText: 'Region',
-                          ),
-                        ),
-                      ),
-                    ],
+                  TextField(
+                    controller: regionController,
+                    decoration: const InputDecoration(labelText: 'Region'),
                   ),
                   const SizedBox(height: 16),
                   Row(
@@ -478,7 +439,7 @@ class _StoragesList extends ConsumerWidget {
           child: ListTile(
             leading: const FaIcon(FontAwesomeIcons.server, color: Colors.blue),
             title: Text(st.title),
-            subtitle: Text('S3 Bucket: ${st.bucket} • ${st.name}'),
+            subtitle: Text('Region: ${st.region} • ${st.name}'),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
