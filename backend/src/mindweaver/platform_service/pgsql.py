@@ -1,6 +1,8 @@
 from mindweaver.platform_service.base import PlatformBase, PlatformService
 from sqlmodel import Field
 from typing import Any
+from pydantic import field_validator, ValidationError
+from mindweaver.fw.exc import FieldValidationError
 import os
 
 
@@ -19,6 +21,18 @@ class PgSqlPlatform(PlatformBase, table=True):
     # Extensions
     enable_citus: bool = Field(default=False)
     enable_postgis: bool = Field(default=False)
+
+    @field_validator("backup_destination")
+    @classmethod
+    def validate_backup_destination(cls, v: str | None) -> str | None:
+        if v:
+            if not v.startswith("s3://"):
+                raise ValueError(
+                    "Backup destination must be a valid S3 URI (starts with s3://)"
+                )
+            if v == "s3://":
+                raise ValueError("Backup destination must include a bucket name")
+        return v
 
 
 class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
@@ -57,6 +71,16 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
             for k, v in s3_storage.parameters.items():
                 vars[f"s3_{k}"] = v
         return vars
+
+    async def validate_data(self, data: Any) -> Any:
+        try:
+            self.model_class().model_validate(data.model_dump(), from_attributes=True)
+        except ValidationError as e:
+            error = e.errors()[0]
+            msg = error["msg"]
+            loc = error["loc"]
+            raise FieldValidationError(field_location=list(loc), message=msg)
+        return data
 
 
 router = PgSqlPlatformService.router()

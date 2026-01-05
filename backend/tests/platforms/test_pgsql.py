@@ -107,3 +107,83 @@ def test_pgsql_platform_crud(client: TestClient, test_project):
         headers={"X-Project-Id": str(test_project["id"])},
     )
     resp.raise_for_status()
+
+
+def test_pgsql_backup_destination_validation(client: TestClient, test_project):
+    # Setup K8sCluster
+    cluster_data = {
+        "name": "test-cluster-pg-val",
+        "title": "Test Cluster PG Val",
+        "type": "remote",
+        "kubeconfig": 'apiVersion: v1\nkind: Config\nclusters: []\ncontexts: []\ncurrent-context: ""\nusers: []',
+        "project_id": test_project["id"],
+    }
+    resp = client.post(
+        "/api/v1/k8s_clusters",
+        json=cluster_data,
+        headers={"X-Project-Id": str(test_project["id"])},
+    )
+    resp.raise_for_status()
+    cluster_id = resp.json()["record"]["id"]
+
+    # Base data for PgSqlPlatform
+    base_data = {
+        "name": "my-pg",
+        "title": "My Postgres",
+        "project_id": test_project["id"],
+        "k8s_cluster_id": cluster_id,
+        "enable_backup": True,
+    }
+
+    # 1. Valid S3 URI
+    data = base_data.copy()
+    data["name"] = "pg-valid"
+    data["backup_destination"] = "s3://my-bucket/backups"
+    resp = client.post(
+        "/api/v1/platform/pgsql",
+        json=data,
+        headers={"X-Project-Id": str(test_project["id"])},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["record"]["backup_destination"] == "s3://my-bucket/backups"
+
+    # 2. Invalid protocol
+    data = base_data.copy()
+    data["name"] = "pg-invalid-protocol"
+    data["backup_destination"] = "http://my-bucket/backups"
+    resp = client.post(
+        "/api/v1/platform/pgsql",
+        json=data,
+        headers={"X-Project-Id": str(test_project["id"])},
+    )
+    assert resp.status_code == 422
+    assert any(
+        "Backup destination must be a valid S3 URI" in error["msg"]
+        for error in resp.json()["detail"]
+    )
+
+    # 3. Empty bucket
+    data = base_data.copy()
+    data["name"] = "pg-empty-bucket"
+    data["backup_destination"] = "s3://"
+    resp = client.post(
+        "/api/v1/platform/pgsql",
+        json=data,
+        headers={"X-Project-Id": str(test_project["id"])},
+    )
+    assert resp.status_code == 422
+    assert any(
+        "Backup destination must include a bucket name" in error["msg"]
+        for error in resp.json()["detail"]
+    )
+
+    # 4. None/Empty string (Success)
+    data = base_data.copy()
+    data["name"] = "pg-none"
+    data["backup_destination"] = None
+    resp = client.post(
+        "/api/v1/platform/pgsql",
+        json=data,
+        headers={"X-Project-Id": str(test_project["id"])},
+    )
+    assert resp.status_code == 200
