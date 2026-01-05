@@ -76,6 +76,7 @@ the tests first before implementing the fixes.
 - Use `SQLModel` for all database-backed models.
 - Implement field immutability where necessary (e.g., `project_id` or `name` should often be immutable after creation).
 - Template files for Kubernetes manifests should use the `.yml.j2` extension (Jinja2).
+- Always use timezone aware column in database-based models.
 
 ---
 

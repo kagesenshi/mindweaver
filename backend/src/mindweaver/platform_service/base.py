@@ -1,21 +1,37 @@
-from mindweaver.service.base import ProjectScopedNamedBase, ProjectScopedService
-from mindweaver.service.k8s_cluster import K8sCluster
-from sqlmodel import Field, select
-from typing import TypeVar
-from sqlmodel.ext.asyncio.session import AsyncSession
-import jinja2 as j2
-import os
-import yaml
-import tempfile
-import asyncio
-import logging
-from typing import Annotated, Any
+from datetime import datetime
 import fastapi
 from fastapi import Depends
+import jinja2 as j2
 import kubernetes
 from kubernetes import client, config, utils
+import logging
+from mindweaver.fw.model import Base
+from mindweaver.service.base import ProjectScopedNamedBase, ProjectScopedService
+from mindweaver.service.k8s_cluster import K8sCluster
+import os
+from sqlalchemy import Column, DateTime, String
+from sqlalchemy_utils import JSONType
+from sqlmodel import Field, select
+from sqlmodel.ext.asyncio.session import AsyncSession
+import tempfile
+from typing import Annotated, Any, Literal, Optional, TypeVar
+import yaml
 
 logger = logging.getLogger(__name__)
+
+
+class PlatformStateBase(Base):
+    """Base class for platform deployment status tracking"""
+
+    status: Literal["online", "offline", "pending", "error"] = Field(
+        default="pending", index=True, sa_type=String()
+    )
+    active: bool = Field(default=True)
+    message: Optional[str] = Field(default=None)
+    last_heartbeat: Optional[datetime] = Field(
+        default=None, sa_type=DateTime(timezone=True)
+    )
+    extra_data: dict[str, Any] = Field(default_factory=dict, sa_type=JSONType())
 
 
 class PlatformBase(ProjectScopedNamedBase):
