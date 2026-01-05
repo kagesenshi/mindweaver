@@ -34,8 +34,8 @@ class PlatformService(ProjectScopedService[T]):
         """returns the variables to be used in the template"""
         return model.model_dump()
 
-    async def apply(self, model: T):
-        """used to deploy/upgrade the service"""
+    async def render_manifests(self, model: T) -> str:
+        """renders the manifests from the template directory"""
         if not self.template_directory:
             raise ValueError(
                 f"template_directory not set for {self.__class__.__name__}"
@@ -62,15 +62,33 @@ class PlatformService(ProjectScopedService[T]):
 
         if not rendered_manifests:
             logger.warning(f"No templates found in {self.template_directory}")
-            return
+            return ""
 
-        full_manifest = "---\n".join(rendered_manifests)
+        return "---\n".join(rendered_manifests)
+
+    async def apply(self, model: T):
+        """used to deploy/upgrade the service"""
+        full_manifest = await self.render_manifests(model)
+        if not full_manifest:
+            return
 
         # Get kubeconfig
         kubeconfig = await self.kubeconfig(model)
 
         # Apply to cluster
         await self._apply_to_cluster(kubeconfig, full_manifest)
+
+    async def decommission(self, model: T):
+        """used to remove the applied components"""
+        full_manifest = await self.render_manifests(model)
+        if not full_manifest:
+            return
+
+        # Get kubeconfig
+        kubeconfig = await self.kubeconfig(model)
+
+        # Decommission from cluster
+        await self._decommission_from_cluster(kubeconfig, full_manifest)
 
     async def _apply_to_cluster(self, kubeconfig: str, manifest: str):
         """Applies the manifest to the kubernetes cluster using python kubernetes library"""
@@ -109,6 +127,62 @@ class PlatformService(ProjectScopedService[T]):
             logger.error(f"Failed to apply manifests: {e}")
             raise RuntimeError(f"Failed to apply manifests to cluster: {e}")
 
+    async def _decommission_from_cluster(self, kubeconfig: str, manifest: str):
+        """Removes the resources defined in the manifest from the kubernetes cluster"""
+
+        def _decommission():
+            with tempfile.NamedTemporaryFile(mode="w") as kf:
+                kf.write(kubeconfig)
+                kf.flush()
+
+                k8s_client = config.new_client_from_config(config_file=kf.name)
+                from kubernetes import dynamic
+
+                dynamic_client = dynamic.DynamicClient(k8s_client)
+
+                for doc in yaml.safe_load_all(manifest):
+                    if not doc:
+                        continue
+
+                    kind = doc.get("kind")
+                    api_version = doc.get("apiVersion")
+                    metadata = doc.get("metadata", {})
+                    name = metadata.get("name")
+                    namespace = metadata.get("namespace")
+
+                    if not kind or not name:
+                        continue
+
+                    try:
+                        resource = dynamic_client.resources.get(
+                            api_version=api_version, kind=kind
+                        )
+                        resource.delete(name=name, namespace=namespace)
+                        logger.info(
+                            f"Deleted {kind} {name}"
+                            + (f" in namespace {namespace}" if namespace else "")
+                        )
+                    except kubernetes.client.exceptions.ApiException as e:
+                        if e.status == 404:
+                            logger.info(
+                                f"Resource {kind} {name}"
+                                + (f" in namespace {namespace}" if namespace else "")
+                                + " not found, skipping"
+                            )
+                        else:
+                            logger.error(f"Failed to delete {kind} {name}: {e}")
+                            raise
+                    except Exception as e:
+                        logger.error(f"Error deleting {kind} {name}: {e}")
+                        raise
+
+        try:
+            await asyncio.to_thread(_decommission)
+            logger.info("Successfully decommissioned resources from cluster")
+        except Exception as e:
+            logger.error(f"Failed to decommission resources: {e}")
+            raise RuntimeError(f"Failed to decommission resources from cluster: {e}")
+
     @classmethod
     def register_views(
         cls, router: fastapi.APIRouter, service_path: str, model_path: str
@@ -131,6 +205,19 @@ class PlatformService(ProjectScopedService[T]):
             model: Annotated[model_class, Depends(cls.get_model)],  # type: ignore
         ):
             await svc.apply(model)
+            return {"status": "success"}
+
+        @router.post(
+            f"{model_path}/decommission",
+            operation_id=f"mw-decommission-{entity_type}",
+            dependencies=cls.extra_dependencies(),
+            tags=path_tags,
+        )
+        async def decommission(
+            svc: Annotated[cls, Depends(cls.get_service)],  # type: ignore
+            model: Annotated[model_class, Depends(cls.get_model)],  # type: ignore
+        ):
+            await svc.decommission(model)
             return {"status": "success"}
 
     async def k8s_cluster(self, model: T) -> K8sCluster:
