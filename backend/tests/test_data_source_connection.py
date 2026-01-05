@@ -17,7 +17,7 @@ def test_data_source_test_connection_api_success(client: TestClient, test_projec
         mock_client.get.return_value = mock_response
 
         test_resp = client.post(
-            "/api/v1/data_sources/test_connection",
+            "/api/v1/data_sources/+test-connection",
             headers={"X-Project-Id": str(test_project["id"])},
             json={
                 "type": "API",
@@ -45,7 +45,7 @@ def test_data_source_test_connection_database_success(client: TestClient, test_p
         mock_engine.connect.return_value.__enter__.return_value = mock_connection
 
         test_resp = client.post(
-            "/api/v1/data_sources/test_connection",
+            "/api/v1/data_sources/+test-connection",
             headers={"X-Project-Id": str(test_project["id"])},
             json={
                 "type": "Database",
@@ -80,7 +80,7 @@ def test_data_source_test_connection_web_scraper_success(
         mock_client.get.return_value = mock_response
 
         test_resp = client.post(
-            "/api/v1/data_sources/test_connection",
+            "/api/v1/data_sources/+test-connection",
             headers={"X-Project-Id": str(test_project["id"])},
             json={
                 "type": "Web Scraper",
@@ -100,7 +100,7 @@ def test_data_source_test_connection_web_scraper_success(
 def test_data_source_test_connection_file_upload(client: TestClient, test_project):
     """Test file upload connection (should always succeed)."""
     test_resp = client.post(
-        "/api/v1/data_sources/test_connection",
+        "/api/v1/data_sources/+test-connection",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "type": "File Upload",
@@ -127,7 +127,7 @@ def test_data_source_test_connection_api_unreachable(client: TestClient, test_pr
         mock_client.get.side_effect = httpx.ConnectError("Connection refused")
 
         test_resp = client.post(
-            "/api/v1/data_sources/test_connection",
+            "/api/v1/data_sources/+test-connection",
             headers={"X-Project-Id": str(test_project["id"])},
             json={
                 "type": "API",
@@ -158,7 +158,7 @@ def test_data_source_test_connection_database_invalid_credentials(
         )
 
         test_resp = client.post(
-            "/api/v1/data_sources/test_connection",
+            "/api/v1/data_sources/+test-connection",
             headers={"X-Project-Id": str(test_project["id"])},
             json={
                 "type": "Database",
@@ -190,7 +190,7 @@ def test_data_source_test_connection_web_scraper_404(client: TestClient, test_pr
         mock_client.get.return_value = mock_response
 
         test_resp = client.post(
-            "/api/v1/data_sources/test_connection",
+            "/api/v1/data_sources/+test-connection",
             headers={"X-Project-Id": str(test_project["id"])},
             json={
                 "type": "Web Scraper",
@@ -240,7 +240,7 @@ def test_data_source_test_connection_with_stored_password(
         mock_engine.connect.return_value.__enter__.return_value = mock_connection
 
         test_resp = client.post(
-            "/api/v1/data_sources/test_connection",
+            "/api/v1/data_sources/+test-connection",
             headers={"X-Project-Id": str(test_project["id"])},
             json={
                 "type": "Database",
@@ -278,7 +278,7 @@ def test_data_source_test_connection_database_different_types(
             mock_engine.connect.return_value.__enter__.return_value = mock_connection
 
             test_resp = client.post(
-                "/api/v1/data_sources/test_connection",
+                "/api/v1/data_sources/+test-connection",
                 headers={"X-Project-Id": str(test_project["id"])},
                 json={
                     "type": "Database",
@@ -311,7 +311,7 @@ def test_data_source_test_connection_api_with_auth_header(
         mock_client.get.return_value = mock_response
 
         test_resp = client.post(
-            "/api/v1/data_sources/test_connection",
+            "/api/v1/data_sources/+test-connection",
             headers={"X-Project-Id": str(test_project["id"])},
             json={
                 "type": "API",

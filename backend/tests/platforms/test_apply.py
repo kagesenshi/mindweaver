@@ -73,7 +73,7 @@ def test_platform_service_apply(client: TestClient, test_project):
             ) as mock_create:
 
                 resp = client.post(
-                    f"/api/v1/mock_apply_platform_models/{model_id}/apply",
+                    f"/api/v1/mock_apply_platform_models/{model_id}/+apply",
                     headers={"X-Project-Id": str(test_project["id"])},
                 )
                 resp.raise_for_status()
@@ -123,6 +123,6 @@ def test_platform_service_apply_missing_dir(client: TestClient, test_project):
     ):
         with pytest.raises(ValueError, match="does not exist"):
             client.post(
-                f"/api/v1/mock_apply_platform_models/{model_id}/apply",
+                f"/api/v1/mock_apply_platform_models/{model_id}/+apply",
                 headers={"X-Project-Id": str(test_project["id"])},
             )

@@ -81,7 +81,7 @@ def test_platform_service_decommission(client: TestClient, test_project):
                 mock_dynamic_client.resources.get.return_value = mock_resource
 
                 resp = client.post(
-                    f"/api/v1/mock_decommission_platform_models/{model_id}/decommission",
+                    f"/api/v1/mock_decommission_platform_models/{model_id}/+decommission",
                     headers={"X-Project-Id": str(test_project["id"])},
                 )
                 resp.raise_for_status()

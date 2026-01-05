@@ -11,3 +11,4 @@ description: this rule applies on actions related to custom entity type
   the form required is complex  (more than simple data entry form, such as having 
   conditional display of fields) and the developer requested to use dynamic form in 
   such scenario
+- Custom views should have '+' prefix to differentiate it from collections. eg: +apply, +decommission, +test-connection

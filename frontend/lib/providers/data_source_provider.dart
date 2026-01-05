@@ -69,7 +69,7 @@ class DataSourceListNotifier
     try {
       final client = ref.read(apiClientProvider);
       final response = await client.post(
-        '/api/v1/data_sources/test_connection',
+        '/api/v1/data_sources/+test-connection',
         {'type': type, 'parameters': params, 'source_id': sourceId},
         (json) => json as Map<String, dynamic>,
       );

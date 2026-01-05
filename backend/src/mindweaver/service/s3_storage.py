@@ -247,7 +247,7 @@ router = S3StorageService.router()
 
 
 @router.post(
-    f"{S3StorageService.service_path()}/test_connection",
+    f"{S3StorageService.service_path()}/+test-connection",
     tags=S3StorageService.path_tags(),
 )
 async def test_connection(

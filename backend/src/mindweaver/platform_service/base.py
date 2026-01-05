@@ -195,7 +195,7 @@ class PlatformService(ProjectScopedService[T]):
         path_tags = cls.path_tags()
 
         @router.post(
-            f"{model_path}/apply",
+            f"{model_path}/+apply",
             operation_id=f"mw-apply-{entity_type}",
             dependencies=cls.extra_dependencies(),
             tags=path_tags,
@@ -208,7 +208,7 @@ class PlatformService(ProjectScopedService[T]):
             return {"status": "success"}
 
         @router.post(
-            f"{model_path}/decommission",
+            f"{model_path}/+decommission",
             operation_id=f"mw-decommission-{entity_type}",
             dependencies=cls.extra_dependencies(),
             tags=path_tags,

@@ -34,7 +34,7 @@ def test_s3_storage_test_connection_success(
 
     # Test connection
     test_resp = client.post(
-        "/api/v1/s3_storages/test_connection",
+        "/api/v1/s3_storages/+test-connection",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "bucket": "test-bucket",
@@ -54,7 +54,7 @@ def test_s3_storage_test_connection_success(
 def test_s3_storage_test_connection_missing_bucket(client: TestClient, test_project):
     """Test connection with missing bucket name."""
     test_resp = client.post(
-        "/api/v1/s3_storages/test_connection",
+        "/api/v1/s3_storages/+test-connection",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "bucket": "",
@@ -72,7 +72,7 @@ def test_s3_storage_test_connection_missing_bucket(client: TestClient, test_proj
 def test_s3_storage_test_connection_missing_region(client: TestClient, test_project):
     """Test connection with missing region."""
     test_resp = client.post(
-        "/api/v1/s3_storages/test_connection",
+        "/api/v1/s3_storages/+test-connection",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "bucket": "test-bucket",
@@ -92,7 +92,7 @@ def test_s3_storage_test_connection_missing_access_key(
 ):
     """Test connection with missing access key."""
     test_resp = client.post(
-        "/api/v1/s3_storages/test_connection",
+        "/api/v1/s3_storages/+test-connection",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "bucket": "test-bucket",
@@ -117,7 +117,7 @@ def test_s3_storage_test_connection_with_endpoint_url(
     mock_s3_client.head_bucket.return_value = {}
 
     test_resp = client.post(
-        "/api/v1/s3_storages/test_connection",
+        "/api/v1/s3_storages/+test-connection",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "bucket": "minio-bucket",
@@ -152,7 +152,7 @@ def test_s3_storage_test_connection_bucket_not_found(
     mock_s3_client.head_bucket.side_effect = ClientError(error_response, "HeadBucket")
 
     test_resp = client.post(
-        "/api/v1/s3_storages/test_connection",
+        "/api/v1/s3_storages/+test-connection",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "bucket": "nonexistent-bucket",
@@ -181,7 +181,7 @@ def test_s3_storage_test_connection_access_denied(
     mock_s3_client.head_bucket.side_effect = ClientError(error_response, "HeadBucket")
 
     test_resp = client.post(
-        "/api/v1/s3_storages/test_connection",
+        "/api/v1/s3_storages/+test-connection",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "bucket": "restricted-bucket",
@@ -225,7 +225,7 @@ def test_s3_storage_test_connection_with_stored_secret(
     mock_s3_client.head_bucket.return_value = {}
 
     test_resp = client.post(
-        "/api/v1/s3_storages/test_connection",
+        "/api/v1/s3_storages/+test-connection",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "storage_id": storage_id,
