@@ -68,8 +68,16 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
 
             s3_svc = S3StorageService(self.request, self.session)
             s3_storage = await s3_svc.get(model.s3_storage_id)
-            for k, v in s3_storage.parameters.items():
-                vars[f"s3_{k}"] = v
+            vars["s3_region"] = s3_storage.region
+            vars["s3_access_key"] = s3_storage.access_key
+            vars["s3_endpoint_url"] = s3_storage.endpoint_url
+            if s3_storage.secret_key:
+                from mindweaver.crypto import decrypt_password
+
+                try:
+                    vars["s3_secret_key"] = decrypt_password(s3_storage.secret_key)
+                except Exception:
+                    vars["s3_secret_key"] = s3_storage.secret_key
         return vars
 
     async def validate_data(self, data: Any) -> Any:

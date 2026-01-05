@@ -25,7 +25,7 @@ router = MockApplyPlatformService.router()
 app.include_router(router, prefix="/api/v1")
 
 
-def test_platform_service_apply(client: TestClient, test_project):
+def test_platform_service_deploy(client: TestClient, test_project):
     # 1. Setup K8sCluster
     cluster_data = {
         "name": "test-cluster",
@@ -73,7 +73,7 @@ def test_platform_service_apply(client: TestClient, test_project):
             ) as mock_create:
 
                 resp = client.post(
-                    f"/api/v1/mock_apply_platform_models/{model_id}/+apply",
+                    f"/api/v1/mock_apply_platform_models/{model_id}/+deploy",
                     headers={"X-Project-Id": str(test_project["id"])},
                 )
                 resp.raise_for_status()
@@ -87,7 +87,7 @@ def test_platform_service_apply(client: TestClient, test_project):
                 # We trust the rendering logic which was tested before.
 
 
-def test_platform_service_apply_missing_dir(client: TestClient, test_project):
+def test_platform_service_deploy_missing_dir(client: TestClient, test_project):
     # 1. Setup K8sCluster
     cluster_data = {
         "name": "test-cluster-missing",
@@ -123,6 +123,6 @@ def test_platform_service_apply_missing_dir(client: TestClient, test_project):
     ):
         with pytest.raises(ValueError, match="does not exist"):
             client.post(
-                f"/api/v1/mock_apply_platform_models/{model_id}/+apply",
+                f"/api/v1/mock_apply_platform_models/{model_id}/+deploy",
                 headers={"X-Project-Id": str(test_project["id"])},
             )

@@ -1,4 +1,5 @@
 from datetime import datetime
+import asyncio
 import fastapi
 from fastapi import Depends
 import jinja2 as j2
@@ -82,7 +83,7 @@ class PlatformService(ProjectScopedService[T]):
 
         return "---\n".join(rendered_manifests)
 
-    async def apply(self, model: T):
+    async def deploy(self, model: T):
         """used to deploy/upgrade the service"""
         full_manifest = await self.render_manifests(model)
         if not full_manifest:
@@ -91,8 +92,8 @@ class PlatformService(ProjectScopedService[T]):
         # Get kubeconfig
         kubeconfig = await self.kubeconfig(model)
 
-        # Apply to cluster
-        await self._apply_to_cluster(kubeconfig, full_manifest)
+        # Deploy to cluster
+        await self._deploy_to_cluster(kubeconfig, full_manifest)
 
     async def decommission(self, model: T):
         """used to remove the applied components"""
@@ -106,11 +107,11 @@ class PlatformService(ProjectScopedService[T]):
         # Decommission from cluster
         await self._decommission_from_cluster(kubeconfig, full_manifest)
 
-    async def _apply_to_cluster(self, kubeconfig: str, manifest: str):
-        """Applies the manifest to the kubernetes cluster using python kubernetes library"""
+    async def _deploy_to_cluster(self, kubeconfig: str, manifest: str):
+        """Deploys the manifest to the kubernetes cluster using python kubernetes library"""
 
         # We need to run this in a thread since kubernetes library is synchronous
-        def _apply():
+        def _deploy():
             # Create a temporary file for kubeconfig as some loaders prefer it
             with tempfile.NamedTemporaryFile(mode="w") as kf:
                 kf.write(kubeconfig)
@@ -137,11 +138,11 @@ class PlatformService(ProjectScopedService[T]):
                                 raise
 
         try:
-            await asyncio.to_thread(_apply)
-            logger.info("Successfully applied manifests to cluster")
+            await asyncio.to_thread(_deploy)
+            logger.info("Successfully deployed manifests to cluster")
         except Exception as e:
-            logger.error(f"Failed to apply manifests: {e}")
-            raise RuntimeError(f"Failed to apply manifests to cluster: {e}")
+            logger.error(f"Failed to deploy manifests: {e}")
+            raise RuntimeError(f"Failed to deploy manifests to cluster: {e}")
 
     async def _decommission_from_cluster(self, kubeconfig: str, manifest: str):
         """Removes the resources defined in the manifest from the kubernetes cluster"""
@@ -203,7 +204,7 @@ class PlatformService(ProjectScopedService[T]):
     def register_views(
         cls, router: fastapi.APIRouter, service_path: str, model_path: str
     ):
-        """Register views for the service, adding the apply endpoint"""
+        """Register views for the service, adding the deploy endpoint"""
         super().register_views(router, service_path, model_path)
 
         model_class = cls.model_class()
@@ -211,16 +212,16 @@ class PlatformService(ProjectScopedService[T]):
         path_tags = cls.path_tags()
 
         @router.post(
-            f"{model_path}/+apply",
-            operation_id=f"mw-apply-{entity_type}",
+            f"{model_path}/+deploy",
+            operation_id=f"mw-deploy-{entity_type}",
             dependencies=cls.extra_dependencies(),
             tags=path_tags,
         )
-        async def apply(
+        async def deploy(
             svc: Annotated[cls, Depends(cls.get_service)],  # type: ignore
             model: Annotated[model_class, Depends(cls.get_model)],  # type: ignore
         ):
-            await svc.apply(model)
+            await svc.deploy(model)
             return {"status": "success"}
 
         @router.post(
