@@ -61,9 +61,11 @@ def test_s3_storage_test_connection_missing_region(client: TestClient, test_proj
         },
     )
 
-    assert test_resp.status_code == 400
+    assert test_resp.status_code == 422
     data = test_resp.json()
-    assert "region" in data["detail"].lower()
+    detail = data["detail"]
+    detail_str = detail["msg"] if isinstance(detail, dict) else str(detail)
+    assert "region" in detail_str.lower()
 
 
 def test_s3_storage_test_connection_missing_access_key(
@@ -80,9 +82,11 @@ def test_s3_storage_test_connection_missing_access_key(
         },
     )
 
-    assert test_resp.status_code == 400
+    assert test_resp.status_code == 422
     data = test_resp.json()
-    assert "access key" in data["detail"].lower()
+    detail = data["detail"]
+    detail_str = detail["msg"] if isinstance(detail, dict) else str(detail)
+    assert "access key" in detail_str.lower()
 
 
 @patch("mindweaver.service.s3_storage.boto3")
@@ -139,9 +143,11 @@ def test_s3_storage_test_connection_access_denied(
         },
     )
 
-    assert test_resp.status_code == 400
+    assert test_resp.status_code == 422
     data = test_resp.json()
-    assert "access denied" in data["detail"].lower()
+    detail = data["detail"]
+    detail_str = detail["msg"] if isinstance(detail, dict) else str(detail)
+    assert "access denied" in detail_str.lower()
 
 
 @patch("mindweaver.service.s3_storage.boto3")
@@ -185,3 +191,51 @@ def test_s3_storage_test_connection_with_stored_secret(
     assert test_resp.status_code == 200
     data = test_resp.json()
     assert data["status"] == "success"
+
+
+@patch("mindweaver.service.s3_storage.boto3")
+def test_s3_storage_test_connection_with_redacted_secret(
+    mock_boto3, client: TestClient, test_project
+):
+    """Test connection using stored secret when REDACTED is sent."""
+    # Create a storage with secret key
+    create_resp = client.post(
+        "/api/v1/s3_storages",
+        headers={"X-Project-Id": str(test_project["id"])},
+        json={
+            "name": "redacted-secret-test",
+            "title": "Redacted Secret Test",
+            "region": "us-east-1",
+            "access_key": "AKIAIOSFODNN7EXAMPLE",
+            "secret_key": "redacted_stored_secret",
+            "project_id": test_project["id"],
+        },
+    )
+    assert create_resp.status_code == 200
+    storage_id = create_resp.json()["record"]["id"]
+
+    # Test connection with "__REDACTED__" secret key
+    mock_s3_client = MagicMock()
+    mock_boto3.client.return_value = mock_s3_client
+    mock_s3_client.list_buckets.return_value = {}
+
+    test_resp = client.post(
+        "/api/v1/s3_storages/+test-connection",
+        headers={"X-Project-Id": str(test_project["id"])},
+        json={
+            "storage_id": storage_id,
+            "region": "us-east-1",
+            "access_key": "AKIAIOSFODNN7EXAMPLE",
+            "secret_key": "__REDACTED__",
+            "project_id": test_project["id"],
+        },
+    )
+
+    assert test_resp.status_code == 200
+    data = test_resp.json()
+    assert data["status"] == "success"
+
+    # Verify boto3 was called with the ACTUAL stored secret, not REDACTED
+    mock_boto3.client.assert_called_once()
+    call_kwargs = mock_boto3.client.call_args[1]
+    assert call_kwargs["aws_secret_access_key"] == "redacted_stored_secret"

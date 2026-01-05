@@ -51,7 +51,6 @@ void main() {
         title: 'New Storage',
         region: 'us-east-1',
         access_key: 'xyz',
-        parameters: {},
       );
 
       mockClient.setMockResponse(newStorage.toJson());
@@ -74,7 +73,6 @@ void main() {
         title: 'Title',
         region: 'us-east-1',
         access_key: 'xyz',
-        parameters: {},
       );
 
       mockClient.setMockResponse(storageToUpdate.toJson());

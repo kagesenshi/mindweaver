@@ -1,6 +1,5 @@
 ---
-trigger: always_on
-glob:
+trigger: manual
 description: this rule applies on actions related to custom entity type
 ---
 

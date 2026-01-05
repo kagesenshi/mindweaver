@@ -1,6 +1,5 @@
 ---
-trigger: always_on
-glob:
+trigger: manual
 description: this rule applies when dealing with backend fields that store encrypted values
 ---
 

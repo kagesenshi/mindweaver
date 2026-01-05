@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import '../models/s3_storage.dart';
 import '../providers/s3_storage_provider.dart';
 import '../providers/project_provider.dart';
-import '../models/s3_storage.dart';
 
+import '../providers/form_provider.dart';
 import '../widgets/large_dialog.dart';
+import '../widgets/dynamic_form.dart';
 import '../widgets/project_pill.dart';
 
 class S3StoragePage extends ConsumerWidget {
@@ -20,226 +22,132 @@ class S3StoragePage extends ConsumerWidget {
         title: const Text('S3 Storage'),
         actions: [
           IconButton(
-            onPressed: () => ref.invalidate(s3StorageListProvider),
             icon: const Icon(Icons.refresh),
+            onPressed: () => ref.invalidate(s3StorageListProvider),
           ),
+          const SizedBox(width: 16),
         ],
       ),
       body: storagesAsync.when(
         data: (storages) => _StoragesList(storages: storages),
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('Error: $err')),
+        error: (err, stack) => Center(child: Text('Error: $err\n$stack')),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showCreateStorageDialog(context, ref),
-        label: const Text('New Storage'),
-        icon: const Icon(Icons.add),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => showCreateStorageDialog(context, ref),
+        child: const Icon(Icons.add),
       ),
     );
   }
 
-  void _showCreateStorageDialog(BuildContext context, WidgetRef ref) {
-    final nameController = TextEditingController();
-    final titleController = TextEditingController();
-    final regionController = TextEditingController(text: 'us-east-1');
-    final accessKeyController = TextEditingController();
-    final secretKeyController = TextEditingController();
-    final endpointController = TextEditingController();
-
-    int? selectedProjectId = ref.read(currentProjectProvider)?.id;
-
+  void showCreateStorageDialog(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => Consumer(
-          builder: (context, ref, _) {
-            final projectsAsync = ref.watch(projectListProvider);
+      builder: (context) => Consumer(
+        builder: (context, ref, _) {
+          final schemaAsync = ref.watch(
+            createFormSchemaProvider('/api/v1/s3_storages'),
+          );
+          final formKey = GlobalKey<DynamicFormState>();
 
-            return LargeDialog(
-              title: 'New S3 Storage',
-              actions: [
-                OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 16,
-                    ),
+          return LargeDialog(
+            title: 'New S3 Storage',
+            actions: [
+              OutlinedButton(
+                onPressed: () => Navigator.pop(context),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 16,
                   ),
-                  child: const Text('Cancel'),
                 ),
-                ElevatedButton(
-                  onPressed: () async {
-                    final params = {
-                      'region': regionController.text,
-                      'access_key': accessKeyController.text,
-                      'secret_key': secretKeyController.text,
-                      'endpoint_url': endpointController.text.isEmpty
-                          ? null
-                          : endpointController.text,
-                    };
-                    try {
-                      final result = await ref
-                          .read(s3StorageListProvider.notifier)
-                          .testConnection(params);
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(result['message'] ?? 'Connected!'),
-                          ),
-                        );
-                      }
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Test failed: $e'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      }
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue.shade700,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 16,
-                    ),
-                  ),
-                  child: const Text('Test Connection'),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    final storage = S3Storage(
-                      name: nameController.text,
-                      title: titleController.text,
-                      region: regionController.text,
-                      access_key: accessKeyController.text,
-                      secret_key: secretKeyController.text,
-                      endpoint_url: endpointController.text.isEmpty
-                          ? null
-                          : endpointController.text,
-                      project_id: selectedProjectId,
-                      parameters: {},
-                    );
-                    try {
-                      await ref
-                          .read(s3StorageListProvider.notifier)
-                          .createStorage(storage);
-                      ref.invalidate(s3StorageListProvider);
-                      if (context.mounted) Navigator.pop(context);
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(
-                          context,
-                        ).showSnackBar(SnackBar(content: Text('Error: $e')));
-                      }
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF646CFF),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 16,
-                    ),
-                  ),
-                  child: const Text('Create'),
-                ),
-              ],
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  projectsAsync.when(
-                    data: (projects) => DropdownButtonFormField<int>(
-                      value: selectedProjectId,
-                      decoration: const InputDecoration(labelText: 'Project'),
-                      items: projects
-                          .map(
-                            (p) => DropdownMenuItem(
-                              value: p.id,
-                              child: Text(p.title),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (val) =>
-                          setState(() => selectedProjectId = val),
-                    ),
-                    loading: () => const LinearProgressIndicator(),
-                    error: (err, _) => Text('Error loading projects: $err'),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: nameController,
-                          decoration: const InputDecoration(
-                            labelText: 'Name (ID)',
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: TextField(
-                          controller: titleController,
-                          decoration: const InputDecoration(labelText: 'Title'),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 24),
-                    child: Divider(),
-                  ),
-                  const Text(
-                    'S3 Configuration',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: regionController,
-                    decoration: const InputDecoration(labelText: 'Region'),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: accessKeyController,
-                          decoration: const InputDecoration(
-                            labelText: 'Access Key',
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: TextField(
-                          controller: secretKeyController,
-                          decoration: const InputDecoration(
-                            labelText: 'Secret Key',
-                          ),
-                          obscureText: true,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: endpointController,
-                    decoration: const InputDecoration(
-                      labelText: 'Endpoint URL (Optional)',
-                      hintText: 'e.g. https://minio.example.com',
-                    ),
-                  ),
-                ],
+                child: const Text('Cancel'),
               ),
-            );
-          },
-        ),
+              ElevatedButton(
+                onPressed: () async {
+                  final data = formKey.currentState?.getFormData();
+                  if (data == null) return;
+                  try {
+                    final result = await ref
+                        .read(s3StorageListProvider.notifier)
+                        .testConnection(data);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(result['message'] ?? 'Connected!'),
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Test failed: $e'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue.shade700,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 16,
+                  ),
+                ),
+                child: const Text('Test Connection'),
+              ),
+              ElevatedButton(
+                onPressed: () => formKey.currentState?.submit(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF646CFF),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 16,
+                  ),
+                ),
+                child: const Text('Create'),
+              ),
+            ],
+            child: schemaAsync.when(
+              data: (schema) => DynamicForm(
+                key: formKey,
+                schema: schema,
+                initialValues: {
+                  'project_id': ref.read(currentProjectProvider)?.id,
+                  'region': 'us-east-1',
+                },
+                onSaved: (data) async {
+                  try {
+                    final storage = S3Storage.fromJson(data);
+                    await ref
+                        .read(s3StorageListProvider.notifier)
+                        .createStorage(storage);
+                    ref.invalidate(s3StorageListProvider);
+                    if (context.mounted) Navigator.pop(context);
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+                    }
+                  }
+                },
+              ),
+              loading: () => const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32.0),
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+              error: (err, _) =>
+                  Center(child: Text('Error loading form: $err')),
+            ),
+          );
+        },
       ),
     );
   }
@@ -249,170 +157,118 @@ class S3StoragePage extends ConsumerWidget {
     WidgetRef ref,
     S3Storage storage,
   ) {
-    final nameController = TextEditingController(text: storage.name);
-    final titleController = TextEditingController(text: storage.title);
-    final regionController = TextEditingController(text: storage.region);
-    final accessKeyController = TextEditingController(text: storage.access_key);
-    final secretKeyController = TextEditingController(); // Empty for security
-    final endpointController = TextEditingController(
-      text: storage.endpoint_url,
-    );
-
-    int? selectedProjectId = storage.project_id;
-
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => Consumer(
-          builder: (context, ref, _) {
-            final projectsAsync = ref.watch(projectListProvider);
+      builder: (context) => Consumer(
+        builder: (context, ref, _) {
+          final schemaAsync = ref.watch(
+            editFormSchemaProvider('/api/v1/s3_storages'),
+          );
+          final formKey = GlobalKey<DynamicFormState>();
 
-            return LargeDialog(
-              title: 'Edit S3 Storage',
-              actions: [
-                OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 16,
-                    ),
+          return LargeDialog(
+            title: 'Edit S3 Storage',
+            actions: [
+              OutlinedButton(
+                onPressed: () => Navigator.pop(context),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 16,
                   ),
-                  child: const Text('Cancel'),
                 ),
-                ElevatedButton(
-                  onPressed: () async {
-                    try {
-                      final updatedStorage = storage.copyWith(
-                        title: titleController.text,
-                        region: regionController.text,
-                        access_key: accessKeyController.text,
-                        secret_key: secretKeyController.text.isEmpty
-                            ? null
-                            : secretKeyController.text,
-                        endpoint_url: endpointController.text.isEmpty
-                            ? null
-                            : endpointController.text,
-                        project_id: selectedProjectId,
-                      );
-                      await ref
-                          .read(s3StorageListProvider.notifier)
-                          .updateStorage(updatedStorage);
-                      ref.invalidate(s3StorageListProvider);
-                      if (context.mounted) Navigator.pop(context);
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(
-                          context,
-                        ).showSnackBar(SnackBar(content: Text('Error: $e')));
-                      }
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF646CFF),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 16,
-                    ),
-                  ),
-                  child: const Text('Save'),
-                ),
-              ],
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  projectsAsync.when(
-                    data: (projects) => DropdownButtonFormField<int>(
-                      value: selectedProjectId,
-                      decoration: const InputDecoration(labelText: 'Project'),
-                      items: projects
-                          .map(
-                            (p) => DropdownMenuItem(
-                              value: p.id,
-                              child: Text(p.title),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (val) =>
-                          setState(() => selectedProjectId = val),
-                    ),
-                    loading: () => const LinearProgressIndicator(),
-                    error: (err, _) => Text('Error loading projects: $err'),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: nameController,
-                          enabled: false,
-                          decoration: const InputDecoration(
-                            labelText: 'Name (ID)',
-                            filled: true,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: TextField(
-                          controller: titleController,
-                          decoration: const InputDecoration(labelText: 'Title'),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 24),
-                    child: Divider(),
-                  ),
-                  const Text(
-                    'S3 Configuration',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: regionController,
-                    decoration: const InputDecoration(labelText: 'Region'),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: accessKeyController,
-                          decoration: const InputDecoration(
-                            labelText: 'Access Key',
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: TextField(
-                          controller: secretKeyController,
-                          decoration: const InputDecoration(
-                            labelText:
-                                'Secret Key (leave empty to keep current)',
-                          ),
-                          obscureText: true,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: endpointController,
-                    decoration: const InputDecoration(
-                      labelText: 'Endpoint URL (Optional)',
-                      hintText: 'e.g. https://minio.example.com',
-                    ),
-                  ),
-                ],
+                child: const Text('Cancel'),
               ),
-            );
-          },
-        ),
+              ElevatedButton(
+                onPressed: () async {
+                  final data = formKey.currentState?.getFormData();
+                  if (data == null) return;
+                  try {
+                    final testData = {
+                      ...data,
+                      if (storage.id != null) 'storage_id': storage.id,
+                    };
+                    final result = await ref
+                        .read(s3StorageListProvider.notifier)
+                        .testConnection(testData);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(result['message'] ?? 'Connected!'),
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Test failed: $e'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue.shade700,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 16,
+                  ),
+                ),
+                child: const Text('Test Connection'),
+              ),
+              ElevatedButton(
+                onPressed: () => formKey.currentState?.submit(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF646CFF),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 16,
+                  ),
+                ),
+                child: const Text('Save'),
+              ),
+            ],
+            child: schemaAsync.when(
+              data: (schema) => DynamicForm(
+                key: formKey,
+                schema: schema,
+                isEdit: true,
+                initialValues: storage.toJson(),
+                onSaved: (data) async {
+                  try {
+                    final updatedStorage = S3Storage.fromJson({
+                      ...storage.toJson(),
+                      ...data,
+                    });
+                    await ref
+                        .read(s3StorageListProvider.notifier)
+                        .updateStorage(updatedStorage);
+                    ref.invalidate(s3StorageListProvider);
+                    if (context.mounted) Navigator.pop(context);
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+                    }
+                  }
+                },
+              ),
+              loading: () => const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32.0),
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+              error: (err, _) =>
+                  Center(child: Text('Error loading form: $err')),
+            ),
+          );
+        },
       ),
     );
   }

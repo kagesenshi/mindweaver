@@ -6,6 +6,7 @@ from sqlmodel import Field, Relationship
 from typing import Any, Literal, Union, Optional
 from pydantic import BaseModel, HttpUrl, field_validator, ValidationError
 from fastapi import HTTPException, Depends
+from mindweaver.fw.exc import FieldValidationError, MindWeaverError
 from mindweaver.crypto import encrypt_password, decrypt_password, EncryptionError
 import httpx
 from sqlalchemy import create_engine, text
@@ -168,16 +169,12 @@ class DataSourceService(ProjectScopedService[DataSource]):
             return config.model_dump()
 
         except ValidationError as e:
-            # Extract validation errors and format them nicely
-            error_messages = []
-            for error in e.errors():
-                field = error["loc"][0] if error["loc"] else "unknown"
-                message = error["msg"]
-                error_messages.append(f"{field}: {message}")
-
-            raise HTTPException(
-                status_code=422,
-                detail=f"Parameter validation failed: {'; '.join(error_messages)}",
+            error = e.errors()[0]
+            field = error["loc"][0] if error["loc"] else "unknown"
+            message = error["msg"]
+            raise FieldValidationError(
+                field_location=[field],
+                message=message,
             )
 
     async def create(self, data: NamedBase) -> DataSource:
@@ -258,7 +255,7 @@ class DataSourceService(ProjectScopedService[DataSource]):
                 password = parameters.get("password")
 
                 # If password is the special marker, clear it
-                if password == "__CLEAR_PASSWORD__":
+                if password == "__CLEAR__":
                     parameters["password"] = ""
                 # If password is empty or not provided, retain existing password
                 elif not password:
@@ -415,5 +412,7 @@ async def test_connection(
         else:
             raise ValueError(f"Unknown source type: {source_type}")
 
+    except MindWeaverError:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise FieldValidationError(message=str(e))

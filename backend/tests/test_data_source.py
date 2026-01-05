@@ -115,7 +115,12 @@ def test_api_source_empty_api_key(client: TestClient, test_project):
     assert resp.status_code == 422
     error = resp.json()
     assert "detail" in error
-    assert "api_key" in error["detail"].lower()
+    detail = error["detail"]
+    if isinstance(detail, dict) and "loc" in detail:
+        assert "api_key" in detail["loc"]
+    else:
+        detail_str = detail["msg"] if isinstance(detail, dict) else str(detail)
+        assert "api_key" in detail_str.lower().replace(" ", "_")
 
 
 # ============================================================================
@@ -164,7 +169,12 @@ def test_database_source_invalid_port(client: TestClient, test_project):
     assert resp.status_code == 422
     error = resp.json()
     assert "detail" in error
-    assert "port" in error["detail"].lower()
+    detail = error["detail"]
+    if isinstance(detail, dict) and "loc" in detail:
+        assert "port" in detail["loc"]
+    else:
+        detail_str = detail["msg"] if isinstance(detail, dict) else str(detail)
+        assert "port" in detail_str.lower()
 
 
 def test_database_source_negative_port(client: TestClient, test_project):
@@ -203,7 +213,12 @@ def test_database_source_empty_host(client: TestClient, test_project):
     assert resp.status_code == 422
     error = resp.json()
     assert "detail" in error
-    assert "host" in error["detail"].lower()
+    detail = error["detail"]
+    if isinstance(detail, dict) and "loc" in detail:
+        assert "host" in detail["loc"]
+    else:
+        detail_str = detail["msg"] if isinstance(detail, dict) else str(detail)
+        assert "host" in detail_str.lower()
 
 
 def test_database_source_empty_username(client: TestClient, test_project):
@@ -223,7 +238,12 @@ def test_database_source_empty_username(client: TestClient, test_project):
     assert resp.status_code == 422
     error = resp.json()
     assert "detail" in error
-    assert "username" in error["detail"].lower()
+    detail = error["detail"]
+    if isinstance(detail, dict) and "loc" in detail:
+        assert "username" in detail["loc"]
+    else:
+        detail_str = detail["msg"] if isinstance(detail, dict) else str(detail)
+        assert "username" in detail_str.lower()
 
 
 # ============================================================================
@@ -268,7 +288,12 @@ def test_web_scraper_source_invalid_url(client: TestClient, test_project):
     assert resp.status_code == 422
     error = resp.json()
     assert "detail" in error
-    assert "start_url" in error["detail"].lower()
+    detail = error["detail"]
+    if isinstance(detail, dict) and "loc" in detail:
+        assert "start_url" in detail["loc"]
+    else:
+        detail_str = detail["msg"] if isinstance(detail, dict) else str(detail)
+        assert "start_url" in detail_str.lower().replace(" ", "_")
 
 
 def test_web_scraper_source_empty_url(client: TestClient, test_project):

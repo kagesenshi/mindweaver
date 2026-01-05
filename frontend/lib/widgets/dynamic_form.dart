@@ -80,6 +80,11 @@ class DynamicFormState extends ConsumerState<DynamicForm> {
     }
   }
 
+  Map<String, dynamic> getFormData() {
+    _formKey.currentState?.save();
+    return Map.from(_formData);
+  }
+
   void submit() {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
@@ -226,6 +231,21 @@ class DynamicFormState extends ConsumerState<DynamicForm> {
         );
       } else if (metadata.type == 'range') {
         return _buildRangeField(name, label, metadata, isImmutable, isRequired);
+      } else if (metadata.type == 'password') {
+        return TextFormField(
+          initialValue: _formData[name]?.toString(),
+          decoration: InputDecoration(
+            labelText: label,
+            enabled: !isImmutable,
+            alignLabelWithHint: true,
+          ),
+          obscureText: true,
+          maxLines: 1,
+          onSaved: (val) => _formData[name] = val,
+          validator: isRequired
+              ? (val) => (val == null || val.isEmpty) ? 'Required' : null
+              : null,
+        );
       }
     }
 

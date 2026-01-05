@@ -32,7 +32,7 @@ def test_verify_connection(client: TestClient):
         assert response.json()["status"] == "success"
     else:
         # If it fails, it should be a connection error handled by our service
-        assert response.status_code == 400
+        assert response.status_code == 422
 
     # Test API connection (Failure Case)
     print("\n2. Testing API Connection (Failure Case - Invalid URL)...")
@@ -46,7 +46,7 @@ def test_verify_connection(client: TestClient):
     response = client.post("/api/v1/data_sources/+test-connection", json=payload)
     print(f"Status: {response.status_code}")
     print(f"Response: {response.json()}")
-    assert response.status_code == 400
+    assert response.status_code == 422
 
     # Test Web Scraper (Success)
     print("\n3. Testing Web Scraper (Success Case)...")

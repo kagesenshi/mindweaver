@@ -7,6 +7,7 @@ from sqlmodel import Field, Relationship
 from typing import Any, Literal, Optional
 from pydantic import BaseModel, field_validator, ValidationError
 from fastapi import HTTPException, Depends
+from mindweaver.fw.exc import FieldValidationError, NotFoundError
 from datetime import datetime, timezone
 import enum
 from croniter import croniter
@@ -106,18 +107,18 @@ class IngestionService(ProjectScopedService[Ingestion]):
             HTTPException: If the cron schedule is invalid
         """
         if not cron_schedule or not cron_schedule.strip():
-            raise HTTPException(
-                status_code=422,
-                detail="Cron schedule cannot be empty",
+            raise FieldValidationError(
+                field_location=["cron_schedule"],
+                message="Cron schedule cannot be empty",
             )
 
         try:
             # croniter will raise ValueError if the cron expression is invalid
             croniter(cron_schedule)
         except (ValueError, KeyError) as e:
-            raise HTTPException(
-                status_code=422,
-                detail=f"Invalid cron schedule '{cron_schedule}': {str(e)}",
+            raise FieldValidationError(
+                field_location=["cron_schedule"],
+                message=f"Invalid cron schedule '{cron_schedule}': {str(e)}",
             )
 
     def _validate_config(
@@ -148,16 +149,12 @@ class IngestionService(ProjectScopedService[Ingestion]):
                 return config
 
         except ValidationError as e:
-            # Extract validation errors and format them nicely
-            error_messages = []
-            for error in e.errors():
-                field = error["loc"][0] if error["loc"] else "unknown"
-                message = error["msg"]
-                error_messages.append(f"{field}: {message}")
-
-            raise HTTPException(
-                status_code=422,
-                detail=f"Configuration validation failed: {'; '.join(error_messages)}",
+            error = e.errors()[0]
+            field = error["loc"][0] if error["loc"] else "unknown"
+            message = error["msg"]
+            raise FieldValidationError(
+                field_location=[field],
+                message=message,
             )
 
     async def create(self, data: NamedBase) -> Ingestion:
@@ -178,13 +175,21 @@ class IngestionService(ProjectScopedService[Ingestion]):
 
         # Validate required fields
         if not data_dict.get("data_source_id"):
-            raise HTTPException(status_code=422, detail="Data source ID is required")
+            raise FieldValidationError(
+                field_location=["data_source_id"], message="Data source ID is required"
+            )
         if not data_dict.get("s3_storage_id"):
-            raise HTTPException(status_code=422, detail="S3 storage ID is required")
+            raise FieldValidationError(
+                field_location=["s3_storage_id"], message="S3 storage ID is required"
+            )
         if not data_dict.get("storage_path"):
-            raise HTTPException(status_code=422, detail="Storage path is required")
+            raise FieldValidationError(
+                field_location=["storage_path"], message="Storage path is required"
+            )
         if not data_dict.get("cron_schedule"):
-            raise HTTPException(status_code=422, detail="Cron schedule is required")
+            raise FieldValidationError(
+                field_location=["cron_schedule"], message="Cron schedule is required"
+            )
 
         # Validate cron schedule format
         self._validate_cron_schedule(data_dict["cron_schedule"])
@@ -195,7 +200,7 @@ class IngestionService(ProjectScopedService[Ingestion]):
         ds_service = DataSourceService(self.request, self.session)
         data_source = await ds_service.get(data_dict["data_source_id"])
         if not data_source:
-            raise HTTPException(status_code=404, detail="Data source not found")
+            raise NotFoundError(message="Data source not found")
 
         # Validate configuration based on data source type
         config = data_dict.get("config", {})
@@ -232,7 +237,7 @@ class IngestionService(ProjectScopedService[Ingestion]):
         # Fetch existing record
         existing = await self.get(model_id)
         if not existing:
-            raise HTTPException(status_code=404, detail="Ingestion not found")
+            raise NotFoundError(message="Ingestion not found")
 
         # Validate cron schedule if it's being updated
         if "cron_schedule" in data_dict:
@@ -248,7 +253,7 @@ class IngestionService(ProjectScopedService[Ingestion]):
             ds_service = DataSourceService(self.request, self.session)
             data_source = await ds_service.get(data_source_id)
             if not data_source:
-                raise HTTPException(status_code=404, detail="Data source not found")
+                raise NotFoundError(message="Data source not found")
 
             config = data_dict.get("config", {})
             validated_config = self._validate_config(data_source.type, config)
@@ -291,7 +296,7 @@ async def execute_ingestion(
     # Verify ingestion exists
     ingestion = await svc.get(ingestion_id)
     if not ingestion:
-        raise HTTPException(status_code=404, detail="Ingestion not found")
+        raise NotFoundError(message="Ingestion not found")
 
     # Create a new run record
     run_service = IngestionRunService(svc.request, svc.session)
@@ -329,7 +334,7 @@ async def list_ingestion_runs(
     # Verify ingestion exists
     ingestion = await svc.get(ingestion_id)
     if not ingestion:
-        raise HTTPException(status_code=404, detail="Ingestion not found")
+        raise NotFoundError(message="Ingestion not found")
 
     # Query runs for this ingestion
     from sqlmodel import select

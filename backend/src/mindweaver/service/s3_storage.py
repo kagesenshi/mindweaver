@@ -9,6 +9,7 @@ from pydantic import BaseModel, HttpUrl, field_validator, ValidationError
 import fastapi
 from fastapi import HTTPException, Depends
 from mindweaver.crypto import encrypt_password, decrypt_password, EncryptionError
+from mindweaver.fw.exc import FieldValidationError, MindWeaverError
 import httpx
 import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
@@ -55,7 +56,7 @@ class S3Storage(ProjectScopedNamedBase, table=True):
     access_key: str
     secret_key: Optional[str] = Field(default=None)
     endpoint_url: Optional[str] = Field(default=None)
-    parameters: dict[str, Any] = Field(sa_type=JSONType(), default_factory=dict)
+    endpoint_url: Optional[str] = Field(default=None)
 
 
 class VerifyEncryptedRequest(BaseModel):
@@ -67,7 +68,6 @@ class TestConnectionRequest(BaseModel):
     access_key: Optional[str] = None
     secret_key: Optional[str] = None
     endpoint_url: Optional[str] = None
-    parameters: dict[str, Any] = Field(default_factory=dict)
     storage_id: Optional[int] = None
 
 
@@ -87,15 +87,12 @@ class S3StorageService(ProjectScopedService[S3Storage]):
             # Note: secret_key is not yet encrypted here
             S3Config(**data.model_dump())
         except ValidationError as e:
-            error_messages = []
-            for error in e.errors():
-                field = error["loc"][0] if error["loc"] else "unknown"
-                message = error["msg"]
-                error_messages.append(f"{field}: {message}")
-
-            raise HTTPException(
-                status_code=422,
-                detail=f"Parameter validation failed: {'; '.join(error_messages)}",
+            error = e.errors()[0]
+            field = error["loc"][0] if error["loc"] else "unknown"
+            message = error["msg"]
+            raise FieldValidationError(
+                field_location=[field],
+                message=message,
             )
 
         # Encrypt secret_key if present
@@ -135,7 +132,7 @@ class S3StorageService(ProjectScopedService[S3Storage]):
         secret_is_encrypted = True
         if "secret_key" in data_dict:
             secret_key = data_dict["secret_key"]
-            if secret_key == "__CLEAR_SECRET_KEY__":
+            if secret_key == "__CLEAR__":
                 data.secret_key = ""
                 merged_data["secret_key"] = ""
             elif not secret_key or secret_key == "__REDACTED__":
@@ -158,15 +155,12 @@ class S3StorageService(ProjectScopedService[S3Storage]):
 
             S3Config(**v_data)
         except ValidationError as e:
-            error_messages = []
-            for error in e.errors():
-                field = error["loc"][0] if error["loc"] else "unknown"
-                message = error["msg"]
-                error_messages.append(f"{field}: {message}")
-
-            raise HTTPException(
-                status_code=422,
-                detail=f"Parameter validation failed: {'; '.join(error_messages)}",
+            error = e.errors()[0]
+            field = error["loc"][0] if error["loc"] else "unknown"
+            message = error["msg"]
+            raise FieldValidationError(
+                field_location=[field],
+                message=message,
             )
 
         # Now encrypt the secret_key if it's a new one
@@ -204,6 +198,12 @@ class S3StorageService(ProjectScopedService[S3Storage]):
             return decrypt_password(model.secret_key) == secret_key
         except EncryptionError:
             return False
+
+    @classmethod
+    def widgets(cls) -> dict[str, Any]:
+        return {
+            "secret_key": {"type": "password"},
+        }
 
     @classmethod
     def register_views(
@@ -244,19 +244,20 @@ async def test_connection(
     If storage_id is provided and secret_key is missing, use stored secret.
     """
     # Initialize variables from request
-    region = data.region or data.parameters.get("region")
-    access_key = data.access_key or data.parameters.get("access_key")
-    secret_key = data.secret_key or data.parameters.get("secret_key")
-    endpoint_url = data.endpoint_url or data.parameters.get("endpoint_url")
+    region = data.region
+    access_key = data.access_key
+    secret_key = data.secret_key
+    endpoint_url = data.endpoint_url
 
-    # If storage_id is provided, check for stored secret_key if missing in request
+    # If storage_id is provided, check for stored secret_key if missing in request or redacted
     if data.storage_id:
         existing = await svc.get(data.storage_id)
-        if existing and existing.secret_key and not secret_key:
+        if (
+            existing
+            and existing.secret_key
+            and (not secret_key or secret_key == "__REDACTED__")
+        ):
             try:
-                # Note: svc.get now returns redacted secret_key, but we need the raw one.
-                # However, svc.get calls super().get() which returns the raw one from the session.
-                # Wait, svc.get is now NOT redacted anymore because I removed the override.
                 secret_key = decrypt_password(existing.secret_key)
             except EncryptionError:
                 pass
@@ -300,5 +301,7 @@ async def test_connection(
             else:
                 raise ValueError(f"S3 connection failed: {str(e)}")
 
+    except MindWeaverError:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise FieldValidationError(message=str(e))

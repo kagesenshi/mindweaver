@@ -139,7 +139,7 @@ def test_data_source_test_connection_api_unreachable(client: TestClient, test_pr
             },
         )
 
-        assert test_resp.status_code == 400
+        assert test_resp.status_code == 422
 
 
 def test_data_source_test_connection_database_invalid_credentials(
@@ -173,9 +173,11 @@ def test_data_source_test_connection_database_invalid_credentials(
             },
         )
 
-        assert test_resp.status_code == 400
+        assert test_resp.status_code == 422
         data = test_resp.json()
-        assert "failed" in data["detail"].lower()
+        detail = data["detail"]
+        detail_str = detail["msg"] if isinstance(detail, dict) else str(detail)
+        assert "failed" in detail_str.lower()
 
 
 def test_data_source_test_connection_web_scraper_404(client: TestClient, test_project):
@@ -201,9 +203,11 @@ def test_data_source_test_connection_web_scraper_404(client: TestClient, test_pr
             },
         )
 
-        assert test_resp.status_code == 400
+        assert test_resp.status_code == 422
         data = test_resp.json()
-        assert "404" in data["detail"]
+        detail = data["detail"]
+        detail_str = detail["msg"] if isinstance(detail, dict) else str(detail)
+        assert "404" in detail_str
 
 
 def test_data_source_test_connection_with_stored_password(

@@ -273,7 +273,7 @@ def test_s3_storage_update_clear_secret(client: TestClient, test_project):
             "title": "Clear Secret Test",
             "region": "us-east-1",
             "access_key": "AKIAIOSFODNN7EXAMPLE",
-            "secret_key": "__CLEAR_SECRET_KEY__",
+            "secret_key": "__CLEAR__",
             "project_id": test_project["id"],
         },
     )

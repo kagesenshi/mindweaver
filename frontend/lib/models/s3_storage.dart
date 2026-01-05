@@ -15,7 +15,6 @@ class S3Storage {
   final String? secret_key;
   final String? endpoint_url;
   final int? project_id;
-  final Map<String, dynamic> parameters;
 
   S3Storage({
     this.id,
@@ -29,7 +28,6 @@ class S3Storage {
     this.secret_key,
     this.endpoint_url,
     this.project_id,
-    required this.parameters,
   });
 
   S3Storage copyWith({
@@ -44,7 +42,6 @@ class S3Storage {
     String? secret_key,
     String? endpoint_url,
     int? project_id,
-    Map<String, dynamic>? parameters,
   }) {
     return S3Storage(
       id: id ?? this.id,
@@ -58,7 +55,6 @@ class S3Storage {
       secret_key: secret_key ?? this.secret_key,
       endpoint_url: endpoint_url ?? this.endpoint_url,
       project_id: project_id ?? this.project_id,
-      parameters: parameters ?? this.parameters,
     );
   }
 
