@@ -63,10 +63,7 @@ class _SearchableMultiSelectState<T> extends State<SearchableMultiSelect<T>> {
                           runSpacing: 4,
                           children: widget.selectedItems.map((item) {
                             return Chip(
-                              label: Text(
-                                widget.itemLabel(item),
-                                style: const TextStyle(fontSize: 12),
-                              ),
+                              label: Text(widget.itemLabel(item)),
                               padding: EdgeInsets.zero,
                               materialTapTargetSize:
                                   MaterialTapTargetSize.shrinkWrap,

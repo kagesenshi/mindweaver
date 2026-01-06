@@ -64,6 +64,7 @@ class DataSourcesPage extends ConsumerWidget {
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => Consumer(
           builder: (context, ref, _) {
+            final theme = Theme.of(context);
             final projectsAsync = ref.watch(projectListProvider);
 
             return LargeDialog(
@@ -260,9 +261,11 @@ class DataSourcesPage extends ConsumerWidget {
                     padding: EdgeInsets.symmetric(vertical: 24),
                     child: Divider(),
                   ),
-                  const Text(
+                  Text(
                     'Configuration',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   if (selectedType == 'API') ...[
@@ -425,6 +428,7 @@ class DataSourcesPage extends ConsumerWidget {
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => Consumer(
           builder: (context, ref, _) {
+            final theme = Theme.of(context);
             final projectsAsync = ref.watch(projectListProvider);
 
             return LargeDialog(
@@ -568,9 +572,11 @@ class DataSourcesPage extends ConsumerWidget {
                     padding: EdgeInsets.symmetric(vertical: 24),
                     child: Divider(),
                   ),
-                  const Text(
+                  Text(
                     'Configuration',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   if (selectedType == 'API') ...[
