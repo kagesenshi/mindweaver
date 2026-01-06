@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     timezone: str = "Asia/Kuala_Lumpur"
     enable_db_reset: bool = False
     enable_test_views: bool = False
+    enable_auth: bool = True
     fernet_key: str | None = None
     jwt_secret: str = "unsafe-secret-key-change-me"
 

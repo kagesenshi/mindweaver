@@ -104,6 +104,9 @@ the tests first before implementing the fixes.
   unless trying to workaround circular import, or when writing function
   for pickling (eg: pyspark udf, multiprocessing)
 
+### Function documentation
+- All generated functions must have docstring describing what the function is doing
+
 ---
 
 ## 5. Security & Sensitive Data

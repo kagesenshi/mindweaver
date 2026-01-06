@@ -11,17 +11,18 @@ from .service.ingestion import (
     run_router as ingestion_run_router,
 )
 from .service.project import router as project_router
-from .service.auth import router as auth_router
+from .service.auth import router as auth_router, verify_token
 from .service.k8s_cluster import router as k8s_router
 from .platform_service.pgsql import router as pgsql_router
 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError, HTTPException
+from fastapi import Depends
 from .fw.service import Error, ValidationErrorDetail
 from .fw.exc import MindWeaverError
 
-app = fastapi.FastAPI(title="Mindweaver")
+app = fastapi.FastAPI(title="Mindweaver", dependencies=[Depends(verify_token)])
 
 
 @app.exception_handler(RequestValidationError)

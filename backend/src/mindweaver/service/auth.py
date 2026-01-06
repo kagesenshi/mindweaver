@@ -4,7 +4,7 @@ from sqlmodel import Field, Session, select
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
 from mindweaver.config import settings
-from mindweaver.fw.model import AsyncSession
+from mindweaver.fw.model import AsyncSession, get_session, get_engine
 import httpx
 import jwt
 import time
@@ -24,6 +24,45 @@ class User(Base, table=True):
 class Token(BaseModel):
     access_token: str
     token_type: str
+
+
+async def get_current_user(request: Request, session: AsyncSession) -> User:
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    token = auth_header.split(" ")[1]
+    try:
+        payload = jwt.decode(token, settings.jwt_secret, algorithms=["HS256"])
+        user_email = payload.get("sub")
+        if not user_email:
+            raise HTTPException(status_code=401, detail="Invalid token")
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    statement = select(User).where(User.email == user_email)
+    result = await session.exec(statement)
+    user = result.first()
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    return user
+
+
+async def verify_token(request: Request):
+    if not settings.enable_auth:
+        return
+
+    # Exemptions
+    path = request.url.path
+    if path in ["/health", "/feature-flags"]:
+        return
+    if "/api/v1/auth/login" in path or "/api/v1/auth/callback" in path:
+        return
+
+    # We need a session to verify the user exists
+    async for session in get_session(get_engine()):
+        await get_current_user(request, session)
+        break
 
 
 class AuthService(Service[User]):
@@ -153,8 +192,8 @@ class AuthService(Service[User]):
 
                 # Get or Create User
                 statement = select(User).where(User.email == email)
-                result = await session.execute(statement)
-                user = result.scalars().first()
+                result = await session.exec(statement)
+                user = result.first()
                 if not user:
                     user = User(
                         name=payload.get("name") or email.split("@")[0],
@@ -195,25 +234,7 @@ class AuthService(Service[User]):
                 return Token(access_token=app_token, token_type="bearer")
 
         @router.get("/me", response_model=User)
-        async def me(request: Request, session: AsyncSession):
-            auth_header = request.headers.get("Authorization")
-            if not auth_header or not auth_header.startswith("Bearer "):
-                raise HTTPException(status_code=401, detail="Not authenticated")
-
-            token = auth_header.split(" ")[1]
-            try:
-                payload = jwt.decode(token, settings.jwt_secret, algorithms=["HS256"])
-                user_email = payload.get("sub")
-                if not user_email:
-                    raise HTTPException(status_code=401, detail="Invalid token")
-            except Exception:
-                raise HTTPException(status_code=401, detail="Invalid token")
-
-            statement = select(User).where(User.email == user_email)
-            result = await session.execute(statement)
-            user = result.scalars().first()
-            if not user:
-                raise HTTPException(status_code=401, detail="User not found")
+        async def me(user: User = Depends(get_current_user)):
             return user
 
         return router
