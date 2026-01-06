@@ -1,7 +1,11 @@
 import pytest
 from fastapi.testclient import TestClient
 from mindweaver.app import app
-from mindweaver.platform_service.base import PlatformBase, PlatformService
+from mindweaver.platform_service.base import (
+    PlatformBase,
+    PlatformService,
+    PlatformStateBase,
+)
 from mindweaver.service.k8s_cluster import K8sCluster
 from mindweaver.service.project import Project
 from typing import Annotated
@@ -13,8 +17,14 @@ class SamplePlatformModel(PlatformBase, table=True):
     __tablename__ = "mw_sample_platform_model"
 
 
+class SamplePlatformState(PlatformStateBase, table=True):
+    __tablename__ = "mw_sample_platform_state"
+
+
 # Define a concrete service for testing
 class SamplePlatformService(PlatformService[SamplePlatformModel]):
+    state_model = SamplePlatformState
+
     @classmethod
     def model_class(cls):
         return SamplePlatformModel

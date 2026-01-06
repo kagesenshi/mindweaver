@@ -11,6 +11,7 @@ from mindweaver.fw.model import Base
 from mindweaver.service.base import ProjectScopedNamedBase, ProjectScopedService
 from mindweaver.service.k8s_cluster import K8sCluster
 import os
+import pydantic
 from sqlalchemy import Column, DateTime, String
 from sqlalchemy_utils import JSONType
 from sqlmodel import Field, select
@@ -35,6 +36,13 @@ class PlatformStateBase(Base):
         default=None, sa_type=DateTime(timezone=True)
     )
     extra_data: dict[str, Any] = Field(default_factory=dict, sa_type=JSONType())
+
+
+class PlatformStateUpdate(pydantic.BaseModel):
+    status: Optional[Literal["online", "offline", "pending", "error"]] = None
+    active: Optional[bool] = None
+    message: Optional[str] = None
+    extra_data: Optional[dict[str, Any]] = None
 
 
 class PlatformBase(ProjectScopedNamedBase):
@@ -257,6 +265,56 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
         ):
             await svc.decommission(model)
             return {"status": "success"}
+
+        @router.get(
+            f"{model_path}/+state",
+            operation_id=f"mw-get-state-{entity_type}",
+            dependencies=cls.extra_dependencies(),
+            tags=path_tags,
+        )
+        async def get_state(
+            svc: Annotated[cls, Depends(cls.get_service)],  # type: ignore
+            model: Annotated[model_class, Depends(cls.get_model)],  # type: ignore
+        ):
+            state = await svc.platform_state(model)
+            if not state:
+                return {}
+            return state
+
+        @router.post(
+            f"{model_path}/+state",
+            operation_id=f"mw-update-state-{entity_type}",
+            dependencies=cls.extra_dependencies(),
+            tags=path_tags,
+        )
+        async def update_state(
+            svc: Annotated[cls, Depends(cls.get_service)],  # type: ignore
+            model: Annotated[model_class, Depends(cls.get_model)],  # type: ignore
+            update: PlatformStateUpdate,
+        ):
+            if not svc.state_model:
+                return {"status": "error", "message": "State model not defined"}
+
+            state = await svc.platform_state(model)
+            if not state:
+                state = svc.state_model(platform_id=model.id)
+                svc.session.add(state)
+
+            if update.status is not None:
+                state.status = update.status
+            if update.active is not None:
+                state.active = update.active
+            if update.message is not None:
+                state.message = update.message
+            if update.extra_data is not None:
+                state.extra_data = update.extra_data
+
+            state.last_heartbeat = datetime.now()
+
+            await svc.session.commit()
+            await svc.session.refresh(state)
+
+            return state
 
     async def k8s_cluster(self, model: T) -> K8sCluster:
         """returns the associated K8sCluster model"""

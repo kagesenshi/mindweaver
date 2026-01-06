@@ -4,7 +4,11 @@ import tempfile
 from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
 from mindweaver.app import app
-from mindweaver.platform_service.base import PlatformBase, PlatformService
+from mindweaver.platform_service.base import (
+    PlatformBase,
+    PlatformService,
+    PlatformStateBase,
+)
 
 
 # Define a concrete model for testing
@@ -13,8 +17,14 @@ class MockDecommissionPlatformModel(PlatformBase, table=True):
     extra_field: str = "hello"
 
 
+class MockDecommissionPlatformState(PlatformStateBase, table=True):
+    __tablename__ = "mw_mock_decommission_platform_state"
+
+
 # Define a concrete service for testing
 class MockDecommissionPlatformService(PlatformService[MockDecommissionPlatformModel]):
+    state_model = MockDecommissionPlatformState
+
     @classmethod
     def model_class(cls):
         return MockDecommissionPlatformModel
