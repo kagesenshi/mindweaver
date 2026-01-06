@@ -283,7 +283,7 @@ class TestConnectionRequest(BaseModel):
 
 
 @router.post(
-    f"{DataSourceService.service_path()}/+test-connection",
+    f"{DataSourceService.service_path()}/_test-connection",
     tags=DataSourceService.path_tags(),
 )
 async def test_connection(

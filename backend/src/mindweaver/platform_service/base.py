@@ -315,7 +315,7 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
         path_tags = cls.path_tags()
 
         @router.post(
-            f"{model_path}/+deploy",
+            f"{model_path}/_deploy",
             operation_id=f"mw-deploy-{entity_type}",
             dependencies=cls.extra_dependencies(),
             tags=path_tags,
@@ -328,7 +328,7 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
             return {"status": "success"}
 
         @router.post(
-            f"{model_path}/+decommission",
+            f"{model_path}/_decommission",
             operation_id=f"mw-decommission-{entity_type}",
             dependencies=cls.extra_dependencies(),
             tags=path_tags,
@@ -341,7 +341,7 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
             return {"status": "success"}
 
         @router.get(
-            f"{model_path}/+state",
+            f"{model_path}/_state",
             operation_id=f"mw-get-state-{entity_type}",
             dependencies=cls.extra_dependencies(),
             tags=path_tags,
@@ -356,7 +356,7 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
             return state
 
         @router.post(
-            f"{model_path}/+state",
+            f"{model_path}/_state",
             operation_id=f"mw-update-state-{entity_type}",
             dependencies=cls.extra_dependencies(),
             tags=path_tags,

@@ -48,7 +48,7 @@ def test_platform_state_api(client: TestClient, test_project):
 
         # 3. Get initial state (should be empty object or default)
         resp = client.get(
-            f"/api/v1/platform/pgsql/{model_id}/+state",
+            f"/api/v1/platform/pgsql/{model_id}/_state",
             headers={"X-Project-Id": str(test_project["id"])},
         )
         resp.raise_for_status()
@@ -63,7 +63,7 @@ def test_platform_state_api(client: TestClient, test_project):
             "extra_data": {"nodes": 3},
         }
         resp = client.post(
-            f"/api/v1/platform/pgsql/{model_id}/+state",
+            f"/api/v1/platform/pgsql/{model_id}/_state",
             json=update_data,
             headers={"X-Project-Id": str(test_project["id"])},
         )
@@ -78,7 +78,7 @@ def test_platform_state_api(client: TestClient, test_project):
 
         # 5. Get state again
         resp = client.get(
-            f"/api/v1/platform/pgsql/{model_id}/+state",
+            f"/api/v1/platform/pgsql/{model_id}/_state",
             headers={"X-Project-Id": str(test_project["id"])},
         )
         resp.raise_for_status()
@@ -89,7 +89,7 @@ def test_platform_state_api(client: TestClient, test_project):
         # 6. Partial update
         partial_update = {"status": "error", "message": "Something went wrong"}
         resp = client.post(
-            f"/api/v1/platform/pgsql/{model_id}/+state",
+            f"/api/v1/platform/pgsql/{model_id}/_state",
             json=partial_update,
             headers={"X-Project-Id": str(test_project["id"])},
         )

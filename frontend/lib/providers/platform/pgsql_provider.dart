@@ -65,7 +65,7 @@ class PgSqlPlatformListNotifier
   Future<void> updatePlatformState(int id, {bool? active}) async {
     try {
       final client = ref.read(apiClientProvider);
-      await client.postRaw('/api/v1/platform/pgsql/$id/+state', {
+      await client.postRaw('/api/v1/platform/pgsql/$id/_state', {
         'active': active,
       });
       ref.invalidate(pgsqlPlatformStateProvider(id));
@@ -87,7 +87,7 @@ final pgsqlPlatformListProvider =
 final pgsqlPlatformStateProvider = FutureProvider.autoDispose
     .family<PlatformState, int>((ref, id) async {
       final client = ref.watch(apiClientProvider);
-      final json = await client.getRaw('/api/v1/platform/pgsql/$id/+state');
+      final json = await client.getRaw('/api/v1/platform/pgsql/$id/_state');
       if (json.isEmpty) {
         return PlatformState(platform_id: id, status: 'offline', active: false);
       }

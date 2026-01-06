@@ -91,7 +91,7 @@ def test_platform_service_deploy(client: TestClient, test_project):
                 )
 
                 resp = client.post(
-                    f"/api/v1/mock_apply_platform_models/{model_id}/+deploy",
+                    f"/api/v1/mock_apply_platform_models/{model_id}/_deploy",
                     headers={"X-Project-Id": str(test_project["id"])},
                 )
                 resp.raise_for_status()
@@ -139,6 +139,6 @@ def test_platform_service_deploy_missing_dir(client: TestClient, test_project):
     ):
         with pytest.raises(ValueError, match="does not exist"):
             client.post(
-                f"/api/v1/mock_apply_platform_models/{model_id}/+deploy",
+                f"/api/v1/mock_apply_platform_models/{model_id}/_deploy",
                 headers={"X-Project-Id": str(test_project["id"])},
             )

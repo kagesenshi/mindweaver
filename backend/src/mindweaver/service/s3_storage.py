@@ -216,7 +216,7 @@ class S3StorageService(ProjectScopedService[S3Storage]):
         if settings.enable_test_views:
 
             @router.post(
-                f"{model_path}/+verify-encrypted",
+                f"{model_path}/_verify-encrypted",
                 operation_id=f"mw-verify-encrypted-{cls.entity_type()}",
                 tags=path_tags,
             )
@@ -232,7 +232,7 @@ router = S3StorageService.router()
 
 
 @router.post(
-    f"{S3StorageService.service_path()}/+test-connection",
+    f"{S3StorageService.service_path()}/_test-connection",
     tags=S3StorageService.path_tags(),
 )
 async def test_connection(

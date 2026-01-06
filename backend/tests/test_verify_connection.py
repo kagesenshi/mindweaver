@@ -19,7 +19,7 @@ def test_verify_connection(client: TestClient):
         "type": "API",
         "parameters": {"base_url": "https://www.google.com", "api_key": ""},
     }
-    response = client.post("/api/v1/data_sources/+test-connection", json=payload)
+    response = client.post("/api/v1/data_sources/_test-connection", json=payload)
     print(f"Status: {response.status_code}")
     print(f"Response: {response.json()}")
 
@@ -43,7 +43,7 @@ def test_verify_connection(client: TestClient):
             "api_key": "",
         },
     }
-    response = client.post("/api/v1/data_sources/+test-connection", json=payload)
+    response = client.post("/api/v1/data_sources/_test-connection", json=payload)
     print(f"Status: {response.status_code}")
     print(f"Response: {response.json()}")
     assert response.status_code == 422
@@ -54,7 +54,7 @@ def test_verify_connection(client: TestClient):
         "type": "Web Scraper",
         "parameters": {"start_url": "https://www.example.com"},
     }
-    response = client.post("/api/v1/data_sources/+test-connection", json=payload)
+    response = client.post("/api/v1/data_sources/_test-connection", json=payload)
     print(f"Status: {response.status_code}")
     print(f"Response: {response.json()}")
     if response.status_code == 200:

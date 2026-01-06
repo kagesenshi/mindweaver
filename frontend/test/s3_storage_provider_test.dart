@@ -103,7 +103,7 @@ void main() {
       final result = await notifier.testConnection(params);
 
       expect(mockClient.lastMethod, 'POST');
-      expect(mockClient.lastEndpoint, '/api/v1/s3_storages/+test-connection');
+      expect(mockClient.lastEndpoint, '/api/v1/s3_storages/_test-connection');
       final body = mockClient.lastBody as Map<String, dynamic>;
       expect(body['region'], 'us-east-1');
       expect(result['status'], 'connected');

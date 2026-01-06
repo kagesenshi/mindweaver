@@ -75,7 +75,7 @@ def test_pgsql_platform_crud(client: TestClient, test_project):
         mock_resource.namespaced = True
 
         resp = client.post(
-            f"/api/v1/platform/pgsql/{model_id}/+deploy",
+            f"/api/v1/platform/pgsql/{model_id}/_deploy",
             headers={"X-Project-Id": str(test_project["id"])},
         )
         resp.raise_for_status()

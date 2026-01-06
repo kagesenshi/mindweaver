@@ -78,7 +78,7 @@ def test_platform_state_triggers(client: TestClient, test_project):
         # 4. Set active=True (should trigger deploy)
         update_data = {"active": True}
         resp = client.post(
-            f"/api/v1/mock_trigger_platform_models/{model_id}/+state",
+            f"/api/v1/mock_trigger_platform_models/{model_id}/_state",
             json=update_data,
             headers={"X-Project-Id": str(test_project["id"])},
         )
@@ -92,7 +92,7 @@ def test_platform_state_triggers(client: TestClient, test_project):
         # 5. Set active=False (should trigger decommission)
         update_data = {"active": False}
         resp = client.post(
-            f"/api/v1/mock_trigger_platform_models/{model_id}/+state",
+            f"/api/v1/mock_trigger_platform_models/{model_id}/_state",
             json=update_data,
             headers={"X-Project-Id": str(test_project["id"])},
         )
@@ -106,7 +106,7 @@ def test_platform_state_triggers(client: TestClient, test_project):
         # 6. Update status only (should NOT trigger anything)
         update_data = {"status": "online"}
         resp = client.post(
-            f"/api/v1/mock_trigger_platform_models/{model_id}/+state",
+            f"/api/v1/mock_trigger_platform_models/{model_id}/_state",
             json=update_data,
             headers={"X-Project-Id": str(test_project["id"])},
         )
@@ -117,7 +117,7 @@ def test_platform_state_triggers(client: TestClient, test_project):
         # 7. Set active=True again (should trigger deploy again - refresh)
         update_data = {"active": True}
         resp = client.post(
-            f"/api/v1/mock_trigger_platform_models/{model_id}/+state",
+            f"/api/v1/mock_trigger_platform_models/{model_id}/_state",
             json=update_data,
             headers={"X-Project-Id": str(test_project["id"])},
         )

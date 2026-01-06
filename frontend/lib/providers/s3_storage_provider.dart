@@ -71,7 +71,7 @@ class S3StorageListNotifier extends StateNotifier<AsyncValue<List<S3Storage>>> {
         requestBody['storage_id'] = storageId;
       }
       final response = await client.postRaw(
-        '/api/v1/s3_storages/+test-connection',
+        '/api/v1/s3_storages/_test-connection',
         requestBody,
       );
       return response;

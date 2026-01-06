@@ -78,10 +78,10 @@ the tests first before implementing the fixes.
   - `PUT {base_prefix}/{id}`: Update
   - `DELETE {base_prefix}/{id}`: Delete
   - `GET {base_prefix}`: Search/List (with pagination in `meta`)
-- **Custom Views**: Must be prefixed with `+` to differentiate from collection resources or ID-based resources.
-  - Collection-centric: `{base_prefix}/+{view_name}` (e.g., `/api/v1/service/+test-connection`)
-  - Model-centric: `{base_prefix}/{id}/+{view_name}` (e.g., `/api/v1/platform/pgsql/{id}/+deploy`)
-- **Standard Platform Actions**: For platform services, use `+deploy` and `+decommission` for deployment operations.
+- **Custom Views**: Must be prefixed with `_` to differentiate from collection resources or ID-based resources.
+  - Collection-centric: `{base_prefix}/_{view_name}` (e.g., `/api/v1/service/_test-connection`)
+  - Model-centric: `{base_prefix}/{id}/_{view_name}` (e.g., `/api/v1/platform/pgsql/{id}/_deploy`)
+- **Standard Platform Actions**: For platform services, use `_deploy` and `_decommission` for deployment operations.
 
 ### Model Definitions
 - Use `SQLModel` for all database-backed models.
