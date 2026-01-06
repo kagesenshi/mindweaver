@@ -303,6 +303,10 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
             if update.status is not None:
                 state.status = update.status
             if update.active is not None:
+                if update.active:
+                    await svc.deploy(model)
+                else:
+                    await svc.decommission(model)
                 state.active = update.active
             if update.message is not None:
                 state.message = update.message
