@@ -16,7 +16,15 @@ Mindweaver is a management tool for deploying data platform components on Kubern
 
 ### Core Objectives:
 - **Component Deployment**: Automate the deployment of data platform components (PostgreSQL, Kafka, Trino, Airflow, etc.) on Kubernetes using ArgoCD.
-- **Metadata Management**: Provide a centralized layer for managing projects, data sources, S3 connections, AI model APIs, knowledge bases, and AI agents.
+- **Metadata Management**: Provide a centralized layer for managing:
+  - Projects (logical groupings of components).
+  - Data sources and their authentication.
+  - S3 connections.
+  - AI model API connections (e.g., Gemini, OpenAI).
+  - Knowledge Bases (storing knowledge for AI agents).
+  - AI Agents (utilizing Knowledge Bases).
+  - Ingestion jobs and their scheduling.
+  - Kubernetes clusters and their kubeconfig.
 - **Security**: Implement robust authentication based on OIDC and secure handling of sensitive data.
 - **Unified Interface**: Provide a seamless experience between the backend API and the Flutter frontend.
 
@@ -70,13 +78,28 @@ the tests first before implementing the fixes.
   - `PUT {base_prefix}/{id}`: Update
   - `DELETE {base_prefix}/{id}`: Delete
   - `GET {base_prefix}`: Search/List (with pagination in `meta`)
-- **Custom Views**: Must be prefixed with `+` to differentiate from collection resources (e.g., `/api/v1/service/+test-connection`).
+- **Custom Views**: Must be prefixed with `+` to differentiate from collection resources or ID-based resources.
+  - Collection-centric: `{base_prefix}/+{view_name}` (e.g., `/api/v1/service/+test-connection`)
+  - Model-centric: `{base_prefix}/{id}/+{view_name}` (e.g., `/api/v1/platform/pgsql/{id}/+deploy`)
+- **Standard Platform Actions**: For platform services, use `+deploy` and `+decommission` for deployment operations.
 
 ### Model Definitions
 - Use `SQLModel` for all database-backed models.
 - Implement field immutability where necessary (e.g., `project_id` or `name` should often be immutable after creation).
-- Template files for Kubernetes manifests should use the `.yml.j2` extension (Jinja2).
-- Always use timezone aware column in database-based models.
+- **Form Metadata**: Backend models should specify UI metadata via `sa_column_kwargs` or custom attributes if available:
+  - `order`: Integer to control field display sequence (e.g., `project_id` = 1, `name` = 2).
+  - `column_span`: Control width in the form layout (e.g., `description` might span full width).
+  - `label`: Override the default field name for UI display.
+- **Deployment Status**: Platform components should use a state table inheriting from `PlatformStateBase` with `status` (bool) and `active` (bool) columns.
+- **Templates**: Kubernetes manifests should use the `.yml.j2` extension (Jinja2).
+- **Timezones**: Always use timezone-aware columns in database models.
+
+### Code Quality & Deprecations
+- If a deprecation warning appear in backend for newly written work, rectify the warning. ideally there should not be any deprecation warning for newly created work. Granted, sometimes it is not feasible (require major changes), if that happens, advise the developer accordingly
+
+### Modifying Agent Rules
+- If you are requested to update rule file in `.agent/rules/` first copy it out into a temporary file in
+  project root. Modify it, and then move the modified copy to replace the old file
 
 ---
 
@@ -94,9 +117,16 @@ the tests first before implementing the fixes.
 ## 6. Frontend Development Standards
 
 ### UI/UX Consistency
-- Use the `DynamicForm` widget for simple data entry tasks.
-- **Complex Requirements**: If a form requires conditional display, password widget, JSON field that require submission as dict instead of string, multi-step logic, or complex validation, implement a **Custom Form** rather than forcing it into a dynamic form.
-- Custom view paths in frontend providers must match the `+` prefix used in the backend.
+- **Dynamic Forms**: Use `DynamicForm` for standard CRUD operations and simple data entry. It supports:
+  - Automatic rendering from backend JSON schema.
+  - Field ordering and column spanning.
+  - Label overrides from backend metadata.
+- **Custom Forms**: Implement a **Custom Form** (e.g., using `LargeDialog`) if a form requires:
+  - Conditional field display (logic-based visibility).
+  - Complex validation beyond basic types.
+  - Multi-step logic or non-standard submission formats.
+  - Specialized widgets not supported by `DynamicForm`.
+- **Naming**: Custom view paths in frontend providers must match the `+` prefix used in the backend.
 
 ### Backend Synchronization
 - Always fetch JSON schema and form metadata from the backend to render dynamic forms.
