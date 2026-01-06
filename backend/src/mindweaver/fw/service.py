@@ -524,11 +524,11 @@ class Service(Generic[S], abc.ABC):
         if project_id and hasattr(model_class, "project_id"):
             filter &= model_class.project_id == project_id
 
-        result = await self.session.execute(select(model_class).where(filter))
+        result = await self.session.exec(select(model_class).where(filter))
         obj = result.first()
         if not obj:
             raise NotFoundError(message=f"{model_class.__name__}({model_id})")
-        return obj[0]
+        return obj
 
     async def all(self) -> list[S]:
         model_class = self.__class__.model_class()
@@ -539,8 +539,8 @@ class Service(Generic[S], abc.ABC):
         if project_id and hasattr(model_class, "project_id"):
             stmt = stmt.where(model_class.project_id == project_id)
 
-        models = await self.session.execute(stmt)
-        return [i[0] for i in models.all()]
+        models = await self.session.exec(stmt)
+        return list(models.all())
 
     async def update(self, model_id: int, data: NamedBase) -> S:
 
@@ -610,7 +610,7 @@ class Service(Generic[S], abc.ABC):
         if project_id and hasattr(model_class, "project_id"):
             filter &= model_class.project_id == project_id
 
-        models = await self.session.execute(
+        models = await self.session.exec(
             select(model_class).where(filter).offset(offset).limit(limit)
         )
         return models

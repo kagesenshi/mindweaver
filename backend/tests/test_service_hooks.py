@@ -184,8 +184,8 @@ async def test_update_delete_hooks():
 
     # Mock session behavior
     mock_result = MagicMock()
-    mock_result.first.return_value = [existing_model]
-    mock_session.execute = AsyncMock(return_value=mock_result)
+    mock_result.first.return_value = existing_model
+    mock_session.exec = AsyncMock(return_value=mock_result)
 
     mock_session.get = AsyncMock(return_value=existing_model)
     mock_session.flush = AsyncMock()

@@ -1,9 +1,18 @@
-from mindweaver.platform_service.base import PlatformBase, PlatformService
+from mindweaver.platform_service.base import (
+    PlatformBase,
+    PlatformService,
+    PlatformStateBase,
+)
 from sqlmodel import Field
-from typing import Any
+from typing import Any, Optional
 from pydantic import field_validator, ValidationError
 from mindweaver.fw.exc import FieldValidationError
 import os
+
+
+class PgSqlPlatformState(PlatformStateBase, table=True):
+    __tablename__ = "mw_pgsql_platform_state"
+    platform_id: int = Field(foreign_key="mw_pgsql_platform.id", index=True)
 
 
 class PgSqlPlatform(PlatformBase, table=True):
@@ -39,6 +48,7 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
     template_directory: str = os.path.join(
         os.path.dirname(__file__), "templates", "pgsql"
     )
+    state_model: type[PgSqlPlatformState] = PgSqlPlatformState
 
     @classmethod
     def model_class(cls) -> type[PgSqlPlatform]:

@@ -346,8 +346,8 @@ async def list_ingestion_runs(
         .where(IngestionRun.ingestion_id == ingestion_id)
         .order_by(IngestionRun.created.desc())
     )
-    results = await svc.session.execute(statement)
-    runs = results.scalars().all()
+    results = await svc.session.exec(statement)
+    runs = results.all()
 
     return {
         "status": "success",

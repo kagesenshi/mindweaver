@@ -1,4 +1,5 @@
 from datetime import datetime
+import abc
 import asyncio
 import fastapi
 from fastapi import Depends
@@ -24,6 +25,7 @@ logger = logging.getLogger(__name__)
 class PlatformStateBase(Base):
     """Base class for platform deployment status tracking"""
 
+    platform_id: int = Field(index=True)
     status: Literal["online", "offline", "pending", "error"] = Field(
         default="pending", index=True, sa_type=String()
     )
@@ -42,10 +44,29 @@ class PlatformBase(ProjectScopedNamedBase):
 T = TypeVar("T", bound=PlatformBase)
 
 
-class PlatformService(ProjectScopedService[T]):
+class PlatformService(ProjectScopedService[T], abc.ABC):
     """Base service for cluster services"""
 
     template_directory: str | None = None
+    state_model: type[PlatformStateBase] | None = None
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        if abc.ABC not in cls.__bases__:
+            if cls.state_model is None:
+                raise TypeError(f"Class {cls.__name__} must define state_model")
+
+    async def platform_state(self, model: T) -> PlatformStateBase | None:
+        """
+        Returns the platform state model for the given platform.
+        """
+        if not self.state_model:
+            return None
+
+        result = await self.session.exec(
+            select(self.state_model).where(self.state_model.platform_id == model.id)
+        )
+        return result.one_or_none()
 
     async def template_vars(self, model: T) -> dict:
         """returns the variables to be used in the template"""
@@ -239,10 +260,10 @@ class PlatformService(ProjectScopedService[T]):
 
     async def k8s_cluster(self, model: T) -> K8sCluster:
         """returns the associated K8sCluster model"""
-        result = await self.session.execute(
+        result = await self.session.exec(
             select(K8sCluster).where(K8sCluster.id == model.k8s_cluster_id)
         )
-        cluster = result.scalar_one_or_none()
+        cluster = result.one_or_none()
         if not cluster:
             raise ValueError(f"K8sCluster with id {model.k8s_cluster_id} not found")
         return cluster
