@@ -100,6 +100,9 @@ the tests first before implementing the fixes.
 ### Modifying Agent Rules
 - If you are requested to update rule file in `.agent/rules/` first copy it out into a temporary file in
   project root. Modify it, and then move the modified copy to replace the old file
+- Avoid doing in-function imports. Import must always be at top of file 
+  unless trying to workaround circular import, or when writing function
+  for pickling (eg: pyspark udf, multiprocessing)
 
 ---
 

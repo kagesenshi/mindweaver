@@ -71,6 +71,22 @@ class MockApiClient implements APIClient {
   }
 
   @override
+  Future<Map<String, dynamic>> getRaw(
+    String endpoint, {
+    Map<String, String>? headers,
+  }) async {
+    lastMethod = 'GET_RAW';
+    lastEndpoint = endpoint;
+    lastBody = null;
+
+    if (shouldThrowError) {
+      throw Exception('Mock Error');
+    }
+
+    return (mockResponse ?? {}) as Map<String, dynamic>;
+  }
+
+  @override
   Future<APIResponse<T>> post<T>(
     String endpoint,
     dynamic data,
@@ -127,6 +143,23 @@ class MockApiClient implements APIClient {
       status: "success",
       record: fromJsonT(mockResponse ?? data),
     );
+  }
+
+  @override
+  Future<Map<String, dynamic>> putRaw(
+    String endpoint,
+    dynamic data, {
+    Map<String, String>? headers,
+  }) async {
+    lastMethod = 'PUT_RAW';
+    lastEndpoint = endpoint;
+    lastBody = data;
+
+    if (shouldThrowError) {
+      throw Exception('Mock Error');
+    }
+
+    return (mockResponse ?? {}) as Map<String, dynamic>;
   }
 
   @override

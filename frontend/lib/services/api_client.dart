@@ -72,6 +72,29 @@ class APIClient {
     return APIResponse<T>.fromJson(jsonDecode(response.body), fromJsonT);
   }
 
+  Future<Map<String, dynamic>> getRaw(
+    String endpoint, {
+    Map<String, String>? headers,
+  }) async {
+    final headersMap = {..._headers, ...?headers};
+    if (getToken != null) {
+      final token = await getToken!();
+      if (token != null) headersMap['Authorization'] = 'Bearer $token';
+    }
+
+    final response = await http
+        .get(Uri.parse('$baseUrl$endpoint'), headers: headersMap)
+        .timeout(Duration(milliseconds: timeout));
+
+    if (response.statusCode != 200) {
+      throw Exception(
+        'Request failed: ${response.statusCode} ${response.body}',
+      );
+    }
+
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
   Future<APIResponse<T>> post<T>(
     String endpoint,
     dynamic data,
@@ -150,6 +173,34 @@ class APIClient {
     }
 
     return APIResponse<T>.fromJson(jsonDecode(response.body), fromJsonT);
+  }
+
+  Future<Map<String, dynamic>> putRaw(
+    String endpoint,
+    dynamic data, {
+    Map<String, String>? headers,
+  }) async {
+    final headersMap = {..._headers, ...?headers};
+    if (getToken != null) {
+      final token = await getToken!();
+      if (token != null) headersMap['Authorization'] = 'Bearer $token';
+    }
+
+    final response = await http
+        .put(
+          Uri.parse('$baseUrl$endpoint'),
+          headers: headersMap,
+          body: jsonEncode(data),
+        )
+        .timeout(Duration(milliseconds: timeout));
+
+    if (response.statusCode != 200) {
+      throw Exception(
+        'Request failed: ${response.statusCode} ${response.body}',
+      );
+    }
+
+    return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
   Future<bool> delete(String endpoint, {Map<String, String>? headers}) async {

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/platform/pgsql.dart';
+import '../../models/platform/state.dart';
 import '../api_providers.dart';
 
 class PgSqlPlatformListNotifier
@@ -60,6 +61,18 @@ class PgSqlPlatformListNotifier
       rethrow;
     }
   }
+
+  Future<void> updatePlatformState(int id, {bool? active}) async {
+    try {
+      final client = ref.read(apiClientProvider);
+      await client.postRaw('/api/v1/platform/pgsql/$id/+state', {
+        'active': active,
+      });
+      ref.invalidate(pgsqlPlatformStateProvider(id));
+    } catch (e) {
+      rethrow;
+    }
+  }
 }
 
 final pgsqlPlatformListProvider =
@@ -69,4 +82,14 @@ final pgsqlPlatformListProvider =
     >((ref) {
       ref.watch(apiClientProvider);
       return PgSqlPlatformListNotifier(ref);
+    });
+
+final pgsqlPlatformStateProvider = FutureProvider.autoDispose
+    .family<PlatformState, int>((ref, id) async {
+      final client = ref.watch(apiClientProvider);
+      final json = await client.getRaw('/api/v1/platform/pgsql/$id/+state');
+      if (json.isEmpty) {
+        return PlatformState(platform_id: id, status: 'offline', active: false);
+      }
+      return PlatformState.fromJson(json);
     });

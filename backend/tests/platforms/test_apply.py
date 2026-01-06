@@ -72,15 +72,23 @@ def test_platform_service_deploy(client: TestClient, test_project):
     with tempfile.TemporaryDirectory() as tmpdir:
         template_file = os.path.join(tmpdir, "deploy.yaml")
         with open(template_file, "w") as f:
-            f.write("kind: Deployment\nname: {{ name }}\nextra: {{ extra_field }}")
+            f.write(
+                "apiVersion: v1\nkind: Deployment\nmetadata:\n  name: {{ name }}\nextra: {{ extra_field }}"
+            )
 
         with patch.object(MockApplyPlatformService, "template_directory", tmpdir):
             # 4. Mock Kubernetes library
             with patch(
                 "kubernetes.config.new_client_from_config"
             ) as mock_new_client, patch(
-                "kubernetes.utils.create_from_yaml"
-            ) as mock_create:
+                "kubernetes.dynamic.DynamicClient"
+            ) as mock_dynamic_client, patch(
+                "mindweaver.platform_service.base.client.CoreV1Api"
+            ) as mock_core_v1:
+
+                mock_dynamic_client.return_value.resources.get.return_value.namespaced = (
+                    True
+                )
 
                 resp = client.post(
                     f"/api/v1/mock_apply_platform_models/{model_id}/+deploy",
@@ -90,11 +98,9 @@ def test_platform_service_deploy(client: TestClient, test_project):
 
                 # Verify kubernetes library was called
                 mock_new_client.assert_called_once()
-                mock_create.assert_called_once()
-
-                # We don't check manifest file content here because the temp file is deleted
-                # before we can read it in the test.
-                # We trust the rendering logic which was tested before.
+                # Verify DynamicClient created resources
+                mock_dynamic_client.assert_called_once()
+                mock_dynamic_client.return_value.resources.get.return_value.create.assert_called()
 
 
 def test_platform_service_deploy_missing_dir(client: TestClient, test_project):

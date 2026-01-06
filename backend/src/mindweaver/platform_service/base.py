@@ -5,11 +5,12 @@ import fastapi
 from fastapi import Depends
 import jinja2 as j2
 import kubernetes
-from kubernetes import client, config, utils
+from kubernetes import client, config, utils, dynamic
 import logging
 from mindweaver.fw.model import Base
 from mindweaver.service.base import ProjectScopedNamedBase, ProjectScopedService
-from mindweaver.service.k8s_cluster import K8sCluster
+from mindweaver.service.k8s_cluster import K8sCluster, K8sClusterType
+from mindweaver.service.project import Project
 import os
 import pydantic
 from sqlalchemy import Column, DateTime, String
@@ -121,8 +122,11 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
         # Get kubeconfig
         kubeconfig = await self.kubeconfig(model)
 
+        # Get Namespace
+        namespace = await self._resolve_namespace(model)
+
         # Deploy to cluster
-        await self._deploy_to_cluster(kubeconfig, full_manifest)
+        await self._deploy_to_cluster(kubeconfig, full_manifest, namespace)
 
     async def decommission(self, model: T):
         """used to remove the applied components"""
@@ -133,38 +137,93 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
         # Get kubeconfig
         kubeconfig = await self.kubeconfig(model)
 
-        # Decommission from cluster
-        await self._decommission_from_cluster(kubeconfig, full_manifest)
+        # Get Namespace
+        namespace = await self._resolve_namespace(model)
 
-    async def _deploy_to_cluster(self, kubeconfig: str, manifest: str):
+        # Decommission from cluster
+        await self._decommission_from_cluster(kubeconfig, full_manifest, namespace)
+
+    async def _deploy_to_cluster(
+        self, kubeconfig: str | None, manifest: str, default_namespace: str = "default"
+    ):
         """Deploys the manifest to the kubernetes cluster using python kubernetes library"""
 
         # We need to run this in a thread since kubernetes library is synchronous
         def _deploy():
-            # Create a temporary file for kubeconfig as some loaders prefer it
-            with tempfile.NamedTemporaryFile(mode="w") as kf:
-                kf.write(kubeconfig)
-                kf.flush()
+            if kubeconfig is None:
+                config.load_incluster_config()
+                k8s_client = client.ApiClient()
+            else:
+                # Create a temporary file for kubeconfig as some loaders prefer it
+                with tempfile.NamedTemporaryFile(mode="w") as kf:
+                    kf.write(kubeconfig)
+                    kf.flush()
 
-                k8s_client = config.new_client_from_config(config_file=kf.name)
+                    k8s_client = config.new_client_from_config(config_file=kf.name)
 
-                # Apply manifest
-                # utils.create_from_yaml doesn't have a native 'apply' (UPSERT)
-                # so we will use create_from_yaml and handle AlreadyExists if needed.
+            dynamic_client = dynamic.DynamicClient(k8s_client)
+            core_v1 = client.CoreV1Api(k8s_client)
 
-                with tempfile.NamedTemporaryFile(mode="w") as mf:
-                    mf.write(manifest)
-                    mf.flush()
-                    try:
-                        utils.create_from_yaml(k8s_client, mf.name)
-                    except utils.FailToCreateError as e:
-                        # If some resources already exist, we log it
-                        # For a true 'apply', we would need more complex logic.
-                        for failure in e.api_exceptions:
-                            if failure.status == 409:  # AlreadyExists
-                                logger.info(f"Resource already exists: {failure.body}")
-                            else:
-                                raise
+            # Ensure default namespace exists
+            if default_namespace != "default":
+                try:
+                    core_v1.read_namespace(name=default_namespace)
+                except client.exceptions.ApiException as e:
+                    if e.status == 404:
+                        logger.info(
+                            f"Namespace {default_namespace} not found, creating..."
+                        )
+                        ns_body = client.V1Namespace(
+                            metadata=client.V1ObjectMeta(name=default_namespace)
+                        )
+                        core_v1.create_namespace(body=ns_body)
+                        logger.info(f"Namespace {default_namespace} created")
+                    else:
+                        raise
+
+            for doc in yaml.safe_load_all(manifest):
+                if not doc:
+                    continue
+
+                kind = doc.get("kind")
+                api_version = doc.get("apiVersion")
+                metadata = doc.get("metadata", {})
+                name = metadata.get("name")
+                namespace = metadata.get("namespace")
+
+                if not kind or not name:
+                    continue
+
+                try:
+                    resource = dynamic_client.resources.get(
+                        api_version=api_version, kind=kind
+                    )
+
+                    # Use provided namespace, or model default if it's a namespaced resource
+                    target_namespace = namespace
+                    if resource.namespaced and not target_namespace:
+                        target_namespace = default_namespace
+
+                    resource.create(body=doc, namespace=target_namespace)
+                    logger.info(
+                        f"Created {kind} {name}"
+                        + (
+                            f" in namespace {target_namespace}"
+                            if target_namespace
+                            else ""
+                        )
+                    )
+                except kubernetes.client.exceptions.ApiException as e:
+                    if e.status == 409:  # AlreadyExists
+                        logger.info(
+                            f"Resource {kind} {name} already exists, skipping create"
+                        )
+                    else:
+                        logger.error(f"Failed to create {kind} {name}: {e}")
+                        raise
+                except Exception as e:
+                    logger.error(f"Error creating {kind} {name}: {e}")
+                    raise
 
         try:
             await asyncio.to_thread(_deploy)
@@ -173,54 +232,69 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
             logger.error(f"Failed to deploy manifests: {e}")
             raise RuntimeError(f"Failed to deploy manifests to cluster: {e}")
 
-    async def _decommission_from_cluster(self, kubeconfig: str, manifest: str):
+    async def _decommission_from_cluster(
+        self, kubeconfig: str | None, manifest: str, default_namespace: str = "default"
+    ):
         """Removes the resources defined in the manifest from the kubernetes cluster"""
 
         def _decommission():
-            with tempfile.NamedTemporaryFile(mode="w") as kf:
-                kf.write(kubeconfig)
-                kf.flush()
+            if kubeconfig is None:
+                config.load_incluster_config()
+                k8s_client = client.ApiClient()
+            else:
+                with tempfile.NamedTemporaryFile(mode="w") as kf:
+                    kf.write(kubeconfig)
+                    kf.flush()
 
-                k8s_client = config.new_client_from_config(config_file=kf.name)
-                from kubernetes import dynamic
+                    k8s_client = config.new_client_from_config(config_file=kf.name)
 
-                dynamic_client = dynamic.DynamicClient(k8s_client)
+            dynamic_client = dynamic.DynamicClient(k8s_client)
 
-                for doc in yaml.safe_load_all(manifest):
-                    if not doc:
-                        continue
+            for doc in yaml.safe_load_all(manifest):
+                if not doc:
+                    continue
 
-                    kind = doc.get("kind")
-                    api_version = doc.get("apiVersion")
-                    metadata = doc.get("metadata", {})
-                    name = metadata.get("name")
-                    namespace = metadata.get("namespace")
+                kind = doc.get("kind")
+                api_version = doc.get("apiVersion")
+                metadata = doc.get("metadata", {})
+                name = metadata.get("name")
+                namespace = metadata.get("namespace")
 
-                    if not kind or not name:
-                        continue
+                if not kind or not name:
+                    continue
 
-                    try:
-                        resource = dynamic_client.resources.get(
-                            api_version=api_version, kind=kind
+                try:
+                    resource = dynamic_client.resources.get(
+                        api_version=api_version, kind=kind
+                    )
+
+                    # Use provided namespace, or model default if it's a namespaced resource
+                    target_namespace = namespace
+                    if resource.namespaced and not target_namespace:
+                        target_namespace = default_namespace
+
+                    resource.delete(name=name, namespace=target_namespace)
+                    logger.info(
+                        f"Deleted {kind} {name}"
+                        + (
+                            f" in namespace {target_namespace}"
+                            if target_namespace
+                            else ""
                         )
-                        resource.delete(name=name, namespace=namespace)
+                    )
+                except kubernetes.client.exceptions.ApiException as e:
+                    if e.status == 404:
                         logger.info(
-                            f"Deleted {kind} {name}"
+                            f"Resource {kind} {name}"
                             + (f" in namespace {namespace}" if namespace else "")
+                            + " not found, skipping"
                         )
-                    except kubernetes.client.exceptions.ApiException as e:
-                        if e.status == 404:
-                            logger.info(
-                                f"Resource {kind} {name}"
-                                + (f" in namespace {namespace}" if namespace else "")
-                                + " not found, skipping"
-                            )
-                        else:
-                            logger.error(f"Failed to delete {kind} {name}: {e}")
-                            raise
-                    except Exception as e:
-                        logger.error(f"Error deleting {kind} {name}: {e}")
+                    else:
+                        logger.error(f"Failed to delete {kind} {name}: {e}")
                         raise
+                except Exception as e:
+                    logger.error(f"Error deleting {kind} {name}: {e}")
+                    raise
 
         try:
             await asyncio.to_thread(_decommission)
@@ -330,9 +404,24 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
             raise ValueError(f"K8sCluster with id {model.k8s_cluster_id} not found")
         return cluster
 
-    async def kubeconfig(self, model: T) -> str:
+    async def kubeconfig(self, model: T) -> str | None:
         """returns the kubeconfig string from the associated cluster"""
         cluster = await self.k8s_cluster(model)
+        if cluster.type == K8sClusterType.IN_CLUSTER:
+            return None
         if not cluster.kubeconfig:
             raise ValueError(f"K8sCluster {cluster.name} has no kubeconfig")
         return cluster.kubeconfig
+
+    async def _resolve_namespace(self, model: T) -> str:
+        """Resolves the namespace for the platform.
+        Currently uses the project name.
+        """
+        result = await self.session.exec(
+            select(Project).where(Project.id == model.project_id)
+        )
+        project = result.one_or_none()
+        if not project:
+            # Fallback to default if project not found (should not happen due to FK)
+            return "default"
+        return project.name

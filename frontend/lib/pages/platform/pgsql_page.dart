@@ -218,32 +218,117 @@ class _PlatformsList extends ConsumerWidget {
         final st = platforms[index];
         return Card(
           margin: const EdgeInsets.only(bottom: 15),
-          child: ListTile(
-            leading: const FaIcon(
-              FontAwesomeIcons.database,
-              color: Colors.blue,
-            ),
-            title: Text(st.title),
-            subtitle: Text('Instances: ${st.instances} • ${st.name}'),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ProjectPill(projectId: st.project_id),
-                IconButton(
-                  icon: const Icon(Icons.edit, color: Colors.grey),
-                  onPressed: () =>
-                      PgSqlPage.showEditPlatformDialog(context, ref, st),
+          child: Consumer(
+            builder: (context, ref, _) {
+              final stateAsync = ref.watch(pgsqlPlatformStateProvider(st.id!));
+
+              return ListTile(
+                leading: const FaIcon(
+                  FontAwesomeIcons.database,
+                  color: Colors.blue,
                 ),
-                IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.red),
-                  onPressed: () => _confirmDelete(context, st),
+                title: Row(
+                  children: [
+                    Expanded(
+                      child: Text(st.title, overflow: TextOverflow.ellipsis),
+                    ),
+                    const SizedBox(width: 8),
+                    stateAsync.when(
+                      data: (state) => Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _getStatusColor(state.status).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: _getStatusColor(state.status),
+                          ),
+                        ),
+                        child: Text(
+                          state.status.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: _getStatusColor(state.status),
+                          ),
+                        ),
+                      ),
+                      loading: () => const SizedBox(
+                        width: 12,
+                        height: 12,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      error: (_, __) =>
+                          const Icon(Icons.error, color: Colors.red, size: 16),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+                subtitle: Text('Instances: ${st.instances} • ${st.name}'),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ProjectPill(projectId: st.project_id),
+                    IconButton(
+                      icon: const Icon(Icons.edit, color: Colors.grey),
+                      onPressed: () =>
+                          PgSqlPage.showEditPlatformDialog(context, ref, st),
+                    ),
+                    stateAsync.maybeWhen(
+                      data: (state) => Switch(
+                        value: state.active,
+                        onChanged: (value) async {
+                          try {
+                            await ref
+                                .read(pgsqlPlatformListProvider.notifier)
+                                .updatePlatformState(st.id!, active: value);
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Error updating state: $e'),
+                                ),
+                              );
+                            }
+                          }
+                        },
+                      ),
+                      loading: () => stateAsync.hasValue
+                          ? Switch(
+                              value: stateAsync.value!.active,
+                              onChanged: null,
+                            )
+                          : const Switch(value: false, onChanged: null),
+                      orElse: () => const Switch(value: false, onChanged: null),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      onPressed: () => _confirmDelete(context, st),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
         );
       },
     );
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'online':
+        return Colors.green;
+      case 'offline':
+        return Colors.grey;
+      case 'pending':
+        return Colors.orange;
+      case 'error':
+        return Colors.red;
+      default:
+        return Colors.blueGrey;
+    }
   }
 
   void _confirmDelete(BuildContext context, PgSqlPlatform st) {
