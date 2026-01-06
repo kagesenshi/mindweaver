@@ -67,8 +67,12 @@ def test_pgsql_platform_crud(client: TestClient, test_project):
 
     # 3. Apply
     with patch("kubernetes.config.new_client_from_config") as mock_new_client, patch(
-        "kubernetes.utils.create_from_yaml"
-    ) as mock_create:
+        "kubernetes.dynamic.DynamicClient"
+    ) as mock_dynamic_client, patch("kubernetes.client.CoreV1Api") as mock_core_v1:
+
+        # Configure mocks
+        mock_resource = mock_dynamic_client.return_value.resources.get.return_value
+        mock_resource.namespaced = True
 
         resp = client.post(
             f"/api/v1/platform/pgsql/{model_id}/+deploy",
@@ -79,7 +83,9 @@ def test_pgsql_platform_crud(client: TestClient, test_project):
 
         # Verify kubernetes library was called
         mock_new_client.assert_called_once()
-        mock_create.assert_called_once()
+        mock_dynamic_client.assert_called_once()
+        mock_core_v1.assert_called_once()
+        assert mock_resource.create.called
 
     # 4. Update
     update_data = {

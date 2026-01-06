@@ -129,7 +129,7 @@ the tests first before implementing the fixes.
   - Complex validation beyond basic types.
   - Multi-step logic or non-standard submission formats.
   - Specialized widgets not supported by `DynamicForm`.
-- **Naming**: Custom view paths in frontend providers must match the `+` prefix used in the backend.
+- **Naming**: Custom view paths in frontend providers must match the `_` prefix used in the backend.
 
 ### Backend Synchronization
 - Always fetch JSON schema and form metadata from the backend to render dynamic forms.
