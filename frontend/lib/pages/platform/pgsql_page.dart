@@ -227,12 +227,12 @@ class _PlatformsList extends ConsumerWidget {
                   FontAwesomeIcons.database,
                   color: Colors.blue,
                 ),
-                title: Row(
+                title: Text(st.title, overflow: TextOverflow.ellipsis),
+                subtitle: Text('Instances: ${st.instances} • ${st.name}'),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Expanded(
-                      child: Text(st.title, overflow: TextOverflow.ellipsis),
-                    ),
-                    const SizedBox(width: 8),
                     stateAsync.when(
                       data: (state) => Container(
                         padding: const EdgeInsets.symmetric(
@@ -263,12 +263,7 @@ class _PlatformsList extends ConsumerWidget {
                       error: (_, __) =>
                           const Icon(Icons.error, color: Colors.red, size: 16),
                     ),
-                  ],
-                ),
-                subtitle: Text('Instances: ${st.instances} • ${st.name}'),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
+                    const SizedBox(width: 8),
                     ProjectPill(projectId: st.project_id),
                     IconButton(
                       icon: const Icon(Icons.edit, color: Colors.grey),
