@@ -23,6 +23,7 @@ import { usePgSql } from '../hooks/useResources';
 import { cn } from '../utils/cn';
 import Modal from '../components/Modal';
 import DynamicForm from '../components/DynamicForm';
+import ResourceCard from '../components/ResourceCard';
 
 const StatusBadge = ({ status }) => {
     const styles = {
@@ -253,24 +254,15 @@ const PgSqlPage = () => {
                         <p className="text-slate-500 text-sm">{selectedProject ? `No PostgreSQL clusters in ${selectedProject.name}.` : 'Create your first PostgreSQL cluster to get started.'}</p>
                     </div>
                 ) : filteredPlatforms.map(platform => (
-                    <div key={platform.id} onClick={() => setSelectedPlatform(platform)} className="mw-card-interactive group">
-                        <div className="flex justify-between items-start mb-4">
-                            <div className="flex items-center gap-3">
-                                <div className={cn(
-                                    "p-2 rounded-xl text-blue-400 group-hover:scale-110 transition-transform",
-                                    darkMode ? 'bg-slate-800' : 'bg-slate-100'
-                                )}>
-                                    <Server size={20} />
-                                </div>
-                                <div>
-                                    <h4 className="text-lg font-bold text-slate-900 dark:text-white uppercase">{platform.name}</h4>
-                                    <p className="text-sm text-slate-500 font-mono uppercase">{platform.id}</p>
-                                </div>
-                            </div>
-                            <StatusBadge status="running" />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-200 dark:border-slate-800/50">
+                    <ResourceCard
+                        key={platform.id}
+                        onClick={() => setSelectedPlatform(platform)}
+                        icon={<Server size={20} />}
+                        title={platform.name}
+                        subtitle={platform.id}
+                        status="running"
+                    >
+                        <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-200 dark:border-slate-800/50 mt-4">
                             <div className="flex items-center gap-2 text-slate-500">
                                 <Activity size={12} />
                                 <span className="text-sm font-bold">3 Instances</span>
@@ -280,7 +272,7 @@ const PgSqlPage = () => {
                                 <span className="text-sm font-bold uppercase truncate max-w-[80px]">v15.4</span>
                             </div>
                         </div>
-                    </div>
+                    </ResourceCard>
                 ))}
             </div>
 

@@ -18,22 +18,8 @@ import {
 } from 'lucide-react';
 import { useDataSources, useProjects } from '../hooks/useResources';
 import { cn } from '../utils/cn';
+import ResourceCard from '../components/ResourceCard';
 import Modal from '../components/Modal';
-
-const StatusBadge = ({ status }) => {
-    const styles = {
-        running: 'mw-badge-success',
-        connected: 'mw-badge-success',
-        warning: 'mw-badge-warning',
-        stopped: 'mw-badge-neutral',
-        error: 'mw-badge-danger',
-    };
-    return (
-        <span className={cn(styles[status] || 'mw-badge-neutral')}>
-            {(status || 'unknown').toUpperCase()}
-        </span>
-    );
-};
 
 const DataSourceForm = ({ mode = 'create', initialData = {}, onSuccess, onCancel, darkMode }) => {
     const { projects } = useProjects();
@@ -440,23 +426,26 @@ const DataSourcesPage = () => {
                         <p className="text-slate-500 text-sm">Register a new data source to use it in your data platform.</p>
                     </div>
                 ) : dataSources.map(source => (
-                    <div key={source.id} className="mw-card group">
-                        <div className="flex justify-between items-start mb-4">
-                            <div className="flex items-center gap-4">
-                                <div className="mw-icon-box p-3 text-blue-400">
-                                    {getIcon(source.type)}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <h4 className="text-lg font-bold truncate text-slate-900 dark:text-white uppercase">{source.title || source.name}</h4>
-                                    <p className="text-sm text-slate-500 font-mono uppercase mt-0.5">
-                                        {source.id} • {source.type}
-                                    </p>
-                                </div>
-                            </div>
-                            <StatusBadge status={source.status || 'connected'} />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4 py-4 border-y border-slate-800/50 mb-4">
+                    <ResourceCard
+                        key={source.id}
+                        icon={getIcon(source.type)}
+                        title={source.title || source.name}
+                        subtitle={`${source.id} • ${source.type}`}
+                        status={source.status || 'connected'}
+                        onEdit={() => setEditSource(source)}
+                        onDelete={() => deleteDataSource(source.id)}
+                        footer={
+                            <button
+                                onClick={() => handleTest(source.id)}
+                                disabled={testingId === source.id}
+                                className="text-sm font-bold text-blue-500 hover:text-blue-400 uppercase tracking-widest flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                            >
+                                {testingId === source.id ? <RefreshCcw size={12} className="animate-spin" /> : <LinkIcon size={12} />}
+                                {testingId === source.id ? 'Testing...' : 'Test Connection'}
+                            </button>
+                        }
+                    >
+                        <div className="grid grid-cols-2 gap-4 py-4 border-t border-slate-800/50 mt-4">
                             <div>
                                 <p className="text-sm text-slate-500 font-bold uppercase mb-1">Type</p>
                                 <p className={cn("text-sm font-medium", darkMode ? 'text-slate-300' : 'text-slate-700')}>
@@ -482,34 +471,7 @@ const DataSourcesPage = () => {
                                 {testResult.message}
                             </div>
                         )}
-
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <button
-                                    onClick={() => handleTest(source.id)}
-                                    disabled={testingId === source.id}
-                                    className="text-sm font-bold text-blue-500 hover:text-blue-400 uppercase tracking-widest flex items-center gap-1.5 transition-colors disabled:opacity-50"
-                                >
-                                    {testingId === source.id ? <RefreshCcw size={12} className="animate-spin" /> : <LinkIcon size={12} />}
-                                    {testingId === source.id ? 'Testing...' : 'Test Connection'}
-                                </button>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <button
-                                    onClick={() => setEditSource(source)}
-                                    className="mw-btn-icon opacity-0 group-hover:opacity-100 p-2"
-                                >
-                                    <Edit2 size={16} />
-                                </button>
-                                <button
-                                    onClick={() => deleteDataSource(source.id)}
-                                    className="mw-btn-icon-danger opacity-0 group-hover:opacity-100 p-2"
-                                >
-                                    <Trash2 size={16} />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                    </ResourceCard>
                 ))}
             </div>
 

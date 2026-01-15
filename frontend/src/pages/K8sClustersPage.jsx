@@ -5,6 +5,7 @@ import { Server, Cloud, Activity, Plus, Edit2 } from 'lucide-react';
 import { cn } from '../utils/cn';
 import Modal from '../components/Modal';
 import DynamicForm from '../components/DynamicForm';
+import ResourceCard from '../components/ResourceCard';
 
 const K8sClustersPage = () => {
     const { darkMode, selectedProject } = useOutletContext();
@@ -30,36 +31,29 @@ const K8sClustersPage = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {clusters.map((cluster, i) => (
-                    <div key={i} className="mw-card group">
-                        <div className="flex justify-between items-start mb-4">
+                    <ResourceCard
+                        key={i}
+                        icon={<Cloud size={24} />}
+                        title={cluster.title || cluster.name}
+                        subtitle={cluster.type}
+                        status="active"
+                        onEdit={() => {
+                            setSelectedCluster(cluster);
+                            setIsEditModalOpen(true);
+                        }}
+                        footer={
                             <div className="flex items-center gap-4">
-                                <div className="mw-icon-box p-3 text-indigo-400">
-                                    <Cloud size={24} />
+                                <div className="flex items-center gap-2 text-slate-500">
+                                    <Server size={14} />
+                                    <span className="text-sm">? Nodes</span>
                                 </div>
-                                <div>
-                                    <h4 className="text-lg font-bold text-slate-900 dark:text-white uppercase">{cluster.title || cluster.name}</h4>
-                                    <p className="text-sm text-slate-500 font-mono uppercase mt-0.5">{cluster.type}</p>
+                                <div className="flex items-center gap-2 text-slate-500">
+                                    <Activity size={14} />
+                                    <span className="text-sm">Unknown Uptime</span>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <div className="mw-badge-success">ACTIVE</div>
-                                <button
-                                    onClick={() => {
-                                        setSelectedCluster(cluster);
-                                        setIsEditModalOpen(true);
-                                    }}
-                                    className="mw-btn-icon"
-                                    title="Edit Cluster"
-                                >
-                                    <Edit2 size={16} />
-                                </button>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-4 pt-4 border-t border-slate-800/50">
-                            <div className="flex items-center gap-2 text-slate-500"><Server size={14} /><span className="text-sm">? Nodes</span></div>
-                            <div className="flex items-center gap-2 text-slate-500"><Activity size={14} /><span className="text-sm">Unknown Uptime</span></div>
-                        </div>
-                    </div>
+                        }
+                    />
                 ))}
             </div>
 
