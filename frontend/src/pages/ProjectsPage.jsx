@@ -24,8 +24,8 @@ const ProjectsPage = () => {
     const [searchTerm, setSearchTerm] = useState('');
 
     const filteredProjects = projects.filter(p =>
-        p.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.description?.toLowerCase().includes(searchTerm.toLowerCase())
+        String(p.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        String(p.description || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
 

@@ -23,7 +23,7 @@ const HomePage = () => {
     const filteredInstances = platforms.filter(inst => {
         const matchesProject = !selectedProject || inst.project_id === selectedProject.id;
         const matchesSearch = inst.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            inst.id.toLowerCase().includes(searchTerm.toLowerCase());
+            String(inst.id).toLowerCase().includes(searchTerm.toLowerCase());
         return matchesProject && matchesSearch;
     });
 
