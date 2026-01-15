@@ -26,7 +26,7 @@ Mindweaver is a management tool for deploying data platform components on Kubern
   - Ingestion jobs and their scheduling.
   - Kubernetes clusters and their kubeconfig.
 - **Security**: Implement robust authentication based on OIDC and secure handling of sensitive data.
-- **Unified Interface**: Provide a seamless experience between the backend API and the Flutter frontend.
+- **Unified Interface**: Provide a seamless experience between the backend API and the React frontend.
 
 ---
 
@@ -35,9 +35,9 @@ Mindweaver is a management tool for deploying data platform components on Kubern
 - **Backend**: FastAPI (Python 3.11+)
 - **ORM/Database**: SQLModel (SQLAlchemy 2.0 based)
 - **Environment Management**: `uv`
-- **Frontend**: Flutter (Targeting Web/Desktop)
+- **Frontend**: React (Targeting Web/Desktop)
 - **Orchestration**: Kubernetes, ArgoCD
-- **Testing**: `pytest` (Backend), Flutter test framework (Frontend)
+- **Testing**: `pytest` (Backend), React test framework (Frontend)
 
 ---
 
@@ -163,3 +163,4 @@ the tests first before implementing the fixes.
 - **Be Concise**: When updating code, make targeted edits rather than replacing entire files.
 - **Verify**: Never assume code works; run tests and provide proof of verification in walkthroughs.
 - **Communicate**: If a design decision is ambiguous, ask the user for clarification before proceeding.
+- **Advise Correction**: If user made a request based on a statement that is not true, explain what is really happening and ask for confirmation first. 

@@ -47,7 +47,7 @@ const router = createBrowserRouter([
       },
       {
         path: 'platform/:service',
-        element: <div className="p-8 text-center text-slate-500 italic">This platform service is not yet implemented in React.</div>,
+        element: <div className="p-8 text-center text-slate-500 text-base italic">This platform service is not yet implemented in React.</div>,
       }
     ]
   },

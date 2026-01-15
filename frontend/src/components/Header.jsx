@@ -24,10 +24,7 @@ const Header = ({ darkMode, setDarkMode, selectedProject, setSelectedProject, pr
                 <div className="relative">
                     <button
                         onClick={() => setShowProjectDropdown(!showProjectDropdown)}
-                        className={cn(
-                            "flex items-center gap-3 border rounded-lg px-3 py-1.5 transition-all min-w-[200px]",
-                            darkMode ? 'bg-slate-900 border-slate-800 hover:border-slate-700' : 'bg-white border-slate-200 hover:border-slate-300'
-                        )}
+                        className="mw-search-box min-w-[200px]"
                     >
                         <div className={cn(
                             "p-1 rounded",
@@ -36,9 +33,9 @@ const Header = ({ darkMode, setDarkMode, selectedProject, setSelectedProject, pr
                             <Briefcase size={14} />
                         </div>
                         <div className="flex-1 text-left">
-                            <p className="text-[9px] text-slate-500 uppercase font-bold tracking-tighter leading-none">Context</p>
+                            <p className="text-sm text-slate-500 uppercase font-bold tracking-tighter leading-none">Context</p>
                             <p className={cn(
-                                "text-xs font-bold truncate",
+                                "text-base font-bold truncate",
                                 darkMode ? 'text-white' : 'text-slate-900'
                             )}>
                                 {selectedProject?.name || 'All Projects'}
@@ -53,14 +50,11 @@ const Header = ({ darkMode, setDarkMode, selectedProject, setSelectedProject, pr
                                 className="fixed inset-0 z-10"
                                 onClick={() => setShowProjectDropdown(false)}
                             />
-                            <div className={cn(
-                                "absolute top-full left-0 mt-2 w-64 border rounded-xl shadow-2xl z-20 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200",
-                                darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
-                            )}>
+                            <div className="mw-panel absolute top-full left-0 mt-2 w-64 z-20 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                                 <button
                                     onClick={() => { setSelectedProject(null); setShowProjectDropdown(false); }}
                                     className={cn(
-                                        "w-full flex items-center gap-3 p-3 text-xs font-bold border-b transition-all",
+                                        "w-full flex items-center gap-3 p-3 text-sm font-bold border-b transition-all",
                                         darkMode ? 'text-slate-400 hover:bg-slate-800 border-slate-800' : 'text-slate-600 hover:bg-slate-50 border-slate-100'
                                     )}
                                 >
@@ -71,7 +65,7 @@ const Header = ({ darkMode, setDarkMode, selectedProject, setSelectedProject, pr
                                         key={p.id}
                                         onClick={() => { setSelectedProject(p); setShowProjectDropdown(false); }}
                                         className={cn(
-                                            "w-full flex items-center gap-3 p-3 text-xs transition-all",
+                                            "w-full flex items-center gap-3 p-3 text-sm transition-all",
                                             darkMode ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-600 hover:bg-slate-50'
                                         )}
                                     >
@@ -89,15 +83,12 @@ const Header = ({ darkMode, setDarkMode, selectedProject, setSelectedProject, pr
             </div>
 
             <div className="flex items-center gap-4">
-                <div className={cn(
-                    "relative border rounded-lg px-3 py-1 flex items-center gap-2",
-                    darkMode ? 'bg-slate-900 border-slate-800' : 'bg-slate-100 border-slate-200'
-                )}>
+                <div className="mw-search-box py-1">
                     <Search size={14} className="text-slate-500" />
                     <input
                         type="text"
                         placeholder="Search resources..."
-                        className="bg-transparent text-xs focus:outline-none w-48"
+                        className="bg-transparent text-base focus:outline-none w-48"
                     />
                 </div>
                 <button

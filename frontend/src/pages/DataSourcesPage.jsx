@@ -22,17 +22,14 @@ import Modal from '../components/Modal';
 
 const StatusBadge = ({ status }) => {
     const styles = {
-        running: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
-        connected: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
-        warning: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
-        stopped: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
-        error: 'bg-rose-500/10 text-rose-500 border-rose-500/20',
+        running: 'mw-badge-success',
+        connected: 'mw-badge-success',
+        warning: 'mw-badge-warning',
+        stopped: 'mw-badge-neutral',
+        error: 'mw-badge-danger',
     };
     return (
-        <span className={cn(
-            "px-2 py-0.5 rounded-full text-[10px] font-bold border",
-            styles[status] || styles.stopped
-        )}>
+        <span className={cn(styles[status] || 'mw-badge-neutral')}>
             {(status || 'unknown').toUpperCase()}
         </span>
     );
@@ -158,18 +155,16 @@ const DataSourceForm = ({ mode = 'create', initialData = {}, onSuccess, onCancel
         }
     };
 
-    const inputBg = darkMode ? "bg-slate-950 border-slate-800 text-slate-200" : "bg-slate-100 border-slate-200 text-slate-900";
-    const errorBorder = "border-rose-500 ring-1 ring-rose-500/50";
 
     const FieldError = ({ name }) => {
         if (!fieldErrors[name]) return null;
-        return <p className="text-[10px] text-rose-500 mt-1 font-medium">{fieldErrors[name]}</p>;
+        return <p className="text-sm text-rose-500 mt-1 font-medium">{fieldErrors[name]}</p>;
     };
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
-                <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-center gap-3 text-rose-500 text-sm">
+                <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-center gap-3 text-rose-500 text-base">
                     <AlertCircle size={18} />
                     {error}
                 </div>
@@ -177,11 +172,11 @@ const DataSourceForm = ({ mode = 'create', initialData = {}, onSuccess, onCancel
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                    <label className={cn("text-[10px] font-bold uppercase tracking-widest px-1", fieldErrors.project_id ? "text-rose-500" : "text-slate-500")}>Project</label>
+                    <label className={cn("mw-label", fieldErrors.project_id ? "text-rose-500" : "")}>Project</label>
                     <select
                         value={formData.project_id || ''}
                         onChange={(e) => handleChange('project_id', parseInt(e.target.value))}
-                        className={cn("w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all", inputBg, fieldErrors.project_id && errorBorder)}
+                        className={cn("mw-input", fieldErrors.project_id && "border-rose-500 ring-1 ring-rose-500/50")}
                     >
                         <option value="">Select Project...</option>
                         {projects.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
@@ -189,11 +184,11 @@ const DataSourceForm = ({ mode = 'create', initialData = {}, onSuccess, onCancel
                     <FieldError name="project_id" />
                 </div>
                 <div className="space-y-2">
-                    <label className={cn("text-[10px] font-bold uppercase tracking-widest px-1", fieldErrors.type ? "text-rose-500" : "text-slate-500")}>Source Type</label>
+                    <label className={cn("mw-label", fieldErrors.type ? "text-rose-500" : "")}>Source Type</label>
                     <select
                         value={formData.type}
                         onChange={(e) => handleChange('type', e.target.value)}
-                        className={cn("w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all", inputBg, fieldErrors.type && errorBorder)}
+                        className={cn("mw-input", fieldErrors.type && "border-rose-500 ring-1 ring-rose-500/50")}
                         disabled={mode === 'edit'}
                     >
                         <option value="API">REST API</option>
@@ -204,48 +199,48 @@ const DataSourceForm = ({ mode = 'create', initialData = {}, onSuccess, onCancel
                     <FieldError name="type" />
                 </div>
                 <div className="space-y-2">
-                    <label className={cn("text-[10px] font-bold uppercase tracking-widest px-1", fieldErrors.name ? "text-rose-500" : "text-slate-500")}>Name (ID)</label>
+                    <label className={cn("mw-label", fieldErrors.name ? "text-rose-500" : "")}>Name (ID)</label>
                     <input
                         value={formData.name}
                         onChange={(e) => handleChange('name', e.target.value)}
-                        className={cn("w-full px-4 py-3 rounded-xl border text-sm outline-none font-mono transition-all", inputBg, fieldErrors.name && errorBorder)}
+                        className={cn("mw-input font-mono", fieldErrors.name && "border-rose-500 ring-1 ring-rose-500/50")}
                         disabled={mode === 'edit'}
                     />
                     <FieldError name="name" />
                 </div>
                 <div className="space-y-2">
-                    <label className={cn("text-[10px] font-bold uppercase tracking-widest px-1", fieldErrors.title ? "text-rose-500" : "text-slate-500")}>Title</label>
+                    <label className={cn("mw-label", fieldErrors.title ? "text-rose-500" : "")}>Title</label>
                     <input
                         value={formData.title}
                         onChange={(e) => handleChange('title', e.target.value)}
-                        className={cn("w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all", inputBg, fieldErrors.title && errorBorder)}
+                        className={cn("mw-input", fieldErrors.title && "border-rose-500 ring-1 ring-rose-500/50")}
                     />
                     <FieldError name="title" />
                 </div>
             </div>
 
             <div className="pt-4 border-t border-slate-800/50">
-                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-4">Configuration</h4>
+                <h4 className="text-base font-bold text-slate-400 uppercase tracking-[0.2em] mb-4">Configuration</h4>
 
                 {formData.type === 'API' && (
                     <div className="space-y-4">
                         <div className="space-y-2">
-                            <label className={cn("text-[10px] font-bold uppercase tracking-widest px-1", fieldErrors['parameters.base_url'] ? "text-rose-500" : "text-slate-500")}>Base URL</label>
+                            <label className={cn("mw-label", fieldErrors['parameters.base_url'] ? "text-rose-500" : "")}>Base URL</label>
                             <input
                                 value={formData.parameters.base_url || ''}
                                 onChange={(e) => handleChange('parameters.base_url', e.target.value)}
-                                className={cn("w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all", inputBg, fieldErrors['parameters.base_url'] && errorBorder)}
+                                className={cn("mw-input", fieldErrors['parameters.base_url'] && "border-rose-500 ring-1 ring-rose-500/50")}
                                 placeholder="https://api.example.com"
                             />
                             <FieldError name="parameters.base_url" />
                         </div>
                         <div className="space-y-2">
-                            <label className={cn("text-[10px] font-bold uppercase tracking-widest px-1", fieldErrors['parameters.api_key'] ? "text-rose-500" : "text-slate-500")}>API Key</label>
+                            <label className={cn("mw-label", fieldErrors['parameters.api_key'] ? "text-rose-500" : "")}>API Key</label>
                             <input
                                 type="password"
                                 value={formData.parameters.api_key === '__REDACTED__' ? '__REDACTED__' : (formData.parameters.api_key || '')}
                                 onChange={(e) => handleChange('parameters.api_key', e.target.value)}
-                                className={cn("w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all", inputBg, fieldErrors['parameters.api_key'] && errorBorder)}
+                                className={cn("mw-input", fieldErrors['parameters.api_key'] && "border-rose-500 ring-1 ring-rose-500/50")}
                             />
                             <FieldError name="parameters.api_key" />
                         </div>
@@ -256,11 +251,11 @@ const DataSourceForm = ({ mode = 'create', initialData = {}, onSuccess, onCancel
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <label className={cn("text-[10px] font-bold uppercase tracking-widest px-1", fieldErrors['parameters.database_type'] ? "text-rose-500" : "text-slate-500")}>DB Type</label>
+                                <label className={cn("mw-label", fieldErrors['parameters.database_type'] ? "text-rose-500" : "")}>DB Type</label>
                                 <select
                                     value={formData.parameters.database_type || ''}
                                     onChange={(e) => handleChange('parameters.database_type', e.target.value)}
-                                    className={cn("w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all", inputBg, fieldErrors['parameters.database_type'] && errorBorder)}
+                                    className={cn("mw-input", fieldErrors['parameters.database_type'] && "border-rose-500 ring-1 ring-rose-500/50")}
                                 >
                                     <option value="postgresql">PostgreSQL</option>
                                     <option value="mysql">MySQL</option>
@@ -268,53 +263,53 @@ const DataSourceForm = ({ mode = 'create', initialData = {}, onSuccess, onCancel
                                 <FieldError name="parameters.database_type" />
                             </div>
                             <div className="space-y-2">
-                                <label className={cn("text-[10px] font-bold uppercase tracking-widest px-1", fieldErrors['parameters.host'] ? "text-rose-500" : "text-slate-500")}>Host</label>
+                                <label className={cn("mw-label", fieldErrors['parameters.host'] ? "text-rose-500" : "")}>Host</label>
                                 <input
                                     value={formData.parameters.host || ''}
                                     onChange={(e) => handleChange('parameters.host', e.target.value)}
-                                    className={cn("w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all", inputBg, fieldErrors['parameters.host'] && errorBorder)}
+                                    className={cn("mw-input", fieldErrors['parameters.host'] && "border-rose-500 ring-1 ring-rose-500/50")}
                                 />
                                 <FieldError name="parameters.host" />
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <label className={cn("text-[10px] font-bold uppercase tracking-widest px-1", fieldErrors['parameters.port'] ? "text-rose-500" : "text-slate-500")}>Port</label>
+                                <label className={cn("mw-label", fieldErrors['parameters.port'] ? "text-rose-500" : "")}>Port</label>
                                 <input
                                     type="number"
                                     value={formData.parameters.port ?? ''}
                                     onChange={(e) => handleChange('parameters.port', e.target.value === '' ? undefined : parseInt(e.target.value))}
-                                    className={cn("w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all", inputBg, fieldErrors['parameters.port'] && errorBorder)}
+                                    className={cn("mw-input", fieldErrors['parameters.port'] && "border-rose-500 ring-1 ring-rose-500/50")}
                                 />
                                 <FieldError name="parameters.port" />
                             </div>
                             <div className="space-y-2">
-                                <label className={cn("text-[10px] font-bold uppercase tracking-widest px-1", fieldErrors['parameters.username'] ? "text-rose-500" : "text-slate-500")}>Username</label>
+                                <label className={cn("mw-label", fieldErrors['parameters.username'] ? "text-rose-500" : "")}>Username</label>
                                 <input
                                     value={formData.parameters.username || ''}
                                     onChange={(e) => handleChange('parameters.username', e.target.value)}
-                                    className={cn("w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all", inputBg, fieldErrors['parameters.username'] && errorBorder)}
+                                    className={cn("mw-input", fieldErrors['parameters.username'] && "border-rose-500 ring-1 ring-rose-500/50")}
                                 />
                                 <FieldError name="parameters.username" />
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <label className={cn("text-[10px] font-bold uppercase tracking-widest px-1", fieldErrors['parameters.password'] ? "text-rose-500" : "text-slate-500")}>Password</label>
+                                <label className={cn("mw-label", fieldErrors['parameters.password'] ? "text-rose-500" : "")}>Password</label>
                                 <input
                                     type="password"
                                     value={formData.parameters.password === '__REDACTED__' ? '__REDACTED__' : (formData.parameters.password || '')}
                                     onChange={(e) => handleChange('parameters.password', e.target.value)}
-                                    className={cn("w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all", inputBg, fieldErrors['parameters.password'] && errorBorder)}
+                                    className={cn("mw-input", fieldErrors['parameters.password'] && "border-rose-500 ring-1 ring-rose-500/50")}
                                 />
                                 <FieldError name="parameters.password" />
                             </div>
                             <div className="space-y-2">
-                                <label className={cn("text-[10px] font-bold uppercase tracking-widest px-1", fieldErrors['parameters.database'] ? "text-rose-500" : "text-slate-500")}>Database Name</label>
+                                <label className={cn("mw-label", fieldErrors['parameters.database'] ? "text-rose-500" : "")}>Database Name</label>
                                 <input
                                     value={formData.parameters.database || ''}
                                     onChange={(e) => handleChange('parameters.database', e.target.value)}
-                                    className={cn("w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all", inputBg, fieldErrors['parameters.database'] && errorBorder)}
+                                    className={cn("mw-input", fieldErrors['parameters.database'] && "border-rose-500 ring-1 ring-rose-500/50")}
                                 />
                                 <FieldError name="parameters.database" />
                             </div>
@@ -324,11 +319,11 @@ const DataSourceForm = ({ mode = 'create', initialData = {}, onSuccess, onCancel
 
                 {formData.type === 'Web Scraper' && (
                     <div className="space-y-2">
-                        <label className={cn("text-[10px] font-bold uppercase tracking-widest px-1", fieldErrors['parameters.start_url'] ? "text-rose-500" : "text-slate-500")}>Start URL</label>
+                        <label className={cn("mw-label", fieldErrors['parameters.start_url'] ? "text-rose-500" : "")}>Start URL</label>
                         <input
                             value={formData.parameters.start_url || ''}
                             onChange={(e) => handleChange('parameters.start_url', e.target.value)}
-                            className={cn("w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all", inputBg, fieldErrors['parameters.start_url'] && errorBorder)}
+                            className={cn("mw-input", fieldErrors['parameters.start_url'] && "border-rose-500 ring-1 ring-rose-500/50")}
                         />
                         <FieldError name="parameters.start_url" />
                     </div>
@@ -344,7 +339,7 @@ const DataSourceForm = ({ mode = 'create', initialData = {}, onSuccess, onCancel
 
             {testResult && (
                 <div className={cn(
-                    "p-3 rounded-xl border flex items-center gap-2 text-xs font-medium animate-in fade-in zoom-in-95",
+                    "p-3 rounded-xl border flex items-center gap-2 text-base font-medium animate-in fade-in zoom-in-95",
                     testResult.success
                         ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500"
                         : "bg-rose-500/10 border-rose-500/20 text-rose-500"
@@ -360,10 +355,7 @@ const DataSourceForm = ({ mode = 'create', initialData = {}, onSuccess, onCancel
                         type="button"
                         onClick={handleTest}
                         disabled={testing}
-                        className={cn(
-                            "flex-1 font-bold py-4 rounded-2xl flex items-center justify-center gap-3 transition-all border",
-                            darkMode ? "bg-slate-900 border-slate-800 text-blue-400 hover:bg-slate-800" : "bg-white border-slate-200 text-blue-600 hover:bg-slate-50"
-                        )}
+                        className="mw-btn-secondary flex-1 py-4"
                     >
                         {testing ? <RefreshCcw size={18} className="animate-spin" /> : <LinkIcon size={18} />}
                         {testing ? 'TESTING...' : 'TEST CONNECTION'}
@@ -372,7 +364,7 @@ const DataSourceForm = ({ mode = 'create', initialData = {}, onSuccess, onCancel
                 <button
                     type="submit"
                     disabled={saving}
-                    className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 transition-all shadow-lg shadow-blue-600/20"
+                    className="mw-btn-primary flex-1 py-4"
                 >
                     {saving ? <RefreshCcw size={18} className="animate-spin" /> : <Save size={18} />}
                     {saving ? 'SAVING...' : (mode === 'create' ? 'REGISTER SOURCE' : 'SAVE CHANGES')}
@@ -380,10 +372,7 @@ const DataSourceForm = ({ mode = 'create', initialData = {}, onSuccess, onCancel
                 <button
                     type="button"
                     onClick={onCancel}
-                    className={cn(
-                        "px-8 py-4 rounded-2xl font-bold flex items-center gap-2 border transition-all",
-                        darkMode ? "bg-slate-900 border-slate-800 text-slate-400 hover:bg-slate-800" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                    )}
+                    className="mw-btn-secondary px-8 py-4"
                 >
                     <X size={18} /> CANCEL
                 </button>
@@ -413,8 +402,6 @@ const DataSourcesPage = () => {
         }
     };
 
-    const cardBg = darkMode ? "bg-slate-900/40 border-slate-800" : "bg-white border-slate-200 shadow-sm";
-    const textColor = darkMode ? "text-white" : "text-slate-900";
 
     const getIcon = (type) => {
         switch (type) {
@@ -427,14 +414,14 @@ const DataSourcesPage = () => {
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <div className="flex items-end justify-between border-b pb-6 border-slate-800/50">
+            <div className="mw-page-header">
                 <div>
-                    <h2 className={cn("text-3xl font-bold tracking-tight", textColor)}>Data Source Registry</h2>
-                    <p className="text-slate-500 mt-1">Global connection identities for Trino, Airflow, and ETL runtimes.</p>
+                    <h2 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white uppercase">Data Source Registry</h2>
+                    <p className="text-slate-500 mt-1 text-base">Global connection identities for Trino, Airflow, and ETL runtimes.</p>
                 </div>
                 <button
                     onClick={() => setIsCreateModalOpen(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg shadow-lg hover:bg-blue-500 transition-all font-sans"
+                    className="mw-btn-primary px-4 py-2"
                 >
                     <Plus size={16} /> REGISTER SOURCE
                 </button>
@@ -444,7 +431,7 @@ const DataSourcesPage = () => {
                 {loading ? (
                     <div className="col-span-full py-20 flex flex-col items-center justify-center space-y-4">
                         <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                        <p className="text-slate-500 text-sm font-medium">Fetching data sources...</p>
+                        <p className="text-slate-500 text-base font-medium">Fetching data sources...</p>
                     </div>
                 ) : dataSources.length === 0 ? (
                     <div className="col-span-full py-20 text-center border-2 border-dashed border-slate-800 rounded-[40px]">
@@ -453,21 +440,15 @@ const DataSourcesPage = () => {
                         <p className="text-slate-500 text-sm">Register a new data source to use it in your data platform.</p>
                     </div>
                 ) : dataSources.map(source => (
-                    <div key={source.id} className={cn(
-                        "border rounded-[32px] p-6 transition-all group hover:border-blue-500/30",
-                        cardBg
-                    )}>
+                    <div key={source.id} className="mw-card group">
                         <div className="flex justify-between items-start mb-4">
                             <div className="flex items-center gap-4">
-                                <div className={cn(
-                                    "p-3 rounded-2xl",
-                                    darkMode ? 'bg-slate-800 text-blue-400' : 'bg-slate-100 text-blue-600'
-                                )}>
+                                <div className="mw-icon-box p-3 text-blue-400">
                                     {getIcon(source.type)}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <h4 className={cn("font-bold truncate", textColor)}>{source.title || source.name}</h4>
-                                    <p className="text-[10px] text-slate-500 font-mono uppercase mt-0.5">
+                                    <h4 className="text-lg font-bold truncate text-slate-900 dark:text-white uppercase">{source.title || source.name}</h4>
+                                    <p className="text-sm text-slate-500 font-mono uppercase mt-0.5">
                                         {source.id} • {source.type}
                                     </p>
                                 </div>
@@ -477,14 +458,14 @@ const DataSourcesPage = () => {
 
                         <div className="grid grid-cols-2 gap-4 py-4 border-y border-slate-800/50 mb-4">
                             <div>
-                                <p className="text-[9px] text-slate-500 font-bold uppercase mb-1">Type</p>
-                                <p className={cn("text-xs font-medium", darkMode ? 'text-slate-300' : 'text-slate-700')}>
+                                <p className="text-sm text-slate-500 font-bold uppercase mb-1">Type</p>
+                                <p className={cn("text-sm font-medium", darkMode ? 'text-slate-300' : 'text-slate-700')}>
                                     {source.type}
                                 </p>
                             </div>
                             <div>
-                                <p className="text-[9px] text-slate-500 font-bold uppercase mb-1">Configuration</p>
-                                <p className={cn("text-xs font-mono truncate", darkMode ? 'text-slate-300' : 'text-slate-700')}>
+                                <p className="text-sm text-slate-500 font-bold uppercase mb-1">Configuration</p>
+                                <p className={cn("text-sm font-mono truncate", darkMode ? 'text-slate-300' : 'text-slate-700')}>
                                     {source.parameters?.host || source.parameters?.account || source.parameters?.bucket || source.parameters?.base_url || 'Cloud Native'}
                                 </p>
                             </div>
@@ -492,7 +473,7 @@ const DataSourcesPage = () => {
 
                         {testResult?.id === source.id && (
                             <div className={cn(
-                                "mb-4 p-3 rounded-xl border flex items-center gap-2 text-xs font-medium animate-in fade-in zoom-in-95",
+                                "mb-4 p-3 rounded-xl border flex items-center gap-2 text-base font-medium animate-in fade-in zoom-in-95",
                                 testResult.success
                                     ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500"
                                     : "bg-rose-500/10 border-rose-500/20 text-rose-500"
@@ -507,7 +488,7 @@ const DataSourcesPage = () => {
                                 <button
                                     onClick={() => handleTest(source.id)}
                                     disabled={testingId === source.id}
-                                    className="text-[10px] font-bold text-blue-500 hover:text-blue-400 uppercase tracking-widest flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                                    className="text-sm font-bold text-blue-500 hover:text-blue-400 uppercase tracking-widest flex items-center gap-1.5 transition-colors disabled:opacity-50"
                                 >
                                     {testingId === source.id ? <RefreshCcw size={12} className="animate-spin" /> : <LinkIcon size={12} />}
                                     {testingId === source.id ? 'Testing...' : 'Test Connection'}
@@ -516,13 +497,13 @@ const DataSourcesPage = () => {
                             <div className="flex items-center gap-2">
                                 <button
                                     onClick={() => setEditSource(source)}
-                                    className="p-2 text-slate-500 hover:text-blue-500 transition-colors opacity-0 group-hover:opacity-100"
+                                    className="mw-btn-icon opacity-0 group-hover:opacity-100 p-2"
                                 >
                                     <Edit2 size={16} />
                                 </button>
                                 <button
                                     onClick={() => deleteDataSource(source.id)}
-                                    className="p-2 text-slate-500 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"
+                                    className="mw-btn-icon-danger opacity-0 group-hover:opacity-100 p-2"
                                 >
                                     <Trash2 size={16} />
                                 </button>

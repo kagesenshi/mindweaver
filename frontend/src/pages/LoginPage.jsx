@@ -16,13 +16,13 @@ const LoginPage = () => {
                     <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-blue-600/40 mx-auto mb-6">
                         <Layers className="text-white" size={32} />
                     </div>
-                    <h1 className="text-4xl font-bold tracking-tight text-white mb-3">Mindweaver</h1>
-                    <p className="text-slate-500 text-sm">Deployment and metadata layer for data platforms.</p>
+                    <h1 className="text-5xl font-bold tracking-tight text-white mb-3">Mindweaver</h1>
+                    <p className="text-slate-500 text-base">Deployment and metadata layer for data platforms.</p>
                 </div>
 
                 <div className="bg-slate-900/40 border border-slate-800/60 p-10 rounded-[40px] shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-150">
-                    <h2 className="text-xl font-bold text-white mb-2 text-center">Welcome back</h2>
-                    <p className="text-slate-500 text-xs text-center mb-8 uppercase tracking-widest font-medium">Enterprise SSO Login</p>
+                    <h2 className="text-3xl font-bold text-white mb-2 text-center">Welcome back</h2>
+                    <p className="text-slate-500 text-base text-center mb-8 uppercase tracking-widest font-medium">Enterprise SSO Login</p>
 
                     <button
                         onClick={() => login()}
@@ -34,19 +34,19 @@ const LoginPage = () => {
 
                     <div className="mt-8 flex items-center justify-center gap-4">
                         <div className="h-px flex-1 bg-slate-800" />
-                        <span className="text-[10px] text-slate-600 font-bold uppercase tracking-widest">Secure session</span>
+                        <span className="text-sm text-slate-600 font-bold uppercase tracking-widest">Secure session</span>
                         <div className="h-px flex-1 bg-slate-800" />
                     </div>
 
-                    <p className="mt-8 text-[10px] text-slate-500 text-center leading-relaxed">
+                    <p className="mt-8 text-sm text-slate-500 text-center leading-relaxed">
                         By continuing, you agree to our Terms of Service<br />and Privacy Policy.
                     </p>
                 </div>
 
                 <div className="mt-12 flex justify-center gap-6 animate-in fade-in duration-1000 delay-500">
-                    <span className="text-[10px] text-slate-600 font-mono uppercase">Nodes: Stable</span>
-                    <span className="text-[10px] text-slate-600 font-mono uppercase">API: Operational</span>
-                    <span className="text-[10px] text-slate-600 font-mono uppercase">v1.2.0-core</span>
+                    <span className="text-sm text-slate-600 font-mono uppercase">Nodes: Stable</span>
+                    <span className="text-sm text-slate-600 font-mono uppercase">API: Operational</span>
+                    <span className="text-sm text-slate-600 font-mono uppercase">v1.2.0-core</span>
                 </div>
             </div>
         </div>

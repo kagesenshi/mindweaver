@@ -28,34 +28,29 @@ const ProjectsPage = () => {
         p.description?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    const cardBg = darkMode ? "bg-slate-900/40 border-slate-800" : "bg-white border-slate-200 shadow-sm";
-    const textColor = darkMode ? "text-white" : "text-slate-900";
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <div className="flex items-end justify-between border-b pb-6 border-slate-800/50">
+            <div className="mw-page-header">
                 <div>
-                    <h2 className={cn("text-3xl font-bold tracking-tight", textColor)}>Project Registry</h2>
-                    <p className="text-slate-500 mt-1">Tenant management and resource isolation.</p>
+                    <h2 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white uppercase">Project Registry</h2>
+                    <p className="text-slate-500 mt-1 text-base">Tenant management and resource isolation.</p>
                 </div>
                 <button
                     onClick={() => setIsCreateModalOpen(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg shadow-lg shadow-blue-600/20 hover:bg-blue-500 transition-all font-sans"
+                    className="mw-btn-primary px-4 py-2"
                 >
                     <Plus size={16} /> CREATE PROJECT
                 </button>
             </div>
 
             <div className="flex items-center gap-4 mb-8">
-                <div className={cn(
-                    "flex-1 relative border rounded-xl px-4 py-2 flex items-center gap-3",
-                    darkMode ? 'bg-slate-900/50 border-slate-800' : 'bg-white border-slate-200'
-                )}>
+                <div className="mw-search-box flex-1">
                     <Search size={18} className="text-slate-500" />
                     <input
                         type="text"
                         placeholder="Search projects by title or description..."
-                        className="bg-transparent text-sm focus:outline-none w-full"
+                        className="bg-transparent text-base focus:outline-none w-full"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -66,7 +61,7 @@ const ProjectsPage = () => {
                 {loading ? (
                     <div className="py-20 flex flex-col items-center justify-center space-y-4">
                         <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                        <p className="text-slate-500 text-sm font-medium">Fetching projects...</p>
+                        <p className="text-slate-500 text-base font-medium">Fetching projects...</p>
                     </div>
                 ) : filteredProjects.length === 0 ? (
                     <div className="py-20 text-center border-2 border-dashed border-slate-800 rounded-[40px]">
@@ -75,32 +70,26 @@ const ProjectsPage = () => {
                         <p className="text-slate-500 text-sm">Create a new project to start managing resources.</p>
                     </div>
                 ) : filteredProjects.map(proj => (
-                    <div key={proj.id} className={cn(
-                        "border rounded-[32px] p-6 flex items-center justify-between group transition-all hover:border-blue-500/30",
-                        cardBg
-                    )}>
+                    <div key={proj.id} className="mw-card flex items-center justify-between group">
                         <div className="flex items-center gap-6">
-                            <div className={cn(
-                                "w-12 h-12 rounded-2xl flex items-center justify-center text-slate-400 group-hover:text-blue-500 transition-colors",
-                                darkMode ? 'bg-slate-800' : 'bg-slate-100'
-                            )}>
-                                <Briefcase size={24} />
+                            <div className="mw-icon-box">
+                                <Briefcase size={24} className="text-slate-400 group-hover:text-blue-500 transition-colors" />
                             </div>
                             <div>
-                                <h4 className={cn("text-lg font-bold", textColor)}>{proj.title}</h4>
+                                <h4 className="text-lg font-bold text-slate-900 dark:text-white uppercase">{proj.title}</h4>
                                 <p className="text-sm text-slate-500">{proj.description}</p>
                             </div>
                         </div>
 
                         <div className="flex items-center gap-12">
                             <div className="text-center">
-                                <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Resources</p>
-                                <p className={cn("text-xl font-bold", textColor)}>3</p>
+                                <p className="text-sm text-slate-500 uppercase font-bold mb-1">Resources</p>
+                                <p className="text-lg font-bold text-slate-900 dark:text-white">3</p>
                             </div>
 
                             <div className="flex items-center gap-2">
                                 <button
-                                    className="p-3 text-slate-500 hover:text-blue-500 hover:bg-blue-500/10 rounded-xl transition-all"
+                                    className="mw-btn-icon"
                                     title="View Projects Fleet"
                                 >
                                     <Monitor size={18} />
@@ -110,14 +99,14 @@ const ProjectsPage = () => {
                                         setSelectedProject(proj);
                                         setIsEditModalOpen(true);
                                     }}
-                                    className="p-3 text-slate-500 hover:text-blue-500 hover:bg-blue-500/10 rounded-xl transition-all"
+                                    className="mw-btn-icon"
                                     title="Edit Project"
                                 >
                                     <Edit2 size={18} />
                                 </button>
                                 <button
                                     onClick={() => deleteProject(proj.id)}
-                                    className="p-3 text-slate-500 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all"
+                                    className="mw-btn-icon-danger"
                                     title="Delete Project"
                                 >
                                     <Trash2 size={18} />

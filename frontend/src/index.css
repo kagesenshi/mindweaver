@@ -2,10 +2,31 @@
 
 @theme {
   --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --spacing: 0.25rem;
+
+  --font-size-xxs: 0.625rem;
+  /* 10px */
+  --font-size-xs: 0.75rem;
+  /* 12px */
+  --font-size-sm: 0.875rem;
+  /* 14px */
+  --font-size-base: 1rem;
+  /* 16px */
+  --font-size-lg: 1.125rem;
+  /* 18px */
+  --font-size-xl: 1.25rem;
+  /* 20px */
+  --font-size-2xl: 1.5rem;
+  /* 24px */
+  --font-size-3xl: 1.875rem;
+  /* 30px */
 }
 
 :root {
   font-family: var(--font-sans);
+  font-size: 0.75rem;
+  --spacing: 0.25rem;
+  /* Global baseline 12px */
 }
 
 body {
@@ -13,4 +34,127 @@ body {
   padding: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: #08090b;
+}
+
+@layer components {
+
+  /* High-Density Cards */
+  .mw-card {
+    @apply border rounded-[32px] p-6 transition-all bg-white border-slate-200 shadow-sm dark:bg-slate-900/40 dark:border-slate-800 dark:shadow-none;
+  }
+
+  .mw-card-interactive {
+    @apply border rounded-[32px] p-6 transition-all bg-white border-slate-200 shadow-sm dark:bg-slate-900/40 dark:border-slate-800 dark:shadow-none cursor-pointer hover:border-blue-500/50 hover:shadow-md dark:hover:bg-slate-900/60 dark:hover:border-blue-500/30;
+  }
+
+  /* Semantic Badges/Pills */
+  .mw-badge {
+    @apply px-2 py-0.5 rounded-full font-bold border uppercase inline-flex items-center justify-center;
+    font-size: var(--font-size-sm);
+  }
+
+  .mw-badge-success {
+    @apply px-2 py-0.5 rounded-full font-bold border uppercase inline-flex items-center justify-center bg-emerald-500/10 text-emerald-500 border-emerald-500/20;
+    font-size: var(--font-size-sm);
+  }
+
+  .mw-badge-warning {
+    @apply px-2 py-0.5 rounded-full font-bold border uppercase inline-flex items-center justify-center bg-amber-500/10 text-amber-500 border-amber-500/20;
+    font-size: var(--font-size-sm);
+  }
+
+  .mw-badge-danger {
+    @apply px-2 py-0.5 rounded-full font-bold border uppercase inline-flex items-center justify-center bg-rose-500/10 text-rose-500 border-rose-500/20;
+    font-size: var(--font-size-sm);
+  }
+
+  .mw-badge-info {
+    @apply px-2 py-0.5 rounded-full font-bold border uppercase inline-flex items-center justify-center bg-blue-500/10 text-blue-500 border-blue-500/20;
+    font-size: var(--font-size-sm);
+  }
+
+  .mw-badge-neutral {
+    @apply px-2 py-0.5 rounded-full font-bold border uppercase inline-flex items-center justify-center bg-slate-500/10 text-slate-400 border-slate-500/20;
+    font-size: var(--font-size-sm);
+  }
+
+  /* Forms & Inputs */
+  .mw-input {
+    @apply w-full px-4 py-3 rounded-xl border text-base outline-none transition-all bg-slate-100 border-slate-200 text-slate-900 focus:ring-2 focus:ring-blue-500/20 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-200;
+  }
+
+  .mw-label {
+    @apply font-bold uppercase tracking-widest px-1 transition-colors text-slate-500;
+    font-size: var(--font-size-sm);
+  }
+
+  /* Standardized Buttons */
+  .mw-btn {
+    @apply font-bold rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-[0.98] text-base;
+  }
+
+  .mw-btn-primary {
+    @apply font-bold rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-[0.98] text-base bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-600/20;
+  }
+
+  .mw-btn-secondary {
+    @apply font-bold rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-[0.98] text-base border bg-white border-slate-200 text-slate-600 hover:bg-slate-50 dark:bg-slate-900/40 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800;
+  }
+
+  .mw-btn-danger {
+    @apply font-bold rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-[0.98] text-base bg-rose-500/10 text-rose-500 border border-rose-500/20 hover:bg-rose-500/20;
+  }
+
+  .mw-btn-icon {
+    @apply p-3 text-slate-500 hover:text-blue-500 hover:bg-blue-500/10 rounded-xl transition-all text-base;
+  }
+
+  .mw-btn-icon-danger {
+    @apply p-3 text-slate-500 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all text-base;
+  }
+
+  /* Page Structure */
+  .mw-page-header {
+    @apply flex items-end justify-between border-b pb-6 border-slate-200 dark:border-slate-800/50;
+  }
+
+  .mw-search-box {
+    @apply flex items-center gap-3 border rounded-xl px-4 py-2 transition-all bg-white border-slate-200 dark:bg-slate-900/50 dark:border-slate-800;
+  }
+
+  .mw-panel {
+    @apply border rounded-2xl overflow-hidden bg-white border-slate-200 shadow-sm dark:bg-slate-900 dark:border-slate-800 dark:shadow-none;
+  }
+
+  .mw-modal {
+    @apply border rounded-[40px] shadow-2xl relative z-10 overflow-hidden duration-300 bg-white border-slate-200 dark:bg-[#0c0e12] dark:border-slate-800;
+  }
+
+  .mw-nav-item {
+    @apply w-full flex items-center rounded-lg transition-all text-lg font-medium mb-[6px];
+    gap: 0.75rem !important;
+    padding: 0.75rem 1rem !important;
+  }
+
+  .mw-sidebar-section {
+    @apply uppercase tracking-[0.2em] text-slate-500 font-bold;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+    margin-top: 3rem !important;
+    margin-bottom: 0.5rem !important;
+    font-size: var(--font-size-base);
+  }
+
+  .mw-layout-root {
+    @apply min-h-screen flex transition-colors duration-300 bg-[#08090b] text-slate-200;
+  }
+
+  .mw-btn-success {
+    @apply font-bold rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-[0.98] text-base bg-emerald-600 text-white hover:bg-emerald-500 shadow-lg shadow-emerald-600/20;
+  }
+
+  .mw-icon-box {
+    @apply flex items-center justify-center border rounded-2xl transition-all bg-white border-slate-200 shadow-sm dark:bg-slate-900/40 dark:border-slate-800 dark:shadow-none;
+  }
 }

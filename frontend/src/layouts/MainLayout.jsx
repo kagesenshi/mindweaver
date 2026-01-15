@@ -28,10 +28,7 @@ const MainLayout = () => {
     ];
 
     return (
-        <div className={cn(
-            "min-h-screen flex transition-colors duration-300",
-            darkMode ? "bg-[#08090b] text-slate-200" : "bg-slate-50 text-slate-900"
-        )}>
+        <div className="mw-layout-root">
             <Sidebar darkMode={darkMode} />
 
             <div className="flex-1 flex flex-col ml-64">
@@ -54,12 +51,12 @@ const MainLayout = () => {
                     <div className="flex gap-6 items-center">
                         <div className="flex items-center gap-2">
                             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                            <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">
+                            <span className="text-sm text-slate-500 font-bold uppercase tracking-widest">
                                 Orchestrator: Operational
                             </span>
                         </div>
                     </div>
-                    <div className="text-[9px] font-mono text-slate-500 flex gap-4">
+                    <div className="text-sm font-mono text-slate-500 flex gap-4">
                         <span>Nodes: 8</span>
                         <span className={darkMode ? 'border-slate-800' : 'border-slate-200'}>|</span>
                         <span>{darkMode ? 'Dark' : 'Light'} Mode Active</span>

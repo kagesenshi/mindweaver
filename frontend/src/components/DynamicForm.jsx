@@ -18,6 +18,7 @@ const DynamicForm = ({
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
     const [relationshipOptions, setRelationshipOptions] = useState({});
+    const inputBg = darkMode ? "bg-slate-950 border-slate-800 text-slate-200" : "bg-slate-100 border-slate-200 text-slate-900";
 
     useEffect(() => {
         const fetchSchema = async () => {
@@ -161,7 +162,7 @@ const DynamicForm = ({
         return (
             <div className="p-12 flex flex-col items-center justify-center space-y-4">
                 <RefreshCcw className="animate-spin text-blue-500" size={32} />
-                <p className="text-slate-500 text-sm font-medium">Loading form configuration...</p>
+                <p className="text-slate-500 text-base font-medium">Loading form configuration...</p>
             </div>
         );
     }
@@ -178,7 +179,6 @@ const DynamicForm = ({
             return orderA - orderB;
         });
 
-    const inputBg = darkMode ? "bg-slate-950 border-slate-800 text-slate-200" : "bg-slate-100 border-slate-200 text-slate-900";
 
     const renderField = (name, prop, widget) => {
         const hasError = !!fieldErrors[name];
@@ -210,8 +210,7 @@ const DynamicForm = ({
                         }
                     }}
                     className={cn(
-                        "w-full px-4 py-3 rounded-xl border text-sm outline-none focus:ring-2 focus:ring-blue-500/20 transition-all",
-                        inputBg,
+                        "mw-input",
                         hasError && "border-rose-500 ring-1 ring-rose-500/50",
                         isMultiselect && "h-32"
                     )}
@@ -235,8 +234,7 @@ const DynamicForm = ({
                     disabled={isImmutable}
                     onChange={(e) => handleChange(name, e.target.value)}
                     className={cn(
-                        "w-full px-4 py-3 rounded-xl border text-sm outline-none focus:ring-2 focus:ring-blue-500/20 transition-all",
-                        inputBg,
+                        "mw-input",
                         hasError && "border-rose-500 ring-1 ring-rose-500/50"
                     )}
                 >
@@ -258,7 +256,7 @@ const DynamicForm = ({
 
             return (
                 <div className="space-y-2">
-                    <div className="flex justify-between text-xs font-mono opacity-70">
+                    <div className="flex justify-between text-sm font-mono opacity-70">
                         <span>{min}</span>
                         <span className="font-bold text-blue-500">{val}</span>
                         <span>{max}</span>
@@ -294,7 +292,7 @@ const DynamicForm = ({
                             formData[name] ? "translate-x-4" : "translate-x-0"
                         )} />
                     </div>
-                    <span className="text-sm font-medium">{formData[name] ? 'Enabled' : 'Disabled'}</span>
+                    <span className="text-base font-medium">{formData[name] ? 'Enabled' : 'Disabled'}</span>
                 </div>
             );
         }
@@ -309,7 +307,7 @@ const DynamicForm = ({
                     onChange={(e) => handleChange(name, e.target.value)}
                     placeholder={`Enter ${label.toLowerCase()}...`}
                     className={cn(
-                        "w-full px-4 py-3 rounded-xl border text-sm outline-none focus:ring-2 focus:ring-blue-500/20 transition-all font-mono",
+                        "w-full px-4 py-3 rounded-xl border text-base outline-none focus:ring-2 focus:ring-blue-500/20 transition-all font-mono",
                         inputBg,
                         hasError && "border-rose-500 ring-1 ring-rose-500/50"
                     )}
@@ -334,7 +332,7 @@ const DynamicForm = ({
                     placeholder={`Enter ${label.toLowerCase()}...`}
                     rows={rows}
                     className={cn(
-                        "w-full px-4 py-3 rounded-xl border text-sm outline-none focus:ring-2 focus:ring-blue-500/20 transition-all font-mono",
+                        "w-full px-4 py-3 rounded-xl border text-base outline-none focus:ring-2 focus:ring-blue-500/20 transition-all font-mono",
                         inputBg,
                         hasError && "border-rose-500 ring-1 ring-rose-500/50"
                     )}
@@ -356,7 +354,7 @@ const DynamicForm = ({
                 }}
                 placeholder={`Enter ${label.toLowerCase()}...`}
                 className={cn(
-                    "w-full px-4 py-3 rounded-xl border text-sm outline-none focus:ring-2 focus:ring-blue-500/20 transition-all font-mono",
+                    "w-full px-4 py-3 rounded-xl border text-base outline-none focus:ring-2 focus:ring-blue-500/20 transition-all font-mono",
                     inputBg,
                     hasError && "border-rose-500 ring-1 ring-rose-500/50"
                 )}
@@ -367,7 +365,7 @@ const DynamicForm = ({
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
-                <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-center gap-3 text-rose-500 text-sm">
+                <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-center gap-3 text-rose-500 text-base">
                     <AlertCircle size={18} />
                     {error}
                 </div>
@@ -394,8 +392,8 @@ const DynamicForm = ({
                             isFullWidth ? "md:col-span-2" : "md:col-span-1"
                         )}>
                             <label className={cn(
-                                "text-[10px] font-bold uppercase tracking-widest px-1 transition-colors",
-                                hasError ? "text-rose-500" : "text-slate-500"
+                                "mw-label",
+                                hasError ? "text-rose-500" : ""
                             )}>
                                 {label} {prop.required ? '*' : ''}
                             </label>
@@ -403,10 +401,10 @@ const DynamicForm = ({
                             {renderField(name, prop, widget)}
 
                             {hasError && (
-                                <p className="text-[10px] text-rose-500 px-1 font-medium">{fieldErrors[name]}</p>
+                                <p className="text-sm text-rose-500 px-1 font-medium">{fieldErrors[name]}</p>
                             )}
                             {prop.description && (
-                                <p className="text-[10px] text-slate-500 px-1 italic">{prop.description}</p>
+                                <p className="text-sm text-slate-500 px-1 italic">{prop.description}</p>
                             )}
                         </div>
                     );
@@ -417,7 +415,7 @@ const DynamicForm = ({
                 <button
                     type="submit"
                     disabled={saving}
-                    className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 transition-all shadow-lg shadow-blue-600/20"
+                    className="mw-btn-primary flex-1 py-4"
                 >
                     {saving ? <RefreshCcw size={18} className="animate-spin" /> : <Save size={18} />}
                     {saving ? 'SAVING CHANGES...' : (mode === 'create' ? 'CREATE RESOURCE' : 'SAVE CHANGES')}
@@ -426,10 +424,7 @@ const DynamicForm = ({
                     <button
                         type="button"
                         onClick={onCancel}
-                        className={cn(
-                            "px-8 py-4 rounded-2xl font-bold flex items-center gap-2 border transition-all",
-                            darkMode ? "bg-slate-900 border-slate-800 text-slate-400 hover:bg-slate-800" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                        )}
+                        className="mw-btn-secondary px-8 py-4"
                     >
                         <X size={18} /> CANCEL
                     </button>

@@ -48,10 +48,10 @@ const Sidebar = ({ darkMode }) => {
         )}>
             <div className={cn("p-6 border-b flex items-center gap-3", borderCol)}>
                 <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-600/20">
-                    <Layers className="text-white" size={18} />
+                    <Layers className="text-white" size={20} />
                 </div>
                 <h1 className={cn(
-                    "font-bold tracking-tight",
+                    "text-2xl font-bold tracking-tight",
                     darkMode ? 'text-white' : 'text-slate-900'
                 )}>
                     Mindweaver
@@ -64,18 +64,18 @@ const Sidebar = ({ darkMode }) => {
                         key={item.to}
                         to={item.to}
                         className={({ isActive }) => cn(
-                            "w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-sm font-medium mb-1",
+                            "mw-nav-item",
                             isActive
                                 ? 'bg-blue-600/10 text-blue-400 border border-blue-500/20'
                                 : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 border border-transparent'
                         )}
                     >
-                        <item.icon size={16} />
+                        <item.icon size={20} />
                         {item.name}
                     </NavLink>
                 ))}
 
-                <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold px-3 mt-6 mb-2">
+                <div className="mw-sidebar-section">
                     Infrastructure
                 </div>
 
@@ -84,14 +84,14 @@ const Sidebar = ({ darkMode }) => {
                         key={item.to}
                         to={item.to}
                         className={({ isActive }) => cn(
-                            "w-full flex items-center justify-between px-3 py-1.5 rounded-lg transition-all text-xs mb-1",
+                            "mw-nav-item",
                             isActive
                                 ? 'bg-slate-800 text-white shadow-sm'
-                                : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 border border-transparent'
                         )}
                     >
                         <div className="flex items-center gap-2">
-                            <item.icon size={14} className={cn(
+                            <item.icon size={20} className={cn(
                                 "transition-colors",
                                 // We'll leave the logic for active state coloring here if needed
                             )} />
@@ -101,22 +101,19 @@ const Sidebar = ({ darkMode }) => {
                 ))}
             </nav>
 
-            <div className={cn("p-4 border-t", borderCol)}>
-                <div className={cn(
-                    "flex items-center gap-3 p-2 rounded-lg border",
-                    darkMode ? 'bg-slate-900/50 border-slate-800' : 'bg-slate-50 border-slate-200'
-                )}>
-                    <div className="w-8 h-8 rounded-full bg-blue-600/20 flex items-center justify-center text-blue-400 text-[10px] font-bold border border-blue-500/30">
+            <div className="p-4 border-t border-slate-200 dark:border-slate-800/50">
+                <div className="mw-panel flex items-center gap-3 p-2 rounded-xl">
+                    <div className="w-8 h-8 rounded-full bg-blue-600/20 flex items-center justify-center text-blue-400 text-base font-bold border border-blue-500/30">
                         JD
                     </div>
                     <div className="overflow-hidden">
                         <p className={cn(
-                            "text-[10px] font-bold truncate",
+                            "text-base font-bold truncate",
                             darkMode ? 'text-white' : 'text-slate-900'
                         )}>
                             Jane Deployer
                         </p>
-                        <p className="text-[9px] text-slate-500 uppercase font-mono">
+                        <p className="text-base text-slate-500 uppercase font-mono tracking-wider">
                             Platform Lead
                         </p>
                     </div>

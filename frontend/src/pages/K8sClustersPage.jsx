@@ -12,19 +12,17 @@ const K8sClustersPage = () => {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedCluster, setSelectedCluster] = useState(null);
-    const textColor = darkMode ? "text-white" : "text-slate-900";
-    const cardBg = darkMode ? "bg-slate-900/40 border-slate-800" : "bg-white border-slate-200 shadow-sm";
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <div className="flex items-end justify-between border-b pb-6 border-slate-800/50">
+            <div className="mw-page-header">
                 <div>
-                    <h2 className={cn("text-3xl font-bold tracking-tight", textColor)}>Kubernetes Clusters</h2>
-                    <p className="text-slate-500 mt-1">Manage infrastructure endpoints and compute contexts.</p>
+                    <h2 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white uppercase">Kubernetes Clusters</h2>
+                    <p className="text-slate-500 mt-1 text-base">Manage infrastructure endpoints and compute contexts.</p>
                 </div>
                 <button
                     onClick={() => setIsCreateModalOpen(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg shadow-lg hover:bg-blue-500 transition-all font-sans"
+                    className="mw-btn-primary px-4 py-2"
                 >
                     <Plus size={16} /> ADD CLUSTER
                 </button>
@@ -32,25 +30,25 @@ const K8sClustersPage = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {clusters.map((cluster, i) => (
-                    <div key={i} className={cn("border rounded-[32px] p-6 transition-all group hover:border-blue-500/30", cardBg)}>
+                    <div key={i} className="mw-card group">
                         <div className="flex justify-between items-start mb-4">
                             <div className="flex items-center gap-4">
-                                <div className={cn("p-3 rounded-2xl", darkMode ? 'bg-slate-800 text-indigo-400' : 'bg-slate-100 text-indigo-600')}>
+                                <div className="mw-icon-box p-3 text-indigo-400">
                                     <Cloud size={24} />
                                 </div>
                                 <div>
-                                    <h4 className={cn("font-bold", textColor)}>{cluster.title || cluster.name}</h4>
-                                    <p className="text-[10px] text-slate-500 font-mono uppercase mt-0.5">{cluster.type}</p>
+                                    <h4 className="text-lg font-bold text-slate-900 dark:text-white uppercase">{cluster.title || cluster.name}</h4>
+                                    <p className="text-sm text-slate-500 font-mono uppercase mt-0.5">{cluster.type}</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
-                                <div className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-emerald-500/10 text-emerald-500 border-emerald-500/20">ACTIVE</div>
+                                <div className="mw-badge-success">ACTIVE</div>
                                 <button
                                     onClick={() => {
                                         setSelectedCluster(cluster);
                                         setIsEditModalOpen(true);
                                     }}
-                                    className="p-1.5 text-slate-500 hover:text-blue-500 hover:bg-blue-500/10 rounded-lg transition-all"
+                                    className="mw-btn-icon"
                                     title="Edit Cluster"
                                 >
                                     <Edit2 size={16} />
@@ -58,8 +56,8 @@ const K8sClustersPage = () => {
                             </div>
                         </div>
                         <div className="flex items-center gap-4 pt-4 border-t border-slate-800/50">
-                            <div className="flex items-center gap-2 text-slate-500"><Server size={14} /><span className="text-xs">? Nodes</span></div>
-                            <div className="flex items-center gap-2 text-slate-500"><Activity size={14} /><span className="text-xs">Unknown Uptime</span></div>
+                            <div className="flex items-center gap-2 text-slate-500"><Server size={14} /><span className="text-sm">? Nodes</span></div>
+                            <div className="flex items-center gap-2 text-slate-500"><Activity size={14} /><span className="text-sm">Unknown Uptime</span></div>
                         </div>
                     </div>
                 ))}
