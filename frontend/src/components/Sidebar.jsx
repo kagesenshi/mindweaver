@@ -27,6 +27,7 @@ const NAV_ITEMS = [
     { name: 'Fleet Overview', to: '/', icon: Monitor },
     { name: 'Manage Projects', to: '/projects', icon: Briefcase },
     { name: 'Data Sources', to: '/data-sources', icon: Library },
+    { name: 'S3 Storages', to: '/s3-storages', icon: HardDrive },
     { name: 'K8s Clusters', to: '/k8s-clusters', icon: Cloud },
 ];
 

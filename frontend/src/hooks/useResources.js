@@ -173,3 +173,49 @@ export const useK8sClusters = () => {
 
     return { clusters, loading, error, fetchClusters, createCluster, updateCluster, deleteCluster };
 };
+
+export const useS3Storages = () => {
+    const [storages, setStorages] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+
+    const fetchStorages = useCallback(async () => {
+        setLoading(true);
+        try {
+            const response = await apiClient.get('/s3_storages');
+            setStorages(response.data.records || []);
+        } catch (err) {
+            setError(err);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    const createStorage = async (data) => {
+        const response = await apiClient.post('/s3_storages', data);
+        await fetchStorages();
+        return response.data;
+    };
+
+    const updateStorage = async (id, data) => {
+        const response = await apiClient.put(`/s3_storages/${id}`, data);
+        await fetchStorages();
+        return response.data;
+    };
+
+    const deleteStorage = async (id) => {
+        await apiClient.delete(`/s3_storages/${id}`);
+        await fetchStorages();
+    };
+
+    const testConnection = async (data) => {
+        const response = await apiClient.post('/s3_storages/_test-connection', data);
+        return response.data;
+    };
+
+    useEffect(() => {
+        fetchStorages();
+    }, [fetchStorages]);
+
+    return { storages, loading, error, fetchStorages, createStorage, updateStorage, deleteStorage, testConnection };
+};

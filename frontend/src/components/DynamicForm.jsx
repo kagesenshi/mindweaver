@@ -9,7 +9,8 @@ const DynamicForm = ({
     initialData = {},
     onSuccess,
     onCancel,
-    darkMode
+    darkMode,
+    renderExtraActions
 }) => {
     const [schema, setSchema] = useState(null);
     const [formData, setFormData] = useState(initialData);
@@ -420,6 +421,7 @@ const DynamicForm = ({
                     {saving ? <RefreshCcw size={18} className="animate-spin" /> : <Save size={18} />}
                     {saving ? 'SAVING CHANGES...' : (mode === 'create' ? 'CREATE RESOURCE' : 'SAVE CHANGES')}
                 </button>
+                {renderExtraActions && renderExtraActions(formData)}
                 {onCancel && (
                     <button
                         type="button"
@@ -430,7 +432,7 @@ const DynamicForm = ({
                     </button>
                 )}
             </div>
-        </form>
+        </form >
     );
 };
 

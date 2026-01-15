@@ -10,6 +10,7 @@ import ProjectsPage from './pages/ProjectsPage'
 import DataSourcesPage from './pages/DataSourcesPage'
 import PgSqlPage from './pages/PgSqlPage'
 import K8sClustersPage from './pages/K8sClustersPage'
+import S3StoragePage from './pages/S3StoragePage'
 import { AuthProvider } from './providers/AuthProvider'
 
 import { ProtectedRoute } from './components/ProtectedRoute'
@@ -39,6 +40,10 @@ const router = createBrowserRouter([
       {
         path: 'k8s-clusters',
         element: <K8sClustersPage />,
+      },
+      {
+        path: 's3-storages',
+        element: <S3StoragePage />,
       },
 
       {
