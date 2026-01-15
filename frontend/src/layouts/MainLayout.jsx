@@ -20,6 +20,12 @@ const MainLayout = () => {
         }
     });
 
+    // Add sidebar collapse state
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+        const saved = localStorage.getItem('mindweaver-sidebar-collapsed');
+        return saved !== null ? JSON.parse(saved) : false;
+    });
+
     useEffect(() => {
         localStorage.setItem('mindweaver-dark-mode', JSON.stringify(darkMode));
         if (darkMode) {
@@ -28,6 +34,10 @@ const MainLayout = () => {
             document.documentElement.classList.remove('dark');
         }
     }, [darkMode]);
+
+    useEffect(() => {
+        localStorage.setItem('mindweaver-sidebar-collapsed', JSON.stringify(isSidebarCollapsed));
+    }, [isSidebarCollapsed]);
 
     const { projects } = useProjects();
 
@@ -40,11 +50,21 @@ const MainLayout = () => {
         }
     };
 
+    // Toggle function
+    const toggleSidebar = () => setIsSidebarCollapsed(prev => !prev);
+
     return (
         <div className="mw-layout-root">
-            <Sidebar darkMode={darkMode} />
+            <Sidebar
+                darkMode={darkMode}
+                isCollapsed={isSidebarCollapsed}
+                toggleSidebar={toggleSidebar}
+            />
 
-            <div className="flex-1 flex flex-col ml-[276px]">
+            <div className={cn(
+                "flex-1 flex flex-col transition-all duration-300 ease-in-out",
+                isSidebarCollapsed ? "ml-20" : "ml-[266px]"
+            )}>
                 <Header
                     darkMode={darkMode}
                     setDarkMode={setDarkMode}
