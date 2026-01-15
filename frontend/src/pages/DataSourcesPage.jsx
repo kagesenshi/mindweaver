@@ -453,7 +453,7 @@ const DataSourcesPage = () => {
                             </button>
                         }
                     >
-                        <div className="grid grid-cols-2 gap-4 py-4 border-t border-slate-800/50 mt-4">
+                        <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <p className="text-sm text-slate-500 font-bold uppercase mb-1">Type</p>
                                 <p className={cn("text-sm font-medium", darkMode ? 'text-slate-300' : 'text-slate-700')}>

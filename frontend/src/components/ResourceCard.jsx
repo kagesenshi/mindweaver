@@ -70,7 +70,7 @@ const ResourceCard = ({
             </div>
 
             {children && (
-                <div className="flex-1">
+                <div className="flex-1 mt-4 pt-4 border-t border-slate-200 dark:border-slate-800/50">
                     {children}
                 </div>
             )}

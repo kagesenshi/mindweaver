@@ -269,7 +269,7 @@ const PgSqlPage = () => {
                         subtitle={platform.id}
                         status="running"
                     >
-                        <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-200 dark:border-slate-800/50 mt-4">
+                        <div className="grid grid-cols-2 gap-4">
                             <div className="flex items-center gap-2 text-slate-500">
                                 <Activity size={12} />
                                 <span className="text-sm font-bold">3 Instances</span>
