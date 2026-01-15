@@ -86,7 +86,7 @@ const Sidebar = ({ darkMode }) => {
                         className={({ isActive }) => cn(
                             "mw-nav-item",
                             isActive
-                                ? 'bg-slate-800 text-white shadow-sm'
+                                ? 'bg-blue-600/10 text-blue-400 border border-blue-500/20'
                                 : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 border border-transparent'
                         )}
                     >
