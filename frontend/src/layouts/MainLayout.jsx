@@ -3,13 +3,22 @@ import { Outlet } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import { cn } from '../utils/cn';
+import { useProjects } from '../hooks/useResources';
 
 const MainLayout = () => {
     const [darkMode, setDarkMode] = useState(() => {
         const saved = localStorage.getItem('mindweaver-dark-mode');
         return saved !== null ? JSON.parse(saved) : true;
     });
-    const [selectedProject, setSelectedProject] = useState(null);
+    const [selectedProject, setSelectedProject] = useState(() => {
+        const saved = localStorage.getItem('mindweaver-project');
+        try {
+            return saved ? JSON.parse(saved) : null;
+        } catch (e) {
+            console.error("Failed to parse project from local storage", e);
+            return null;
+        }
+    });
 
     useEffect(() => {
         localStorage.setItem('mindweaver-dark-mode', JSON.stringify(darkMode));
@@ -20,12 +29,16 @@ const MainLayout = () => {
         }
     }, [darkMode]);
 
-    // Mock projects for now
-    const projects = [
-        { id: 'proj-alpha', name: 'Alpha Analytics' },
-        { id: 'proj-beta', name: 'Beta Logistics' },
-        { id: 'proj-gamma', name: 'Internal Tools' },
-    ];
+    const { projects } = useProjects();
+
+    const handleProjectChange = (project) => {
+        setSelectedProject(project);
+        if (project) {
+            localStorage.setItem('mindweaver-project', JSON.stringify(project));
+        } else {
+            localStorage.removeItem('mindweaver-project');
+        }
+    };
 
     return (
         <div className="mw-layout-root">
@@ -36,12 +49,12 @@ const MainLayout = () => {
                     darkMode={darkMode}
                     setDarkMode={setDarkMode}
                     selectedProject={selectedProject}
-                    setSelectedProject={setSelectedProject}
+                    setSelectedProject={handleProjectChange}
                     projects={projects}
                 />
 
                 <main className="flex-1 p-8 overflow-y-auto">
-                    <Outlet context={{ darkMode, selectedProject }} />
+                    <Outlet key={selectedProject?.id || 'all'} context={{ darkMode, selectedProject }} />
                 </main>
 
                 <footer className={cn(

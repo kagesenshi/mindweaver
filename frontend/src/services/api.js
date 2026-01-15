@@ -16,6 +16,19 @@ apiClient.interceptors.request.use(
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
+
+        const project = localStorage.getItem('mindweaver-project');
+        if (project) {
+            try {
+                const projectData = JSON.parse(project);
+                if (projectData && projectData.id) {
+                    config.headers['x-project-id'] = projectData.id;
+                }
+            } catch (e) {
+                console.error("Failed to parse project from local storage", e);
+            }
+        }
+
         return config;
     },
     (error) => Promise.reject(error)
