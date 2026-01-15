@@ -44,7 +44,7 @@ const MainLayout = () => {
         <div className="mw-layout-root">
             <Sidebar darkMode={darkMode} />
 
-            <div className="flex-1 flex flex-col ml-64">
+            <div className="flex-1 flex flex-col ml-[276px]">
                 <Header
                     darkMode={darkMode}
                     setDarkMode={setDarkMode}

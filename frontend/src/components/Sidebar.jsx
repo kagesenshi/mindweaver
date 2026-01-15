@@ -18,6 +18,7 @@ import {
     HardDrive
 } from 'lucide-react';
 import { cn } from '../utils/cn';
+import { useAuth } from '../providers/AuthProvider';
 
 const NAV_ITEMS = [
     { name: 'Fleet Overview', to: '/', icon: Monitor },
@@ -37,12 +38,13 @@ const INFRA_ITEMS = [
 ];
 
 const Sidebar = ({ darkMode }) => {
+    const { user } = useAuth();
     const sidebarBg = darkMode ? "bg-[#0c0e12]" : "bg-white";
     const borderCol = darkMode ? "border-slate-800" : "border-slate-200";
 
     return (
         <aside className={cn(
-            "w-64 border-r flex flex-col fixed h-full z-50 transition-colors duration-300",
+            "w-[276px] border-r flex flex-col fixed h-full z-50 transition-colors duration-300",
             sidebarBg,
             borderCol
         )}>
@@ -103,19 +105,21 @@ const Sidebar = ({ darkMode }) => {
 
             <div className="p-4 border-t border-slate-200 dark:border-slate-800/50">
                 <div className="mw-panel flex items-center gap-3 p-2 rounded-xl">
-                    <div className="w-8 h-8 rounded-full bg-blue-600/20 flex items-center justify-center text-blue-400 text-base font-bold border border-blue-500/30">
-                        JD
+                    <div className="w-8 h-8 rounded-full bg-blue-600/20 flex items-center justify-center text-blue-400 text-lg font-bold border border-blue-500/30">
+                        {user ? (user.display_name || user.name || user.email || 'U').substring(0, 2).toUpperCase() : 'U'}
                     </div>
                     <div className="overflow-hidden">
                         <p className={cn(
-                            "text-base font-bold truncate",
+                            "text-lg font-bold truncate",
                             darkMode ? 'text-white' : 'text-slate-900'
                         )}>
-                            Jane Deployer
+                            {user?.display_name || user?.name || user?.email || 'Guest User'}
                         </p>
-                        <p className="text-base text-slate-500 uppercase font-mono tracking-wider">
-                            Platform Lead
-                        </p>
+                        {user?.email && (
+                            <p className="text-sm text-slate-500 truncate" title={user.email}>
+                                {user.email}
+                            </p>
+                        )}
                     </div>
                 </div>
             </div>
