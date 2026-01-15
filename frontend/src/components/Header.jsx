@@ -33,11 +33,11 @@ const Header = ({ darkMode, setDarkMode, selectedProject, setSelectedProject, pr
                             <Briefcase size={14} />
                         </div>
                         <div className="flex-1 text-left">
-                            <p className="text-base text-slate-500 uppercase font-bold tracking-tighter leading-none">Context</p>
                             <p className={cn(
                                 "text-lg font-bold truncate",
                                 darkMode ? 'text-white' : 'text-slate-900'
                             )}>
+                                <span className="text-slate-500 font-normal mr-2">Context:</span>
                                 {selectedProject?.name || 'All Projects'}
                             </p>
                         </div>
