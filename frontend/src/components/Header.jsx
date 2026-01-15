@@ -33,9 +33,9 @@ const Header = ({ darkMode, setDarkMode, selectedProject, setSelectedProject, pr
                             <Briefcase size={14} />
                         </div>
                         <div className="flex-1 text-left">
-                            <p className="text-sm text-slate-500 uppercase font-bold tracking-tighter leading-none">Context</p>
+                            <p className="text-base text-slate-500 uppercase font-bold tracking-tighter leading-none">Context</p>
                             <p className={cn(
-                                "text-base font-bold truncate",
+                                "text-lg font-bold truncate",
                                 darkMode ? 'text-white' : 'text-slate-900'
                             )}>
                                 {selectedProject?.name || 'All Projects'}
@@ -54,7 +54,7 @@ const Header = ({ darkMode, setDarkMode, selectedProject, setSelectedProject, pr
                                 <button
                                     onClick={() => { setSelectedProject(null); setShowProjectDropdown(false); }}
                                     className={cn(
-                                        "w-full flex items-center gap-3 p-3 text-sm font-bold border-b transition-all",
+                                        "w-full flex items-center gap-3 p-3 text-base font-bold border-b transition-all",
                                         darkMode ? 'text-slate-400 hover:bg-slate-800 border-slate-800' : 'text-slate-600 hover:bg-slate-50 border-slate-100'
                                     )}
                                 >
@@ -65,7 +65,7 @@ const Header = ({ darkMode, setDarkMode, selectedProject, setSelectedProject, pr
                                         key={p.id}
                                         onClick={() => { setSelectedProject(p); setShowProjectDropdown(false); }}
                                         className={cn(
-                                            "w-full flex items-center gap-3 p-3 text-sm transition-all",
+                                            "w-full flex items-center gap-3 p-3 text-base transition-all",
                                             darkMode ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-600 hover:bg-slate-50'
                                         )}
                                     >
@@ -88,7 +88,7 @@ const Header = ({ darkMode, setDarkMode, selectedProject, setSelectedProject, pr
                     <input
                         type="text"
                         placeholder="Search resources..."
-                        className="bg-transparent text-base focus:outline-none w-48"
+                        className="bg-transparent text-lg focus:outline-none w-48"
                     />
                 </div>
                 <button
