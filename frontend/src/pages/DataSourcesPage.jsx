@@ -420,20 +420,16 @@ const DataSourcesPage = () => {
             searchQuery={searchTerm}
             onSearchChange={(e) => setSearchTerm(e.target.value)}
             searchPlaceholder="Search data sources..."
+            isLoading={loading}
+            isEmpty={filteredDataSources.length === 0}
+            emptyState={{
+                title: "No data sources found",
+                description: "Register a new data source to use it in your data platform.",
+                icon: <Library size={48} className="text-slate-700" />
+            }}
         >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {loading ? (
-                    <div className="col-span-full py-20 flex flex-col items-center justify-center space-y-4">
-                        <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                        <p className="text-slate-500 text-base font-medium">Fetching data sources...</p>
-                    </div>
-                ) : filteredDataSources.length === 0 ? (
-                    <div className="col-span-full py-20 text-center border-2 border-dashed border-slate-800 rounded-[40px]">
-                        <Library size={48} className="mx-auto text-slate-700 mb-4" />
-                        <h3 className="text-lg font-bold text-slate-400">No data sources found</h3>
-                        <p className="text-slate-500 text-sm">Register a new data source to use it in your data platform.</p>
-                    </div> // Using closing brace from original code won't match if I replaced start of return. I need to be careful.
-                ) : filteredDataSources.map(source => (
+                {filteredDataSources.map(source => (
                     <ResourceCard
                         key={source.id}
                         icon={getIcon(source.type)}

@@ -10,7 +10,7 @@ import PageLayout from '../components/PageLayout';
 
 const K8sClustersPage = () => {
     const { darkMode, selectedProject } = useOutletContext();
-    const { clusters, fetchClusters } = useK8sClusters();
+    const { clusters, fetchClusters, loading } = useK8sClusters();
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedCluster, setSelectedCluster] = useState(null);
@@ -22,48 +22,57 @@ const K8sClustersPage = () => {
     );
 
     return (
-        <PageLayout
-            title="Kubernetes Clusters"
-            description="Manage infrastructure endpoints and compute contexts."
-            headerActions={
-                <button
-                    onClick={() => setIsCreateModalOpen(true)}
-                    className="mw-btn-primary px-4 py-2"
-                >
-                    <Plus size={16} /> ADD CLUSTER
-                </button>
-            }
-            searchQuery={searchTerm}
-            onSearchChange={(e) => setSearchTerm(e.target.value)}
-            searchPlaceholder="Search clusters..."
-        >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {filteredClusters.map((cluster, i) => (
-                    <ResourceCard
-                        key={i}
-                        icon={<Cloud size={24} />}
-                        title={cluster.title || cluster.name}
-                        subtitle={cluster.type}
-                        status="active"
-                        onEdit={() => {
-                            setSelectedCluster(cluster);
-                            setIsEditModalOpen(true);
-                        }}
-                        footer={
-                            <div className="flex items-center gap-4">
-                                <div className="flex items-center gap-2 text-slate-500">
-                                    <Server size={14} />
-                                    <span className="text-sm">? Nodes</span>
+        <>
+            <PageLayout
+                title="Kubernetes Clusters"
+                description="Manage infrastructure endpoints and compute contexts."
+                headerActions={
+                    <button
+                        onClick={() => setIsCreateModalOpen(true)}
+                        className="mw-btn-primary px-4 py-2"
+                    >
+                        <Plus size={16} /> ADD CLUSTER
+                    </button>
+                }
+                searchQuery={searchTerm}
+                onSearchChange={(e) => setSearchTerm(e.target.value)}
+                searchPlaceholder="Search clusters..."
+                isLoading={loading}
+                isEmpty={filteredClusters.length === 0}
+                emptyState={{
+                    title: "No clusters found",
+                    description: selectedProject ? `No Kubernetes clusters in ${selectedProject.name}.` : 'Add your first Kubernetes cluster to get started.',
+                    icon: <Cloud size={48} className="text-slate-700" />
+                }}
+            >
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {filteredClusters.map((cluster, i) => (
+                        <ResourceCard
+                            key={i}
+                            icon={<Cloud size={24} />}
+                            title={cluster.title || cluster.name}
+                            subtitle={cluster.type}
+                            status="active"
+                            onEdit={() => {
+                                setSelectedCluster(cluster);
+                                setIsEditModalOpen(true);
+                            }}
+                            footer={
+                                <div className="flex items-center gap-4">
+                                    <div className="flex items-center gap-2 text-slate-500">
+                                        <Server size={14} />
+                                        <span className="text-sm">? Nodes</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-slate-500">
+                                        <Activity size={14} />
+                                        <span className="text-sm">Unknown Uptime</span>
+                                    </div>
                                 </div>
-                                <div className="flex items-center gap-2 text-slate-500">
-                                    <Activity size={14} />
-                                    <span className="text-sm">Unknown Uptime</span>
-                                </div>
-                            </div>
-                        }
-                    />
-                ))}
-            </div>
+                            }
+                        />
+                    ))}
+                </div>
+            </PageLayout>
 
             <Modal
                 isOpen={isCreateModalOpen}
@@ -111,7 +120,7 @@ const K8sClustersPage = () => {
                     />
                 )}
             </Modal>
-        </PageLayout>
+        </>
     );
 };
 

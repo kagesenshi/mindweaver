@@ -40,46 +40,40 @@ const HomePage = () => {
             searchQuery={searchTerm}
             onSearchChange={(e) => setSearchTerm(e.target.value)}
             searchPlaceholder="Search within fleet..."
+            isLoading={loading}
+            isEmpty={filteredInstances.length === 0}
+            emptyState={{
+                title: "Quiet in the sector",
+                description: `No active resources found ${selectedProject ? `for ${selectedProject.name}` : ''}.`,
+                icon: <Server size={48} className="text-slate-700" />
+            }}
         >
-            {loading ? (
-                <div className="py-20 flex flex-col items-center justify-center space-y-4">
-                    <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                    <p className="text-slate-500 text-base font-medium">Scanning network for active resources...</p>
-                </div>
-            ) : filteredInstances.length === 0 ? (
-                <div className="py-20 text-center border-2 border-dashed border-slate-800 rounded-[40px]">
-                    <Server size={48} className="mx-auto text-slate-700 mb-4" />
-                    <h3 className="text-lg font-bold text-slate-400">Quiet in the sector</h3>
-                    <p className="text-slate-500 text-sm">No active resources found {selectedProject ? `for ${selectedProject.name}` : ''}.</p>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {filteredInstances.map(inst => (
-                        <ResourceCard
-                            key={inst.id}
-                            icon={<Database size={20} />}
-                            title={inst.name}
-                            subtitle={inst.id}
-                            status="running"
-                            onClick={() => navigate('/platform/pgsql')}
-                            footer={
-                                <div className="flex items-center justify-between w-full">
-                                    <div className="flex items-center gap-2 text-slate-500">
-                                        <Tag size={12} />
-                                        <span className="text-sm font-bold">CloudNative PG</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-blue-500/70">
-                                        <Briefcase size={12} />
-                                        <span className="text-sm font-bold uppercase truncate max-w-[80px]">
-                                            {inst.project?.name || 'Service Component'}
-                                        </span>
-                                    </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {filteredInstances.map(inst => (
+                    <ResourceCard
+                        key={inst.id}
+                        icon={<Database size={20} />}
+                        title={inst.name}
+                        subtitle={inst.id}
+                        status="running"
+                        onClick={() => navigate('/platform/pgsql')}
+                        footer={
+                            <div className="flex items-center justify-between w-full">
+                                <div className="flex items-center gap-2 text-slate-500">
+                                    <Tag size={12} />
+                                    <span className="text-sm font-bold">CloudNative PG</span>
                                 </div>
-                            }
-                        />
-                    ))}
-                </div>
-            )}
+                                <div className="flex items-center gap-2 text-blue-500/70">
+                                    <Briefcase size={12} />
+                                    <span className="text-sm font-bold uppercase truncate max-w-[80px]">
+                                        {inst.project?.name || 'Service Component'}
+                                    </span>
+                                </div>
+                            </div>
+                        }
+                    />
+                ))}
+            </div>
         </PageLayout>
     );
 };

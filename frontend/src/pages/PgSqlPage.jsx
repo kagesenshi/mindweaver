@@ -247,20 +247,16 @@ const PgSqlPage = () => {
             searchQuery={searchTerm}
             onSearchChange={(e) => setSearchTerm(e.target.value)}
             searchPlaceholder="Search PostgreSQL clusters..."
+            isLoading={loading}
+            isEmpty={filteredPlatforms.length === 0}
+            emptyState={{
+                title: "No clusters found",
+                description: selectedProject ? `No PostgreSQL clusters in ${selectedProject.name}.` : 'Create your first PostgreSQL cluster to get started.',
+                icon: <Database size={48} className="text-slate-700" />
+            }}
         >
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {loading ? (
-                    <div className="col-span-full py-20 flex flex-col items-center justify-center space-y-4">
-                        <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                        <p className="text-slate-500 text-base font-medium">Fetching clusters...</p>
-                    </div>
-                ) : filteredPlatforms.length === 0 ? (
-                    <div className="col-span-full py-20 text-center border-2 border-dashed border-slate-800 rounded-[40px]">
-                        <Database size={48} className="mx-auto text-slate-700 mb-4" />
-                        <h3 className="text-lg font-bold text-slate-400">No clusters found</h3>
-                        <p className="text-slate-500 text-sm">{selectedProject ? `No PostgreSQL clusters in ${selectedProject.name}.` : 'Create your first PostgreSQL cluster to get started.'}</p>
-                    </div>
-                ) : filteredPlatforms.map(platform => (
+                {filteredPlatforms.map(platform => (
                     <ResourceCard
                         key={platform.id}
                         onClick={() => setSelectedPlatform(platform)}

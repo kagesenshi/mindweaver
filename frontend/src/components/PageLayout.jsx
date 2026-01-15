@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search } from 'lucide-react';
+import { Search, Loader2, Inbox } from 'lucide-react';
 import { cn } from '../utils/cn';
 
 const PageLayout = ({
@@ -11,6 +11,7 @@ const PageLayout = ({
     searchPlaceholder = "Search...",
     children,
     isLoading = false,
+    isEmpty = false,
     emptyState = null,
     className
 }) => {
@@ -49,7 +50,29 @@ const PageLayout = ({
                 </div>
             )}
 
-            {children}
+            {isLoading ? (
+                <div className="col-span-full py-20 flex flex-col items-center justify-center space-y-4">
+                    <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                    <p className="text-slate-500 text-base font-medium">Loading...</p>
+                </div>
+            ) : isEmpty ? (
+                emptyState ? (
+                    React.isValidElement(emptyState) ? emptyState : (
+                        <div className="col-span-full py-20 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[40px]">
+                            {emptyState.icon && <div className="flex justify-center mb-4">{emptyState.icon}</div>}
+                            <h3 className="text-lg font-bold text-slate-400">{emptyState.title}</h3>
+                            <p className="text-slate-500 text-sm">{emptyState.description}</p>
+                        </div>
+                    )
+                ) : (
+                    <div className="col-span-full py-20 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[40px]">
+                        <h3 className="text-lg font-bold text-slate-400">No items found</h3>
+                        <p className="text-slate-500 text-sm">There are no items to display.</p>
+                    </div>
+                )
+            ) : (
+                children
+            )}
         </div>
     );
 };
