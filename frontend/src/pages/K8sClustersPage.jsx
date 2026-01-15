@@ -6,6 +6,7 @@ import { cn } from '../utils/cn';
 import Modal from '../components/Modal';
 import DynamicForm from '../components/DynamicForm';
 import ResourceCard from '../components/ResourceCard';
+import PageLayout from '../components/PageLayout';
 
 const K8sClustersPage = () => {
     const { darkMode, selectedProject } = useOutletContext();
@@ -13,24 +14,31 @@ const K8sClustersPage = () => {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedCluster, setSelectedCluster] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const filteredClusters = clusters.filter(cluster =>
+        (cluster.title || cluster.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (cluster.type || '').toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     return (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <div className="mw-page-header">
-                <div>
-                    <h2 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white">Kubernetes Clusters</h2>
-                    <p className="text-slate-500 mt-1 text-base">Manage infrastructure endpoints and compute contexts.</p>
-                </div>
+        <PageLayout
+            title="Kubernetes Clusters"
+            description="Manage infrastructure endpoints and compute contexts."
+            headerActions={
                 <button
                     onClick={() => setIsCreateModalOpen(true)}
                     className="mw-btn-primary px-4 py-2"
                 >
                     <Plus size={16} /> ADD CLUSTER
                 </button>
-            </div>
-
+            }
+            searchQuery={searchTerm}
+            onSearchChange={(e) => setSearchTerm(e.target.value)}
+            searchPlaceholder="Search clusters..."
+        >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {clusters.map((cluster, i) => (
+                {filteredClusters.map((cluster, i) => (
                     <ResourceCard
                         key={i}
                         icon={<Cloud size={24} />}
@@ -103,7 +111,7 @@ const K8sClustersPage = () => {
                     />
                 )}
             </Modal>
-        </div>
+        </PageLayout>
     );
 };
 

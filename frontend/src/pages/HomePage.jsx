@@ -3,16 +3,13 @@ import { useOutletContext, useNavigate } from 'react-router-dom';
 import {
     Rocket,
     Server,
-    Activity,
-    Cpu,
-    HardDrive,
     Tag,
     Briefcase,
-    Database,
-    Search
+    Database
 } from 'lucide-react';
 import { usePgSql } from '../hooks/useResources';
 import ResourceCard from '../components/ResourceCard';
+import PageLayout from '../components/PageLayout';
 
 const HomePage = () => {
     const { darkMode, selectedProject } = useOutletContext();
@@ -29,37 +26,21 @@ const HomePage = () => {
 
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-500">
-            <div className="mw-page-header">
-                <div>
-                    <h2 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white">
-                        {selectedProject ? `Stack: ${selectedProject.name}` : 'Unified Fleet'}
-                    </h2>
-                    <p className="text-base text-slate-500 mt-1">
-                        Monitoring {filteredInstances.length} resources across all projects.
-                    </p>
-                </div>
+        <PageLayout
+            title={selectedProject ? `Stack: ${selectedProject.name}` : 'Unified Fleet'}
+            description={`Monitoring ${filteredInstances.length} resources across all projects.`}
+            headerActions={
                 <button
                     onClick={() => navigate('/platform/pgsql')}
                     className="mw-btn-primary px-4 py-2.5"
                 >
                     <Rocket size={14} /> NEW DEPLOYMENT
                 </button>
-            </div>
-
-            <div className="flex items-center gap-4">
-                <div className="mw-search-box flex-1">
-                    <Search size={18} className="text-slate-500" />
-                    <input
-                        type="text"
-                        placeholder="Search within fleet..."
-                        className="bg-transparent text-base focus:outline-none w-full"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                </div>
-            </div>
-
+            }
+            searchQuery={searchTerm}
+            onSearchChange={(e) => setSearchTerm(e.target.value)}
+            searchPlaceholder="Search within fleet..."
+        >
             {loading ? (
                 <div className="py-20 flex flex-col items-center justify-center space-y-4">
                     <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
@@ -99,7 +80,7 @@ const HomePage = () => {
                     ))}
                 </div>
             )}
-        </div>
+        </PageLayout>
     );
 };
 

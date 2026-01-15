@@ -20,6 +20,7 @@ import { useDataSources, useProjects } from '../hooks/useResources';
 import { cn } from '../utils/cn';
 import ResourceCard from '../components/ResourceCard';
 import Modal from '../components/Modal';
+import PageLayout from '../components/PageLayout';
 
 const DataSourceForm = ({ mode = 'create', initialData = {}, onSuccess, onCancel, darkMode }) => {
     const { projects } = useProjects();
@@ -374,6 +375,12 @@ const DataSourcesPage = () => {
     const [editSource, setEditSource] = useState(null);
     const [testingId, setTestingId] = useState(null);
     const [testResult, setTestResult] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const filteredDataSources = dataSources.filter(source =>
+        (source.title || source.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (source.type || '').toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     const handleTest = async (id) => {
         setTestingId(id);
@@ -399,33 +406,34 @@ const DataSourcesPage = () => {
     };
 
     return (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <div className="mw-page-header">
-                <div>
-                    <h2 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white">Data Source Registry</h2>
-                    <p className="text-slate-500 mt-1 text-base">Global connection identities for Trino, Airflow, and ETL runtimes.</p>
-                </div>
+        <PageLayout
+            title="Data Source Registry"
+            description="Global connection identities for Trino, Airflow, and ETL runtimes."
+            headerActions={
                 <button
                     onClick={() => setIsCreateModalOpen(true)}
                     className="mw-btn-primary px-4 py-2"
                 >
                     <Plus size={16} /> REGISTER SOURCE
                 </button>
-            </div>
-
+            }
+            searchQuery={searchTerm}
+            onSearchChange={(e) => setSearchTerm(e.target.value)}
+            searchPlaceholder="Search data sources..."
+        >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {loading ? (
                     <div className="col-span-full py-20 flex flex-col items-center justify-center space-y-4">
                         <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
                         <p className="text-slate-500 text-base font-medium">Fetching data sources...</p>
                     </div>
-                ) : dataSources.length === 0 ? (
+                ) : filteredDataSources.length === 0 ? (
                     <div className="col-span-full py-20 text-center border-2 border-dashed border-slate-800 rounded-[40px]">
                         <Library size={48} className="mx-auto text-slate-700 mb-4" />
-                        <h3 className="text-lg font-bold text-slate-400">No data sources registered</h3>
+                        <h3 className="text-lg font-bold text-slate-400">No data sources found</h3>
                         <p className="text-slate-500 text-sm">Register a new data source to use it in your data platform.</p>
-                    </div>
-                ) : dataSources.map(source => (
+                    </div> // Using closing brace from original code won't match if I replaced start of return. I need to be careful.
+                ) : filteredDataSources.map(source => (
                     <ResourceCard
                         key={source.id}
                         icon={getIcon(source.type)}
@@ -511,7 +519,7 @@ const DataSourcesPage = () => {
                     />
                 )}
             </Modal>
-        </div>
+        </PageLayout>
     );
 };
 

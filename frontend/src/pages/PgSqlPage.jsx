@@ -15,7 +15,6 @@ import {
     EyeOff,
     Copy,
     ChevronLeft,
-    Search,
     CheckCircle2,
     AlertCircle
 } from 'lucide-react';
@@ -24,6 +23,7 @@ import { cn } from '../utils/cn';
 import Modal from '../components/Modal';
 import DynamicForm from '../components/DynamicForm';
 import ResourceCard from '../components/ResourceCard';
+import PageLayout from '../components/PageLayout';
 
 const StatusBadge = ({ status }) => {
     const styles = {
@@ -49,8 +49,14 @@ const PgSqlPage = () => {
     const [platformState, setPlatformState] = useState(null);
     const [activeTab, setActiveTab] = useState('connect');
     const [showPassword, setShowPassword] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
 
-    const filteredPlatforms = platforms.filter(p => !selectedProject || p.project_id === selectedProject.id);
+    const filteredPlatforms = platforms.filter(p => {
+        const matchesProject = !selectedProject || p.project_id === selectedProject.id;
+        const matchesSearch = (p.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            String(p.id).toLowerCase().includes(searchTerm.toLowerCase());
+        return matchesProject && matchesSearch;
+    });
 
     useEffect(() => {
         if (selectedPlatform) {
@@ -227,20 +233,21 @@ const PgSqlPage = () => {
     }
 
     return (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <div className="mw-page-header">
-                <div>
-                    <h2 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white">Cloudnative PG Clusters</h2>
-                    <p className="text-slate-500 mt-1 text-base">High-availability PostgreSQL managed by Kubernetes operators.</p>
-                </div>
+        <PageLayout
+            title="Cloudnative PG Clusters"
+            description="High-availability PostgreSQL managed by Kubernetes operators."
+            headerActions={
                 <button
                     onClick={() => setIsCreateModalOpen(true)}
                     className="mw-btn-primary px-4 py-2"
                 >
                     <Plus size={16} /> NEW CLUSTER
                 </button>
-            </div>
-
+            }
+            searchQuery={searchTerm}
+            onSearchChange={(e) => setSearchTerm(e.target.value)}
+            searchPlaceholder="Search PostgreSQL clusters..."
+        >
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {loading ? (
                     <div className="col-span-full py-20 flex flex-col items-center justify-center space-y-4">
@@ -293,7 +300,7 @@ const PgSqlPage = () => {
                     onCancel={() => setIsCreateModalOpen(false)}
                 />
             </Modal>
-        </div>
+        </PageLayout>
     );
 };
 
