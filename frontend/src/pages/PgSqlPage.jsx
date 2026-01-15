@@ -79,7 +79,7 @@ const PgSqlPage = () => {
                         </div>
                         <div>
                             <div className="flex items-center gap-3">
-                                <h2 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white uppercase">{selectedPlatform.name}</h2>
+                                <h2 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white">{selectedPlatform.name}</h2>
                                 <StatusBadge status={platformState?.active ? 'active' : 'stopped'} />
                             </div>
                             <div className="flex items-center gap-4 mt-2">
@@ -140,7 +140,7 @@ const PgSqlPage = () => {
                             <div className={cn("p-4 border-b flex items-center justify-between", darkMode ? 'border-slate-800 bg-slate-950/30' : 'border-slate-200 bg-slate-50')}>
                                 <div className="flex items-center gap-3">
                                     <div className="p-2 bg-blue-500/10 text-blue-400 rounded-lg"><Lock size={18} /></div>
-                                    <h4 className="text-base font-bold uppercase tracking-wider leading-none text-slate-900 dark:text-white">Internal Network Endpoint</h4>
+                                    <h4 className="text-base font-bold tracking-wider leading-none text-slate-900 dark:text-white">Internal Network Endpoint</h4>
                                 </div>
                                 <div className="mw-badge-success gap-2 px-3 py-1">
                                     <CheckCircle2 size={12} />
@@ -204,7 +204,7 @@ const PgSqlPage = () => {
                             <div className={cn("p-4 border-b flex items-center justify-between", darkMode ? 'border-slate-800 bg-slate-950/30' : 'border-slate-200 bg-slate-50')}>
                                 <div className="flex items-center gap-3">
                                     <div className="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg"><Zap size={18} /></div>
-                                    <h4 className="text-base font-bold uppercase tracking-wider leading-none text-slate-900 dark:text-white">Cluster Tuning</h4>
+                                    <h4 className="text-base font-bold tracking-wider leading-none text-slate-900 dark:text-white">Cluster Tuning</h4>
                                 </div>
                             </div>
                             <div className="p-8">
@@ -230,7 +230,7 @@ const PgSqlPage = () => {
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <div className="mw-page-header">
                 <div>
-                    <h2 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white uppercase">Cloudnative PG Clusters</h2>
+                    <h2 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white">Cloudnative PG Clusters</h2>
                     <p className="text-slate-500 mt-1 text-base">High-availability PostgreSQL managed by Kubernetes operators.</p>
                 </div>
                 <button

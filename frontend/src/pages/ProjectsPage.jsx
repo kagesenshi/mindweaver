@@ -33,7 +33,7 @@ const ProjectsPage = () => {
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <div className="mw-page-header">
                 <div>
-                    <h2 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white uppercase">Project Registry</h2>
+                    <h2 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white">Project Registry</h2>
                     <p className="text-slate-500 mt-1 text-base">Tenant management and resource isolation.</p>
                 </div>
                 <button
@@ -76,7 +76,7 @@ const ProjectsPage = () => {
                                 <Briefcase size={24} className="text-slate-400 group-hover:text-blue-500 transition-colors" />
                             </div>
                             <div>
-                                <h4 className="text-lg font-bold text-slate-900 dark:text-white uppercase">{proj.title}</h4>
+                                <h4 className="text-lg font-bold text-slate-900 dark:text-white">{proj.title}</h4>
                                 <p className="text-sm text-slate-500">{proj.description}</p>
                             </div>
                         </div>

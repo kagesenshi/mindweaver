@@ -47,7 +47,7 @@ const HomePage = () => {
         <div className="space-y-8 animate-in fade-in duration-500">
             <div className="mw-page-header">
                 <div>
-                    <h2 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white uppercase">
+                    <h2 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white">
                         {selectedProject ? `Stack: ${selectedProject.name}` : 'Unified Fleet'}
                     </h2>
                     <p className="text-base text-slate-500 mt-1">
@@ -100,8 +100,8 @@ const HomePage = () => {
                                         <Database size={20} />
                                     </div>
                                     <div>
-                                        <h4 className="text-lg font-bold text-slate-900 dark:text-white uppercase">{inst.name}</h4>
-                                        <p className="text-sm text-slate-500 font-mono uppercase">{inst.id}</p>
+                                        <h4 className="text-lg font-bold text-slate-900 dark:text-white">{inst.name}</h4>
+                                        <p className="text-sm text-slate-500 font-mono">{inst.id}</p>
                                     </div>
                                 </div>
                                 <StatusBadge status="running" />

@@ -56,11 +56,11 @@ const ResourceCard = ({
                         </div>
                     )}
                     <div className="min-w-0">
-                        <h4 className="text-lg font-bold truncate text-slate-900 dark:text-white uppercase leading-tight">
+                        <h4 className="text-lg font-bold truncate text-slate-900 dark:text-white leading-tight">
                             {title}
                         </h4>
                         {subtitle && (
-                            <p className="text-sm text-slate-500 font-mono uppercase mt-1 truncate">
+                            <p className="text-sm text-slate-500 font-mono mt-1 truncate">
                                 {subtitle}
                             </p>
                         )}

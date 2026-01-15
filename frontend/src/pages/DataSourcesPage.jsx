@@ -402,7 +402,7 @@ const DataSourcesPage = () => {
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <div className="mw-page-header">
                 <div>
-                    <h2 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white uppercase">Data Source Registry</h2>
+                    <h2 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white">Data Source Registry</h2>
                     <p className="text-slate-500 mt-1 text-base">Global connection identities for Trino, Airflow, and ETL runtimes.</p>
                 </div>
                 <button
