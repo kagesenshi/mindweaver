@@ -132,3 +132,44 @@ export const usePgSql = () => {
 
     return { platforms, loading, error, fetchPlatforms, createPlatform, updatePlatformState, deletePlatform, getPlatformState };
 };
+
+export const useK8sClusters = () => {
+    const [clusters, setClusters] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+
+    const fetchClusters = useCallback(async () => {
+        setLoading(true);
+        try {
+            const response = await apiClient.get('/k8s_clusters');
+            setClusters(response.data.records || []);
+        } catch (err) {
+            setError(err);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    const createCluster = async (data) => {
+        const response = await apiClient.post('/k8s_clusters', data);
+        await fetchClusters();
+        return response.data;
+    };
+
+    const updateCluster = async (id, data) => {
+        const response = await apiClient.put(`/k8s_clusters/${id}`, data);
+        await fetchClusters();
+        return response.data;
+    };
+
+    const deleteCluster = async (id) => {
+        await apiClient.delete(`/k8s_clusters/${id}`);
+        await fetchClusters();
+    };
+
+    useEffect(() => {
+        fetchClusters();
+    }, [fetchClusters]);
+
+    return { clusters, loading, error, fetchClusters, createCluster, updateCluster, deleteCluster };
+};
