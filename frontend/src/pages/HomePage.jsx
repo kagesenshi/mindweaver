@@ -12,22 +12,7 @@ import {
     Search
 } from 'lucide-react';
 import { usePgSql } from '../hooks/useResources';
-import { cn } from '../utils/cn';
-
-const StatusBadge = ({ status }) => {
-    const styles = {
-        running: 'mw-badge-success',
-        connected: 'mw-badge-success',
-        warning: 'mw-badge-warning',
-        stopped: 'mw-badge-neutral',
-        error: 'mw-badge-danger',
-    };
-    return (
-        <span className={cn(styles[status] || 'mw-badge-neutral')}>
-            {(status || 'unknown').toUpperCase()}
-        </span>
-    );
-};
+import ResourceCard from '../components/ResourceCard';
 
 const HomePage = () => {
     const { darkMode, selectedProject } = useOutletContext();
@@ -89,37 +74,28 @@ const HomePage = () => {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                     {filteredInstances.map(inst => (
-                        <div
+                        <ResourceCard
                             key={inst.id}
-                            onClick={() => navigate('/platform/pgsql')} // For now, only pgsql clusters are in the list
-                            className="mw-card-interactive group"
-                        >
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="mw-icon-box p-2 text-blue-400 group-hover:scale-110">
-                                        <Database size={20} />
+                            icon={<Database size={20} />}
+                            title={inst.name}
+                            subtitle={inst.id}
+                            status="running"
+                            onClick={() => navigate('/platform/pgsql')}
+                            footer={
+                                <div className="flex items-center justify-between w-full">
+                                    <div className="flex items-center gap-2 text-slate-500">
+                                        <Tag size={12} />
+                                        <span className="text-sm font-bold">CloudNative PG</span>
                                     </div>
-                                    <div>
-                                        <h4 className="text-lg font-bold text-slate-900 dark:text-white">{inst.name}</h4>
-                                        <p className="text-sm text-slate-500 font-mono">{inst.id}</p>
+                                    <div className="flex items-center gap-2 text-blue-500/70">
+                                        <Briefcase size={12} />
+                                        <span className="text-sm font-bold uppercase truncate max-w-[80px]">
+                                            {inst.project?.name || 'Service Component'}
+                                        </span>
                                     </div>
                                 </div>
-                                <StatusBadge status="running" />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-200 dark:border-slate-800/50">
-                                <div className="flex items-center gap-2 text-slate-500">
-                                    <Tag size={12} />
-                                    <span className="text-sm font-bold">CloudNative PG</span>
-                                </div>
-                                <div className="flex items-center gap-2 text-blue-500/70">
-                                    <Briefcase size={12} />
-                                    <span className="text-sm font-bold uppercase truncate max-w-[80px]">
-                                        {inst.project?.name || 'Service Component'}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
+                            }
+                        />
                     ))}
                 </div>
             )}
