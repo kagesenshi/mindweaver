@@ -35,7 +35,7 @@ def test_crud(crud_client: TestClient):
     resp = client.put(f"/api/v1/models/{record_id}", json=update_request)
 
     assert resp.status_code == 422
-    assert "immutable" in resp.json()["detail"]
+    assert any("immutable" in err["msg"] for err in resp.json()["detail"])
 
     # Now update without changing name
     update_request["name"] = record["name"]
@@ -151,7 +151,7 @@ def test_project_scoped_crud(project_scoped_crud_client: TestClient):
         headers={"X-Project-Id": str(project_id)},
     )
     assert resp.status_code == 422
-    assert "immutable" in resp.json()["detail"]
+    assert any("immutable" in err["msg"] for err in resp.json()["detail"])
 
     # Now update without changing name
     update_request["name"] = record["name"]
@@ -232,7 +232,7 @@ def test_project_id_immutability(project_scoped_crud_client: TestClient):
         headers={"X-Project-Id": str(p1_id)},
     )
     assert resp.status_code == 422
-    assert "immutable" in resp.json()["detail"]
+    assert any("immutable" in err["msg"] for err in resp.json()["detail"])
 
     # Verify that updating without changing project_id still works
     resp = client.put(
@@ -263,7 +263,7 @@ def test_form_schemas(crud_client: TestClient):
     client = crud_client
 
     # Test create form
-    resp = client.get("/api/v1/models/+create-form")
+    resp = client.get("/api/v1/models/_create-form")
     resp.raise_for_status()
     data = resp.json()
     schema = data["record"]["jsonschema"]
@@ -271,7 +271,7 @@ def test_form_schemas(crud_client: TestClient):
     assert "name" in schema["properties"]
 
     # Test edit form
-    resp = client.get("/api/v1/models/+edit-form")
+    resp = client.get("/api/v1/models/_edit-form")
     resp.raise_for_status()
     data = resp.json()
     schema = data["record"]["jsonschema"]

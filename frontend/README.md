@@ -1,54 +1,16 @@
-# Mindweaver Frontend
+# React + Vite
 
-This is the Flutter-based frontend for Mindweaver. It replaces the legacy Reflex-based UI with a modern, responsive, and cross-platform experience.
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-## Prerequisites
+Currently, two official plugins are available:
 
-- [Flutter SDK](https://docs.flutter.dev/get-started/install) (stable channel)
-- A running Mindweaver backend (default: `http://localhost:8000`)
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
-## Getting Started
+## React Compiler
 
-### 1. Install Dependencies
+The React Compiler is currently not compatible with SWC. See [this issue](https://github.com/vitejs/vite-plugin-react/issues/428) for tracking the progress.
 
-Fetch all required packages:
+## Expanding the ESLint configuration
 
-```bash
-flutter pub get
-```
-
-### 2. Generate Serializers
-
-The project uses `json_serializable` for API data models. Generate the necessary code:
-
-```bash
-flutter pub run build_runner build --delete-conflicting-outputs
-```
-
-### 3. Run the Application
-
-#### Web (Recommended for development)
-```bash
-flutter run -d chrome
-```
-
-#### Linux Desktop
-```bash
-flutter run -d linux
-```
-
-## Configuration
-
-The frontend connects to the backend at `http://localhost:8000` by default. You can modify this in `lib/config/settings.dart` or override it during execution via Dart defines:
-
-```bash
-flutter run -d chrome --dart-define=API_BASE_URL=http://your-api:8000
-```
-
-## Project Structure
-
-- `lib/models/`: Data entities mirroring the backend.
-- `lib/providers/`: State management using Riverpod.
-- `lib/pages//`: Individual UI views.
-- `lib/services/`: API clients and core logic.
-- `lib/widgets/`: Reusable UI components.
+If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.

@@ -170,10 +170,10 @@ class DataSourceService(ProjectScopedService[DataSource]):
 
         except ValidationError as e:
             error = e.errors()[0]
-            field = error["loc"][0] if error["loc"] else "unknown"
+            field_loc = error["loc"]
             message = error["msg"]
             raise FieldValidationError(
-                field_location=[field],
+                field_location=["parameters"] + [str(l) for l in field_loc],
                 message=message,
             )
 

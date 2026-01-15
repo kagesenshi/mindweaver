@@ -36,7 +36,7 @@ class ValidationErrorDetail(BaseModel):
 class Error(BaseModel):
     status: str
     type: str
-    detail: str | ValidationErrorDetail
+    detail: list[ValidationErrorDetail] | ValidationErrorDetail | str
 
 
 STATUSES = Literal["success", "error"]
@@ -532,7 +532,7 @@ class Service(Generic[S], abc.ABC):
 
     async def all(self) -> list[S]:
         model_class = self.__class__.model_class()
-        stmt = select(model_class)
+        stmt = select(model_class).order_by(model_class.id.asc())
 
         # Filter by project_id if available and model supports it
         project_id = self.get_project_id()
@@ -611,7 +611,11 @@ class Service(Generic[S], abc.ABC):
             filter &= model_class.project_id == project_id
 
         models = await self.session.exec(
-            select(model_class).where(filter).offset(offset).limit(limit)
+            select(model_class)
+            .where(filter)
+            .order_by(model_class.id.asc())
+            .offset(offset)
+            .limit(limit)
         )
         return models
 
@@ -739,7 +743,7 @@ class Service(Generic[S], abc.ABC):
             return {"records": [svc.post_process_model(r) for r in records]}
 
         @router.get(
-            f"{service_path}/+create-form",
+            f"{service_path}/_create-form",
             operation_id=f"mw-create-form-{entity_type}",
             dependencies=extra_deps,
             tags=path_tags,
@@ -757,7 +761,7 @@ class Service(Generic[S], abc.ABC):
         if UpdateModel.model_fields:
 
             @router.get(
-                f"{service_path}/+edit-form",
+                f"{service_path}/_edit-form",
                 operation_id=f"mw-edit-form-{entity_type}",
                 dependencies=extra_deps,
                 tags=path_tags,

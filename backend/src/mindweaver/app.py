@@ -19,10 +19,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError, HTTPException
 from fastapi import Depends
+from fastapi.security import HTTPBearer
 from .fw.service import Error, ValidationErrorDetail
 from .fw.exc import MindWeaverError
 
-app = fastapi.FastAPI(title="Mindweaver", dependencies=[Depends(verify_token)])
+app = fastapi.FastAPI(
+    title="Mindweaver",
+    dependencies=[
+        Depends(verify_token),
+        Depends(HTTPBearer(auto_error=False)),
+    ],
+)
 
 
 @app.exception_handler(RequestValidationError)
@@ -35,12 +42,14 @@ async def validation_exception_handler(
     if not errors:
         detail = "Validation failed"
     else:
-        err = errors[0]
-        detail = ValidationErrorDetail(
-            msg=err.get("msg", "Value error"),
-            type=err.get("type", "value_error"),
-            loc=[str(l) for l in err.get("loc", [])],
-        )
+        detail = [
+            ValidationErrorDetail(
+                msg=err.get("msg", "Value error"),
+                type=err.get("type", "value_error"),
+                loc=[str(l) for l in err.get("loc", [])],
+            )
+            for err in errors
+        ]
 
     error_resp = Error(status="error", type="validation_error", detail=detail)
     return JSONResponse(status_code=422, content=error_resp.model_dump())
@@ -52,27 +61,22 @@ async def http_exception_handler(request: fastapi.Request, exc: HTTPException):
     # If exc.detail is a list (like from some of our custom exceptions), inspect the first item
     detail_msg = exc.detail
     if isinstance(detail_msg, list) and len(detail_msg) > 0:
-        first = detail_msg[0]
-        if isinstance(first, dict):
-            if "loc" in first and "msg" in first:
-                # Treat as ValidationErrorDetail
-                detail = ValidationErrorDetail(
-                    msg=first.get("msg", ""),
-                    type=first.get("type", "value_error"),
-                    loc=[str(l) for l in first.get("loc", [])],
+        # Check if it's a list of validation errors
+        if all(isinstance(d, dict) and "msg" in d for d in detail_msg):
+            detail = [
+                ValidationErrorDetail(
+                    msg=d.get("msg", ""),
+                    type=d.get("type", "value_error"),
+                    loc=[str(l) for l in d.get("loc", [])],
                 )
-                error_resp = Error(
-                    status="error", type="validation_error", detail=detail
-                )
-                return JSONResponse(
-                    status_code=exc.status_code, content=error_resp.model_dump()
-                )
-            elif "msg" in first:
-                detail_msg = first["msg"]
-            else:
-                detail_msg = str(first)
+                for d in detail_msg
+            ]
+            error_resp = Error(status="error", type="validation_error", detail=detail)
+            return JSONResponse(
+                status_code=exc.status_code, content=error_resp.model_dump()
+            )
         else:
-            detail_msg = str(first)
+            detail_msg = str(detail_msg[0])
     elif isinstance(detail_msg, list):
         detail_msg = "An error occurred"
 

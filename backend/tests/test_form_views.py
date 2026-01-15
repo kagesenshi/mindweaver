@@ -2,7 +2,7 @@ from fastapi.testclient import TestClient
 
 
 def test_project_form_views(client: TestClient):
-    response = client.get("/api/v1/projects/+create-form")
+    response = client.get("/api/v1/projects/_create-form")
     assert response.status_code == 200
     data = response.json()
     assert "jsonschema" in data["record"]
@@ -17,7 +17,7 @@ def test_project_form_views(client: TestClient):
 
 
 def test_k8s_cluster_form_views(client: TestClient):
-    response = client.get("/api/v1/k8s_clusters/+create-form")
+    response = client.get("/api/v1/k8s_clusters/_create-form")
     assert response.status_code == 200
     data = response.json()
 
@@ -39,7 +39,7 @@ def test_k8s_cluster_form_views(client: TestClient):
 
 def test_ai_agent_form_views(client: TestClient):
     # AIAgent might be under experimental flag, but conftest set them to true
-    response = client.get("/api/v1/ai_agents/+create-form")
+    response = client.get("/api/v1/ai_agents/_create-form")
     if response.status_code == 404:
         import pytest
 
