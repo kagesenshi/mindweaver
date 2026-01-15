@@ -22,16 +22,25 @@ class APIClient {
     _headers.remove(key);
   }
 
+  Future<Map<String, String>> _prepareHeaders(
+    Map<String, String>? headers,
+  ) async {
+    final headersMap = {..._headers, ...?headers};
+    if (getToken != null) {
+      final token = await getToken!();
+      if (token != null && token.isNotEmpty) {
+        headersMap['Authorization'] = 'Bearer $token';
+      }
+    }
+    return headersMap;
+  }
+
   Future<List<T>> listAll<T>(
     String endpoint,
     T Function(Object? json) fromJsonT, {
     Map<String, String>? headers,
   }) async {
-    final headersMap = {..._headers, ...?headers};
-    if (getToken != null) {
-      final token = await getToken!();
-      if (token != null) headersMap['Authorization'] = 'Bearer $token';
-    }
+    final headersMap = await _prepareHeaders(headers);
 
     final response = await http
         .get(Uri.parse('$baseUrl$endpoint'), headers: headersMap)
@@ -53,11 +62,7 @@ class APIClient {
     T Function(Object? json) fromJsonT, {
     Map<String, String>? headers,
   }) async {
-    final headersMap = {..._headers, ...?headers};
-    if (getToken != null) {
-      final token = await getToken!();
-      if (token != null) headersMap['Authorization'] = 'Bearer $token';
-    }
+    final headersMap = await _prepareHeaders(headers);
 
     final response = await http
         .get(Uri.parse('$baseUrl$endpoint'), headers: headersMap)
@@ -76,11 +81,7 @@ class APIClient {
     String endpoint, {
     Map<String, String>? headers,
   }) async {
-    final headersMap = {..._headers, ...?headers};
-    if (getToken != null) {
-      final token = await getToken!();
-      if (token != null) headersMap['Authorization'] = 'Bearer $token';
-    }
+    final headersMap = await _prepareHeaders(headers);
 
     final response = await http
         .get(Uri.parse('$baseUrl$endpoint'), headers: headersMap)
@@ -101,11 +102,7 @@ class APIClient {
     T Function(Object? json) fromJsonT, {
     Map<String, String>? headers,
   }) async {
-    final headersMap = {..._headers, ...?headers};
-    if (getToken != null) {
-      final token = await getToken!();
-      if (token != null) headersMap['Authorization'] = 'Bearer $token';
-    }
+    final headersMap = await _prepareHeaders(headers);
 
     final response = await http
         .post(
@@ -123,11 +120,7 @@ class APIClient {
     dynamic data, {
     Map<String, String>? headers,
   }) async {
-    final headersMap = {..._headers, ...?headers};
-    if (getToken != null) {
-      final token = await getToken!();
-      if (token != null) headersMap['Authorization'] = 'Bearer $token';
-    }
+    final headersMap = await _prepareHeaders(headers);
 
     final response = await http
         .post(
@@ -152,11 +145,7 @@ class APIClient {
     T Function(Object? json) fromJsonT, {
     Map<String, String>? headers,
   }) async {
-    final headersMap = {..._headers, ...?headers};
-    if (getToken != null) {
-      final token = await getToken!();
-      if (token != null) headersMap['Authorization'] = 'Bearer $token';
-    }
+    final headersMap = await _prepareHeaders(headers);
 
     final response = await http
         .put(
@@ -180,11 +169,7 @@ class APIClient {
     dynamic data, {
     Map<String, String>? headers,
   }) async {
-    final headersMap = {..._headers, ...?headers};
-    if (getToken != null) {
-      final token = await getToken!();
-      if (token != null) headersMap['Authorization'] = 'Bearer $token';
-    }
+    final headersMap = await _prepareHeaders(headers);
 
     final response = await http
         .put(
@@ -204,11 +189,7 @@ class APIClient {
   }
 
   Future<bool> delete(String endpoint, {Map<String, String>? headers}) async {
-    final headersMap = {..._headers, ...?headers};
-    if (getToken != null) {
-      final token = await getToken!();
-      if (token != null) headersMap['Authorization'] = 'Bearer $token';
-    }
+    final headersMap = await _prepareHeaders(headers);
 
     final response = await http
         .delete(Uri.parse('$baseUrl$endpoint'), headers: headersMap)
