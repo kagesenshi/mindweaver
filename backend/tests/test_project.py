@@ -80,31 +80,33 @@ def test_project_scoping(client: TestClient):
 
     # Create a data source in P1
     headers_p1 = {"X-Project-ID": str(p1["id"])}
-    client.post(
+    resp1 = client.post(
         "/api/v1/data_sources",
         json={
             "project_id": p1["id"],
             "name": "ds1",
             "title": "DS1",
-            "type": "API",
+            "driver": "web",
             "parameters": {"base_url": "http://example.com", "api_key": "key"},
         },
         headers=headers_p1,
     )
+    assert resp1.status_code == 200, resp1.json()
 
     # Create a data source in P2
     headers_p2 = {"X-Project-ID": str(p2["id"])}
-    client.post(
+    resp2 = client.post(
         "/api/v1/data_sources",
         json={
             "project_id": p2["id"],
             "name": "ds2",
             "title": "DS2",
-            "type": "API",
+            "driver": "web",
             "parameters": {"base_url": "http://example.com", "api_key": "key"},
         },
         headers=headers_p2,
     )
+    assert resp2.status_code == 200, resp2.json()
 
     # List data sources in P1
     resp_p1 = client.get("/api/v1/data_sources", headers=headers_p1)

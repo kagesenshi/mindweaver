@@ -163,7 +163,9 @@ def test_pgsql_backup_destination_validation(client: TestClient, test_project):
         headers={"X-Project-Id": str(test_project["id"])},
     )
     assert resp.status_code == 422
-    assert "Backup destination must be a valid S3 URI" in resp.json()["detail"]["msg"]
+    assert (
+        "Backup destination must be a valid S3 URI" in resp.json()["detail"][0]["msg"]
+    )
 
     # 3. Empty bucket
     data = base_data.copy()
@@ -176,7 +178,8 @@ def test_pgsql_backup_destination_validation(client: TestClient, test_project):
     )
     assert resp.status_code == 422
     assert (
-        "Backup destination must include a bucket name" in resp.json()["detail"]["msg"]
+        "Backup destination must include a bucket name"
+        in resp.json()["detail"][0]["msg"]
     )
 
     # 4. None/Empty string (Success)

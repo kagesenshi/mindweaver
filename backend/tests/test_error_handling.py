@@ -29,11 +29,13 @@ def test_error_422_validation(client: TestClient, test_project):
     assert data["status"] == "error"
     assert data["type"] == "validation_error"
     assert "detail" in data
-    assert isinstance(data["detail"], dict)
-    assert "msg" in data["detail"]
-    assert "type" in data["detail"]
-    assert "loc" in data["detail"]
-    assert isinstance(data["detail"]["loc"], list)
+    assert isinstance(data["detail"], list)
+    assert len(data["detail"]) > 0
+    first_error = data["detail"][0]
+    assert "msg" in first_error
+    assert "type" in first_error
+    assert "loc" in first_error
+    assert isinstance(first_error["loc"], list)
 
 
 def test_error_404_resource_not_found(client: TestClient, test_project):

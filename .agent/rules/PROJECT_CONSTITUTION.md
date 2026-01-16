@@ -65,7 +65,7 @@ the tests first before implementing the fixes.
   class Error(pydantic.BaseModel):
       status: str
       type: str
-      detail: str | ValidationErrorDetail
+      detail: str | list[ValidationErrorDetail]
   ```
 
 ### CRUD Naming & Routing

@@ -384,7 +384,7 @@ def test_s3_storage_update_new_secret(client: TestClient, test_project):
 
 
 def test_s3_storage_verify_encrypted(client: TestClient, test_project):
-    """Test the +verify-encrypted endpoint."""
+    """Test the _verify-encrypted endpoint."""
     plain_secret = "verify_me_123"
 
     # Create storage

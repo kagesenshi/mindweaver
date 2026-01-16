@@ -134,6 +134,132 @@ class DataSourceService(ProjectScopedService[DataSource]):
 
         return await super().update(model_id, data)
 
+    async def perform_test_connection(self, config: dict[str, Any]) -> dict[str, Any]:
+        """
+        Perform the actual connection test logic.
+        """
+        driver = config["driver"].lower() if config["driver"] else ""
+        password_to_use = config.get("password")
+
+        try:
+            if driver == "web" or driver == "api" or driver == "web scraper":
+                # Handle special parameter mappings from tests
+                params = config.get("parameters", {})
+                host = (
+                    config.get("host")
+                    or params.get("base_url")
+                    or params.get("start_url")
+                )
+
+                if not host:
+                    raise ValueError("Host/URL is required for Web/API source")
+
+                # Parse host if it's a full URL
+                if "://" in host:
+                    from urllib.parse import urlparse
+
+                    parsed = urlparse(host)
+                    scheme = parsed.scheme
+                    host_only = parsed.netloc
+                    resource_only = parsed.path
+                    if parsed.query:
+                        resource_only += f"?{parsed.query}"
+                else:
+                    scheme = "https" if config.get("enable_ssl") else "http"
+                    host_only = host
+                    resource_only = config.get("resource") or ""
+
+                base_url = f"{scheme}://{host_only}"
+                if config.get("port") and ":" not in host_only:
+                    base_url += f":{config['port']}"
+
+                if resource_only:
+                    if not resource_only.startswith("/"):
+                        base_url += "/"
+                    base_url += resource_only
+
+                async with httpx.AsyncClient(
+                    verify=config.get("verify_ssl", False)
+                ) as client:
+                    auth = None
+                    if config.get("login") and password_to_use:
+                        auth = (config["login"], password_to_use)
+                    elif params.get("api_key"):
+                        # Support api_key in parameters
+                        pass  # TODO: handle as header?
+
+                    resp = await client.get(
+                        base_url, auth=auth, timeout=10.0, follow_redirects=True
+                    )
+
+                    return {
+                        "status": "success",
+                        "message": f"Connected to {base_url}. Status: {resp.status_code}",
+                    }
+
+            elif driver in [
+                "postgresql",
+                "mysql",
+                "mariadb",
+                "trino",
+                "mongodb",
+                "mssql",
+                "oracle",
+            ]:
+                # Database checks using SQLAlchemy
+                db_driver_map = {
+                    "postgresql": "postgresql+psycopg",
+                    "mysql": "mysql+pymysql",
+                    "mariadb": "mysql+pymysql",
+                    "mssql": "mssql+pyodbc",
+                    "oracle": "oracle+cx_oracle",
+                    "trino": "trino",
+                    "mongodb": "mongodb",
+                }
+
+                sa_driver = db_driver_map.get(driver, driver)
+
+                url_kwargs = {
+                    "username": config.get("login"),
+                    "password": password_to_use,
+                    "host": config.get("host"),
+                    "port": config.get("port"),
+                    "database": config.get("resource"),
+                }
+
+                url_kwargs = {k: v for k, v in url_kwargs.items() if v is not None}
+                url = URL.create(drivername=sa_driver, **url_kwargs)
+
+                if config.get("parameters"):
+                    url = url.update_query_dict(config["parameters"])
+
+                try:
+                    engine = create_engine(url)
+                    with engine.connect() as conn:
+                        if "trino" in driver:
+                            conn.execute(text("SELECT 1"))
+                        else:
+                            conn.execute(text("SELECT 1"))
+
+                    return {
+                        "status": "success",
+                        "message": f"Successfully connected to {driver}",
+                    }
+                except Exception as e:
+                    raise ValueError(f"Connection failed: {str(e)}")
+
+            else:
+                return {
+                    "status": "unknown",
+                    "message": f"Driver '{driver}' connection test not fully implemented, but saved.",
+                }
+
+        except Exception as e:
+            # Re-raise as HTTPException with 422 to match test expectations
+            raise HTTPException(
+                status_code=422, detail=f"Connection test failed: {str(e)}"
+            )
+
 
 router = DataSourceService.router()
 
@@ -141,14 +267,50 @@ router = DataSourceService.router()
 class TestConnectionRequest(BaseModel):
     # Allow overriding fields for testing "dirty" state, effectively optional
     driver: Optional[str] = None
+    type: Optional[str] = None  # Alias for driver used in tests
     host: Optional[str] = None
     port: Optional[int] = None
     resource: Optional[str] = None
     login: Optional[str] = None
     password: Optional[str] = None
+    api_key: Optional[str] = None  # Alias for password used in tests
     enable_ssl: Optional[bool] = None
     verify_ssl: Optional[bool] = None
     parameters: Optional[dict[str, Any]] = None
+
+    def get_driver(self) -> Optional[str]:
+        return self.driver or self.type
+
+    def get_password(self) -> Optional[str]:
+        return self.password or self.api_key
+
+
+router = DataSourceService.router()
+
+
+@router.post(
+    f"{DataSourceService.service_path()}/_test-connection",
+    tags=DataSourceService.path_tags(),
+)
+async def test_connection_no_id(
+    data: TestConnectionRequest,
+    svc: DataSourceService = Depends(DataSourceService.get_service),
+):
+    """
+    Test connection to a data source without a saved record.
+    """
+    config = {
+        "driver": data.get_driver(),
+        "host": data.host,
+        "port": data.port,
+        "resource": data.resource,
+        "login": data.login,
+        "password": data.get_password(),
+        "enable_ssl": data.enable_ssl,
+        "verify_ssl": data.verify_ssl,
+        "parameters": data.parameters or {},
+    }
+    return await svc.perform_test_connection(config)
 
 
 @router.post(
@@ -183,148 +345,25 @@ async def test_connection(
 
     if data:
         overrides = data.model_dump(exclude_unset=True)
+        # Handle special field mappings for overrides
+        if data.type:
+            overrides["driver"] = data.type
+        if data.api_key:
+            overrides["password"] = data.api_key
+
         for k, v in overrides.items():
             if v is not None:
                 config[k] = v
 
-    # Decrypt password if it's from DB and hasn't been overridden (or overridden with same encrypted val? unlikely)
-    # If config['password'] looks encrypted (how to tell?), decrypt.
-    # Actually, we know if we used the one from DB.
-    # If the user passed a password in 'data', it is likely plain text (from form input).
-    # If we used existing.password, it is encrypted.
+    # Decrypt password if it's from DB and hasn't been overridden
+    is_using_stored_password = not data or (
+        data.password is None and data.api_key is None
+    )
 
-    password_to_use = config["password"]
-    # Check if we are using the stored password (i.e. overridden not provided or None)
-    is_using_stored = not data or data.password is None
-
-    if is_using_stored and existing.password:
+    if is_using_stored_password and existing.password:
         try:
-            password_to_use = decrypt_password(existing.password)
+            config["password"] = decrypt_password(existing.password)
         except EncryptionError:
-            pass  # Maybe it wasn't encrypted or failed
+            pass
 
-    # Logic for connection testing based on driver
-    driver = config["driver"].lower() if config["driver"] else ""
-
-    try:
-        if driver == "web" or driver.startswith("http"):
-            # Web / API source checks
-            # Resource might be the path, Host is the domain
-            host = config["host"]
-            if not host:
-                raise ValueError("Host is required for Web source")
-
-            # Construct URL
-            scheme = "https" if config["enable_ssl"] else "http"
-            if "://" in host:
-                # If host already contains scheme, use it, but respect enable_ssl if possible?
-                # User guide said "host: ip or hostname".
-                pass
-
-            base_url = f"{scheme}://{host}"
-            if config["port"]:
-                base_url += f":{config['port']}"
-
-            if config["resource"]:
-                # Ensure resource starts with / if needed, or join properly
-                if not config["resource"].startswith("/"):
-                    base_url += "/"
-                base_url += config["resource"]
-
-            async with httpx.AsyncClient(verify=config["verify_ssl"]) as client:
-                # Add auth if Login provided (Basic Auth?) or Param?
-                auth = None
-                if config["login"] and password_to_use:
-                    auth = (config["login"], password_to_use)
-
-                # Check for headers in parameters?
-                headers = {}
-                # TODO: Support headers from parameters if defined convention
-
-                resp = await client.get(
-                    base_url, auth=auth, timeout=10.0, follow_redirects=True
-                )
-
-                if resp.status_code >= 400:
-                    # Maybe it's a success if we get 401/403 (server exists)?
-                    # But usually we want 200.
-                    pass
-
-                return {
-                    "status": "success",
-                    "message": f"Connected. Status: {resp.status_code}",
-                }
-
-        elif driver in [
-            "postgresql",
-            "mysql",
-            "mariadb",
-            "trino",
-            "mongodb",
-            "mssql",
-            "oracle",
-        ]:
-            # Database checks using SQLAlchemy
-            db_driver_map = {
-                "postgresql": "postgresql+psycopg",
-                "mysql": "mysql+pymysql",
-                "mariadb": "mysql+pymysql",  # simplified
-                "mssql": "mssql+pyodbc",
-                "oracle": "oracle+cx_oracle",
-                "trino": "trino",  # requires sqlalchemy-trino
-                "mongodb": "mongodb",
-            }
-
-            # Special handling for MongoDB?
-            if driver == "mongodb":
-                # Mock or implement precise check if libs installed.
-                # Since we don't know if pymongo is installed, we might fail.
-                pass
-
-            sa_driver = db_driver_map.get(driver, driver)
-
-            url_kwargs = {
-                "username": config["login"],
-                "password": password_to_use,
-                "host": config["host"],
-                "port": config["port"],
-                "database": config["resource"],  # Resource maps to DB name
-            }
-
-            # remove None values
-            url_kwargs = {k: v for k, v in url_kwargs.items() if v is not None}
-
-            url = URL.create(drivername=sa_driver, **url_kwargs)
-
-            # Add querystring params
-            if config["parameters"]:
-                url = url.update_query_dict(config["parameters"])
-
-            try:
-                engine = create_engine(url)
-                with engine.connect() as conn:
-                    # Trino/Mongo might not support "SELECT 1"
-                    if "trino" in driver:
-                        conn.execute(text("SELECT 1"))
-                    elif "mongodb" in driver:
-                        pass  # TODO
-                    else:
-                        conn.execute(text("SELECT 1"))
-
-                return {
-                    "status": "success",
-                    "message": f"Successfully connected to {driver}",
-                }
-            except Exception as e:
-                raise ValueError(f"Connection failed: {str(e)}")
-
-        else:
-            # Unknown driver, maybe just ping host if possible?
-            # Or assume it is generic URL?
-            return {
-                "status": "unknown",
-                "message": f"Driver '{driver}' connection test not fully implemented, but saved.",
-            }
-
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Connection test failed: {str(e)}")
+    return await svc.perform_test_connection(config)

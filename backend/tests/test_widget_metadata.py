@@ -5,7 +5,7 @@ import pytest
 
 @pytest.mark.asyncio
 async def test_widget_metadata_generation(client: TestClient):
-    response = client.get("/api/v1/knowledge_dbs/+create-form")
+    response = client.get("/api/v1/knowledge_dbs/_create-form")
     assert response.status_code == 200
     data = response.json()
     widgets = data["record"]["widgets"]
