@@ -52,7 +52,10 @@ class DataSourceService(ProjectScopedService[DataSource]):
 
     @classmethod
     def widgets(cls) -> dict[str, Any]:
-        return {"password": {"type": "password"}}
+        return {
+            "password": {"type": "password"},
+            "parameters": {"type": "key-value"},
+        }
 
     def _encrypt_password_if_needed(self, data_dict: dict[str, Any]) -> None:
         """Encrypt password field if present and not empty."""

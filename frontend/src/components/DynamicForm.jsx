@@ -1,8 +1,170 @@
 import React, { useState, useEffect } from 'react';
 import apiClient from '../services/api';
 import { cn } from '../utils/cn';
-import { Save, X, RefreshCcw, AlertCircle } from 'lucide-react';
+import { Save, X, RefreshCcw, AlertCircle, Plus, Trash2 } from 'lucide-react';
 import Select from 'react-select';
+
+// Helper sub-component for Key-Value JSON fields
+const KeyValueWidget = ({ name, value, onChange, darkMode, hasError, isImmutable }) => {
+    const [items, setItems] = useState([]);
+    const inputBg = darkMode ? "bg-slate-950 border-slate-800 text-slate-200" : "bg-slate-100 border-slate-200 text-slate-900";
+
+    // Initial load: convert object to array of items
+    useEffect(() => {
+        if (value && typeof value === 'object' && !Array.isArray(value)) {
+            const initialItems = Object.entries(value).map(([k, v]) => {
+                let type = 'string';
+                if (typeof v === 'number') {
+                    type = Number.isInteger(v) ? 'integer' : 'float';
+                } else if (typeof v === 'boolean') {
+                    type = 'boolean';
+                }
+                return { key: k, value: v, type };
+            });
+            setItems(initialItems);
+        } else if (!value || Object.keys(value).length === 0) {
+            setItems([]);
+        }
+    }, []); // Only on mount to avoid loops
+
+    const handleItemChange = (index, field, val) => {
+        const newItems = [...items];
+        newItems[index][field] = val;
+
+        // If type changes, try to convert value
+        if (field === 'type') {
+            const currentVal = newItems[index].value;
+            if (val === 'integer') newItems[index].value = parseInt(currentVal) || 0;
+            else if (val === 'float') newItems[index].value = parseFloat(currentVal) || 0;
+            else if (val === 'boolean') newItems[index].value = (currentVal === 'true' || currentVal === true);
+            else newItems[index].value = String(currentVal);
+        }
+
+        setItems(newItems);
+        syncChanges(newItems);
+    };
+
+    const addItem = () => {
+        const newItems = [...items, { key: '', value: '', type: 'string' }];
+        setItems(newItems);
+    };
+
+    const removeItem = (index) => {
+        const newItems = items.filter((_, i) => i !== index);
+        setItems(newItems);
+        syncChanges(newItems);
+    };
+
+    const syncChanges = (currentItems) => {
+        const obj = {};
+        currentItems.forEach(item => {
+            if (item.key.trim()) {
+                let val = item.value;
+                if (item.type === 'integer') val = parseInt(val) || 0;
+                else if (item.type === 'float') val = parseFloat(val) || 0;
+                else if (item.type === 'boolean') val = (val === 'true' || val === true);
+                obj[item.key.trim()] = val;
+            }
+        });
+        onChange(name, obj);
+    };
+
+    const typeOptions = [
+        { label: 'String', value: 'string' },
+        { label: 'Integer', value: 'integer' },
+        { label: 'Float', value: 'float' },
+        { label: 'Boolean', value: 'boolean' },
+    ];
+
+    return (
+        <div className={cn(
+            "p-4 rounded-2xl border space-y-4",
+            darkMode ? "bg-slate-900/50 border-slate-800" : "bg-slate-50 border-slate-200"
+        )}>
+            {items.length === 0 && (
+                <p className="text-sm text-slate-500 text-center py-2">No parameters defined</p>
+            )}
+
+            {items.map((item, index) => (
+                <div key={index} className="flex gap-2 items-start">
+                    <input
+                        type="text"
+                        placeholder="Key"
+                        value={item.key}
+                        disabled={isImmutable}
+                        onChange={(e) => handleItemChange(index, 'key', e.target.value)}
+                        className={cn(
+                            "flex-1 px-3 h-10 rounded-lg border text-sm outline-none transition-all font-mono",
+                            inputBg
+                        )}
+                    />
+
+                    <select
+                        value={item.type}
+                        disabled={isImmutable}
+                        onChange={(e) => handleItemChange(index, 'type', e.target.value)}
+                        className={cn(
+                            "w-28 px-2 h-10 rounded-lg border text-sm outline-none transition-all",
+                            inputBg
+                        )}
+                    >
+                        {typeOptions.map(opt => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                    </select>
+
+                    {item.type === 'boolean' ? (
+                        <select
+                            value={item.value ? 'true' : 'false'}
+                            disabled={isImmutable}
+                            onChange={(e) => handleItemChange(index, 'value', e.target.value === 'true')}
+                            className={cn(
+                                "flex-1 px-3 h-10 rounded-lg border text-sm outline-none transition-all",
+                                inputBg
+                            )}
+                        >
+                            <option value="true">True</option>
+                            <option value="false">False</option>
+                        </select>
+                    ) : (
+                        <input
+                            type={item.type === 'integer' || item.type === 'float' ? 'number' : 'text'}
+                            step={item.type === 'float' ? 'any' : undefined}
+                            placeholder="Value"
+                            value={item.value}
+                            disabled={isImmutable}
+                            onChange={(e) => handleItemChange(index, 'value', e.target.value)}
+                            className={cn(
+                                "flex-1 px-3 h-10 rounded-lg border text-sm outline-none transition-all font-mono",
+                                inputBg
+                            )}
+                        />
+                    )}
+
+                    {!isImmutable && (
+                        <button
+                            type="button"
+                            onClick={() => removeItem(index)}
+                            className="p-2.5 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"
+                        >
+                            <Trash2 size={18} />
+                        </button>
+                    )}
+                </div>
+            ))}
+
+            {!isImmutable && (
+                <button
+                    type="button"
+                    onClick={addItem}
+                    className="flex items-center gap-2 text-sm font-medium text-blue-500 hover:text-blue-600 transition-colors px-1"
+                >
+                    <Plus size={16} /> ADD PARAMETER
+                </button>
+            )}
+        </div>
+    );
+};
 
 const DynamicForm = ({
     entityPath,
@@ -339,6 +501,20 @@ const DynamicForm = ({
                         className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer dark:bg-slate-700 accent-blue-600"
                     />
                 </div>
+            );
+        }
+
+        // -- Widget Type: Key-Value --
+        if (widget.type === 'key-value') {
+            return (
+                <KeyValueWidget
+                    name={name}
+                    value={formData[name]}
+                    onChange={handleChange}
+                    darkMode={darkMode}
+                    hasError={hasError}
+                    isImmutable={isImmutable}
+                />
             );
         }
 

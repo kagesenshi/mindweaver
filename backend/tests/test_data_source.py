@@ -48,7 +48,8 @@ def test_datasource_create_form(client: TestClient, test_project):
     assert "enable_ssl" in props
     assert "enable_ssl" in props
     assert "verify_ssl" in props
-    assert data["record"]["widgets"]["password"]["widget"] == "password"
+    assert data["record"]["widgets"]["password"]["type"] == "password"
+    assert data["record"]["widgets"]["parameters"]["type"] == "key-value"
 
 
 def test_datasource_web_source(client: TestClient, test_project):
