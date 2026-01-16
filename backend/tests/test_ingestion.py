@@ -11,13 +11,11 @@ def test_create_ingestion_full_refresh(client: TestClient, test_project):
         json={
             "name": "test-db",
             "title": "Test Database",
-            "type": "Database",
-            "parameters": {
-                "host": "localhost",
-                "port": 5432,
-                "username": "admin",
-                "database_type": "postgresql",
-            },
+            "driver": "postgresql",
+            "host": "localhost",
+            "port": 5432,
+            "login": "admin",
+            "resource": "postgresql",
             "project_id": test_project["id"],
         },
     )
@@ -78,13 +76,11 @@ def test_create_ingestion_incremental(client: TestClient, test_project):
         json={
             "name": "test-db-inc",
             "title": "Test Database Incremental",
-            "type": "Database",
-            "parameters": {
-                "host": "localhost",
-                "port": 5432,
-                "username": "admin",
-                "database_type": "postgresql",
-            },
+            "driver": "postgresql",
+            "host": "localhost",
+            "port": 5432,
+            "login": "admin",
+            "resource": "postgresql",
             "project_id": test_project["id"],
         },
     )
@@ -149,13 +145,11 @@ def test_create_ingestion_incremental_missing_fields(client: TestClient, test_pr
         json={
             "name": "test-db-fail",
             "title": "Test Database Fail",
-            "type": "Database",
-            "parameters": {
-                "host": "localhost",
-                "port": 5432,
-                "username": "admin",
-                "database_type": "postgresql",
-            },
+            "driver": "postgresql",
+            "host": "localhost",
+            "port": 5432,
+            "login": "admin",
+            "resource": "postgresql",
             "project_id": test_project["id"],
         },
     )
@@ -218,13 +212,11 @@ def test_execute_ingestion(client: TestClient, test_project):
         json={
             "name": "test-db-exec",
             "title": "Test Database Exec",
-            "type": "Database",
-            "parameters": {
-                "host": "localhost",
-                "port": 5432,
-                "username": "admin",
-                "database_type": "postgresql",
-            },
+            "driver": "postgresql",
+            "host": "localhost",
+            "port": 5432,
+            "login": "admin",
+            "resource": "postgresql",
             "project_id": test_project["id"],
         },
     )
@@ -288,13 +280,11 @@ def test_list_ingestion_runs(client: TestClient, test_project):
         json={
             "name": "test-db-runs",
             "title": "Test Database Runs",
-            "type": "Database",
-            "parameters": {
-                "host": "localhost",
-                "port": 5432,
-                "username": "admin",
-                "database_type": "postgresql",
-            },
+            "driver": "postgresql",
+            "host": "localhost",
+            "port": 5432,
+            "login": "admin",
+            "resource": "postgresql",
             "project_id": test_project["id"],
         },
     )
@@ -362,16 +352,15 @@ def test_list_all_ingestions(client: TestClient, test_project):
         json={
             "name": "test-db-list",
             "title": "Test Database List",
-            "type": "Database",
-            "parameters": {
-                "host": "localhost",
-                "port": 5432,
-                "username": "admin",
-                "database_type": "postgresql",
-            },
+            "driver": "postgresql",
+            "host": "localhost",
+            "port": 5432,
+            "login": "admin",
+            "resource": "postgresql",
             "project_id": test_project["id"],
         },
     )
+    assert ds_resp.status_code == 200
     data_source_id = ds_resp.json()["record"]["id"]
 
     # Create s3 storage
@@ -431,16 +420,15 @@ def test_get_single_ingestion(client: TestClient, test_project):
         json={
             "name": "test-db-get",
             "title": "Test Database Get",
-            "type": "Database",
-            "parameters": {
-                "host": "localhost",
-                "port": 5432,
-                "username": "admin",
-                "database_type": "postgresql",
-            },
+            "driver": "postgresql",
+            "host": "localhost",
+            "port": 5432,
+            "login": "admin",
+            "resource": "postgresql",
             "project_id": test_project["id"],
         },
     )
+    assert ds_resp.status_code == 200
     data_source_id = ds_resp.json()["record"]["id"]
 
     # Create s3 storage
@@ -498,16 +486,15 @@ def test_update_ingestion(client: TestClient, test_project):
         json={
             "name": "test-db-update",
             "title": "Test Database Update",
-            "type": "Database",
-            "parameters": {
-                "host": "localhost",
-                "port": 5432,
-                "username": "admin",
-                "database_type": "postgresql",
-            },
+            "driver": "postgresql",
+            "host": "localhost",
+            "port": 5432,
+            "login": "admin",
+            "resource": "postgresql",
             "project_id": test_project["id"],
         },
     )
+    assert ds_resp.status_code == 200
     data_source_id = ds_resp.json()["record"]["id"]
 
     # Create s3 storage
@@ -586,16 +573,15 @@ def test_delete_ingestion(client: TestClient, test_project):
         json={
             "name": "test-db-delete",
             "title": "Test Database Delete",
-            "type": "Database",
-            "parameters": {
-                "host": "localhost",
-                "port": 5432,
-                "username": "admin",
-                "database_type": "postgresql",
-            },
+            "driver": "postgresql",
+            "host": "localhost",
+            "port": 5432,
+            "login": "admin",
+            "resource": "postgresql",
             "project_id": test_project["id"],
         },
     )
+    assert ds_resp.status_code == 200
     data_source_id = ds_resp.json()["record"]["id"]
 
     # Create s3 storage
@@ -655,16 +641,15 @@ def test_create_ingestion_with_date_range(client: TestClient, test_project):
         json={
             "name": "test-db-dates",
             "title": "Test Database Dates",
-            "type": "Database",
-            "parameters": {
-                "host": "localhost",
-                "port": 5432,
-                "username": "admin",
-                "database_type": "postgresql",
-            },
+            "driver": "postgresql",
+            "host": "localhost",
+            "port": 5432,
+            "login": "admin",
+            "resource": "postgresql",
             "project_id": test_project["id"],
         },
     )
+    assert ds_resp.status_code == 200
     data_source_id = ds_resp.json()["record"]["id"]
 
     # Create s3 storage
@@ -722,16 +707,15 @@ def test_create_ingestion_with_complex_cron(client: TestClient, test_project):
         json={
             "name": "test-db-cron",
             "title": "Test Database Cron",
-            "type": "Database",
-            "parameters": {
-                "host": "localhost",
-                "port": 5432,
-                "username": "admin",
-                "database_type": "postgresql",
-            },
+            "driver": "postgresql",
+            "host": "localhost",
+            "port": 5432,
+            "login": "admin",
+            "resource": "postgresql",
             "project_id": test_project["id"],
         },
     )
+    assert ds_resp.status_code == 200
     data_source_id = ds_resp.json()["record"]["id"]
 
     # Create s3 storage
@@ -793,16 +777,15 @@ def test_create_ingestion_with_invalid_cron_schedule(client: TestClient, test_pr
         json={
             "name": "test-db-invalid-cron",
             "title": "Test Database Invalid Cron",
-            "type": "Database",
-            "parameters": {
-                "host": "localhost",
-                "port": 5432,
-                "username": "admin",
-                "database_type": "postgresql",
-            },
+            "driver": "postgresql",
+            "host": "localhost",
+            "port": 5432,
+            "login": "admin",
+            "resource": "postgresql",
             "project_id": test_project["id"],
         },
     )
+    assert ds_resp.status_code == 200
     data_source_id = ds_resp.json()["record"]["id"]
 
     # Create s3 storage
@@ -878,16 +861,15 @@ def test_create_ingestion_with_multiple_primary_keys(client: TestClient, test_pr
         json={
             "name": "test-db-multi-pk",
             "title": "Test Database Multi PK",
-            "type": "Database",
-            "parameters": {
-                "host": "localhost",
-                "port": 5432,
-                "username": "admin",
-                "database_type": "postgresql",
-            },
+            "driver": "postgresql",
+            "host": "localhost",
+            "port": 5432,
+            "login": "admin",
+            "resource": "postgresql",
             "project_id": test_project["id"],
         },
     )
+    assert ds_resp.status_code == 200
     data_source_id = ds_resp.json()["record"]["id"]
 
     # Create s3 storage
@@ -946,16 +928,15 @@ def test_ingestion_with_different_timezones(client: TestClient, test_project):
         json={
             "name": "test-db-tz",
             "title": "Test Database TZ",
-            "type": "Database",
-            "parameters": {
-                "host": "localhost",
-                "port": 5432,
-                "username": "admin",
-                "database_type": "postgresql",
-            },
+            "driver": "postgresql",
+            "host": "localhost",
+            "port": 5432,
+            "login": "admin",
+            "resource": "postgresql",
             "project_id": test_project["id"],
         },
     )
+    assert ds_resp.status_code == 200
     data_source_id = ds_resp.json()["record"]["id"]
 
     # Create s3 storage
@@ -1011,16 +992,15 @@ def test_list_ingestions_without_project_id_returns_empty(
         json={
             "name": "test-db",
             "title": "Test Database",
-            "type": "Database",
-            "parameters": {
-                "host": "localhost",
-                "port": 5432,
-                "username": "admin",
-                "database_type": "postgresql",
-            },
+            "driver": "postgresql",
+            "host": "localhost",
+            "port": 5432,
+            "login": "admin",
+            "resource": "postgresql",
             "project_id": test_project["id"],
         },
     )
+    assert ds_resp.status_code == 200
     data_source_id = ds_resp.json()["record"]["id"]
 
     # Create s3 storage

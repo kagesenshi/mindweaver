@@ -121,16 +121,18 @@ class IngestionService(ProjectScopedService[Ingestion]):
                 message=f"Invalid cron schedule '{cron_schedule}': {str(e)}",
             )
 
+    DATABASE_DRIVERS = ["postgresql", "mysql", "mariadb", "trino", "mssql", "oracle"]
+
     def _validate_config(
         self,
-        data_source_type: str,
+        data_source_driver: str,
         config: dict[str, Any],
     ) -> dict[str, Any]:
         """
-        Validate ingestion configuration based on data source type.
+        Validate ingestion configuration based on data source driver.
 
         Args:
-            data_source_type: The type of data source (API, Database, etc.)
+            data_source_driver: The driver of data source (postgresql, web, etc.)
             config: The configuration to validate
 
         Returns:
@@ -140,8 +142,8 @@ class IngestionService(ProjectScopedService[Ingestion]):
             HTTPException: If validation fails
         """
         try:
-            # Only Database sources support ingestion configuration
-            if data_source_type == "Database":
+            # Only Database-style drivers support ingestion configuration
+            if data_source_driver.lower() in self.DATABASE_DRIVERS:
                 validated_config = DatabaseIngestionConfig(**config)
                 return validated_config.model_dump()
             else:
@@ -204,7 +206,7 @@ class IngestionService(ProjectScopedService[Ingestion]):
 
         # Validate configuration based on data source type
         config = data_dict.get("config", {})
-        validated_config = self._validate_config(data_source.type, config)
+        validated_config = self._validate_config(data_source.driver, config)
 
         # Update the data object with validated config
         if hasattr(data, "config"):
@@ -256,7 +258,7 @@ class IngestionService(ProjectScopedService[Ingestion]):
                 raise NotFoundError(message="Data source not found")
 
             config = data_dict.get("config", {})
-            validated_config = self._validate_config(data_source.type, config)
+            validated_config = self._validate_config(data_source.driver, config)
 
             # Update the data object with validated config
             if hasattr(data, "config"):

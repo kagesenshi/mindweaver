@@ -2,14 +2,21 @@ import pytest
 import jwt
 import time
 from fastapi.testclient import TestClient
+from unittest.mock import patch, MagicMock
 from mindweaver.config import settings
 
 
 @pytest.fixture(autouse=True)
 def manage_auth_setting():
-    old_value = settings.enable_auth
+    old_enable_auth = settings.enable_auth
+    old_oidc_issuer = settings.oidc_issuer
+    old_oidc_client_id = settings.oidc_client_id
+    old_oidc_client_secret = settings.oidc_client_secret
     yield
-    settings.enable_auth = old_value
+    settings.enable_auth = old_enable_auth
+    settings.oidc_issuer = old_oidc_issuer
+    settings.oidc_client_id = old_oidc_client_id
+    settings.oidc_client_secret = old_oidc_client_secret
 
 
 def test_health_accessible_without_auth(client: TestClient):
@@ -65,21 +72,92 @@ def test_protected_endpoint_accessible_with_token(client: TestClient):
 
 def test_auth_endpoints_exempt(client: TestClient):
     settings.enable_auth = True
+    settings.oidc_issuer = "http://mock-issuer"
+    settings.oidc_client_id = "mock-client-id"
+    settings.oidc_client_secret = "mock-client-secret"
 
-    # /api/v1/auth/login?redirect_url=...
+    # Mock OIDC discovery response
+    mock_discovery_resp = MagicMock()
+    mock_discovery_resp.status_code = 200
+    mock_discovery_resp.json.return_value = {
+        "authorization_endpoint": "http://mock-issuer/auth",
+        "token_endpoint": "http://mock-issuer/token",
+    }
+
+    with patch("httpx.AsyncClient.get", return_value=mock_discovery_resp):
+        # /api/v1/auth/login?redirect_url=...
+        response = client.get(
+            "/api/v1/auth/login",
+            params={"redirect_url": "http://localhost/callback"},
+            follow_redirects=False,
+        )
+        assert response.status_code == 307  # RedirectResponse
+
+    # Mock OIDC token exchange response
+    mock_token_resp = MagicMock()
+    mock_token_resp.status_code = 200
+    # Mock ID Token payload
+    mock_id_token = jwt.encode(
+        {"email": "test@example.com", "name": "Test User"}, "secret", algorithm="HS256"
+    )
+    mock_token_resp.json.return_value = {"id_token": mock_id_token}
+
+    with patch("httpx.AsyncClient.get", return_value=mock_discovery_resp), patch(
+        "httpx.AsyncClient.post", return_value=mock_token_resp
+    ):
+        # /api/v1/auth/callback
+        response = client.post(
+            "/api/v1/auth/callback",
+            params={"code": "abc", "redirect_url": "http://localhost/callback"},
+        )
+        # Should NOT be 401
+        assert response.status_code != 401
+
+
+def test_auth_callback_creates_user(client: TestClient):
+    settings.enable_auth = True
+    settings.oidc_issuer = "http://mock-issuer"
+    settings.oidc_client_id = "mock-client-id"
+    settings.oidc_client_secret = "mock-client-secret"
+
+    # Mock OIDC responses
+    mock_discovery_resp = MagicMock()
+    mock_discovery_resp.status_code = 200
+    mock_discovery_resp.json.return_value = {
+        "authorization_endpoint": "http://mock-issuer/auth",
+        "token_endpoint": "http://mock-issuer/token",
+    }
+
+    mock_token_resp = MagicMock()
+    mock_token_resp.status_code = 200
+    mock_id_token = jwt.encode(
+        {"email": "newuser@example.com", "name": "New User"},
+        "secret",
+        algorithm="HS256",
+    )
+    mock_token_resp.json.return_value = {"id_token": mock_id_token}
+
+    with patch("httpx.AsyncClient.get", return_value=mock_discovery_resp), patch(
+        "httpx.AsyncClient.post", return_value=mock_token_resp
+    ):
+        response = client.post(
+            "/api/v1/auth/callback",
+            params={"code": "abc", "redirect_url": "http://localhost/callback"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "access_token" in data
+
+    # Verify user was created
+    settings.enable_auth = False
     response = client.get(
-        "/api/v1/auth/login", params={"redirect_url": "http://localhost/callback"}
+        "/api/v1/auth/me", headers={"Authorization": f"Bearer {data['access_token']}"}
     )
-    # It redirects to OIDC provider if configured, or returns 500 if not.
-    # Either way, if it's NOT a 401, it's exempt.
-    assert response.status_code != 401
-
-    # /api/v1/auth/callback
-    # It will fail with 400 or 500 because of missing code/oidc config, but NOT 401.
-    response = client.post(
-        "/api/v1/auth/callback", params={"code": "abc", "redirect_url": "xyz"}
-    )
-    assert response.status_code != 401
+    # Note: /me requires auth even if settings.enable_auth is False because it uses Depends(get_current_user)
+    # Actually get_current_user doesn't check settings.enable_auth, verify_token does.
+    # So we need to provide the token.
+    assert response.status_code == 200
+    assert response.json()["email"] == "newuser@example.com"
 
 
 def test_feature_flags_exempt(client: TestClient):
