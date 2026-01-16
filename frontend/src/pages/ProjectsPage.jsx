@@ -65,13 +65,13 @@ const ProjectsPage = () => {
                                 </div>
                                 <div>
                                     <h4 className="text-lg font-bold text-slate-900 dark:text-white">{proj.title}</h4>
-                                    <p className="text-sm text-slate-500">{proj.description}</p>
+                                    <p className="text-base text-slate-500">{proj.description}</p>
                                 </div>
                             </div>
 
                             <div className="flex items-center gap-12">
                                 <div className="text-center">
-                                    <p className="text-sm text-slate-500 uppercase font-bold mb-1">Resources</p>
+                                    <p className="text-base text-slate-500 uppercase font-bold mb-1">Resources</p>
                                     <p className="text-lg font-bold text-slate-900 dark:text-white">3</p>
                                 </div>
 

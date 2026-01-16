@@ -95,7 +95,7 @@ const DataSourcesPage = () => {
                                 <button
                                     onClick={() => handleTest(source.id)}
                                     disabled={testingId === source.id}
-                                    className="text-sm font-bold text-blue-500 hover:text-blue-400 uppercase tracking-widest flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                                    className="text-base font-bold text-blue-500 hover:text-blue-400 uppercase tracking-widest flex items-center gap-1.5 transition-colors disabled:opacity-50"
                                 >
                                     {testingId === source.id ? <RefreshCcw size={12} className="animate-spin" /> : <LinkIcon size={12} />}
                                     {testingId === source.id ? 'Testing...' : 'Test Connection'}
@@ -104,14 +104,14 @@ const DataSourcesPage = () => {
                         >
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <p className="text-sm text-slate-500 font-bold uppercase mb-1">Driver</p>
-                                    <p className={cn("text-sm font-medium", darkMode ? 'text-slate-300' : 'text-slate-700')}>
+                                    <p className="text-base text-slate-500 font-bold uppercase mb-1">Driver</p>
+                                    <p className={cn("text-base font-medium", darkMode ? 'text-slate-300' : 'text-slate-700')}>
                                         {source.driver}
                                     </p>
                                 </div>
                                 <div>
-                                    <p className="text-sm text-slate-500 font-bold uppercase mb-1">Host/Resource</p>
-                                    <p className={cn("text-sm font-mono truncate", darkMode ? 'text-slate-300' : 'text-slate-700')}>
+                                    <p className="text-base text-slate-500 font-bold uppercase mb-1">Host/Resource</p>
+                                    <p className={cn("text-base font-mono truncate", darkMode ? 'text-slate-300' : 'text-slate-700')}>
                                         {source.host || source.resource || 'N/A'}
                                     </p>
                                 </div>

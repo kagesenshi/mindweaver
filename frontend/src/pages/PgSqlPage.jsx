@@ -283,11 +283,11 @@ const PgSqlPage = () => {
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="flex items-center gap-2 text-slate-500">
                                     <Activity size={12} />
-                                    <span className="text-sm font-bold">3 Instances</span>
+                                    <span className="text-base font-bold">3 Instances</span>
                                 </div>
                                 <div className="flex items-center gap-2 text-blue-500/70">
                                     <Database size={12} />
-                                    <span className="text-sm font-bold uppercase truncate max-w-[80px]">v15.4</span>
+                                    <span className="text-base font-bold uppercase truncate max-w-[80px]">v15.4</span>
                                 </div>
                             </div>
                         </ResourceCard>

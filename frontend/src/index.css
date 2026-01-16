@@ -41,42 +41,36 @@ body {
 
   /* High-Density Cards */
   .mw-card {
-    @apply border rounded-[32px] p-6 transition-all bg-white border-slate-200 shadow-sm dark:bg-slate-900/40 dark:border-slate-800 dark:shadow-none;
+    @apply border rounded-[32px] p-6 transition-all bg-white border-slate-200 shadow-sm dark:bg-slate-900/40 dark:border-slate-800 dark:shadow-none text-base;
   }
 
   .mw-card-interactive {
-    @apply border rounded-[32px] p-6 transition-all bg-white border-slate-200 shadow-sm dark:bg-slate-900/40 dark:border-slate-800 dark:shadow-none cursor-pointer hover:border-blue-500/50 hover:shadow-md dark:hover:bg-slate-900/60 dark:hover:border-blue-500/30;
+    @apply border rounded-[32px] p-6 transition-all bg-white border-slate-200 shadow-sm dark:bg-slate-900/40 dark:border-slate-800 dark:shadow-none cursor-pointer hover:border-blue-500/50 hover:shadow-md dark:hover:bg-slate-900/60 dark:hover:border-blue-500/30 text-base;
   }
 
   /* Semantic Badges/Pills */
   .mw-badge {
-    @apply px-2 py-0.5 rounded-full font-bold border uppercase inline-flex items-center justify-center;
-    font-size: var(--font-size-sm);
+    @apply px-2 py-0.5 rounded-full font-bold border uppercase inline-flex items-center justify-center text-base;
   }
 
   .mw-badge-success {
-    @apply px-2 py-0.5 rounded-full font-bold border uppercase inline-flex items-center justify-center bg-emerald-500/10 text-emerald-500 border-emerald-500/20;
-    font-size: var(--font-size-sm);
+    @apply px-2 py-0.5 rounded-full font-bold border uppercase inline-flex items-center justify-center bg-emerald-500/10 text-emerald-500 border-emerald-500/20 text-base;
   }
 
   .mw-badge-warning {
-    @apply px-2 py-0.5 rounded-full font-bold border uppercase inline-flex items-center justify-center bg-amber-500/10 text-amber-500 border-amber-500/20;
-    font-size: var(--font-size-sm);
+    @apply px-2 py-0.5 rounded-full font-bold border uppercase inline-flex items-center justify-center bg-amber-500/10 text-amber-500 border-amber-500/20 text-base;
   }
 
   .mw-badge-danger {
-    @apply px-2 py-0.5 rounded-full font-bold border uppercase inline-flex items-center justify-center bg-rose-500/10 text-rose-500 border-rose-500/20;
-    font-size: var(--font-size-sm);
+    @apply px-2 py-0.5 rounded-full font-bold border uppercase inline-flex items-center justify-center bg-rose-500/10 text-rose-500 border-rose-500/20 text-base;
   }
 
   .mw-badge-info {
-    @apply px-2 py-0.5 rounded-full font-bold border uppercase inline-flex items-center justify-center bg-blue-500/10 text-blue-500 border-blue-500/20;
-    font-size: var(--font-size-sm);
+    @apply px-2 py-0.5 rounded-full font-bold border uppercase inline-flex items-center justify-center bg-blue-500/10 text-blue-500 border-blue-500/20 text-base;
   }
 
   .mw-badge-neutral {
-    @apply px-2 py-0.5 rounded-full font-bold border uppercase inline-flex items-center justify-center bg-slate-500/10 text-slate-400 border-slate-500/20;
-    font-size: var(--font-size-sm);
+    @apply px-2 py-0.5 rounded-full font-bold border uppercase inline-flex items-center justify-center bg-slate-500/10 text-slate-400 border-slate-500/20 text-base;
   }
 
   /* Forms & Inputs */
@@ -85,8 +79,7 @@ body {
   }
 
   .mw-label {
-    @apply font-bold uppercase tracking-widest px-1 transition-colors text-slate-500;
-    font-size: var(--font-size-sm);
+    @apply font-bold uppercase tracking-widest px-1 transition-colors text-slate-500 text-base;
   }
 
   /* Standardized Buttons */

@@ -68,11 +68,11 @@ const K8sClustersPage = () => {
                                 <div className="flex items-center gap-4">
                                     <div className="flex items-center gap-2 text-slate-500">
                                         <Server size={14} />
-                                        <span className="text-sm">? Nodes</span>
+                                        <span className="text-base">? Nodes</span>
                                     </div>
                                     <div className="flex items-center gap-2 text-slate-500">
                                         <Activity size={14} />
-                                        <span className="text-sm">Unknown Uptime</span>
+                                        <span className="text-base">Unknown Uptime</span>
                                     </div>
                                 </div>
                             }

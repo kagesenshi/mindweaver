@@ -60,7 +60,7 @@ const ResourceCard = ({
                             {title}
                         </h4>
                         {subtitle && (
-                            <p className="text-sm text-slate-500 font-mono mt-1 truncate">
+                            <p className="text-base text-slate-500 font-mono mt-1 truncate">
                                 {subtitle}
                             </p>
                         )}
