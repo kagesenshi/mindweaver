@@ -93,6 +93,7 @@ the tests first before implementing the fixes.
 - **Deployment Status**: Platform components should use a state table inheriting from `PlatformStateBase` with `status` (bool) and `active` (bool) columns.
 - **Templates**: Kubernetes manifests should use the `.yml.j2` extension (Jinja2).
 - **Timezones**: Always use timezone-aware columns in database models.
+- **Service**: Always refer to backend/src/mindweaver/fw/service.py to know how to handle services
 
 ### Code Quality & Deprecations
 - If a deprecation warning appear in backend for newly written work, rectify the warning. ideally there should not be any deprecation warning for newly created work. Granted, sometimes it is not feasible (require major changes), if that happens, advise the developer accordingly

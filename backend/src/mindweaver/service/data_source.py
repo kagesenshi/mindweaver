@@ -50,6 +50,10 @@ class DataSourceService(ProjectScopedService[DataSource]):
     def model_class(cls) -> type[DataSource]:
         return DataSource
 
+    @classmethod
+    def widgets(cls) -> dict[str, Any]:
+        return {"password": {"type": "password"}}
+
     def _encrypt_password_if_needed(self, data_dict: dict[str, Any]) -> None:
         """Encrypt password field if present and not empty."""
         password = data_dict.get("password")
@@ -81,6 +85,11 @@ class DataSourceService(ProjectScopedService[DataSource]):
                 setattr(data, "password", data_dict["password"])
 
         return await super().create(data)
+
+    def post_process_model(self, model: DataSource) -> DataSource:
+        if model.password:
+            model.password = "__REDACTED__"
+        return model
 
     async def update(self, model_id: int, data: NamedBase) -> DataSource:
         data_dict = (

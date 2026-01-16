@@ -46,7 +46,9 @@ def test_datasource_create_form(client: TestClient, test_project):
     props = data["record"]["jsonschema"]["properties"]
     assert "driver" in props
     assert "enable_ssl" in props
+    assert "enable_ssl" in props
     assert "verify_ssl" in props
+    assert data["record"]["widgets"]["password"]["widget"] == "password"
 
 
 def test_datasource_web_source(client: TestClient, test_project):
@@ -135,3 +137,49 @@ def test_delete_datasource(client: TestClient, test_project):
         headers={"X-Project-Id": str(test_project["id"])},
     )
     assert resp.status_code == 404
+
+
+def test_datasource_password_redaction(client: TestClient, test_project):
+    """Test that password field is redacted in API responses."""
+    # Create
+    resp = client.post(
+        "/api/v1/data_sources",
+        headers={"X-Project-Id": str(test_project["id"])},
+        json={
+            "name": "redaction-check",
+            "title": "Redaction Check",
+            "driver": "postgresql",
+            "host": "localhost",
+            "password": "secret_password",
+            "project_id": test_project["id"],
+        },
+    )
+    assert resp.status_code == 200
+    record = resp.json()["record"]
+    assert record["password"] == "__REDACTED__"
+
+    source_id = record["id"]
+
+    # Get
+    resp = client.get(
+        f"/api/v1/data_sources/{source_id}",
+        headers={"X-Project-Id": str(test_project["id"])},
+    )
+    assert resp.status_code == 200
+    record = resp.json()["record"]
+    assert record["password"] == "__REDACTED__"
+
+    # List
+    resp = client.get(
+        "/api/v1/data_sources",
+        headers={"X-Project-Id": str(test_project["id"])},
+    )
+    assert resp.status_code == 200
+    records = resp.json()["records"]
+    found = False
+    for r in records:
+        if r["id"] == source_id:
+            assert r["password"] == "__REDACTED__"
+            found = True
+            break
+    assert found
