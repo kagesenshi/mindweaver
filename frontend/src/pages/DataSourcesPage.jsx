@@ -159,7 +159,7 @@ const DataSourcesPage = () => {
             >
                 {editSource && (
                     <DynamicForm
-                        entityPath="/api/v1/data_sources"
+                        entityPath="/data_sources"
                         mode="edit"
                         initialData={editSource}
                         darkMode={darkMode}

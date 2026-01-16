@@ -42,15 +42,13 @@ const S3StoragePage = () => {
         return matchesProject && matchesSearch;
     });
 
-    const handleCreate = async (data) => {
-        await createStorage(data);
+    const handleCreate = () => {
+        fetchStorages();
         setIsCreateModalOpen(false);
     };
 
-    const handleUpdate = async (data) => {
-        if (!editItem) return;
-        // Merge data with existing id
-        await updateStorage(editItem.id, data);
+    const handleUpdate = () => {
+        fetchStorages();
         setEditItem(null);
     };
 
