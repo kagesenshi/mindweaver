@@ -6,7 +6,6 @@ import {
     Radio,
     Globe,
     Shield,
-    Shield,
     CheckCircle2,
     XCircle,
     Server
