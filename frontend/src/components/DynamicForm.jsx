@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import apiClient from '../services/api';
 import { cn } from '../utils/cn';
 import { Save, X, RefreshCcw, AlertCircle } from 'lucide-react';
+import Select from 'react-select';
 
 const DynamicForm = ({
     entityPath,
@@ -187,65 +188,131 @@ const DynamicForm = ({
         // If editing and field is immutable, disable it
         const isImmutable = mode === 'edit' && (schema.immutable_fields || []).includes(name);
 
+        const customStyles = {
+            control: (base, state) => ({
+                ...base,
+                background: darkMode ? '#020617' : '#f1f5f9', // slate-950 : slate-100
+                borderColor: hasError ? '#f43f5e' : (darkMode ? '#1e293b' : '#e2e8f0'), // rose-500 : slate-800 : slate-200
+                color: darkMode ? '#e2e8f0' : '#0f172a',
+                minHeight: '50px',
+                borderRadius: '0.75rem',
+                boxShadow: state.isFocused ? '0 0 0 1px rgba(59, 130, 246, 0.5)' : 'none',
+                '&:hover': {
+                    borderColor: darkMode ? '#334155' : '#cbd5e1'
+                }
+            }),
+            menu: (base) => ({
+                ...base,
+                background: darkMode ? '#020617' : '#ffffff',
+                border: `1px solid ${darkMode ? '#1e293b' : '#e2e8f0'}`,
+                zIndex: 100
+            }),
+            option: (base, state) => ({
+                ...base,
+                backgroundColor: state.isFocused
+                    ? (darkMode ? '#1e293b' : '#e2e8f0')
+                    : (state.isSelected ? (darkMode ? '#3b82f6' : '#bfdbfe') : 'transparent'),
+                color: state.isSelected && darkMode ? '#ffffff' : (darkMode ? '#e2e8f0' : '#0f172a'),
+                cursor: 'pointer'
+            }),
+            singleValue: (base) => ({
+                ...base,
+                color: darkMode ? '#e2e8f0' : '#0f172a',
+            }),
+            multiValue: (base) => ({
+                ...base,
+                backgroundColor: darkMode ? '#1e293b' : '#e2e8f0',
+            }),
+            multiValueLabel: (base) => ({
+                ...base,
+                color: darkMode ? '#e2e8f0' : '#0f172a',
+            }),
+            input: (base) => ({
+                ...base,
+                color: darkMode ? '#e2e8f0' : '#0f172a',
+            })
+        };
+
         // -- Widget Type: Relationship --
         if (widget.type === 'relationship') {
-            const options = relationshipOptions[name] || [];
+            let options = relationshipOptions[name] || [];
             const isMultiselect = widget.multiselect || false;
             const idField = widget.field || 'id';
 
-            // TODO: Implement a better multi-select UI
+            // Filter options based on project_id if applicable
+            if (name !== 'project_id' && formData.project_id) {
+                options = options.filter(opt => {
+                    // If the option doesn't have a project_id, show it (global resource?)
+                    // Or strict filtering? "available option must be filtered by the current selected project_id"
+                    // Usually implies: if option has project_id, it must match. If it doesn't, maybe it's global?
+                    // Let's assume strict matching if option has project_id.
+                    if (opt.project_id !== undefined && opt.project_id !== null) {
+                        // Loose comparison for string/int mismatch
+                        return opt.project_id == formData.project_id;
+                    }
+                    return true;
+                });
+            }
+
+            const selectOptions = options.map(opt => ({
+                label: opt.title || opt.name || opt[idField],
+                value: opt[idField]
+            }));
+
+            // Find current value object(s)
+            let currentValue = null;
+            if (isMultiselect) {
+                const currentVals = formData[name] || [];
+                currentValue = selectOptions.filter(opt => currentVals.includes(opt.value));
+            } else {
+                const currentVal = formData[name];
+                currentValue = selectOptions.find(opt => opt.value === currentVal) || null;
+            }
+
             return (
-                <select
-                    multiple={isMultiselect}
-                    value={formData[name] || (isMultiselect ? [] : '')}
-                    disabled={isImmutable}
-                    onChange={(e) => {
+                <Select
+                    isMulti={isMultiselect}
+                    value={currentValue}
+                    options={selectOptions}
+                    onChange={(selected) => {
                         if (isMultiselect) {
-                            const selected = Array.from(e.target.selectedOptions, option => option.value);
-                            // Need to convert values to correct type if IDs are numbers?
-                            // Assuming IDs are handled as strings for value but backend might want ints
-                            // For now keep as strings/mixed
-                            handleChange(name, selected);
+                            handleChange(name, selected ? selected.map(opt => opt.value) : []);
                         } else {
-                            handleChange(name, e.target.value);
+                            handleChange(name, selected ? selected.value : null);
                         }
                     }}
-                    className={cn(
-                        "mw-input",
-                        hasError && "border-rose-500 ring-1 ring-rose-500/50",
-                        isMultiselect && "h-32"
-                    )}
-                >
-                    {!isMultiselect && <option value="">Select {label.toLowerCase()}...</option>}
-                    {options.map(opt => {
-                        const val = opt[idField];
-                        const title = opt.title || opt.name || val;
-                        return <option key={val} value={val}>{title}</option>;
-                    })}
-                </select>
+                    isDisabled={isImmutable}
+                    styles={customStyles}
+                    placeholder={`Select ${label.toLowerCase()}...`}
+                    classNamePrefix="react-select"
+                />
             );
         }
 
         // -- Widget Type: Select (Enum or Explicit Options) --
         if (prop.enum || (widget.type === 'select' && widget.options)) {
             const options = widget.options || prop.enum.map(e => ({ label: e, value: e }));
+            // Normalize options to { label, value } format
+            const selectOptions = options.map(opt => {
+                if (typeof opt === 'object') {
+                    return { label: opt.label, value: opt.value };
+                }
+                return { label: opt, value: opt };
+            });
+
+            const currentVal = formData[name];
+            const currentValue = selectOptions.find(opt => opt.value === currentVal) || null;
+
             return (
-                <select
-                    value={formData[name] || ''}
-                    disabled={isImmutable}
-                    onChange={(e) => handleChange(name, e.target.value)}
-                    className={cn(
-                        "mw-input",
-                        hasError && "border-rose-500 ring-1 ring-rose-500/50"
-                    )}
-                >
-                    <option value="">Select {label.toLowerCase()}...</option>
-                    {options.map(opt => {
-                        const val = typeof opt === 'object' ? opt.value : opt;
-                        const displayLabel = typeof opt === 'object' ? opt.label : opt;
-                        return <option key={val} value={val}>{displayLabel}</option>;
-                    })}
-                </select>
+                <Select
+                    value={currentValue}
+                    options={selectOptions}
+                    onChange={(selected) => handleChange(name, selected ? selected.value : null)}
+                    isDisabled={isImmutable}
+                    styles={customStyles}
+                    placeholder={`Select ${label.toLowerCase()}...`}
+                    classNamePrefix="react-select"
+                />
             );
         }
 
@@ -279,7 +346,7 @@ const DynamicForm = ({
         if (prop.type === 'boolean') {
             return (
                 <div className={cn(
-                    "flex items-center gap-3 p-3 rounded-xl border cursor-pointer select-none transition-all",
+                    "flex items-center gap-3 px-4 h-[50px] rounded-xl border cursor-pointer select-none transition-all",
                     formData[name] ? "border-blue-500/50 bg-blue-500/5" : inputBg,
                     hasError && "border-rose-500 ring-1 ring-rose-500/50",
                     isImmutable && "opacity-60 cursor-not-allowed"
@@ -308,7 +375,7 @@ const DynamicForm = ({
                     onChange={(e) => handleChange(name, e.target.value)}
                     placeholder={`Enter ${label.toLowerCase()}...`}
                     className={cn(
-                        "w-full px-4 py-3 rounded-xl border text-base outline-none focus:ring-2 focus:ring-blue-500/20 transition-all font-mono",
+                        "w-full px-4 h-[50px] rounded-xl border text-base outline-none focus:ring-2 focus:ring-blue-500/20 transition-all font-mono",
                         inputBg,
                         hasError && "border-rose-500 ring-1 ring-rose-500/50"
                     )}
@@ -355,7 +422,7 @@ const DynamicForm = ({
                 }}
                 placeholder={`Enter ${label.toLowerCase()}...`}
                 className={cn(
-                    "w-full px-4 py-3 rounded-xl border text-base outline-none focus:ring-2 focus:ring-blue-500/20 transition-all font-mono",
+                    "w-full px-4 h-[50px] rounded-xl border text-base outline-none focus:ring-2 focus:ring-blue-500/20 transition-all font-mono",
                     inputBg,
                     hasError && "border-rose-500 ring-1 ring-rose-500/50"
                 )}
