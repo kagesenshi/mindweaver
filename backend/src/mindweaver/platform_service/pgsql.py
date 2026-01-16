@@ -61,7 +61,7 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
     @classmethod
     def widgets(cls) -> dict[str, Any]:
         return {
-            "instances": {"order": 10},
+            "instances": {"order": 10, "type": "range", "min": 1, "max": 7},
             "storage_size": {"order": 11},
             "enable_backup": {"order": 12, "type": "boolean"},
             "backup_destination": {"order": 13},
