@@ -10,7 +10,7 @@ import PageLayout from '../components/PageLayout';
 
 const K8sClustersPage = () => {
     const { darkMode, selectedProject } = useOutletContext();
-    const { clusters, fetchClusters, loading } = useK8sClusters();
+    const { clusters, fetchClusters, loading, deleteCluster } = useK8sClusters();
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedCluster, setSelectedCluster] = useState(null);
@@ -20,6 +20,12 @@ const K8sClustersPage = () => {
         (cluster.title || cluster.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (cluster.type || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+    const handleDelete = async (id) => {
+        if (window.confirm('Are you sure you want to delete this cluster?')) {
+            await deleteCluster(id);
+        }
+    };
 
     return (
         <>
@@ -57,6 +63,7 @@ const K8sClustersPage = () => {
                                 setSelectedCluster(cluster);
                                 setIsEditModalOpen(true);
                             }}
+                            onDelete={() => handleDelete(cluster.id)}
                             footer={
                                 <div className="flex items-center gap-4">
                                     <div className="flex items-center gap-2 text-slate-500">

@@ -66,7 +66,37 @@ const ResourceCard = ({
                         )}
                     </div>
                 </div>
-                {status && <StatusBadge status={status} />}
+                <div className="flex flex-col items-end gap-2">
+                    {status && <StatusBadge status={status} />}
+                    {(onEdit || onDelete) && (
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {onEdit && (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onEdit();
+                                    }}
+                                    className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-500/10 rounded-lg transition-all"
+                                    title="Edit"
+                                >
+                                    <Edit2 size={16} />
+                                </button>
+                            )}
+                            {onDelete && (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onDelete();
+                                    }}
+                                    className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all"
+                                    title="Delete"
+                                >
+                                    <Trash2 size={16} />
+                                </button>
+                            )}
+                        </div>
+                    )}
+                </div>
             </div>
 
             {children && (
@@ -75,37 +105,10 @@ const ResourceCard = ({
                 </div>
             )}
 
-            {(footer || onEdit || onDelete) && (
+            {footer && (
                 <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-800/50 flex items-center justify-between gap-4">
                     <div className="flex-1 min-w-0">
                         {footer}
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                        {onEdit && (
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onEdit();
-                                }}
-                                className="mw-btn-icon opacity-0 group-hover:opacity-100 transition-opacity p-2"
-                                title="Edit"
-                            >
-                                <Edit2 size={16} />
-                            </button>
-                        )}
-                        {onDelete && (
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onDelete();
-                                }}
-                                className="mw-btn-icon-danger opacity-0 group-hover:opacity-100 transition-opacity p-2"
-                                title="Delete"
-                            >
-                                <Trash2 size={16} />
-                            </button>
-                        )}
                     </div>
                 </div>
             )}

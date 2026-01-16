@@ -75,6 +75,12 @@ const PgSqlPage = () => {
     };
 
 
+    const handleDelete = async (id) => {
+        if (window.confirm('Are you sure you want to delete this cluster?')) {
+            await deletePlatform(id);
+        }
+    };
+
     if (selectedPlatform) {
         return (
             <div className="space-y-8 animate-in fade-in duration-500">
@@ -259,11 +265,19 @@ const PgSqlPage = () => {
                 {filteredPlatforms.map(platform => (
                     <ResourceCard
                         key={platform.id}
-                        onClick={() => setSelectedPlatform(platform)}
+                        onClick={() => {
+                            setSelectedPlatform(platform);
+                            setActiveTab('connect');
+                        }}
                         icon={<Server size={20} />}
                         title={platform.name}
                         subtitle={platform.id}
                         status="running"
+                        onEdit={() => {
+                            setSelectedPlatform(platform);
+                            setActiveTab('configure');
+                        }}
+                        onDelete={() => handleDelete(platform.id)}
                     >
                         <div className="grid grid-cols-2 gap-4">
                             <div className="flex items-center gap-2 text-slate-500">
