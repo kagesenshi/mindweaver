@@ -239,59 +239,61 @@ const PgSqlPage = () => {
     }
 
     return (
-        <PageLayout
-            title="Cloudnative PG Clusters"
-            description="High-availability PostgreSQL managed by Kubernetes operators."
-            headerActions={
-                <button
-                    onClick={() => setIsCreateModalOpen(true)}
-                    className="mw-btn-primary px-4 py-2"
-                >
-                    <Plus size={16} /> NEW CLUSTER
-                </button>
-            }
-            searchQuery={searchTerm}
-            onSearchChange={(e) => setSearchTerm(e.target.value)}
-            searchPlaceholder="Search PostgreSQL clusters..."
-            isLoading={loading}
-            isEmpty={filteredPlatforms.length === 0}
-            emptyState={{
-                title: "No clusters found",
-                description: selectedProject ? `No PostgreSQL clusters in ${selectedProject.name}.` : 'Create your first PostgreSQL cluster to get started.',
-                icon: <Database size={48} className="text-slate-700" />
-            }}
-        >
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {filteredPlatforms.map(platform => (
-                    <ResourceCard
-                        key={platform.id}
-                        onClick={() => {
-                            setSelectedPlatform(platform);
-                            setActiveTab('connect');
-                        }}
-                        icon={<Server size={20} />}
-                        title={platform.name}
-                        subtitle={platform.id}
-                        status="running"
-                        onEdit={() => {
-                            setSelectedPlatform(platform);
-                            setActiveTab('configure');
-                        }}
-                        onDelete={() => handleDelete(platform.id)}
+        <>
+            <PageLayout
+                title="Cloudnative PG Clusters"
+                description="High-availability PostgreSQL managed by Kubernetes operators."
+                headerActions={
+                    <button
+                        onClick={() => setIsCreateModalOpen(true)}
+                        className="mw-btn-primary px-4 py-2"
                     >
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="flex items-center gap-2 text-slate-500">
-                                <Activity size={12} />
-                                <span className="text-sm font-bold">3 Instances</span>
+                        <Plus size={16} /> NEW CLUSTER
+                    </button>
+                }
+                searchQuery={searchTerm}
+                onSearchChange={(e) => setSearchTerm(e.target.value)}
+                searchPlaceholder="Search PostgreSQL clusters..."
+                isLoading={loading}
+                isEmpty={filteredPlatforms.length === 0}
+                emptyState={{
+                    title: "No clusters found",
+                    description: selectedProject ? `No PostgreSQL clusters in ${selectedProject.name}.` : 'Create your first PostgreSQL cluster to get started.',
+                    icon: <Database size={48} className="text-slate-700" />
+                }}
+            >
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {filteredPlatforms.map(platform => (
+                        <ResourceCard
+                            key={platform.id}
+                            onClick={() => {
+                                setSelectedPlatform(platform);
+                                setActiveTab('connect');
+                            }}
+                            icon={<Server size={20} />}
+                            title={platform.name}
+                            subtitle={platform.id}
+                            status="running"
+                            onEdit={() => {
+                                setSelectedPlatform(platform);
+                                setActiveTab('configure');
+                            }}
+                            onDelete={() => handleDelete(platform.id)}
+                        >
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="flex items-center gap-2 text-slate-500">
+                                    <Activity size={12} />
+                                    <span className="text-sm font-bold">3 Instances</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-blue-500/70">
+                                    <Database size={12} />
+                                    <span className="text-sm font-bold uppercase truncate max-w-[80px]">v15.4</span>
+                                </div>
                             </div>
-                            <div className="flex items-center gap-2 text-blue-500/70">
-                                <Database size={12} />
-                                <span className="text-sm font-bold uppercase truncate max-w-[80px]">v15.4</span>
-                            </div>
-                        </div>
-                    </ResourceCard>
-                ))}
-            </div>
+                        </ResourceCard>
+                    ))}
+                </div>
+            </PageLayout>
 
             <Modal
                 isOpen={isCreateModalOpen}
@@ -310,7 +312,7 @@ const PgSqlPage = () => {
                     onCancel={() => setIsCreateModalOpen(false)}
                 />
             </Modal>
-        </PageLayout>
+        </>
     );
 };
 

@@ -1,720 +1,137 @@
 from fastapi.testclient import TestClient
-from psycopg.connection import Connection
 from mindweaver.config import logger
-import copy
 import pytest
 
 
-def test_datasource(client: TestClient, test_project):
-    """Test creating a valid data source."""
+def test_datasource_basic(client: TestClient, test_project):
+    """Test creating a valid data source with new schema."""
     resp = client.post(
         "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
-            "name": "my-api-source",
-            "title": "My API Data Source",
-            "type": "API",
-            "parameters": {
-                "base_url": "https://api.example.com/v1",
-                "api_key": "test_api_key_12345",
-            },
+            "name": "my-pg-db",
+            "title": "My Postgres DB",
+            "driver": "postgresql",
+            "host": "localhost",
+            "port": 5432,
+            "login": "myuser",
+            "password": "mypassword",
+            "resource": "mydb",
             "project_id": test_project["id"],
         },
     )
 
     resp.raise_for_status()
-
     data = resp.json()
-    assert data["record"]["name"] == "my-api-source"
-    assert data["record"]["type"] == "API"
-    assert data["record"]["parameters"]["base_url"] == "https://api.example.com/v1"
+    record = data["record"]
+    assert record["name"] == "my-pg-db"
+    assert record["driver"] == "postgresql"
+    assert record["host"] == "localhost"
+    assert record["port"] == 5432
+    assert record["resource"] == "mydb"
 
 
-# ============================================================================
-# API Source Type Validation Tests
-# ============================================================================
+def test_datasource_create_form(client: TestClient, test_project):
+    """Test that the _create-form endpoint returns valid schema."""
+    resp = client.get(
+        "/api/v1/data_sources/_create-form",
+        headers={"X-Project-Id": str(test_project["id"])},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "record" in data
+    assert "jsonschema" in data["record"]
+    assert "widgets" in data["record"]
+    # Verify new fields are present in properties
+    props = data["record"]["jsonschema"]["properties"]
+    assert "driver" in props
+    assert "enable_ssl" in props
+    assert "verify_ssl" in props
 
 
-def test_api_source_valid(client: TestClient, test_project):
-    """Test creating a valid API data source."""
+def test_datasource_web_source(client: TestClient, test_project):
+    """Test creating a web source."""
     resp = client.post(
         "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
-            "name": "stripe-api",
-            "title": "Stripe Payment API",
-            "type": "API",
-            "parameters": {
-                "base_url": "https://api.stripe.com/v1",
-                "api_key": "sk_test_123456789",
-            },
+            "name": "web-source",
+            "title": "My Web Source",
+            "driver": "web",
+            "host": "example.com",
+            "enable_ssl": True,
+            "verify_ssl": True,
+            "resource": "/api/data",
             "project_id": test_project["id"],
         },
     )
 
     assert resp.status_code == 200
-    data = resp.json()
-    assert data["record"]["type"] == "API"
-    assert data["record"]["parameters"]["base_url"] == "https://api.stripe.com/v1"
+    record = resp.json()["record"]
+    assert record["driver"] == "web"
+    assert record["enable_ssl"] is True
+    assert record["verify_ssl"] is True
 
 
-def test_api_source_invalid_url(client: TestClient, test_project):
-    """Test API source with invalid URL format."""
-    resp = client.post(
-        "/api/v1/data_sources",
-        headers={"X-Project-Id": str(test_project["id"])},
-        json={
-            "name": "invalid-api",
-            "title": "Invalid API",
-            "type": "API",
-            "parameters": {"base_url": "not-a-valid-url", "api_key": "test_key"},
-            "project_id": test_project["id"],
-        },
-    )
-
-    assert resp.status_code == 422
-    error = resp.json()
-    assert "detail" in error
-    detail_str = str(error["detail"]).lower()
-    assert "base_url" in detail_str
-
-
-def test_api_source_missing_api_key(client: TestClient, test_project):
-    """Test API source with missing API key."""
-    resp = client.post(
-        "/api/v1/data_sources",
-        headers={"X-Project-Id": str(test_project["id"])},
-        json={
-            "name": "no-key-api",
-            "title": "No Key API",
-            "type": "API",
-            "parameters": {"base_url": "https://api.example.com"},
-            "project_id": test_project["id"],
-        },
-    )
-
-    assert resp.status_code == 422
-    error = resp.json()
-    assert "detail" in error
-
-
-def test_api_source_empty_api_key(client: TestClient, test_project):
-    """Test API source with empty API key."""
-    resp = client.post(
-        "/api/v1/data_sources",
-        headers={"X-Project-Id": str(test_project["id"])},
-        json={
-            "name": "empty-key-api",
-            "title": "Empty Key API",
-            "type": "API",
-            "parameters": {"base_url": "https://api.example.com", "api_key": ""},
-            "project_id": test_project["id"],
-        },
-    )
-
-    assert resp.status_code == 422
-    error = resp.json()
-    assert "detail" in error
-    detail = error["detail"]
-    if isinstance(detail, dict) and "loc" in detail:
-        assert "api_key" in detail["loc"]
-    else:
-        detail_str = detail["msg"] if isinstance(detail, dict) else str(detail)
-        assert "api_key" in detail_str.lower().replace(" ", "_")
-
-
-# ============================================================================
-# Database Source Type Validation Tests
-# ============================================================================
-
-
-def test_database_source_valid(client: TestClient, test_project):
-    """Test creating a valid Database data source."""
-    resp = client.post(
-        "/api/v1/data_sources",
-        headers={"X-Project-Id": str(test_project["id"])},
-        json={
-            "name": "production-db",
-            "title": "Production PostgreSQL",
-            "type": "Database",
-            "parameters": {"host": "db.example.com", "port": 5432, "username": "admin"},
-            "project_id": test_project["id"],
-        },
-    )
-
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["record"]["type"] == "Database"
-    assert data["record"]["parameters"]["port"] == 5432
-
-
-def test_database_source_invalid_port(client: TestClient, test_project):
-    """Test Database source with invalid port number."""
-    resp = client.post(
-        "/api/v1/data_sources",
-        headers={"X-Project-Id": str(test_project["id"])},
-        json={
-            "name": "bad-port-db",
-            "title": "Bad Port DB",
-            "type": "Database",
-            "parameters": {
-                "host": "db.example.com",
-                "port": 99999,
-                "username": "admin",
-            },
-            "project_id": test_project["id"],
-        },
-    )
-
-    assert resp.status_code == 422
-    error = resp.json()
-    assert "detail" in error
-    detail = error["detail"]
-    if isinstance(detail, dict) and "loc" in detail:
-        assert "port" in detail["loc"]
-    else:
-        detail_str = detail["msg"] if isinstance(detail, dict) else str(detail)
-        assert "port" in detail_str.lower()
-
-
-def test_database_source_negative_port(client: TestClient, test_project):
-    """Test Database source with negative port number."""
-    resp = client.post(
-        "/api/v1/data_sources",
-        headers={"X-Project-Id": str(test_project["id"])},
-        json={
-            "name": "negative-port-db",
-            "title": "Negative Port DB",
-            "type": "Database",
-            "parameters": {"host": "db.example.com", "port": -1, "username": "admin"},
-            "project_id": test_project["id"],
-        },
-    )
-
-    assert resp.status_code == 422
-    error = resp.json()
-    assert "detail" in error
-
-
-def test_database_source_empty_host(client: TestClient, test_project):
-    """Test Database source with empty host."""
-    resp = client.post(
-        "/api/v1/data_sources",
-        headers={"X-Project-Id": str(test_project["id"])},
-        json={
-            "name": "no-host-db",
-            "title": "No Host DB",
-            "type": "Database",
-            "parameters": {"host": "", "port": 5432, "username": "admin"},
-            "project_id": test_project["id"],
-        },
-    )
-
-    assert resp.status_code == 422
-    error = resp.json()
-    assert "detail" in error
-    detail = error["detail"]
-    if isinstance(detail, dict) and "loc" in detail:
-        assert "host" in detail["loc"]
-    else:
-        detail_str = detail["msg"] if isinstance(detail, dict) else str(detail)
-        assert "host" in detail_str.lower()
-
-
-def test_database_source_empty_username(client: TestClient, test_project):
-    """Test Database source with empty username."""
-    resp = client.post(
-        "/api/v1/data_sources",
-        headers={"X-Project-Id": str(test_project["id"])},
-        json={
-            "name": "no-user-db",
-            "title": "No User DB",
-            "type": "Database",
-            "parameters": {"host": "db.example.com", "port": 5432, "username": ""},
-            "project_id": test_project["id"],
-        },
-    )
-
-    assert resp.status_code == 422
-    error = resp.json()
-    assert "detail" in error
-    detail = error["detail"]
-    if isinstance(detail, dict) and "loc" in detail:
-        assert "username" in detail["loc"]
-    else:
-        detail_str = detail["msg"] if isinstance(detail, dict) else str(detail)
-        assert "username" in detail_str.lower()
-
-
-# ============================================================================
-# Web Scraper Source Type Validation Tests
-# ============================================================================
-
-
-def test_web_scraper_source_valid(client: TestClient, test_project):
-    """Test creating a valid Web Scraper data source."""
-    resp = client.post(
-        "/api/v1/data_sources",
-        headers={"X-Project-Id": str(test_project["id"])},
-        json={
-            "name": "example-scraper",
-            "title": "Example Website Scraper",
-            "type": "Web Scraper",
-            "parameters": {"start_url": "https://example.com"},
-            "project_id": test_project["id"],
-        },
-    )
-
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["record"]["type"] == "Web Scraper"
-    assert data["record"]["parameters"]["start_url"] == "https://example.com"
-
-
-def test_web_scraper_source_invalid_url(client: TestClient, test_project):
-    """Test Web Scraper source with invalid URL."""
-    resp = client.post(
-        "/api/v1/data_sources",
-        headers={"X-Project-Id": str(test_project["id"])},
-        json={
-            "name": "bad-scraper",
-            "title": "Bad Scraper",
-            "type": "Web Scraper",
-            "parameters": {"start_url": "ftp://example.com"},
-            "project_id": test_project["id"],
-        },
-    )
-
-    assert resp.status_code == 422
-    error = resp.json()
-    assert "detail" in error
-    detail = error["detail"]
-    if isinstance(detail, dict) and "loc" in detail:
-        assert "start_url" in detail["loc"]
-    else:
-        detail_str = detail["msg"] if isinstance(detail, dict) else str(detail)
-        assert "start_url" in detail_str.lower().replace(" ", "_")
-
-
-def test_web_scraper_source_empty_url(client: TestClient, test_project):
-    """Test Web Scraper source with empty URL."""
-    resp = client.post(
-        "/api/v1/data_sources",
-        headers={"X-Project-Id": str(test_project["id"])},
-        json={
-            "name": "empty-scraper",
-            "title": "Empty Scraper",
-            "type": "Web Scraper",
-            "parameters": {"start_url": ""},
-            "project_id": test_project["id"],
-        },
-    )
-
-    assert resp.status_code == 422
-    error = resp.json()
-    assert "detail" in error
-
-
-# ============================================================================
-# File Upload Source Type Validation Tests
-# ============================================================================
-
-
-def test_file_upload_source_valid(client: TestClient, test_project):
-    """Test creating a valid File Upload data source."""
-    resp = client.post(
-        "/api/v1/data_sources",
-        headers={"X-Project-Id": str(test_project["id"])},
-        json={
-            "name": "csv-uploader",
-            "title": "CSV File Uploader",
-            "type": "File Upload",
-            "parameters": {},
-            "project_id": test_project["id"],
-        },
-    )
-
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["record"]["type"] == "File Upload"
-
-
-# ============================================================================
-# Invalid Source Type Tests
-# ============================================================================
-
-
-def test_invalid_source_type(client: TestClient, test_project):
-    """Test creating a data source with invalid type."""
-    resp = client.post(
-        "/api/v1/data_sources",
-        headers={"X-Project-Id": str(test_project["id"])},
-        json={
-            "name": "invalid-type",
-            "title": "Invalid Type Source",
-            "type": "SFTP",
-            "parameters": {"host": "localhost", "port": 22},
-            "project_id": test_project["id"],
-        },
-    )
-
-    assert resp.status_code == 422
-    error = resp.json()
-    assert "detail" in error
-    assert "invalid source type" in error["detail"].lower()
-
-
-def test_missing_source_type(client: TestClient, test_project):
-    """Test creating a data source without type."""
-    resp = client.post(
-        "/api/v1/data_sources",
-        headers={"X-Project-Id": str(test_project["id"])},
-        json={
-            "name": "no-type",
-            "title": "No Type Source",
-            "parameters": {},
-            "project_id": test_project["id"],
-        },
-    )
-
-    # FastAPI uses 422 for validation errors
-    assert resp.status_code == 422
-
-
-# ============================================================================
-# Update Validation Tests
-# ============================================================================
-
-
-def test_update_data_source_valid(client: TestClient, test_project):
+def test_datasource_update(client: TestClient, test_project):
     """Test updating a data source."""
-    # First create a data source
-    create_resp = client.post(
+    # Create
+    resp = client.post(
         "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
             "name": "update-test",
-            "title": "Update Test",
-            "type": "API",
-            "parameters": {"base_url": "https://api.example.com", "api_key": "old_key"},
+            "title": "Original Title",
+            "driver": "mysql",
+            "host": "localhost",
             "project_id": test_project["id"],
         },
     )
-    assert create_resp.status_code == 200
-    source_id = create_resp.json()["record"]["id"]
+    source_id = resp.json()["record"]["id"]
 
-    # Update the name
-    update_resp = client.put(
+    # Update
+    resp = client.put(
         f"/api/v1/data_sources/{source_id}",
-        json={"name": "updated-test-name", "project_id": test_project["id"]},
         headers={"X-Project-Id": str(test_project["id"])},
+        json={
+            "name": "update-test",  # Keep name or it might be immutable depending on base? NamedBase usually allows name update.
+            "title": "Updated Title",
+            "driver": "mysql",
+            "verify_ssl": True,
+            "project_id": test_project["id"],
+        },
     )
 
-    # Accept both 200 (success) and 422 (if framework requires more fields)
-    # The important thing is that our validation doesn't break updates
-    assert update_resp.status_code in [200, 422]
+    assert resp.status_code == 200
+    record = resp.json()["record"]
+    assert record["title"] == "Updated Title"
+    assert record["verify_ssl"] is True
 
 
-def test_update_data_source_invalid_parameters(client: TestClient, test_project):
-    """Test that creating with invalid parameters fails (update validation tested implicitly)."""
-    # Test that we can't create with invalid parameters in the first place
+def test_delete_datasource(client: TestClient, test_project):
+    # Create
     resp = client.post(
         "/api/v1/data_sources",
         headers={"X-Project-Id": str(test_project["id"])},
         json={
-            "name": "invalid-create",
-            "title": "Invalid Create",
-            "type": "API",
-            "parameters": {"base_url": "not-a-valid-url", "api_key": "test_key"},
+            "name": "delete-test",
+            "title": "Delete Me",
+            "driver": "postgresql",
             "project_id": test_project["id"],
         },
     )
+    source_id = resp.json()["record"]["id"]
 
-    assert resp.status_code == 422
-    error = resp.json()
-    assert "detail" in error
-
-
-# ============================================================================
-# Type Change Rejection Tests
-# ============================================================================
-
-
-def test_update_data_source_reject_type_change_api_to_database(
-    client: TestClient, test_project
-):
-    """Test that changing data source type from API to Database is rejected."""
-    # Create an API data source
-    create_resp = client.post(
-        "/api/v1/data_sources",
-        headers={"X-Project-Id": str(test_project["id"])},
-        json={
-            "name": "api-source",
-            "title": "API Source",
-            "type": "API",
-            "parameters": {
-                "base_url": "https://api.example.com",
-                "api_key": "test_key",
-            },
-            "project_id": test_project["id"],
-        },
-    )
-    assert create_resp.status_code == 200
-    source_id = create_resp.json()["record"]["id"]
-
-    # Try to change type to Database
-    update_resp = client.put(
-        f"/api/v1/data_sources/{source_id}",
-        headers={"X-Project-Id": str(test_project["id"])},
-        json={
-            "name": "api-source",
-            "title": "API Source",
-            "type": "Database",
-            "parameters": {"host": "localhost", "port": 5432, "username": "admin"},
-            "project_id": test_project["id"],
-        },
-    )
-
-    assert update_resp.status_code == 422
-    error = update_resp.json()
-    assert "detail" in error
-    detail = error["detail"]
-    # Handle both string and list formats
-    detail_str = detail if isinstance(detail, str) else str(detail)
-    assert "cannot change data source type" in detail_str.lower()
-    assert "API" in detail_str
-    assert "Database" in detail_str
-
-
-def test_update_data_source_reject_type_change_database_to_web_scraper(
-    client: TestClient, test_project
-):
-    """Test that changing data source type from Database to Web Scraper is rejected."""
-    # Create a Database data source
-    create_resp = client.post(
-        "/api/v1/data_sources",
-        headers={"X-Project-Id": str(test_project["id"])},
-        json={
-            "name": "db-source",
-            "title": "Database Source",
-            "type": "Database",
-            "parameters": {"host": "localhost", "port": 5432, "username": "admin"},
-            "project_id": test_project["id"],
-        },
-    )
-    assert create_resp.status_code == 200
-    source_id = create_resp.json()["record"]["id"]
-
-    # Try to change type to Web Scraper
-    update_resp = client.put(
-        f"/api/v1/data_sources/{source_id}",
-        headers={"X-Project-Id": str(test_project["id"])},
-        json={
-            "name": "db-source",
-            "title": "Database Source",
-            "type": "Web Scraper",
-            "parameters": {"start_url": "https://example.com"},
-            "project_id": test_project["id"],
-        },
-    )
-
-    assert update_resp.status_code == 422
-    error = update_resp.json()
-    assert "detail" in error
-    detail = error["detail"]
-    # Handle both string and list formats
-    detail_str = detail if isinstance(detail, str) else str(detail)
-    assert "cannot change data source type" in detail_str.lower()
-    assert "Database" in detail_str
-    assert "Web Scraper" in detail_str
-
-
-def test_update_data_source_reject_type_change_web_scraper_to_file_upload(
-    client: TestClient, test_project
-):
-    """Test that changing data source type from Web Scraper to File Upload is rejected."""
-    # Create a Web Scraper data source
-    create_resp = client.post(
-        "/api/v1/data_sources",
-        headers={"X-Project-Id": str(test_project["id"])},
-        json={
-            "name": "scraper-source",
-            "title": "Scraper Source",
-            "type": "Web Scraper",
-            "parameters": {"start_url": "https://example.com"},
-            "project_id": test_project["id"],
-        },
-    )
-    assert create_resp.status_code == 200
-    source_id = create_resp.json()["record"]["id"]
-
-    # Try to change type to File Upload
-    update_resp = client.put(
-        f"/api/v1/data_sources/{source_id}",
-        headers={"X-Project-Id": str(test_project["id"])},
-        json={
-            "name": "scraper-source",
-            "title": "Scraper Source",
-            "type": "File Upload",
-            "parameters": {},
-            "project_id": test_project["id"],
-        },
-    )
-
-    assert update_resp.status_code == 422
-    error = update_resp.json()
-    assert "detail" in error
-    detail = error["detail"]
-    # Handle both string and list formats
-    detail_str = detail if isinstance(detail, str) else str(detail)
-    assert "cannot change data source type" in detail_str.lower()
-    assert "Web Scraper" in detail_str
-    assert "File Upload" in detail_str
-
-
-def test_update_data_source_same_type_allowed(client: TestClient, test_project):
-    """Test that updating a data source with the same type is allowed."""
-    # Create an API data source
-    create_resp = client.post(
-        "/api/v1/data_sources",
-        headers={"X-Project-Id": str(test_project["id"])},
-        json={
-            "name": "api-source",
-            "title": "API Source",
-            "type": "API",
-            "parameters": {"base_url": "https://api.example.com", "api_key": "old_key"},
-            "project_id": test_project["id"],
-        },
-    )
-    assert create_resp.status_code == 200
-    source_id = create_resp.json()["record"]["id"]
-
-    # Update with the same type but different parameters
-    update_resp = client.put(
-        f"/api/v1/data_sources/{source_id}",
-        headers={"X-Project-Id": str(test_project["id"])},
-        json={
-            "name": "api-source",
-            "title": "API Source",
-            "type": "API",
-            "parameters": {
-                "base_url": "https://api.newexample.com",
-                "api_key": "new_key",
-            },
-            "project_id": test_project["id"],
-        },
-    )
-
-    assert update_resp.status_code == 200
-    data = update_resp.json()
-    assert data["record"]["type"] == "API"
-    assert data["record"]["parameters"]["base_url"] == "https://api.newexample.com"
-    assert data["record"]["parameters"]["api_key"] == "new_key"
-
-
-def test_update_data_source_without_type_field(client: TestClient, test_project):
-    """Test that updating a data source without specifying type field works."""
-    # Create an API data source
-    create_resp = client.post(
-        "/api/v1/data_sources",
-        headers={"X-Project-Id": str(test_project["id"])},
-        json={
-            "name": "api-source",
-            "title": "API Source",
-            "type": "API",
-            "parameters": {
-                "base_url": "https://api.example.com",
-                "api_key": "test_key",
-            },
-            "project_id": test_project["id"],
-        },
-    )
-    assert create_resp.status_code == 200
-    source_id = create_resp.json()["record"]["id"]
-
-    # Update only the title without specifying type
-    update_resp = client.put(
-        f"/api/v1/data_sources/{source_id}",
-        headers={"X-Project-Id": str(test_project["id"])},
-        json={
-            "name": "api-source",
-            "title": "Updated API Source",
-            "type": "API",
-            "parameters": {
-                "base_url": "https://api.example.com",
-                "api_key": "test_key",
-            },
-            "project_id": test_project["id"],
-        },
-    )
-
-    assert update_resp.status_code == 200
-    data = update_resp.json()
-    assert data["record"]["type"] == "API"  # Type should remain unchanged
-    assert data["record"]["title"] == "Updated API Source"
-
-
-def test_list_data_sources_without_project_id_returns_empty(
-    client: TestClient, test_project
-):
-    """Test that listing data sources without project_id returns empty list."""
-    # Create a data source in the project
-    resp = client.post(
-        "/api/v1/data_sources",
-        json={
-            "name": "test-api-source",
-            "title": "Test API Source",
-            "type": "API",
-            "parameters": {
-                "base_url": "https://api.example.com",
-                "api_key": "test_key",
-            },
-            "project_id": test_project["id"],
-        },
-        headers={"X-Project-Id": str(test_project["id"])},
-    )
-    resp.raise_for_status()
-
-    # List data sources WITHOUT project_id header
-    # Should return empty list
-    resp = client.get("/api/v1/data_sources")
-    resp.raise_for_status()
-    data = resp.json()
-
-    assert len(data["records"]) == 1
-    assert data["records"][0]["name"] == "test-api-source"
-
-
-def test_delete_data_source(client: TestClient, test_project):
-    """Test deleting a data source."""
-    # Create a data source
-    create_resp = client.post(
-        "/api/v1/data_sources",
-        headers={"X-Project-Id": str(test_project["id"])},
-        json={
-            "name": "to-delete",
-            "title": "To Delete Source",
-            "type": "API",
-            "parameters": {
-                "base_url": "https://api.example.com/v1",
-                "api_key": "test_key",
-            },
-            "project_id": test_project["id"],
-        },
-    )
-    create_resp.raise_for_status()
-    source_id = create_resp.json()["record"]["id"]
-
-    # Delete the data source
-    delete_resp = client.delete(
+    # Delete
+    resp = client.delete(
         f"/api/v1/data_sources/{source_id}",
         headers={"X-Project-Id": str(test_project["id"])},
     )
-    assert delete_resp.status_code == 200
+    assert resp.status_code == 200
 
-    # Verify it's gone
-    get_resp = client.get(
+    # Verify
+    resp = client.get(
         f"/api/v1/data_sources/{source_id}",
         headers={"X-Project-Id": str(test_project["id"])},
     )
-    assert get_resp.status_code == 404
+    assert resp.status_code == 404

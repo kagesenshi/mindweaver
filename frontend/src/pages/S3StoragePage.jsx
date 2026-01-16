@@ -83,59 +83,61 @@ const S3StoragePage = () => {
     };
 
     return (
-        <PageLayout
-            title="S3 Object Storage"
-            description="Manage S3-compatible object storage connections for your data platform."
-            headerActions={
-                <button
-                    onClick={() => setIsCreateModalOpen(true)}
-                    className="mw-btn-primary px-4 py-2"
-                >
-                    <Plus size={16} /> NEW STORAGE
-                </button>
-            }
-            searchQuery={searchTerm}
-            onSearchChange={(e) => setSearchTerm(e.target.value)}
-            searchPlaceholder="Search storages..."
-            isLoading={loading}
-            isEmpty={filteredStorages.length === 0}
-            emptyState={{
-                title: "No storage buckets found",
-                description: selectedProject
-                    ? `No S3 storages configured in ${selectedProject.name}.`
-                    : 'Create your first S3 storage connection to get started.',
-                icon: <HardDrive size={48} className="text-slate-700" />
-            }}
-        >
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {filteredStorages.map(storage => (
-                    <ResourceCard
-                        key={storage.id}
-                        onClick={() => setEditItem(storage)}
-                        icon={<Server size={20} />}
-                        title={storage.name}
-                        subtitle={storage.region}
-                        status="active"
-                        onEdit={() => setEditItem(storage)}
-                        onDelete={() => handleDelete(storage.id)}
+        <>
+            <PageLayout
+                title="S3 Object Storage"
+                description="Manage S3-compatible object storage connections for your data platform."
+                headerActions={
+                    <button
+                        onClick={() => setIsCreateModalOpen(true)}
+                        className="mw-btn-primary px-4 py-2"
                     >
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="flex items-center gap-2 text-slate-500">
-                                <Globe size={12} />
-                                <span className="text-sm font-bold truncate" title={storage.endpoint_url || 'AWS S3'}>
-                                    {storage.endpoint_url ? new URL(storage.endpoint_url).hostname : 'AWS Standard'}
-                                </span>
+                        <Plus size={16} /> NEW STORAGE
+                    </button>
+                }
+                searchQuery={searchTerm}
+                onSearchChange={(e) => setSearchTerm(e.target.value)}
+                searchPlaceholder="Search storages..."
+                isLoading={loading}
+                isEmpty={filteredStorages.length === 0}
+                emptyState={{
+                    title: "No storage buckets found",
+                    description: selectedProject
+                        ? `No S3 storages configured in ${selectedProject.name}.`
+                        : 'Create your first S3 storage connection to get started.',
+                    icon: <HardDrive size={48} className="text-slate-700" />
+                }}
+            >
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {filteredStorages.map(storage => (
+                        <ResourceCard
+                            key={storage.id}
+                            onClick={() => setEditItem(storage)}
+                            icon={<Server size={20} />}
+                            title={storage.name}
+                            subtitle={storage.region}
+                            status="active"
+                            onEdit={() => setEditItem(storage)}
+                            onDelete={() => handleDelete(storage.id)}
+                        >
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="flex items-center gap-2 text-slate-500">
+                                    <Globe size={12} />
+                                    <span className="text-sm font-bold truncate" title={storage.endpoint_url || 'AWS S3'}>
+                                        {storage.endpoint_url ? new URL(storage.endpoint_url).hostname : 'AWS Standard'}
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-2 text-blue-500/70">
+                                    <Shield size={12} />
+                                    <span className="text-sm font-bold uppercase truncate">
+                                        {storage.access_key ? 'Encrypted' : 'Public'}
+                                    </span>
+                                </div>
                             </div>
-                            <div className="flex items-center gap-2 text-blue-500/70">
-                                <Shield size={12} />
-                                <span className="text-sm font-bold uppercase truncate">
-                                    {storage.access_key ? 'Encrypted' : 'Public'}
-                                </span>
-                            </div>
-                        </div>
-                    </ResourceCard>
-                ))}
-            </div>
+                        </ResourceCard>
+                    ))}
+                </div>
+            </PageLayout>
 
             {/* Create Modal */}
             <Modal
@@ -229,7 +231,7 @@ const S3StoragePage = () => {
                     )}
                 </div>
             </Modal>
-        </PageLayout>
+        </>
     );
 };
 
