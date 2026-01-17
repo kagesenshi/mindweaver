@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ name }}-rw-nodeport
+spec:
+  type: NodePort
+  ports:
+  - port: 5432
+    targetPort: 5432
+    protocol: TCP
+    name: postgres
+  selector:
+    cnpg.io/cluster: {{ name }}
+    cnpg.io/role: primary
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ name }}-ro-nodeport
+spec:
+  type: NodePort
+  ports:
+  - port: 5432
+    targetPort: 5432
+    protocol: TCP
+    name: postgres
+  selector:
+    cnpg.io/cluster: {{ name }}
+    cnpg.io/role: replica
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ name }}-r-nodeport
+spec:
+  type: NodePort
+  ports:
+  - port: 5432
+    targetPort: 5432
+    protocol: TCP
+    name: postgres
+  selector:
+    cnpg.io/cluster: {{ name }}

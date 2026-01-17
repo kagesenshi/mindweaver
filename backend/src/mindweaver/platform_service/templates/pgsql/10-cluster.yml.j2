@@ -1,0 +1,38 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: {{ name }}
+spec:
+  instances: {{ instances }}
+  storage:
+    size: {{ storage_size }}
+
+{% if backup_destination %}
+  backup:
+    barmanObjectStore:
+      destinationPath: {{ backup_destination }}
+      {% if s3_endpoint_url %}
+      endpointURL: {{ s3_endpoint_url }}
+      {% endif %}
+      {% if s3_access_key and s3_secret_key %}
+      s3Credentials:
+        accessKeyId:
+          name: {{ name }}-s3-secret
+          key: ACCESS_KEY_ID
+        secretAccessKey:
+          name: {{ name }}-s3-secret
+          key: SECRET_ACCESS_KEY
+      {% endif %}
+      retentionPolicy: {{ backup_retention_policy }}
+{% endif %}
+
+{% if enable_citus or enable_postgis %}
+  managed:
+    extensions:
+    {% if enable_citus %}
+      - name: citus
+    {% endif %}
+    {% if enable_postgis %}
+      - name: postgis
+    {% endif %}
+{% endif %}
