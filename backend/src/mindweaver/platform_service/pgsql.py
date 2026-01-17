@@ -58,6 +58,15 @@ class PgSqlPlatform(PlatformBase, table=True):
                 raise ValueError("Backup destination must include a bucket name")
         return v
 
+    @field_validator("instances")
+    @classmethod
+    def validate_instances(cls, v: int) -> int:
+        if v not in [1, 3, 5, 7]:
+            raise ValueError(
+                "Instances must be an odd number between 1 and 7 (1, 3, 5, 7)"
+            )
+        return v
+
 
 class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
     template_directory: str = os.path.join(
@@ -76,7 +85,7 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
     @classmethod
     def widgets(cls) -> dict[str, Any]:
         return {
-            "instances": {"order": 10, "type": "range", "min": 1, "max": 7},
+            "instances": {"order": 10, "type": "range", "min": 1, "max": 7, "step": 2},
             "storage_size": {"order": 11},
             "enable_backup": {"order": 12, "type": "boolean"},
             "backup_destination": {"order": 13},

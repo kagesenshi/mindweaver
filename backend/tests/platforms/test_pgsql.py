@@ -192,3 +192,60 @@ def test_pgsql_backup_destination_validation(client: TestClient, test_project):
         headers={"X-Project-Id": str(test_project["id"])},
     )
     assert resp.status_code == 200
+
+
+def test_pgsql_instances_validation(client: TestClient, test_project):
+    # Setup K8sCluster
+    cluster_data = {
+        "name": "test-cluster-pg-inst",
+        "title": "Test Cluster PG Inst",
+        "type": "remote",
+        "kubeconfig": 'apiVersion: v1\nkind: Config\nclusters: []\ncontexts: []\ncurrent-context: ""\nusers: []',
+        "project_id": test_project["id"],
+    }
+    resp = client.post(
+        "/api/v1/k8s_clusters",
+        json=cluster_data,
+        headers={"X-Project-Id": str(test_project["id"])},
+    )
+    resp.raise_for_status()
+    cluster_id = resp.json()["record"]["id"]
+
+    # Base data
+    base_data = {
+        "name": "my-pg-inst",
+        "title": "My Postgres Inst",
+        "project_id": test_project["id"],
+        "k8s_cluster_id": cluster_id,
+        "storage_size": "1Gi",
+    }
+
+    # 1. Valid counts (1, 3, 5, 7)
+    for count in [1, 3, 5, 7]:
+        data = base_data.copy()
+        data["name"] = f"pg-inst-{count}"
+        data["instances"] = count
+        resp = client.post(
+            "/api/v1/platform/pgsql",
+            json=data,
+            headers={"X-Project-Id": str(test_project["id"])},
+        )
+        assert resp.status_code == 200, f"Failed for count {count}: {resp.text}"
+
+    # 2. Invalid counts (even or out of range)
+    for count in [0, 2, 4, 6, 8]:
+        data = base_data.copy()
+        data["name"] = f"pg-inst-invalid-{count}"
+        data["instances"] = count
+        resp = client.post(
+            "/api/v1/platform/pgsql",
+            json=data,
+            headers={"X-Project-Id": str(test_project["id"])},
+        )
+        assert (
+            resp.status_code == 422
+        ), f"Expected 422 for count {count}, got {resp.status_code}"
+        assert (
+            "Instances must be an odd number between 1 and 7"
+            in resp.json()["detail"][0]["msg"]
+        )
