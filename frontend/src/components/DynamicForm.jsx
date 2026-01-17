@@ -82,7 +82,7 @@ const KeyValueWidget = ({ name, value, onChange, darkMode, hasError, isImmutable
             darkMode ? "bg-slate-900/50 border-slate-800" : "bg-slate-50 border-slate-200"
         )}>
             {items.length === 0 && (
-                <p className="text-sm text-slate-500 text-center py-2">No parameters defined</p>
+                <p className="text-base text-slate-500 text-center py-2">No parameters defined</p>
             )}
 
             {items.map((item, index) => (
@@ -94,7 +94,7 @@ const KeyValueWidget = ({ name, value, onChange, darkMode, hasError, isImmutable
                         disabled={isImmutable}
                         onChange={(e) => handleItemChange(index, 'key', e.target.value)}
                         className={cn(
-                            "flex-1 px-3 h-10 rounded-lg border text-sm outline-none transition-all font-mono",
+                            "flex-1 px-3 h-10 rounded-lg border text-base outline-none transition-all",
                             inputBg
                         )}
                     />
@@ -104,7 +104,7 @@ const KeyValueWidget = ({ name, value, onChange, darkMode, hasError, isImmutable
                         disabled={isImmutable}
                         onChange={(e) => handleItemChange(index, 'type', e.target.value)}
                         className={cn(
-                            "w-28 px-2 h-10 rounded-lg border text-sm outline-none transition-all",
+                            "w-28 px-2 h-10 rounded-lg border text-base outline-none transition-all",
                             inputBg
                         )}
                     >
@@ -119,7 +119,7 @@ const KeyValueWidget = ({ name, value, onChange, darkMode, hasError, isImmutable
                             disabled={isImmutable}
                             onChange={(e) => handleItemChange(index, 'value', e.target.value === 'true')}
                             className={cn(
-                                "flex-1 px-3 h-10 rounded-lg border text-sm outline-none transition-all",
+                                "flex-1 px-3 h-10 rounded-lg border text-base outline-none transition-all",
                                 inputBg
                             )}
                         >
@@ -135,7 +135,7 @@ const KeyValueWidget = ({ name, value, onChange, darkMode, hasError, isImmutable
                             disabled={isImmutable}
                             onChange={(e) => handleItemChange(index, 'value', e.target.value)}
                             className={cn(
-                                "flex-1 px-3 h-10 rounded-lg border text-sm outline-none transition-all font-mono",
+                                "flex-1 px-3 h-10 rounded-lg border text-base outline-none transition-all",
                                 inputBg
                             )}
                         />
@@ -157,7 +157,7 @@ const KeyValueWidget = ({ name, value, onChange, darkMode, hasError, isImmutable
                 <button
                     type="button"
                     onClick={addItem}
-                    className="flex items-center gap-2 text-sm font-medium text-blue-500 hover:text-blue-600 transition-colors px-1"
+                    className="flex items-center gap-2 text-base font-medium text-blue-500 hover:text-blue-600 transition-colors px-1"
                 >
                     <Plus size={16} /> ADD PARAMETER
                 </button>
@@ -486,7 +486,7 @@ const DynamicForm = ({
 
             return (
                 <div className="space-y-2">
-                    <div className="flex justify-between text-sm font-mono opacity-70">
+                    <div className="flex justify-between text-sm opacity-70">
                         <span>{min}</span>
                         <span className="font-bold text-blue-500">{val}</span>
                         <span>{max}</span>
@@ -551,7 +551,7 @@ const DynamicForm = ({
                     onChange={(e) => handleChange(name, e.target.value)}
                     placeholder={`Enter ${label.toLowerCase()}...`}
                     className={cn(
-                        "w-full px-4 h-[50px] rounded-xl border text-base outline-none focus:ring-2 focus:ring-blue-500/20 transition-all font-mono",
+                        "w-full px-4 h-[50px] rounded-xl border text-base outline-none focus:ring-2 focus:ring-blue-500/20 transition-all",
                         inputBg,
                         hasError && "border-rose-500 ring-1 ring-rose-500/50"
                     )}
@@ -576,7 +576,7 @@ const DynamicForm = ({
                     placeholder={`Enter ${label.toLowerCase()}...`}
                     rows={rows}
                     className={cn(
-                        "w-full px-4 py-3 rounded-xl border text-base outline-none focus:ring-2 focus:ring-blue-500/20 transition-all font-mono",
+                        "w-full px-4 py-3 rounded-xl border text-base outline-none focus:ring-2 focus:ring-blue-500/20 transition-all",
                         inputBg,
                         hasError && "border-rose-500 ring-1 ring-rose-500/50"
                     )}
@@ -585,10 +585,23 @@ const DynamicForm = ({
         }
 
         // -- Default Text/Number Input --
+        const isNumeric =
+            prop.type === 'integer' ||
+            prop.type === 'number' ||
+            widget.type === 'integer' ||
+            widget.type === 'number' ||
+            // Handle anyOf for optional integers in JSON schema
+            (prop.anyOf && prop.anyOf.some(a => a.type === 'integer' || a.type === 'number'));
+
+        const isFloat =
+            prop.type === 'number' ||
+            widget.type === 'number' ||
+            (prop.anyOf && prop.anyOf.some(a => a.type === 'number'));
+
         return (
             <input
-                type={prop.type === 'integer' || prop.type === 'number' ? 'number' : 'text'}
-                step={prop.type === 'number' ? 'any' : undefined}
+                type={isNumeric ? 'number' : 'text'}
+                step={isFloat ? 'any' : undefined}
                 value={formData[name] ?? ''}
                 disabled={isImmutable}
                 onChange={(e) => {
@@ -598,7 +611,7 @@ const DynamicForm = ({
                 }}
                 placeholder={`Enter ${label.toLowerCase()}...`}
                 className={cn(
-                    "w-full px-4 h-[50px] rounded-xl border text-base outline-none focus:ring-2 focus:ring-blue-500/20 transition-all font-mono",
+                    "w-full px-4 h-[50px] rounded-xl border text-base outline-none focus:ring-2 focus:ring-blue-500/20 transition-all",
                     inputBg,
                     hasError && "border-rose-500 ring-1 ring-rose-500/50"
                 )}
