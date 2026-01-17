@@ -8,6 +8,9 @@ from typing import Any, Optional
 from pydantic import field_validator, ValidationError
 from mindweaver.fw.exc import FieldValidationError
 import os
+import asyncio
+import tempfile
+from kubernetes import client, config
 
 
 class PgSqlPlatformState(PlatformStateBase, table=True):
@@ -99,6 +102,86 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
             loc = error["loc"]
             raise FieldValidationError(field_location=list(loc), message=msg)
         return data
+
+    async def poll_status(self, model: PgSqlPlatform):
+        """Poll the status of the CNPG cluster."""
+        kubeconfig = await self.kubeconfig(model)
+        namespace = await self._resolve_namespace(model)
+
+        def _poll():
+            if kubeconfig is None:
+                config.load_incluster_config()
+                k8s_client = client.ApiClient()
+            else:
+                with tempfile.NamedTemporaryFile(mode="w") as kf:
+                    kf.write(kubeconfig)
+                    kf.flush()
+                    k8s_client = config.new_client_from_config(config_file=kf.name)
+
+            custom_api = client.CustomObjectsApi(k8s_client)
+            core_v1 = client.CoreV1Api(k8s_client)
+
+            # 1. Fetch CNPG Cluster status
+            try:
+                cluster = custom_api.get_namespaced_custom_object(
+                    group="postgresql.cnpg.io",
+                    version="v1",
+                    namespace=namespace,
+                    plural="clusters",
+                    name=model.name,
+                )
+                status_data = cluster.get("status", {})
+                phase = status_data.get("phase", "unknown")
+                instances = status_data.get("instances", 0)
+                ready_instances = status_data.get("readyInstances", 0)
+
+                status = "online" if phase == "Cluster in healthy state" else "pending"
+                if phase == "Degraded":
+                    status = "error"
+
+                message = f"Phase: {phase}, Instances: {ready_instances}/{instances}"
+            except Exception as e:
+                status = "error"
+                message = f"Failed to fetch cluster status: {str(e)}"
+                status_data = {}
+
+            # 2. Fetch NodePort status if any
+            node_ports = []
+            try:
+                services = core_v1.list_namespaced_service(namespace=namespace)
+                for svc in services.items:
+                    if svc.metadata.name.startswith(model.name):
+                        if svc.spec.type == "NodePort":
+                            for port in svc.spec.ports:
+                                node_ports.append(
+                                    {
+                                        "name": svc.metadata.name,
+                                        "port": port.port,
+                                        "node_port": port.node_port,
+                                    }
+                                )
+            except Exception as e:
+                logger.error(f"Failed to fetch services: {e}")
+
+            return status, message, status_data, node_ports
+
+        status, message, extra_data, node_ports = await asyncio.to_thread(_poll)
+
+        # Update state
+        state = await self.platform_state(model)
+        if not state:
+            state = self.state_model(platform_id=model.id)
+            self.session.add(state)
+
+        state.status = status
+        state.message = message
+        state.extra_data = extra_data
+        state.node_ports = node_ports
+        from mindweaver.fw.model import ts_now
+
+        state.last_heartbeat = ts_now()
+
+        await self.session.commit()
 
 
 router = PgSqlPlatformService.router()

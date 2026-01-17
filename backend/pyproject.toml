@@ -29,6 +29,8 @@ dependencies = [
     "sqlmodel>=0.0.27",
     "uuid7>=0.1.0",
     "kubernetes>=31.0.0",
+    "celery[redis]>=5.4.0",
+    "watchdog>=6.0.0",
 ]
 
 [project.scripts]

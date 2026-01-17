@@ -36,6 +36,7 @@ class PlatformStateBase(Base):
     last_heartbeat: Optional[datetime] = Field(
         default=None, sa_type=DateTime(timezone=True)
     )
+    node_ports: list[dict[str, Any]] = Field(default_factory=list, sa_type=JSONType())
     extra_data: dict[str, Any] = Field(default_factory=dict, sa_type=JSONType())
 
 
@@ -142,6 +143,28 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
 
         # Decommission from cluster
         await self._decommission_from_cluster(kubeconfig, full_manifest, namespace)
+
+    async def list_active_platforms(self) -> list[T]:
+        """Returns a list of active platforms for polling."""
+        model_class = self.model_class()
+        if not self.state_model:
+            return []
+
+        # Join with state model to filter active ones
+        stmt = (
+            select(model_class)
+            .join(self.state_model, model_class.id == self.state_model.platform_id)
+            .where(self.state_model.active == True)
+        )
+        result = await self.session.exec(stmt)
+        return list(result.all())
+
+    async def poll_status(self, model: T):
+        """
+        Poll the status of the platform from Kubernetes.
+        To be overridden by subclasses.
+        """
+        pass
 
     async def _deploy_to_cluster(
         self, kubeconfig: str | None, manifest: str, default_namespace: str = "default"

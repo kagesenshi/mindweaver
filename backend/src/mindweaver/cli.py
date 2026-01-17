@@ -13,6 +13,9 @@ from mindweaver.crypto import generate_fernet_key, rotate_key, EncryptionError
 import asyncio
 import sqlalchemy as sa
 import uvicorn
+import subprocess
+import sys
+from pathlib import Path
 from .config import logger
 
 
@@ -161,6 +164,124 @@ def handle_crypto_rotate_key(args: CryptoRotateKeyArgs):
         engine.dispose()
 
 
+def run_with_reloader(cmd, watch_dir: str = "."):
+    """
+    Run a command and restart it when files in watch_dir change.
+    """
+    from watchdog.observers import Observer
+    from watchdog.events import FileSystemEventHandler
+    import time
+
+    class RestartHandler(FileSystemEventHandler):
+        def __init__(self, callback):
+            self.callback = callback
+            self.last_restart = 0
+
+        def on_any_event(self, event):
+            if event.is_directory or not event.src_path.endswith(".py"):
+                return
+            current_time = time.time()
+            if current_time - self.last_restart > 1:
+                logger.info(f"File changed: {event.src_path}. Restarting...")
+                self.callback()
+                self.last_restart = current_time
+
+    process = None
+
+    def start_process():
+        nonlocal process
+        if process:
+            process.terminate()
+            process.wait()
+        process = subprocess.Popen(cmd)
+
+    start_process()
+
+    event_handler = RestartHandler(start_process)
+    observer = Observer()
+    observer.schedule(event_handler, watch_dir, recursive=True)
+    observer.start()
+
+    try:
+        while True:
+            time.sleep(1)
+            if process.poll() is not None:
+                # Process exited unexpectedly, restart it?
+                # For now just wait
+                pass
+    except KeyboardInterrupt:
+        observer.stop()
+        if process:
+            process.terminate()
+    observer.join()
+
+
+def handle_scheduler(args: argparse.Namespace):
+    """
+    Start the Celery scheduler (beat).
+    If embedded_worker is True, also start a worker.
+    """
+    cmd = [
+        sys.executable,
+        "-m",
+        "celery",
+        "-A",
+        "mindweaver.celery_app",
+        "beat",
+        "--loglevel=info",
+    ]
+
+    if settings.embedded_worker:
+        logger.info("Starting embedded Celery worker...")
+        # Start worker in background
+        worker_cmd = [
+            sys.executable,
+            "-m",
+            "celery",
+            "-A",
+            "mindweaver.celery_app",
+            "worker",
+            "--loglevel=info",
+            "--pool=solo",
+        ]
+        if args.reload:
+            # If reloading, we might want to start the worker with its own reloader too?
+            # Or just let the scheduler reloader handle both if they are in the same dir.
+            # However, subprocess.Popen doesn't block.
+            # For simplicity, if reload is on, we run the worker in a separate reloader process if EMBEDDED.
+            # But the scheduler itself will be the main blocking process.
+            subprocess.Popen([sys.executable, sys.argv[0], "worker", "--reload"])
+        else:
+            subprocess.Popen(worker_cmd)
+
+    logger.info("Starting Celery scheduler...")
+    if args.reload:
+        run_with_reloader(cmd, watch_dir=str(Path(__file__).parent.parent))
+    else:
+        subprocess.run(cmd)
+
+
+def handle_worker(args: argparse.Namespace):
+    """
+    Start the Celery worker.
+    """
+    logger.info("Starting Celery worker...")
+    cmd = [
+        sys.executable,
+        "-m",
+        "celery",
+        "-A",
+        "mindweaver.celery_app",
+        "worker",
+        "--loglevel=info",
+        "--pool=solo",
+    ]
+    if args.reload:
+        run_with_reloader(cmd, watch_dir=str(Path(__file__).parent.parent))
+    else:
+        subprocess.run(cmd)
+
+
 def get_parser() -> argparse.ArgumentParser:
     """
     Construct argument parser
@@ -229,6 +350,20 @@ def get_parser() -> argparse.ArgumentParser:
         "--new-key", dest="new_key", required=True, type=str, help="New encryption key"
     )
     crypto_rotate_key_cmd.set_defaults(handler=handle_crypto_rotate_key)
+
+    # scheduler
+    scheduler_cmd = subparsers.add_parser("scheduler", help="Start Celery scheduler")
+    scheduler_cmd.add_argument(
+        "--reload", action="store_true", help="Auto-reload on code changes"
+    )
+    scheduler_cmd.set_defaults(handler=handle_scheduler)
+
+    # worker
+    worker_cmd = subparsers.add_parser("worker", help="Start Celery worker")
+    worker_cmd.add_argument(
+        "--reload", action="store_true", help="Auto-reload on code changes"
+    )
+    worker_cmd.set_defaults(handler=handle_worker)
 
     return parser
 

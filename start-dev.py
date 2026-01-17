@@ -12,7 +12,24 @@ be = subprocess.Popen(
     ["uv", "run", "mindweaver", "run", "--port", "8000"], cwd=here / "backend"
 )
 
-processes = {"frontend": fe, "backend": be}
+import os
+
+worker_env = os.environ.copy()
+worker_env["MINDWEAVER_EMBEDDED_WORKER"] = "false"
+
+sched = subprocess.Popen(
+    ["uv", "run", "mindweaver", "scheduler", "--reload"],
+    cwd=here / "backend",
+    env=worker_env,
+)
+
+worker = subprocess.Popen(
+    ["uv", "run", "mindweaver", "worker", "--reload"],
+    cwd=here / "backend",
+    env=worker_env,
+)
+
+processes = {"frontend": fe, "backend": be, "scheduler": sched, "worker": worker}
 
 try:
     # Monitor processes and terminate all if any one exits

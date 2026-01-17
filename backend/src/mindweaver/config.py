@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     experimental_s3_storage: bool = False
     experimental_ingestion: bool = False
 
+    celery_broker_url: str = "redis://localhost:6379/0"
+    celery_result_backend: str = "redis://localhost:6379/0"
+    embedded_worker: bool = True
+
     oidc_issuer: str | None = None
     oidc_client_id: str | None = None
     oidc_client_secret: str | None = None
