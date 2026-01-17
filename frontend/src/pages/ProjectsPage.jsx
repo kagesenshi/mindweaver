@@ -15,7 +15,7 @@ import DynamicForm from '../components/DynamicForm';
 import PageLayout from '../components/PageLayout';
 
 const ProjectsPage = () => {
-    const { darkMode } = useOutletContext();
+    const { darkMode, refreshProjects } = useOutletContext();
     const { projects, loading, createProject, deleteProject, fetchProjects } = useProjects();
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -93,7 +93,10 @@ const ProjectsPage = () => {
                                         <Edit2 size={18} />
                                     </button>
                                     <button
-                                        onClick={() => deleteProject(proj.id)}
+                                        onClick={async () => {
+                                            await deleteProject(proj.id);
+                                            refreshProjects?.();
+                                        }}
                                         className="mw-btn-icon-danger"
                                         title="Delete Project"
                                     >
@@ -122,6 +125,7 @@ const ProjectsPage = () => {
                         onSuccess={() => {
                             setIsCreateModalOpen(false);
                             fetchProjects();
+                            refreshProjects?.();
                         }}
                         onCancel={() => setIsCreateModalOpen(false)}
                     />
@@ -146,6 +150,7 @@ const ProjectsPage = () => {
                                 setIsEditModalOpen(false);
                                 setSelectedProject(null);
                                 fetchProjects();
+                                refreshProjects?.();
                             }}
                             onCancel={() => {
                                 setIsEditModalOpen(false);

@@ -39,7 +39,7 @@ const MainLayout = () => {
         localStorage.setItem('mindweaver-sidebar-collapsed', JSON.stringify(isSidebarCollapsed));
     }, [isSidebarCollapsed]);
 
-    const { projects } = useProjects();
+    const { projects, fetchProjects } = useProjects();
 
     const handleProjectChange = (project) => {
         setSelectedProject(project);
@@ -74,7 +74,7 @@ const MainLayout = () => {
                 />
 
                 <main className="flex-1 p-8 overflow-y-auto">
-                    <Outlet key={selectedProject?.id || 'all'} context={{ darkMode, selectedProject }} />
+                    <Outlet key={selectedProject?.id || 'all'} context={{ darkMode, selectedProject, projects, refreshProjects: fetchProjects }} />
                 </main>
 
                 <footer className={cn(
