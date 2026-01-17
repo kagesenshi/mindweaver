@@ -50,7 +50,7 @@ export const useDataSources = () => {
     const fetchDataSources = useCallback(async () => {
         setLoading(true);
         try {
-            const response = await apiClient.get('/data_sources');
+            const response = await apiClient.get(`/data_sources?_cb=${Date.now()}`);
             setDataSources(response.data.records || []);
         } catch (err) {
             setError(err);
@@ -96,7 +96,7 @@ export const usePgSql = () => {
     const fetchPlatforms = useCallback(async () => {
         setLoading(true);
         try {
-            const response = await apiClient.get('/platform/pgsql');
+            const response = await apiClient.get(`/platform/pgsql?_cb=${Date.now()}`);
             setPlatforms(response.data.records || []);
         } catch (err) {
             setError(err);
@@ -141,7 +141,7 @@ export const useK8sClusters = () => {
     const fetchClusters = useCallback(async () => {
         setLoading(true);
         try {
-            const response = await apiClient.get('/k8s_clusters');
+            const response = await apiClient.get(`/k8s_clusters?_cb=${Date.now()}`);
             setClusters(response.data.records || []);
         } catch (err) {
             setError(err);
@@ -182,7 +182,7 @@ export const useS3Storages = () => {
     const fetchStorages = useCallback(async () => {
         setLoading(true);
         try {
-            const response = await apiClient.get('/s3_storages');
+            const response = await apiClient.get(`/s3_storages?_cb=${Date.now()}`);
             setStorages(response.data.records || []);
         } catch (err) {
             setError(err);

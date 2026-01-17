@@ -43,7 +43,7 @@ const StatusBadge = ({ status }) => {
 
 const PgSqlPage = () => {
     const { darkMode, selectedProject } = useOutletContext();
-    const { platforms, loading, deletePlatform, updatePlatformState, getPlatformState } = usePgSql();
+    const { platforms, loading, deletePlatform, updatePlatformState, getPlatformState, fetchPlatforms } = usePgSql();
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [selectedPlatform, setSelectedPlatform] = useState(null);
     const [platformState, setPlatformState] = useState(null);
@@ -227,6 +227,7 @@ const PgSqlPage = () => {
                                     darkMode={darkMode}
                                     onCancel={() => setActiveTab('connect')}
                                     onSuccess={() => {
+                                        fetchPlatforms();
                                         setActiveTab('connect');
                                     }}
                                 />
@@ -307,6 +308,7 @@ const PgSqlPage = () => {
                     darkMode={darkMode}
                     initialData={{ project_id: selectedProject?.id }}
                     onSuccess={() => {
+                        fetchPlatforms();
                         setIsCreateModalOpen(false);
                     }}
                     onCancel={() => setIsCreateModalOpen(false)}
