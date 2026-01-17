@@ -26,6 +26,8 @@ const MainLayout = () => {
         return saved !== null ? JSON.parse(saved) : false;
     });
 
+    const [refreshKey, setRefreshKey] = useState(0);
+
     useEffect(() => {
         localStorage.setItem('mindweaver-dark-mode', JSON.stringify(darkMode));
         if (darkMode) {
@@ -50,6 +52,10 @@ const MainLayout = () => {
         }
     };
 
+    const triggerRefresh = () => {
+        setRefreshKey(prev => prev + 1);
+    };
+
     // Toggle function
     const toggleSidebar = () => setIsSidebarCollapsed(prev => !prev);
 
@@ -59,6 +65,7 @@ const MainLayout = () => {
                 darkMode={darkMode}
                 isCollapsed={isSidebarCollapsed}
                 toggleSidebar={toggleSidebar}
+                onNavItemClick={triggerRefresh}
             />
 
             <div className={cn(
@@ -74,7 +81,7 @@ const MainLayout = () => {
                 />
 
                 <main className="flex-1 p-8 overflow-y-auto">
-                    <Outlet key={selectedProject?.id || 'all'} context={{ darkMode, selectedProject, projects, refreshProjects: fetchProjects }} />
+                    <Outlet key={`${selectedProject?.id || 'all'}-${refreshKey}`} context={{ darkMode, selectedProject, projects, refreshProjects: fetchProjects }} />
                 </main>
 
                 <footer className={cn(

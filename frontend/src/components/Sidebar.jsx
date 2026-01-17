@@ -1,5 +1,4 @@
-import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import {
     Monitor,
     Briefcase,
@@ -42,10 +41,17 @@ const INFRA_ITEMS = [
     { name: 'Apache Kafka', to: '/platform/kafka', icon: RefreshCcw },
 ];
 
-const Sidebar = ({ darkMode, isCollapsed, toggleSidebar }) => {
+const Sidebar = ({ darkMode, isCollapsed, toggleSidebar, onNavItemClick }) => {
     const { user } = useAuth();
+    const location = useLocation();
     const sidebarBg = darkMode ? "bg-[#0c0e12]" : "bg-white";
     const borderCol = darkMode ? "border-slate-800" : "border-slate-200";
+
+    const handleClick = (to) => {
+        if (location.pathname === to) {
+            onNavItemClick?.();
+        }
+    };
 
     return (
         <aside className={cn(
@@ -88,6 +94,7 @@ const Sidebar = ({ darkMode, isCollapsed, toggleSidebar }) => {
                     <Tooltip key={item.to} content={item.name} disabled={!isCollapsed} side="right">
                         <NavLink
                             to={item.to}
+                            onClick={() => handleClick(item.to)}
                             className={({ isActive }) => cn(
                                 "mw-nav-item flex items-center transition-all duration-200",
                                 isCollapsed ? "justify-center p-2 rounded-lg" : "px-3 py-2 rounded-lg gap-3",
@@ -114,6 +121,7 @@ const Sidebar = ({ darkMode, isCollapsed, toggleSidebar }) => {
                     <Tooltip key={item.to} content={item.name} disabled={!isCollapsed} side="right">
                         <NavLink
                             to={item.to}
+                            onClick={() => handleClick(item.to)}
                             className={({ isActive }) => cn(
                                 "mw-nav-item flex items-center transition-all duration-200",
                                 isCollapsed ? "justify-center p-2 rounded-lg" : "px-3 py-2 rounded-lg gap-3",
