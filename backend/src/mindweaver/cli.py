@@ -164,10 +164,12 @@ def handle_crypto_rotate_key(args: CryptoRotateKeyArgs):
         engine.dispose()
 
 
-def run_with_reloader(cmd, watch_dir: str = "."):
+def run_with_reloader(cmd, watch_dir: str = None):
     """
     Run a command and restart it when files in watch_dir change.
     """
+    if watch_dir is None:
+        watch_dir = str(Path(__file__).parent)
     from watchdog.observers import Observer
     from watchdog.events import FileSystemEventHandler
     import time
@@ -177,11 +179,23 @@ def run_with_reloader(cmd, watch_dir: str = "."):
             self.callback = callback
             self.last_restart = 0
 
-        def on_any_event(self, event):
+        def on_modified(self, event):
+            self._handle_event(event)
+
+        def on_created(self, event):
+            self._handle_event(event)
+
+        def on_deleted(self, event):
+            self._handle_event(event)
+
+        def on_moved(self, event):
+            self._handle_event(event)
+
+        def _handle_event(self, event):
             if event.is_directory or not event.src_path.endswith(".py"):
                 return
             current_time = time.time()
-            if current_time - self.last_restart > 1:
+            if current_time - self.last_restart > 5:
                 logger.info(f"File changed: {event.src_path}. Restarting...")
                 self.callback()
                 self.last_restart = current_time
@@ -256,7 +270,7 @@ def handle_scheduler(args: argparse.Namespace):
 
     logger.info("Starting Celery scheduler...")
     if args.reload:
-        run_with_reloader(cmd, watch_dir=str(Path(__file__).parent.parent))
+        run_with_reloader(cmd)
     else:
         subprocess.run(cmd)
 
@@ -277,7 +291,7 @@ def handle_worker(args: argparse.Namespace):
         "--pool=solo",
     ]
     if args.reload:
-        run_with_reloader(cmd, watch_dir=str(Path(__file__).parent.parent))
+        run_with_reloader(cmd)
     else:
         subprocess.run(cmd)
 
