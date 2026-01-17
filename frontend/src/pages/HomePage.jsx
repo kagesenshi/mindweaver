@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import {
-    Rocket,
     Server,
     Tag,
     Briefcase,
@@ -29,14 +28,6 @@ const HomePage = () => {
         <PageLayout
             title={selectedProject ? `Stack: ${selectedProject.name}` : 'Unified Fleet'}
             description={`Monitoring ${filteredInstances.length} resources across all projects.`}
-            headerActions={
-                <button
-                    onClick={() => navigate('/platform/pgsql')}
-                    className="mw-btn-primary px-4 py-2.5"
-                >
-                    <Rocket size={14} /> NEW DEPLOYMENT
-                </button>
-            }
             searchQuery={searchTerm}
             onSearchChange={(e) => setSearchTerm(e.target.value)}
             searchPlaceholder="Search within fleet..."
