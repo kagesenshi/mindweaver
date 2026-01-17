@@ -149,50 +149,6 @@ const PgSqlPage = () => {
 
                     {activeTab === 'connect' ? (
                         <div className="space-y-6 animate-in fade-in duration-500">
-                            {/* Cluster Credentials Section */}
-                            <div className="mw-panel">
-                                <div className={cn("p-4 border-b flex items-center justify-between", darkMode ? 'border-slate-800 bg-slate-950/30' : 'border-slate-200 bg-slate-50')}>
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-blue-500/10 text-blue-400 rounded-lg"><Lock size={18} /></div>
-                                        <h4 className="text-base font-bold tracking-wider leading-none text-slate-900 dark:text-white">Cluster Credentials</h4>
-                                    </div>
-                                    <div className="mw-badge-success gap-2 px-3 py-1">
-                                        <CheckCircle2 size={12} />
-                                        SSL Verified
-                                    </div>
-                                </div>
-
-                                <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    {[
-                                        { label: 'Username', val: 'mw_admin' },
-                                        { label: 'Default DB', val: 'mindweaver' }
-                                    ].map((item, i) => (
-                                        <div key={i} className="p-3 border rounded-xl group relative bg-slate-50 border-slate-200 dark:bg-slate-950/50 dark:border-slate-800">
-                                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">{item.label}</p>
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-sm font-mono truncate pr-4 text-slate-700 dark:text-slate-200">{item.val}</span>
-                                                <button onClick={() => navigator.clipboard.writeText(item.val)} className="text-slate-400 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-all"><Copy size={12} /></button>
-                                            </div>
-                                        </div>
-                                    ))}
-
-                                    <div className="p-3 border rounded-xl group relative bg-slate-50 border-slate-200 dark:bg-slate-950/50 dark:border-slate-800">
-                                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Administrative Password</p>
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-sm font-mono text-slate-700 dark:text-slate-200">
-                                                {showPassword ? "__REDACTED__" : "••••••••••••••••"}
-                                            </span>
-                                            <div className="flex items-center gap-2">
-                                                <button onClick={() => setShowPassword(!showPassword)} className="text-slate-400 hover:text-slate-600 transition-colors">
-                                                    {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-                                                </button>
-                                                <button onClick={() => navigator.clipboard.writeText("__REDACTED__")} className="text-slate-400 hover:text-blue-500"><Copy size={14} /></button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
                             {/* External Access Section */}
                             {platformState?.node_ports?.length > 0 && (
                                 <div className="mw-panel">
@@ -266,10 +222,10 @@ const PgSqlPage = () => {
                                                 </div>
                                                 <div className="p-6 relative group">
                                                     <pre className="text-sm font-mono text-blue-400 leading-relaxed overflow-x-auto whitespace-pre-wrap">
-                                                        psql -h {platformState.cluster_nodes?.[0]?.ip || '[NODE_IP]'} -p {platformState.node_ports?.[0]?.node_port || '[PORT]'} -U mw_admin -d mindweaver
+                                                        psql -h {platformState.cluster_nodes?.[0]?.ip || '[NODE_IP]'} -p {platformState.node_ports?.[0]?.node_port || '[PORT]'} -U {platformState?.db_user || 'pending'} -d {platformState?.db_name || 'pending'}
                                                     </pre>
                                                     <button
-                                                        onClick={() => navigator.clipboard.writeText(`psql -h ${platformState.cluster_nodes?.[0]?.ip || '[NODE_IP]'} -p ${platformState.node_ports?.[0]?.node_port || '[PORT]'} -U mw_admin -d mindweaver`)}
+                                                        onClick={() => navigator.clipboard.writeText(`psql -h ${platformState.cluster_nodes?.[0]?.ip || '[NODE_IP]'} -p ${platformState.node_ports?.[0]?.node_port || '[PORT]'} -U ${platformState?.db_user || 'pending'} -d ${platformState?.db_name || 'pending'}`)}
                                                         className="absolute top-4 right-4 p-2 text-slate-500 hover:text-white opacity-0 group-hover:opacity-100 transition-all"
                                                     >
                                                         <Copy size={16} />
@@ -280,6 +236,70 @@ const PgSqlPage = () => {
                                     </div>
                                 </div>
                             )}
+
+                            {/* Cluster Credentials Section */}
+                            <div className="mw-panel">
+                                <div className={cn("p-4 border-b flex items-center justify-between", darkMode ? 'border-slate-800 bg-slate-950/30' : 'border-slate-200 bg-slate-50')}>
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-blue-500/10 text-blue-400 rounded-lg"><Lock size={18} /></div>
+                                        <h4 className="text-base font-bold tracking-wider leading-none text-slate-900 dark:text-white">Cluster Credentials</h4>
+                                    </div>
+                                </div>
+
+                                <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="p-3 border rounded-xl group relative bg-slate-50 border-slate-200 dark:bg-slate-950/50 dark:border-slate-800">
+                                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Username</p>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-sm font-mono truncate pr-4 text-slate-700 dark:text-slate-200">{platformState?.db_user || 'pending'}</span>
+                                            <button onClick={() => navigator.clipboard.writeText(platformState?.db_user || '')} className="text-slate-400 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-all"><Copy size={12} /></button>
+                                        </div>
+                                    </div>
+
+                                    <div className="p-3 border rounded-xl group relative bg-slate-50 border-slate-200 dark:bg-slate-950/50 dark:border-slate-800">
+                                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Password</p>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-sm font-mono text-slate-700 dark:text-slate-200">
+                                                {showPassword ? (platformState?.db_pass || "pending") : "••••••••••••••••"}
+                                            </span>
+                                            <div className="flex items-center gap-2">
+                                                <button onClick={() => setShowPassword(!showPassword)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                                                    {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                                                </button>
+                                                <button onClick={() => navigator.clipboard.writeText(platformState?.db_pass || "")} className="text-slate-400 hover:text-blue-500"><Copy size={14} /></button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="p-3 border rounded-xl group relative bg-slate-50 border-slate-200 dark:bg-slate-950/50 dark:border-slate-800">
+                                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Database</p>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-sm font-mono truncate pr-4 text-slate-700 dark:text-slate-200">{platformState?.db_name || 'pending'}</span>
+                                            <button onClick={() => navigator.clipboard.writeText(platformState?.db_name || '')} className="text-slate-400 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-all"><Copy size={12} /></button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {platformState?.db_ca_crt && (
+                                    <div className="px-6 pb-6 animate-in slide-in-from-top-2 duration-300">
+                                        <div className="p-4 border rounded-xl bg-slate-50 border-slate-200 dark:bg-slate-950/50 dark:border-slate-800">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">CA Certificate</p>
+                                                <button
+                                                    onClick={() => navigator.clipboard.writeText(platformState.db_ca_crt)}
+                                                    className="text-xs font-bold text-blue-500 hover:text-blue-400 flex items-center gap-1.5 transition-colors"
+                                                >
+                                                    <Copy size={12} /> COPY CERTIFICATE
+                                                </button>
+                                            </div>
+                                            <div className="bg-slate-900 rounded-lg p-3 relative group text-emerald-400/90">
+                                                <pre className="text-[10px] font-mono leading-tight overflow-x-auto max-h-[120px] scrollbar-thin scrollbar-thumb-slate-700">
+                                                    {platformState.db_ca_crt}
+                                                </pre>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     ) : (
                         <div className="mw-panel animate-in fade-in slide-in-from-top-4 duration-500">

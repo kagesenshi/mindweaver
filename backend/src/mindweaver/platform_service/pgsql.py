@@ -7,15 +7,27 @@ from sqlmodel import Field
 from typing import Any, Optional
 from pydantic import field_validator, ValidationError
 from mindweaver.fw.exc import FieldValidationError
+import fastapi
+from fastapi import Depends
+import base64
+import logging
 import os
 import asyncio
 import tempfile
+from typing import Any, Optional, Annotated
 from kubernetes import client, config
+
+logger = logging.getLogger(__name__)
 
 
 class PgSqlPlatformState(PlatformStateBase, table=True):
     __tablename__ = "mw_pgsql_platform_state"
     platform_id: int = Field(foreign_key="mw_pgsql_platform.id", index=True)
+
+    db_user: Optional[str] = Field(default=None)
+    db_pass: Optional[str] = Field(default=None)
+    db_name: Optional[str] = Field(default=None)
+    db_ca_crt: Optional[str] = Field(default=None)
 
 
 class PgSqlPlatform(PlatformBase, table=True):
@@ -178,9 +190,58 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
             except Exception as e:
                 logger.error(f"Failed to fetch nodes: {e}")
 
-            return status, message, status_data, node_ports, cluster_nodes
+            # 4. Fetch DB Credentials from Secret
+            db_credentials = {}
+            try:
+                secret_name = f"{model.name}-app"
+                secret = core_v1.read_namespaced_secret(
+                    name=secret_name, namespace=namespace
+                )
+                if secret.data:
+                    from mindweaver.crypto import encrypt_password
 
-        status, message, extra_data, node_ports, cluster_nodes = (
+                    db_credentials["db_user"] = base64.b64decode(
+                        secret.data.get("username", "")
+                    ).decode("utf-8")
+                    db_credentials["db_name"] = base64.b64decode(
+                        secret.data.get("dbname", "")
+                    ).decode("utf-8")
+                    db_credentials["db_ca_crt"] = base64.b64decode(
+                        secret.data.get("ca.crt", "")
+                    ).decode("utf-8")
+
+                    password_raw = base64.b64decode(
+                        secret.data.get("password", "")
+                    ).decode("utf-8")
+                    if password_raw:
+                        db_credentials["db_pass"] = encrypt_password(password_raw)
+            except Exception as e:
+                logger.error(f"Failed to fetch secret {model.name}-app: {e}")
+
+            # Try to fetch CA cert from -ca secret if still missing
+            if not db_credentials.get("db_ca_crt"):
+                try:
+                    ca_secret_name = f"{model.name}-ca"
+                    ca_secret = core_v1.read_namespaced_secret(
+                        name=ca_secret_name, namespace=namespace
+                    )
+                    if ca_secret.data and "ca.crt" in ca_secret.data:
+                        db_credentials["db_ca_crt"] = base64.b64decode(
+                            ca_secret.data["ca.crt"]
+                        ).decode("utf-8")
+                except Exception as e:
+                    logger.debug(f"Failed to fetch secret {model.name}-ca: {e}")
+
+            return (
+                status,
+                message,
+                status_data,
+                node_ports,
+                cluster_nodes,
+                db_credentials,
+            )
+
+        status, message, extra_data, node_ports, cluster_nodes, db_credentials = (
             await asyncio.to_thread(_poll)
         )
 
@@ -195,11 +256,53 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
         state.extra_data = extra_data
         state.node_ports = node_ports
         state.cluster_nodes = cluster_nodes
+
+        if db_credentials:
+            state.db_user = db_credentials.get("db_user")
+            state.db_pass = db_credentials.get("db_pass")
+            state.db_name = db_credentials.get("db_name")
+            state.db_ca_crt = db_credentials.get("db_ca_crt")
         from mindweaver.fw.model import ts_now
 
         state.last_heartbeat = ts_now()
 
         await self.session.commit()
+
+    @classmethod
+    def register_views(
+        cls, router: fastapi.APIRouter, service_path: str, model_path: str
+    ):
+        """Register views for the service, overriding the state endpoint to decrypt password"""
+        model_class = cls.model_class()
+        entity_type = cls.entity_type()
+        path_tags = cls.path_tags()
+
+        @router.get(
+            f"{model_path}/_state",
+            operation_id=f"mw-get-state-{entity_type}-custom",
+            dependencies=cls.extra_dependencies(),
+            tags=path_tags,
+        )
+        async def get_state(
+            svc: Annotated[cls, Depends(cls.get_service)],
+            model: Annotated[model_class, Depends(cls.get_model)],
+        ):
+            state = await svc.platform_state(model)
+            if not state:
+                return {}
+
+            # Create a copy to modify
+            from mindweaver.crypto import decrypt_password
+
+            state_dict = state.model_dump()
+            if state.db_pass:
+                try:
+                    state_dict["db_pass"] = decrypt_password(state.db_pass)
+                except Exception:
+                    pass
+            return state_dict
+
+        super().register_views(router, service_path, model_path)
 
 
 router = PgSqlPlatformService.router()
