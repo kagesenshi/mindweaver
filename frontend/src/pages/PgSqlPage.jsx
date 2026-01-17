@@ -54,6 +54,7 @@ const PgSqlPage = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [allPlatformStates, setAllPlatformStates] = useState({});
 
     const filteredPlatforms = platforms.filter(p => {
         const matchesProject = !selectedProject || p.project_id === selectedProject.id;
@@ -62,6 +63,24 @@ const PgSqlPage = () => {
             String(p.id).toLowerCase().includes(searchTerm.toLowerCase());
         return matchesProject && matchesSearch;
     });
+
+    useEffect(() => {
+        if (platforms.length > 0) {
+            const fetchStates = async () => {
+                const states = {};
+                await Promise.all(platforms.map(async (p) => {
+                    try {
+                        const state = await getPlatformState(p.id);
+                        states[p.id] = state;
+                    } catch (e) {
+                        console.error(`Failed to fetch state for platform ${p.id}`, e);
+                    }
+                }));
+                setAllPlatformStates(states);
+            };
+            fetchStates();
+        }
+    }, [platforms]);
 
     useEffect(() => {
         let timer;
@@ -402,12 +421,18 @@ const PgSqlPage = () => {
                             icon={<Server size={20} />}
                             title={platform.title}
                             subtitle={platform.id}
-                            status="running"
+                            status={allPlatformStates[platform.id]?.status || (allPlatformStates[platform.id]?.active ? 'active' : 'stopped')}
                             onEdit={() => {
                                 setSelectedPlatform(platform);
                                 setActiveTab('configure');
                             }}
                             onDelete={() => handleDelete(platform.id)}
+                            footer={allPlatformStates[platform.id]?.message && (
+                                <div className="flex items-center gap-1.5 text-xs text-slate-500 bg-slate-100 dark:bg-slate-800/50 px-2 py-1 rounded-lg truncate">
+                                    <Activity size={12} className="text-blue-500 shrink-0" />
+                                    <span className="truncate">{allPlatformStates[platform.id].message}</span>
+                                </div>
+                            )}
                         >
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="flex items-center gap-2 text-slate-500">

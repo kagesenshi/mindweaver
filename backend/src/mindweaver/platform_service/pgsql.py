@@ -129,7 +129,10 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
         kubeconfig = await self.kubeconfig(model)
         namespace = await self._resolve_namespace(model)
 
-        def _poll():
+        state = await self.platform_state(model)
+        is_active = state.active if state else True
+
+        def _poll(active: bool):
             if kubeconfig is None:
                 config.load_incluster_config()
                 k8s_client = client.ApiClient()
@@ -161,6 +164,14 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
                     status = "error"
 
                 message = f"Phase: {phase}, Instances: {ready_instances}/{instances}"
+            except client.exceptions.ApiException as e:
+                if e.status == 404 and not active:
+                    status = "offline"
+                    message = "Cluster is stopped"
+                else:
+                    status = "error"
+                    message = f"Failed to fetch cluster status: {str(e)}"
+                status_data = {}
             except Exception as e:
                 status = "error"
                 message = f"Failed to fetch cluster status: {str(e)}"
@@ -251,7 +262,7 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
             )
 
         status, message, extra_data, node_ports, cluster_nodes, db_credentials = (
-            await asyncio.to_thread(_poll)
+            await asyncio.to_thread(_poll, is_active)
         )
 
         # Update state

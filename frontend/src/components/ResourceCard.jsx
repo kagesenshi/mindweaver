@@ -5,9 +5,11 @@ import { cn } from '../utils/cn';
 const StatusBadge = ({ status }) => {
     const styles = {
         running: 'mw-badge-success',
+        online: 'mw-badge-success',
         connected: 'mw-badge-success',
         active: 'mw-badge-success',
         warning: 'mw-badge-warning',
+        pending: 'mw-badge-warning',
         stopped: 'mw-badge-neutral',
         error: 'mw-badge-danger',
         unknown: 'mw-badge-neutral'
