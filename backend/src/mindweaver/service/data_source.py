@@ -1,5 +1,6 @@
 from . import NamedBase
 from .base import ProjectScopedNamedBase, ProjectScopedService
+from mindweaver.fw.service import SecretHandlerMixin
 from sqlalchemy import String, Text, Boolean
 from sqlalchemy_utils import JSONType
 from sqlmodel import Field
@@ -51,7 +52,7 @@ class DataSource(ProjectScopedNamedBase, table=True):
     )
 
 
-class DataSourceService(ProjectScopedService[DataSource]):
+class DataSourceService(SecretHandlerMixin, ProjectScopedService[DataSource]):
     @classmethod
     def model_class(cls) -> type[DataSource]:
         return DataSource
@@ -66,81 +67,11 @@ class DataSourceService(ProjectScopedService[DataSource]):
             "parameters": {"type": "key-value"},
         }
 
-    def _encrypt_password_if_needed(self, data_dict: dict[str, Any]) -> None:
-        """Encrypt password field if present and not empty."""
-        password = data_dict.get("password")
-        if password:
-            if password == "__REDACTED__":
-                # Should have been handled before, but just in case
-                data_dict.pop("password")
-            elif password == "__CLEAR__":
-                data_dict["password"] = None
-            else:
-                try:
-                    data_dict["password"] = encrypt_password(password)
-                except EncryptionError as e:
-                    raise HTTPException(
-                        status_code=500, detail=f"Failed to encrypt password: {str(e)}"
-                    )
-
-    async def create(self, data: NamedBase) -> DataSource:
-        data_dict = data.model_dump() if hasattr(data, "model_dump") else dict(data)
-        self._encrypt_password_if_needed(data_dict)
-
-        # Re-construct model with potentially modified dict (if we could, strictly)
-        # But we are calling super().create(data).
-        # We need to modify 'data' itself if it's a model instance, or pass dict to DB.
-        # ProjectScopedService.create expects a NamedBase model.
-        # Let's modify the attribute on 'data' directly if possible.
-        if "password" in data_dict:
-            if hasattr(data, "password"):
-                setattr(data, "password", data_dict["password"])
-
-        return await super().create(data)
-
-    def post_process_model(self, model: DataSource) -> DataSource:
-        if model.password:
-            model.password = "__REDACTED__"
-        return model
+    @classmethod
+    def redacted_fields(cls) -> list[str]:
+        return ["password"]
 
     async def update(self, model_id: int, data: NamedBase) -> DataSource:
-        data_dict = (
-            data.model_dump(exclude_unset=True)
-            if hasattr(data, "model_dump")
-            else dict(data)
-        )
-
-        existing = await self.get(model_id)
-        if not existing:
-            raise HTTPException(status_code=404, detail="Data source not found")
-
-        # Handle password logic
-        if "password" in data_dict:
-            password = data_dict["password"]
-            if password == "__REDACTED__":
-                # Remove from update to keep existing
-                pass
-            elif password == "__CLEAR__":
-                if hasattr(data, "password"):
-                    setattr(data, "password", None)
-            elif password:
-                # Encrypt new password
-                try:
-                    encrypted = encrypt_password(password)
-                    if hasattr(data, "password"):
-                        setattr(data, "password", encrypted)
-                except EncryptionError as e:
-                    raise HTTPException(
-                        status_code=500, detail=f"Failed to encrypt password: {str(e)}"
-                    )
-            else:
-                # Empty string usually means clear or no change?
-                # User config usually implies empty = no change or clear.
-                # Let's assume empty string = None/Clear if it was passed explicitly?
-                # Or just ignore? Standard practice regarding __REDACTED__ implies explicit clear is needed.
-                # If user sends "", it might be intended as clearing.
-                pass
-
         return await super().update(model_id, data)
 
     async def perform_test_connection(self, config: dict[str, Any]) -> dict[str, Any]:

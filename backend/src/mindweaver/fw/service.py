@@ -216,6 +216,85 @@ def _sort_hooks(hooks: list[Any]) -> list[Any]:
     return [name_to_hook[name] for name in sorted_names]
 
 
+class SecretHandlerMixin:
+    """
+    Mixin for services that handle sensitive fields that should be redacted
+    when returned to the client and encrypted when stored in the database.
+    """
+
+    @classmethod
+    def redacted_fields(cls) -> list[str]:
+        """
+        Return a list of field names that should be redacted/encrypted.
+        """
+        return []
+
+    @before_create
+    async def _handle_redacted_create(self, model: S):
+        from mindweaver.crypto import encrypt_password, EncryptionError
+        from fastapi import HTTPException
+
+        for field in self.redacted_fields():
+            val = getattr(model, field, None)
+            if val:
+                try:
+                    setattr(model, field, encrypt_password(val))
+                except EncryptionError as e:
+                    raise HTTPException(
+                        status_code=500, detail=f"Failed to encrypt {field}: {str(e)}"
+                    )
+
+    @before_update
+    async def _handle_redacted_update(self, model: S, data: NamedBase):
+        from mindweaver.crypto import encrypt_password, EncryptionError
+        from fastapi import HTTPException
+
+        data_dict = data.model_dump(exclude_unset=True)
+        for field in self.redacted_fields():
+            if field in data_dict:
+                val = data_dict[field]
+                if val == "__REDACTED__":
+                    # Keep existing value (set data field to current model value)
+                    setattr(data, field, getattr(model, field))
+                elif val == "__CLEAR__":
+                    setattr(data, field, "")
+                elif val:
+                    try:
+                        setattr(data, field, encrypt_password(val))
+                    except EncryptionError as e:
+                        raise HTTPException(
+                            status_code=500,
+                            detail=f"Failed to encrypt {field}: {str(e)}",
+                        )
+
+    def post_process_model(self, model: S) -> S:
+        """
+        Redact sensitive fields before returning to client.
+        Creates a copy to avoid modifying the session model.
+        """
+        if hasattr(super(), "post_process_model"):
+            model = super().post_process_model(model)
+
+        redacted_fields = self.redacted_fields()
+        if not redacted_fields:
+            return model
+
+        # Check if any field needs redaction
+        has_sensitive_data = any(
+            getattr(model, field, None) for field in redacted_fields
+        )
+        if not has_sensitive_data:
+            return model
+
+        # Create a copy and redact
+        model_dict = model.model_dump()
+        for field in redacted_fields:
+            if model_dict.get(field):
+                model_dict[field] = "__REDACTED__"
+
+        return model.__class__.model_validate(model_dict)
+
+
 class Service(Generic[S], abc.ABC):
     _before_create_hooks: list[Any] = []
     _after_create_hooks: list[Any] = []
@@ -244,7 +323,9 @@ class Service(Generic[S], abc.ABC):
         collected_after_delete = {}
 
         for base in reversed(cls.mro()):
-            if not issubclass(base, Service):
+            # We want to collect hooks from all base classes that might have them,
+            # not just those inheriting from Service (like mixins).
+            if base is object:
                 continue
 
             for attr_name, attr in base.__dict__.items():

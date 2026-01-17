@@ -1,5 +1,6 @@
 from . import NamedBase, Base
 from .base import ProjectScopedNamedBase, ProjectScopedService
+from mindweaver.fw.service import SecretHandlerMixin
 from mindweaver.config import settings
 from sqlalchemy import String
 from sqlalchemy_utils import JSONType
@@ -71,11 +72,15 @@ class TestConnectionRequest(BaseModel):
     storage_id: Optional[int] = None
 
 
-class S3StorageService(ProjectScopedService[S3Storage]):
+class S3StorageService(SecretHandlerMixin, ProjectScopedService[S3Storage]):
 
     @classmethod
     def model_class(cls) -> type[S3Storage]:
         return S3Storage
+
+    @classmethod
+    def redacted_fields(cls) -> list[str]:
+        return ["secret_key"]
 
     async def create(self, data: S3Storage) -> S3Storage:
         """
@@ -95,17 +100,7 @@ class S3StorageService(ProjectScopedService[S3Storage]):
                 message=message,
             )
 
-        # Encrypt secret_key if present
-        if data.secret_key:
-            try:
-                data.secret_key = encrypt_password(data.secret_key)
-            except EncryptionError as e:
-                raise HTTPException(
-                    status_code=500,
-                    detail=f"Failed to encrypt secret key: {str(e)}",
-                )
-
-        # Call parent create method
+        # Call parent create method which will handle encryption via RedactedServiceMixin
         return await super().create(data)
 
     async def update(self, model_id: int, data: S3Storage) -> S3Storage:
@@ -128,26 +123,20 @@ class S3StorageService(ProjectScopedService[S3Storage]):
         merged_data = existing.model_dump()
         merged_data.update(data_dict)
 
-        # Handle secret_key logic
         secret_is_encrypted = True
-        if "secret_key" in data_dict:
-            secret_key = data_dict["secret_key"]
+        secret_key = data_dict.get("secret_key")
+        if secret_key:
             if secret_key == "__CLEAR__":
-                data.secret_key = ""
                 merged_data["secret_key"] = ""
-            elif not secret_key or secret_key == "__REDACTED__":
-                # Retain existing secret_key
-                data.secret_key = existing.secret_key
+            elif secret_key == "__REDACTED__":
                 merged_data["secret_key"] = existing.secret_key
             else:
-                # New secret key provided (not yet encrypted in merged_data)
+                # New secret key provided
                 merged_data["secret_key"] = secret_key
                 secret_is_encrypted = False
 
         # Validate core fields
         try:
-            # If secret is already encrypted, we might want to skip validating its format
-            # but decrypting it for validation might be overkill if it was already valid.
             v_data = merged_data.copy()
             if secret_is_encrypted and v_data.get("secret_key"):
                 # Use a dummy secret for validation if it's already encrypted
@@ -163,30 +152,8 @@ class S3StorageService(ProjectScopedService[S3Storage]):
                 message=message,
             )
 
-        # Now encrypt the secret_key if it's a new one
-        if "secret_key" in data_dict and data.secret_key and not secret_is_encrypted:
-            try:
-                data.secret_key = encrypt_password(data.secret_key)
-            except EncryptionError as e:
-                raise HTTPException(
-                    status_code=500,
-                    detail=f"Failed to encrypt secret key: {str(e)}",
-                )
-
-        # Call parent update method
+        # Call parent update method which will handle encryption via RedactedServiceMixin
         return await super().update(model_id, data)
-
-    def post_process_model(self, model: S3Storage) -> S3Storage:
-        """
-        Redact the secret key before returning to the client.
-        """
-        if model.secret_key:
-            # Create a detached copy to avoid affecting the session
-            model_dict = model.model_dump()
-            if model_dict.get("secret_key"):
-                model_dict["secret_key"] = "__REDACTED__"
-            return S3Storage.model_validate(model_dict)
-        return model
 
     def verify_secret_key(self, model: S3Storage, secret_key: str) -> bool:
         """
