@@ -163,9 +163,26 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
             except Exception as e:
                 logger.error(f"Failed to fetch services: {e}")
 
-            return status, message, status_data, node_ports
+            # 3. Fetch Cluster Nodes
+            cluster_nodes = []
+            try:
+                nodes = core_v1.list_node()
+                for node in nodes.items:
+                    node_info = {"hostname": "unknown", "ip": "unknown"}
+                    for addr in node.status.addresses:
+                        if addr.type == "Hostname":
+                            node_info["hostname"] = addr.address
+                        elif addr.type == "InternalIP":
+                            node_info["ip"] = addr.address
+                    cluster_nodes.append(node_info)
+            except Exception as e:
+                logger.error(f"Failed to fetch nodes: {e}")
 
-        status, message, extra_data, node_ports = await asyncio.to_thread(_poll)
+            return status, message, status_data, node_ports, cluster_nodes
+
+        status, message, extra_data, node_ports, cluster_nodes = (
+            await asyncio.to_thread(_poll)
+        )
 
         # Update state
         state = await self.platform_state(model)
@@ -177,6 +194,7 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
         state.message = message
         state.extra_data = extra_data
         state.node_ports = node_ports
+        state.cluster_nodes = cluster_nodes
         from mindweaver.fw.model import ts_now
 
         state.last_heartbeat = ts_now()

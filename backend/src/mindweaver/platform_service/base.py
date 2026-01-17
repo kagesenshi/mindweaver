@@ -37,6 +37,9 @@ class PlatformStateBase(Base):
         default=None, sa_type=DateTime(timezone=True)
     )
     node_ports: list[dict[str, Any]] = Field(default_factory=list, sa_type=JSONType())
+    cluster_nodes: list[dict[str, Any]] = Field(
+        default_factory=list, sa_type=JSONType()
+    )
     extra_data: dict[str, Any] = Field(default_factory=dict, sa_type=JSONType())
 
 

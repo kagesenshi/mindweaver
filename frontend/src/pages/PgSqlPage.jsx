@@ -148,39 +148,36 @@ const PgSqlPage = () => {
                     </div>
 
                     {activeTab === 'connect' ? (
-                        <div className="mw-panel animate-in fade-in duration-500">
-                            <div className={cn("p-4 border-b flex items-center justify-between", darkMode ? 'border-slate-800 bg-slate-950/30' : 'border-slate-200 bg-slate-50')}>
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-blue-500/10 text-blue-400 rounded-lg"><Lock size={18} /></div>
-                                    <h4 className="text-base font-bold tracking-wider leading-none text-slate-900 dark:text-white">Internal Network Endpoint</h4>
-                                </div>
-                                <div className="mw-badge-success gap-2 px-3 py-1">
-                                    <CheckCircle2 size={12} />
-                                    SSL Verified
-                                </div>
-                            </div>
-
-                            <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                <div className="space-y-4">
-                                    <div className="grid grid-cols-2 gap-3">
-                                        {[
-                                            { label: 'Hostname', val: `${selectedPlatform.id}.pgsql.svc.cluster.local` },
-                                            { label: 'Port', val: '5432' },
-                                            { label: 'Username', val: 'mw_admin' },
-                                            { label: 'Default DB', val: 'mindweaver' }
-                                        ].map((item, i) => (
-                                            <div key={i} className="p-3 border rounded-xl group relative bg-slate-50 border-slate-200 dark:bg-slate-950/50 dark:border-slate-800">
-                                                <p className="text-sm text-slate-500 font-bold uppercase tracking-widest mb-1">{item.label}</p>
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-sm font-mono truncate pr-4 text-slate-700 dark:text-slate-200">{item.val}</span>
-                                                    <button className="text-slate-400 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-all"><Copy size={12} /></button>
-                                                </div>
-                                            </div>
-                                        ))}
+                        <div className="space-y-6 animate-in fade-in duration-500">
+                            {/* Cluster Credentials Section */}
+                            <div className="mw-panel">
+                                <div className={cn("p-4 border-b flex items-center justify-between", darkMode ? 'border-slate-800 bg-slate-950/30' : 'border-slate-200 bg-slate-50')}>
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-blue-500/10 text-blue-400 rounded-lg"><Lock size={18} /></div>
+                                        <h4 className="text-base font-bold tracking-wider leading-none text-slate-900 dark:text-white">Cluster Credentials</h4>
                                     </div>
+                                    <div className="mw-badge-success gap-2 px-3 py-1">
+                                        <CheckCircle2 size={12} />
+                                        SSL Verified
+                                    </div>
+                                </div>
+
+                                <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    {[
+                                        { label: 'Username', val: 'mw_admin' },
+                                        { label: 'Default DB', val: 'mindweaver' }
+                                    ].map((item, i) => (
+                                        <div key={i} className="p-3 border rounded-xl group relative bg-slate-50 border-slate-200 dark:bg-slate-950/50 dark:border-slate-800">
+                                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">{item.label}</p>
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-sm font-mono truncate pr-4 text-slate-700 dark:text-slate-200">{item.val}</span>
+                                                <button onClick={() => navigator.clipboard.writeText(item.val)} className="text-slate-400 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-all"><Copy size={12} /></button>
+                                            </div>
+                                        </div>
+                                    ))}
 
                                     <div className="p-3 border rounded-xl group relative bg-slate-50 border-slate-200 dark:bg-slate-950/50 dark:border-slate-800">
-                                        <p className="text-sm text-slate-500 font-bold uppercase tracking-widest mb-1">Administrative Password</p>
+                                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Administrative Password</p>
                                         <div className="flex items-center justify-between">
                                             <span className="text-sm font-mono text-slate-700 dark:text-slate-200">
                                                 {showPassword ? "__REDACTED__" : "••••••••••••••••"}
@@ -189,27 +186,100 @@ const PgSqlPage = () => {
                                                 <button onClick={() => setShowPassword(!showPassword)} className="text-slate-400 hover:text-slate-600 transition-colors">
                                                     {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
                                                 </button>
-                                                <button className="text-slate-400 hover:text-blue-500"><Copy size={14} /></button>
+                                                <button onClick={() => navigator.clipboard.writeText("__REDACTED__")} className="text-slate-400 hover:text-blue-500"><Copy size={14} /></button>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
+                            </div>
 
-                                <div className={cn(
-                                    "flex flex-col h-full rounded-xl border overflow-hidden",
-                                    darkMode ? 'bg-slate-950/80 border-slate-800' : 'bg-slate-900 border-slate-700'
-                                )}>
-                                    <div className={cn("flex border-b p-1", darkMode ? 'border-slate-800' : 'border-slate-700')}>
-                                        <button className="px-3 py-1.5 text-sm font-bold uppercase rounded-md bg-slate-700 text-white shadow-inner">bash</button>
-                                        <button className="px-3 py-1.5 text-sm font-bold uppercase rounded-md text-slate-500 hover:text-slate-300">python</button>
+                            {/* External Access Section */}
+                            {platformState?.node_ports?.length > 0 && (
+                                <div className="mw-panel">
+                                    <div className={cn("p-4 border-b flex items-center justify-between", darkMode ? 'border-slate-800 bg-slate-950/30' : 'border-slate-200 bg-slate-50')}>
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-amber-500/10 text-amber-500 rounded-lg"><Server size={18} /></div>
+                                            <h4 className="text-base font-bold tracking-wider leading-none text-slate-900 dark:text-white">External Network Access</h4>
+                                        </div>
                                     </div>
-                                    <div className="p-4 flex-1 relative group">
-                                        <pre className="text-sm font-mono text-blue-400 leading-relaxed overflow-x-auto whitespace-pre-wrap">
-                                            psql -h {selectedPlatform.id}.pgsql.svc.cluster.local -p 5432 -U mw_admin -d mindweaver
-                                        </pre>
+
+                                    <div className="p-6 space-y-8">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                                            {platformState.node_ports.map((np, i) => {
+                                                const label = np.name.endsWith('-rw-nodeport') ? 'Read-Write' :
+                                                    np.name.endsWith('-ro-nodeport') ? 'Read-Only' :
+                                                        np.name.endsWith('-r-nodeport') ? 'Read-Only (Replica)' : 'PostgreSQL';
+                                                return (
+                                                    <div key={i} className="p-5 border rounded-2xl bg-slate-50 border-slate-200 dark:bg-slate-950/50 dark:border-slate-800 flex flex-col">
+                                                        <div className="flex items-center justify-between mb-4">
+                                                            <div>
+                                                                <p className="text-xs text-slate-500 font-bold uppercase tracking-widest leading-none mb-1">Service Type</p>
+                                                                <h5 className="text-lg font-bold text-slate-900 dark:text-white leading-none">{label}</h5>
+                                                            </div>
+                                                            <div className="px-2 py-1 rounded text-[10px] font-bold bg-amber-500/10 text-amber-600 border border-amber-500/20 uppercase tracking-tighter">NodePort: {np.node_port}</div>
+                                                        </div>
+
+                                                        <div className="space-y-2">
+                                                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Available Endpoints</p>
+                                                            {platformState.cluster_nodes?.map((node, j) => (
+                                                                <div key={j} className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 group/item">
+                                                                    <div className="flex flex-col min-w-0">
+                                                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight truncate">{node.hostname}</span>
+                                                                        <span className="text-sm font-mono font-bold text-slate-700 dark:text-slate-200 truncate">{node.ip}:{np.node_port}</span>
+                                                                    </div>
+                                                                    <button
+                                                                        onClick={() => navigator.clipboard.writeText(`${node.ip}:${np.node_port}`)}
+                                                                        className="p-2 text-slate-400 hover:text-blue-500 transition-colors shrink-0"
+                                                                        title="Copy connection string"
+                                                                    >
+                                                                        <Copy size={14} />
+                                                                    </button>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            <div className="flex items-start gap-4 p-4 rounded-xl bg-blue-500/5 border border-blue-500/10">
+                                                <AlertCircle className="text-blue-500 shrink-0 mt-0.5" size={20} />
+                                                <div>
+                                                    <p className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">External Connection Guide</p>
+                                                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                                                        Use any of the <strong>Node IP:Port</strong> combinations listed above to connect from outside the cluster.
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div className={cn(
+                                                "flex flex-col rounded-2xl border overflow-hidden",
+                                                darkMode ? 'bg-slate-950/80 border-slate-800' : 'bg-slate-900 border-slate-700'
+                                            )}>
+                                                <div className={cn("flex border-b p-1 items-center justify-between", darkMode ? 'border-slate-800' : 'border-slate-700')}>
+                                                    <div className="flex p-1 gap-1">
+                                                        <button className="px-4 py-1.5 text-xs font-bold uppercase rounded-lg bg-slate-700 text-white shadow-inner">bash</button>
+                                                        <button className="px-4 py-1.5 text-xs font-bold uppercase rounded-lg text-slate-500 hover:text-slate-300">python</button>
+                                                    </div>
+                                                    <div className="px-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">CLI Example</div>
+                                                </div>
+                                                <div className="p-6 relative group">
+                                                    <pre className="text-sm font-mono text-blue-400 leading-relaxed overflow-x-auto whitespace-pre-wrap">
+                                                        psql -h {platformState.cluster_nodes?.[0]?.ip || '[NODE_IP]'} -p {platformState.node_ports?.[0]?.node_port || '[PORT]'} -U mw_admin -d mindweaver
+                                                    </pre>
+                                                    <button
+                                                        onClick={() => navigator.clipboard.writeText(`psql -h ${platformState.cluster_nodes?.[0]?.ip || '[NODE_IP]'} -p ${platformState.node_ports?.[0]?.node_port || '[PORT]'} -U mw_admin -d mindweaver`)}
+                                                        className="absolute top-4 right-4 p-2 text-slate-500 hover:text-white opacity-0 group-hover:opacity-100 transition-all"
+                                                    >
+                                                        <Copy size={16} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     ) : (
                         <div className="mw-panel animate-in fade-in slide-in-from-top-4 duration-500">
@@ -235,7 +305,7 @@ const PgSqlPage = () => {
                         </div>
                     )}
                 </div>
-            </div>
+            </div >
         );
     }
 
