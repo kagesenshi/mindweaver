@@ -371,6 +371,7 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
             model: Annotated[model_class, Depends(cls.get_model)],  # type: ignore
         ):
             await svc.deploy(model)
+            await svc.poll_status(model)
             return {"status": "success"}
 
         @router.post(
@@ -384,6 +385,7 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
             model: Annotated[model_class, Depends(cls.get_model)],  # type: ignore
         ):
             await svc.decommission(model)
+            await svc.poll_status(model)
             return {"status": "success"}
 
         @router.get(
@@ -427,6 +429,7 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
                     await svc.deploy(model)
                 else:
                     await svc.decommission(model)
+                await svc.poll_status(model)
                 state.active = update.active
             if update.message is not None:
                 state.message = update.message

@@ -9,3 +9,4 @@ wheels/
 .coverage
 # Virtual environments
 .venv
+celerybeat-*
