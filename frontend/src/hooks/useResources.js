@@ -9,7 +9,7 @@ export const useProjects = () => {
     const fetchProjects = useCallback(async () => {
         setLoading(true);
         try {
-            const response = await apiClient.get(`/projects?_cb=${Date.now()}`);
+            const response = await apiClient.get('/projects');
             setProjects(response.data.records || []);
         } catch (err) {
             setError(err);
@@ -50,7 +50,7 @@ export const useDataSources = () => {
     const fetchDataSources = useCallback(async () => {
         setLoading(true);
         try {
-            const response = await apiClient.get(`/data_sources?_cb=${Date.now()}`);
+            const response = await apiClient.get('/data_sources');
             setDataSources(response.data.records || []);
         } catch (err) {
             setError(err);
@@ -96,7 +96,7 @@ export const usePgSql = () => {
     const fetchPlatforms = useCallback(async () => {
         setLoading(true);
         try {
-            const response = await apiClient.get(`/platform/pgsql?_cb=${Date.now()}`);
+            const response = await apiClient.get('/platform/pgsql');
             setPlatforms(response.data.records || []);
         } catch (err) {
             setError(err);
@@ -141,7 +141,7 @@ export const useK8sClusters = () => {
     const fetchClusters = useCallback(async () => {
         setLoading(true);
         try {
-            const response = await apiClient.get(`/k8s_clusters?_cb=${Date.now()}`);
+            const response = await apiClient.get('/k8s_clusters');
             setClusters(response.data.records || []);
         } catch (err) {
             setError(err);
@@ -182,7 +182,7 @@ export const useS3Storages = () => {
     const fetchStorages = useCallback(async () => {
         setLoading(true);
         try {
-            const response = await apiClient.get(`/s3_storages?_cb=${Date.now()}`);
+            const response = await apiClient.get('/s3_storages');
             setStorages(response.data.records || []);
         } catch (err) {
             setError(err);

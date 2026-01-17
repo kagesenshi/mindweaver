@@ -29,6 +29,14 @@ apiClient.interceptors.request.use(
             }
         }
 
+        // Add cache buster to all GET requests
+        if (config.method === 'get') {
+            config.params = {
+                ...config.params,
+                _ts: Date.now()
+            };
+        }
+
         return config;
     },
     (error) => Promise.reject(error)
