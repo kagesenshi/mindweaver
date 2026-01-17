@@ -172,6 +172,9 @@ class IngestionService(ProjectScopedService[Ingestion]):
         Raises:
             HTTPException: If validation fails
         """
+        # Enforce validation early
+        data = await self.validate_data(data)
+
         # Convert to dict to access fields
         data_dict = data.model_dump() if hasattr(data, "model_dump") else dict(data)
 
@@ -229,6 +232,9 @@ class IngestionService(ProjectScopedService[Ingestion]):
         Raises:
             HTTPException: If validation fails
         """
+        # Enforce validation early
+        data = await self.validate_data(data)
+
         # Convert to dict to access fields
         data_dict = (
             data.model_dump(exclude_unset=True)

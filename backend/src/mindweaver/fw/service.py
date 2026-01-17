@@ -639,7 +639,51 @@ class Service(Generic[S], abc.ABC):
         return models
 
     async def validate_data(self, data: NamedBase) -> NamedBase:
-        # raise error if fail
+        """
+        Validate incoming data before create or update.
+        Specifically, check if relationship fields point to records in the same project.
+        """
+        project_id = self.get_project_id()
+        model_class = self.model_class()
+
+        # Only apply scope validation if this model is project-scoped
+        if project_id and hasattr(model_class, "project_id"):
+            for field_name, field_info in model_class.model_fields.items():
+                # Check if this is a foreign key
+                if (
+                    hasattr(field_info, "foreign_key")
+                    and field_info.foreign_key
+                    and isinstance(field_info.foreign_key, str)
+                ):
+                    # Retrieve the value from the incoming data
+                    val = getattr(data, field_name, None)
+                    if val is None:
+                        continue
+
+                    table_name = field_info.foreign_key.split(".")[0]
+                    if table_name in Service._registry:
+                        target_svc_cls = Service._registry[table_name]
+                        target_model_class = target_svc_cls.model_class()
+
+                        # Validate if the target model is project-scoped by checking its MRO
+                        # to avoid circular imports.
+                        is_scoped = any(
+                            base.__name__
+                            in ("ProjectScopedBase", "ProjectScopedNamedBase")
+                            for base in target_model_class.__mro__
+                        )
+
+                        if is_scoped:
+                            target_svc = await target_svc_cls.get_service(
+                                self.request, self.session
+                            )
+                            try:
+                                # target_svc.get(val) will naturally filter by project_id from headers
+                                await target_svc.get(val)
+                            except NotFoundError:
+                                raise ModelValidationError(
+                                    message=f"Referenced {target_model_class.__name__} (id={val}) in field '{field_name}' does not exist or belongs to another project"
+                                )
         return data
 
     def post_process_model(self, model: S) -> S:
