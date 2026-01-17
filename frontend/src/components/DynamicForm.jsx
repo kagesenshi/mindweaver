@@ -8,6 +8,7 @@ import Select from 'react-select';
 const KeyValueWidget = ({ name, value, onChange, darkMode, hasError, isImmutable }) => {
     const [items, setItems] = useState([]);
     const inputBg = darkMode ? "bg-slate-950 border-slate-800 text-slate-200" : "bg-slate-100 border-slate-200 text-slate-900";
+    const disabledBg = darkMode ? "bg-slate-900 border-slate-800 text-slate-500" : "bg-slate-200 border-slate-300 text-slate-400";
 
     // Initial load: convert object to array of items
     useEffect(() => {
@@ -95,7 +96,8 @@ const KeyValueWidget = ({ name, value, onChange, darkMode, hasError, isImmutable
                         onChange={(e) => handleItemChange(index, 'key', e.target.value)}
                         className={cn(
                             "flex-1 px-3 h-10 rounded-lg border text-base outline-none transition-all",
-                            inputBg
+                            isImmutable ? disabledBg : inputBg,
+                            isImmutable && "cursor-not-allowed opacity-80"
                         )}
                     />
 
@@ -105,7 +107,8 @@ const KeyValueWidget = ({ name, value, onChange, darkMode, hasError, isImmutable
                         onChange={(e) => handleItemChange(index, 'type', e.target.value)}
                         className={cn(
                             "w-28 px-2 h-10 rounded-lg border text-base outline-none transition-all",
-                            inputBg
+                            isImmutable ? disabledBg : inputBg,
+                            isImmutable && "cursor-not-allowed opacity-80"
                         )}
                     >
                         {typeOptions.map(opt => (
@@ -120,7 +123,8 @@ const KeyValueWidget = ({ name, value, onChange, darkMode, hasError, isImmutable
                             onChange={(e) => handleItemChange(index, 'value', e.target.value === 'true')}
                             className={cn(
                                 "flex-1 px-3 h-10 rounded-lg border text-base outline-none transition-all",
-                                inputBg
+                                isImmutable ? disabledBg : inputBg,
+                                isImmutable && "cursor-not-allowed opacity-80"
                             )}
                         >
                             <option value="true">True</option>
@@ -136,7 +140,8 @@ const KeyValueWidget = ({ name, value, onChange, darkMode, hasError, isImmutable
                             onChange={(e) => handleItemChange(index, 'value', e.target.value)}
                             className={cn(
                                 "flex-1 px-3 h-10 rounded-lg border text-base outline-none transition-all",
-                                inputBg
+                                isImmutable ? disabledBg : inputBg,
+                                isImmutable && "cursor-not-allowed opacity-80"
                             )}
                         />
                     )}
@@ -183,6 +188,7 @@ const DynamicForm = ({
     const [error, setError] = useState(null);
     const [relationshipOptions, setRelationshipOptions] = useState({});
     const inputBg = darkMode ? "bg-slate-950 border-slate-800 text-slate-200" : "bg-slate-100 border-slate-200 text-slate-900";
+    const disabledBg = darkMode ? "bg-slate-900 border-slate-800 text-slate-500" : "bg-slate-200 border-slate-300 text-slate-400";
 
     useEffect(() => {
         const fetchSchema = async () => {
@@ -353,14 +359,24 @@ const DynamicForm = ({
         const customStyles = {
             control: (base, state) => ({
                 ...base,
-                background: darkMode ? '#020617' : '#f1f5f9', // slate-950 : slate-100
-                borderColor: hasError ? '#f43f5e' : (darkMode ? '#1e293b' : '#e2e8f0'), // rose-500 : slate-800 : slate-200
-                color: darkMode ? '#e2e8f0' : '#0f172a',
+                background: state.isDisabled
+                    ? (darkMode ? '#0f172a' : '#e2e8f0') // slate-900 : slate-200
+                    : (darkMode ? '#020617' : '#f1f5f9'), // slate-950 : slate-100
+                borderColor: state.isDisabled
+                    ? (darkMode ? '#1e293b' : '#cbd5e1') // slate-800 : slate-300
+                    : (hasError ? '#f43f5e' : (darkMode ? '#1e293b' : '#e2e8f0')), // rose-500 : slate-800 : slate-200
+                color: state.isDisabled
+                    ? (darkMode ? '#64748b' : '#94a3b8') // slate-500 : slate-400
+                    : (darkMode ? '#e2e8f0' : '#0f172a'),
                 minHeight: '50px',
                 borderRadius: '0.75rem',
                 boxShadow: state.isFocused ? '0 0 0 1px rgba(59, 130, 246, 0.5)' : 'none',
+                opacity: state.isDisabled ? 0.8 : 1,
+                cursor: state.isDisabled ? 'not-allowed' : 'default',
                 '&:hover': {
-                    borderColor: darkMode ? '#334155' : '#cbd5e1'
+                    borderColor: state.isDisabled
+                        ? (darkMode ? '#1e293b' : '#cbd5e1')
+                        : (darkMode ? '#334155' : '#cbd5e1')
                 }
             }),
             menu: (base) => ({
@@ -377,9 +393,11 @@ const DynamicForm = ({
                 color: state.isSelected && darkMode ? '#ffffff' : (darkMode ? '#e2e8f0' : '#0f172a'),
                 cursor: 'pointer'
             }),
-            singleValue: (base) => ({
+            singleValue: (base, state) => ({
                 ...base,
-                color: darkMode ? '#e2e8f0' : '#0f172a',
+                color: state.isDisabled
+                    ? (darkMode ? '#64748b' : '#94a3b8')
+                    : (darkMode ? '#e2e8f0' : '#0f172a'),
             }),
             multiValue: (base) => ({
                 ...base,
@@ -508,9 +526,14 @@ const DynamicForm = ({
                             value={val}
                             disabled={isImmutable}
                             onChange={(e) => handleChange(name, parseFloat(e.target.value))}
-                            className="mw-range"
+                            className={cn(
+                                "mw-range",
+                                isImmutable && "cursor-not-allowed opacity-60 grayscale-[0.5]"
+                            )}
                             style={{
-                                background: `linear-gradient(to right, #2563eb 0%, #2563eb ${percentage}%, ${darkMode ? '#1e293b' : '#e2e8f0'} ${percentage}%, ${darkMode ? '#1e293b' : '#e2e8f0'} 100%)`
+                                background: isImmutable
+                                    ? (darkMode ? '#1e293b' : '#e2e8f0')
+                                    : `linear-gradient(to right, #2563eb 0%, #2563eb ${percentage}%, ${darkMode ? '#1e293b' : '#e2e8f0'} ${percentage}%, ${darkMode ? '#1e293b' : '#e2e8f0'} 100%)`
                             }}
                         />
                         {showSteps && (
@@ -550,20 +573,24 @@ const DynamicForm = ({
             return (
                 <div className={cn(
                     "flex items-center gap-3 px-4 h-[50px] rounded-xl border cursor-pointer select-none transition-all",
-                    formData[name] ? "border-blue-500/50 bg-blue-500/5" : inputBg,
+                    isImmutable ? (darkMode ? "bg-slate-900 border-slate-800" : "bg-slate-200 border-slate-300") : (formData[name] ? "border-blue-500/50 bg-blue-500/5" : inputBg),
                     hasError && "border-rose-500 ring-1 ring-rose-500/50",
-                    isImmutable && "opacity-60 cursor-not-allowed"
+                    isImmutable && "cursor-not-allowed opacity-80"
                 )} onClick={() => !isImmutable && handleChange(name, !formData[name])}>
                     <div className={cn(
                         "w-10 h-6 rounded-full relative transition-colors p-1",
-                        formData[name] ? "bg-blue-600" : "bg-slate-700"
+                        formData[name] ? (isImmutable ? "bg-blue-600/50" : "bg-blue-600") : (isImmutable ? "bg-slate-800" : "bg-slate-700")
                     )}>
                         <div className={cn(
                             "w-4 h-4 bg-white rounded-full transition-transform",
-                            formData[name] ? "translate-x-4" : "translate-x-0"
+                            formData[name] ? "translate-x-4" : "translate-x-0",
+                            isImmutable && "opacity-60"
                         )} />
                     </div>
-                    <span className="text-base font-medium">{formData[name] ? 'Enabled' : 'Disabled'}</span>
+                    <span className={cn(
+                        "text-base font-medium",
+                        isImmutable ? "text-slate-500" : ""
+                    )}>{formData[name] ? 'Enabled' : 'Disabled'}</span>
                 </div>
             );
         }
@@ -579,7 +606,8 @@ const DynamicForm = ({
                     placeholder={`Enter ${label.toLowerCase()}...`}
                     className={cn(
                         "w-full px-4 h-[50px] rounded-xl border text-base outline-none focus:ring-2 focus:ring-blue-500/20 transition-all",
-                        inputBg,
+                        isImmutable ? disabledBg : inputBg,
+                        isImmutable && "cursor-not-allowed opacity-80",
                         hasError && "border-rose-500 ring-1 ring-rose-500/50"
                     )}
                 />
@@ -604,7 +632,8 @@ const DynamicForm = ({
                     rows={rows}
                     className={cn(
                         "w-full px-4 py-3 rounded-xl border text-base outline-none focus:ring-2 focus:ring-blue-500/20 transition-all",
-                        inputBg,
+                        isImmutable ? disabledBg : inputBg,
+                        isImmutable && "cursor-not-allowed opacity-80",
                         hasError && "border-rose-500 ring-1 ring-rose-500/50"
                     )}
                 />
@@ -639,7 +668,8 @@ const DynamicForm = ({
                 placeholder={`Enter ${label.toLowerCase()}...`}
                 className={cn(
                     "w-full px-4 h-[50px] rounded-xl border text-base outline-none focus:ring-2 focus:ring-blue-500/20 transition-all",
-                    inputBg,
+                    isImmutable ? disabledBg : inputBg,
+                    isImmutable && "cursor-not-allowed opacity-80",
                     hasError && "border-rose-500 ring-1 ring-rose-500/50"
                 )}
             />
