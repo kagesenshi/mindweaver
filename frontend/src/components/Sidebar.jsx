@@ -22,6 +22,7 @@ import {
 import { cn } from '../utils/cn';
 import { useAuth } from '../providers/AuthProvider';
 import { Tooltip } from './Tooltip';
+import UserProfilePanel from './UserProfilePanel';
 
 const NAV_ITEMS = [
     { name: 'Fleet Overview', to: '/', icon: Monitor },
@@ -128,31 +129,11 @@ const Sidebar = ({ darkMode, isCollapsed, toggleSidebar }) => {
                 ))}
             </nav>
 
-            <div className="p-4 border-t border-slate-200 dark:border-slate-800/50">
-                <div className={cn(
-                    "mw-panel flex items-center rounded-xl transition-all duration-300",
-                    isCollapsed ? "justify-center p-0" : "gap-3 p-2"
-                )}>
-                    <div className="w-8 h-8 rounded-full bg-blue-600/20 flex items-center justify-center text-blue-400 text-lg font-bold border border-blue-500/30 shrink-0">
-                        {user ? (user.display_name || user.name || user.email || 'U').substring(0, 2).toUpperCase() : 'U'}
-                    </div>
-                    {!isCollapsed && (
-                        <div className="overflow-hidden">
-                            <p className={cn(
-                                "text-sm font-bold truncate",
-                                darkMode ? 'text-white' : 'text-slate-900'
-                            )}>
-                                {user?.display_name || user?.name || user?.email || 'Guest User'}
-                            </p>
-                            {user?.email && (
-                                <p className="text-xs text-slate-500 truncate" title={user.email}>
-                                    {user.email}
-                                </p>
-                            )}
-                        </div>
-                    )}
-                </div>
-            </div>
+            <UserProfilePanel
+                user={user}
+                darkMode={darkMode}
+                isCollapsed={isCollapsed}
+            />
         </aside>
     );
 };
