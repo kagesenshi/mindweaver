@@ -124,6 +124,19 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
             raise FieldValidationError(field_location=list(loc), message=msg)
         return data
 
+    async def clear_state(self, model: PgSqlPlatform):
+        """Clears the PostgreSQL platform state."""
+        state: PgSqlPlatformState = await self.platform_state(model)
+        if not state:
+            return
+
+        state.db_user = None
+        state.db_pass = None
+        state.db_name = None
+        state.db_ca_crt = None
+
+        await super().clear_state(model)
+
     async def poll_status(self, model: PgSqlPlatform):
         """Poll the status of the CNPG cluster."""
         kubeconfig = await self.kubeconfig(model)

@@ -149,6 +149,24 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
         # Decommission from cluster
         await self._decommission_from_cluster(kubeconfig, full_manifest, namespace)
 
+        # Clear state
+        await self.clear_state(model)
+
+    async def clear_state(self, model: T):
+        """Used to clear the platform state after decommission"""
+        state = await self.platform_state(model)
+        if not state:
+            return
+
+        state.status = "offline"
+        state.message = "Decommissioned"
+        state.node_ports = []
+        state.cluster_nodes = []
+        state.extra_data = {}
+        state.active = False
+
+        await self.session.commit()
+
     async def list_active_platforms(self) -> list[T]:
         """Returns a list of active platforms for polling."""
         model_class = self.model_class()
