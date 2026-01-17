@@ -58,6 +58,7 @@ const PgSqlPage = () => {
     const filteredPlatforms = platforms.filter(p => {
         const matchesProject = !selectedProject || p.project_id === selectedProject.id;
         const matchesSearch = (p.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (p.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
             String(p.id).toLowerCase().includes(searchTerm.toLowerCase());
         return matchesProject && matchesSearch;
     });
@@ -115,7 +116,7 @@ const PgSqlPage = () => {
                         </div>
                         <div>
                             <div className="flex items-center gap-3">
-                                <h2 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white">{selectedPlatform.name}</h2>
+                                <h2 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white">{selectedPlatform.title}</h2>
                                 <StatusBadge status={platformState?.status || (platformState?.active ? 'active' : 'stopped')} />
                             </div>
                             <div className="flex items-center gap-4 mt-2">
@@ -399,7 +400,7 @@ const PgSqlPage = () => {
                                 setActiveTab('connect');
                             }}
                             icon={<Server size={20} />}
-                            title={platform.name}
+                            title={platform.title}
                             subtitle={platform.id}
                             status="running"
                             onEdit={() => {
