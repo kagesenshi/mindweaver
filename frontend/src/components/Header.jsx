@@ -42,7 +42,7 @@ const Header = ({ darkMode, setDarkMode, selectedProject, setSelectedProject, pr
                                     darkMode ? 'text-white' : 'text-slate-900'
                                 )}>
                                     <span className="text-slate-500 font-normal mr-2">Context:</span>
-                                    {selectedProject?.name || 'All Projects'}
+                                    {selectedProject?.title || 'All Projects'}
                                 </p>
                             </div>
                             <ChevronDown size={14} className={cn(
@@ -76,7 +76,7 @@ const Header = ({ darkMode, setDarkMode, selectedProject, setSelectedProject, pr
                                     "w-2 h-2 rounded-full",
                                     selectedProject?.id === p.id ? 'bg-blue-400 ring-2 ring-blue-400/30' : 'bg-slate-400'
                                 )} />
-                                {p.name}
+                                {p.title}
                             </button>
                         ))}
                     </div>
