@@ -83,6 +83,10 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
         return "/platform/pgsql"
 
     @classmethod
+    def immutable_fields(cls) -> list[str]:
+        return ["instances", "storage_size", "s3_storage_id", "k8s_cluster_id"]
+
+    @classmethod
     def widgets(cls) -> dict[str, Any]:
         return {
             "instances": {"order": 10, "type": "range", "min": 1, "max": 7, "step": 2},

@@ -12,6 +12,9 @@ def test_platform_state_api(client: TestClient, test_project):
     ), patch(
         "mindweaver.platform_service.base.PlatformService.decommission",
         return_value=None,
+    ), patch(
+        "mindweaver.platform_service.pgsql.PgSqlPlatformService.poll_status",
+        return_value=None,
     ):
         # 1. Setup K8sCluster
         cluster_data = {

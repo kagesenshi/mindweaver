@@ -83,6 +83,9 @@ def test_pgsql_platform_service_state_clearing(client: TestClient, test_project)
         with patch(
             "mindweaver.platform_service.base.PlatformService.render_manifests",
             return_value="---",
+        ), patch(
+            "mindweaver.platform_service.pgsql.PgSqlPlatformService.poll_status",
+            return_value=None,
         ):
             resp = client.post(
                 f"/api/v1/platform/pgsql/{model_id}/_decommission",

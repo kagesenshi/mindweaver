@@ -166,6 +166,7 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
         state.active = False
 
         await self.session.commit()
+        await self.session.refresh(model)
 
     async def list_active_platforms(self) -> list[T]:
         """Returns a list of active platforms for polling."""
