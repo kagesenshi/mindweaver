@@ -5,7 +5,11 @@ import httpx
 from urllib.parse import urlparse
 
 
-@register_driver("web")
+@register_driver(
+    "web",
+    title="Web / API",
+    description="Generic driver for HTTP/HTTPS web endpoints and APIs.",
+)
 class WebDriver(DataSourceDriver):
     """
     Driver for Web/API data sources.

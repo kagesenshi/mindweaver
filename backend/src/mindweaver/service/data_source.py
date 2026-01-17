@@ -22,6 +22,12 @@ class DataSource(ProjectScopedNamedBase, table=True):
     driver: str = Field(
         sa_type=String(length=50),
         description="Source type / driver (e.g. web, postgresql, trino)",
+        sa_column_kwargs={
+            "info": {
+                "widget": "select",
+                "label": "Driver",
+            }
+        },
     )
     host: Optional[str] = Field(default=None, sa_type=String(length=255))
     port: Optional[int] = Field(default=None)
@@ -52,7 +58,10 @@ class DataSourceService(ProjectScopedService[DataSource]):
 
     @classmethod
     def widgets(cls) -> dict[str, Any]:
+        from mindweaver.ext.data_source import get_driver_options
+
         return {
+            "driver": {"type": "select", "options": get_driver_options()},
             "password": {"type": "password"},
             "parameters": {"type": "key-value"},
         }

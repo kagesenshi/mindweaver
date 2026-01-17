@@ -7,14 +7,24 @@ class DriverRegistry:
     Registry for data source drivers.
     """
 
-    _drivers: Dict[str, Type[DataSourceDriver]] = {}
+    _drivers: Dict[str, Dict[str, Any]] = {}
 
     @classmethod
-    def register(cls, name: str, driver_cls: Type[DataSourceDriver]):
+    def register(
+        cls,
+        name: str,
+        driver_cls: Type[DataSourceDriver],
+        title: Optional[str] = None,
+        description: Optional[str] = None,
+    ):
         """
         Register a new driver class.
         """
-        cls._drivers[name.lower()] = driver_cls
+        cls._drivers[name.lower()] = {
+            "class": driver_cls,
+            "title": title or name.capitalize(),
+            "description": description or "",
+        }
 
     @classmethod
     def get_driver(
@@ -23,9 +33,9 @@ class DriverRegistry:
         """
         Get an instance of a registered driver.
         """
-        driver_cls = cls._drivers.get(name.lower())
-        if driver_cls:
-            return driver_cls(config)
+        driver_info = cls._drivers.get(name.lower())
+        if driver_info:
+            return driver_info["class"](config)
         return None
 
     @classmethod
@@ -35,14 +45,26 @@ class DriverRegistry:
         """
         return list(cls._drivers.keys())
 
+    @classmethod
+    def get_driver_options(cls) -> list[dict[str, str]]:
+        """
+        Get driver options for UI select widget.
+        """
+        return [
+            {"label": info["title"], "value": name}
+            for name, info in cls._drivers.items()
+        ]
 
-def register_driver(name: str):
+
+def register_driver(
+    name: str, title: Optional[str] = None, description: Optional[str] = None
+):
     """
     Decorator to register a driver class.
     """
 
     def decorator(cls: Type[DataSourceDriver]):
-        DriverRegistry.register(name, cls)
+        DriverRegistry.register(name, cls, title=title, description=description)
         return cls
 
     return decorator
@@ -53,6 +75,13 @@ def get_driver(name: str, config: dict[str, Any]) -> Optional[DataSourceDriver]:
     Convenience function to get a driver instance.
     """
     return DriverRegistry.get_driver(name, config)
+
+
+def get_driver_options() -> list[dict[str, str]]:
+    """
+    Get driver options for UI select widget.
+    """
+    return DriverRegistry.get_driver_options()
 
 
 # Import drivers here to trigger registration
