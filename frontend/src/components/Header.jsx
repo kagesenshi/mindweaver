@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Drawer from './Drawer';
 import {
     Search,
     Sun,
@@ -13,7 +14,6 @@ const Header = ({ darkMode, setDarkMode, selectedProject, setSelectedProject, pr
     const [showProjectDropdown, setShowProjectDropdown] = useState(false);
 
     const headerBg = darkMode ? "bg-[#08090b]/80 border-slate-800" : "bg-white/90 border-slate-200";
-    const borderCol = darkMode ? "border-slate-800" : "border-slate-200";
 
     return (
         <header className={cn(
@@ -21,65 +21,66 @@ const Header = ({ darkMode, setDarkMode, selectedProject, setSelectedProject, pr
             headerBg
         )}>
             <div className="flex items-center gap-6">
-                <div className="relative">
-                    <button
-                        onClick={() => setShowProjectDropdown(!showProjectDropdown)}
-                        className="mw-search-box min-w-[200px]"
-                    >
-                        <div className={cn(
-                            "p-1 rounded",
-                            !selectedProject ? 'bg-blue-500/20 text-blue-400' : 'bg-indigo-500/20 text-indigo-400'
-                        )}>
-                            <Briefcase size={14} />
-                        </div>
-                        <div className="flex-1 text-left">
-                            <p className={cn(
-                                "text-lg font-bold truncate",
-                                darkMode ? 'text-white' : 'text-slate-900'
+                <Drawer
+                    isOpen={showProjectDropdown}
+                    onOpenChange={setShowProjectDropdown}
+                    placement="bottom"
+                    darkMode={darkMode}
+                    activeBg={darkMode ? "bg-[#08090b]" : "bg-white"}
+                    className="w-64"
+                    trigger={
+                        <div className="mw-search-box flex items-center w-full">
+                            <div className={cn(
+                                "p-1 rounded mr-2",
+                                !selectedProject ? 'bg-blue-500/20 text-blue-400' : 'bg-indigo-500/20 text-indigo-400'
                             )}>
-                                <span className="text-slate-500 font-normal mr-2">Context:</span>
-                                {selectedProject?.name || 'All Projects'}
-                            </p>
-                        </div>
-                        <ChevronDown size={14} className="text-slate-500" />
-                    </button>
-
-                    {showProjectDropdown && (
-                        <>
-                            <div
-                                className="fixed inset-0 z-10"
-                                onClick={() => setShowProjectDropdown(false)}
-                            />
-                            <div className="mw-panel absolute top-full left-0 mt-2 w-64 z-20 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                                <button
-                                    onClick={() => { setSelectedProject(null); setShowProjectDropdown(false); }}
-                                    className={cn(
-                                        "w-full flex items-center gap-3 p-3 text-base font-bold border-b transition-all",
-                                        darkMode ? 'text-slate-400 hover:bg-slate-800 border-slate-800' : 'text-slate-600 hover:bg-slate-50 border-slate-100'
-                                    )}
-                                >
-                                    <LayoutGrid size={14} /> Show All Projects
-                                </button>
-                                {projects.map(p => (
-                                    <button
-                                        key={p.id}
-                                        onClick={() => { setSelectedProject(p); setShowProjectDropdown(false); }}
-                                        className={cn(
-                                            "w-full flex items-center gap-3 p-3 text-base transition-all",
-                                            darkMode ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-600 hover:bg-slate-50'
-                                        )}
-                                    >
-                                        <div className={cn(
-                                            "w-1.5 h-1.5 rounded-full",
-                                            selectedProject?.id === p.id ? 'bg-blue-400' : 'bg-slate-400'
-                                        )} />
-                                        {p.name}
-                                    </button>
-                                ))}
+                                <Briefcase size={14} />
                             </div>
-                        </>
-                    )}
-                </div>
+                            <div className="flex-1 text-left">
+                                <p className={cn(
+                                    "text-lg font-bold truncate",
+                                    darkMode ? 'text-white' : 'text-slate-900'
+                                )}>
+                                    <span className="text-slate-500 font-normal mr-2">Context:</span>
+                                    {selectedProject?.name || 'All Projects'}
+                                </p>
+                            </div>
+                            <ChevronDown size={14} className={cn(
+                                "text-slate-500 transition-transform duration-200 ml-2",
+                                showProjectDropdown ? "rotate-180" : ""
+                            )} />
+                        </div>
+                    }
+                >
+                    <div className="flex flex-col gap-1">
+                        <button
+                            onClick={() => { setSelectedProject(null); setShowProjectDropdown(false); }}
+                            className={cn(
+                                "w-full flex items-center gap-3 p-3 text-base font-bold rounded-lg transition-all",
+                                darkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                            )}
+                        >
+                            <LayoutGrid size={16} /> Show All Projects
+                        </button>
+                        {projects.length > 0 && <div className={cn("h-px mx-2 my-1", darkMode ? "bg-slate-800" : "bg-slate-100")} />}
+                        {projects.map(p => (
+                            <button
+                                key={p.id}
+                                onClick={() => { setSelectedProject(p); setShowProjectDropdown(false); }}
+                                className={cn(
+                                    "w-full flex items-center gap-3 p-3 text-base rounded-lg transition-all",
+                                    darkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                                )}
+                            >
+                                <div className={cn(
+                                    "w-2 h-2 rounded-full",
+                                    selectedProject?.id === p.id ? 'bg-blue-400 ring-2 ring-blue-400/30' : 'bg-slate-400'
+                                )} />
+                                {p.name}
+                            </button>
+                        ))}
+                    </div>
+                </Drawer>
             </div>
 
             <div className="flex items-center gap-4">
