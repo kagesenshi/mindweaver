@@ -126,11 +126,16 @@ export const usePgSql = () => {
         return response.data;
     };
 
+    const refreshPlatformState = async (id) => {
+        const response = await apiClient.post(`/platform/pgsql/${id}/_refresh`);
+        return response.data;
+    };
+
     useEffect(() => {
         fetchPlatforms();
     }, [fetchPlatforms]);
 
-    return { platforms, loading, error, fetchPlatforms, createPlatform, updatePlatformState, deletePlatform, getPlatformState };
+    return { platforms, loading, error, fetchPlatforms, createPlatform, updatePlatformState, deletePlatform, getPlatformState, refreshPlatformState };
 };
 
 export const useK8sClusters = () => {

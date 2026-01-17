@@ -69,15 +69,17 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
             if cls.state_model is None:
                 raise TypeError(f"Class {cls.__name__} must define state_model")
 
-    async def platform_state(self, model: T) -> PlatformStateBase | None:
+    async def platform_state(self, model: T | int) -> PlatformStateBase | None:
         """
         Returns the platform state model for the given platform.
         """
         if not self.state_model:
             return None
 
+        platform_id = model if isinstance(model, int) else model.id
+
         result = await self.session.exec(
-            select(self.state_model).where(self.state_model.platform_id == model.id)
+            select(self.state_model).where(self.state_model.platform_id == platform_id)
         )
         return result.one_or_none()
 
@@ -419,6 +421,21 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
             await svc.session.refresh(state)
 
             return state
+
+        @router.post(
+            f"{model_path}/_refresh",
+            operation_id=f"mw-refresh-{entity_type}",
+            dependencies=cls.extra_dependencies(),
+            tags=path_tags,
+        )
+        async def refresh(
+            svc: Annotated[cls, Depends(cls.get_service)],  # type: ignore
+            id: int,
+        ):
+            model = await svc.get(id)
+            await svc.poll_status(model)
+            state = await svc.platform_state(id)
+            return state or {}
 
     async def k8s_cluster(self, model: T) -> K8sCluster:
         """returns the associated K8sCluster model"""

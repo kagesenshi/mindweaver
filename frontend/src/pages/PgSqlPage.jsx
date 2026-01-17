@@ -28,9 +28,12 @@ import PageLayout from '../components/PageLayout';
 const StatusBadge = ({ status }) => {
     const styles = {
         running: 'mw-badge-success',
+        online: 'mw-badge-success',
         connected: 'mw-badge-success',
         warning: 'mw-badge-warning',
+        pending: 'mw-badge-warning',
         stopped: 'mw-badge-neutral',
+        offline: 'mw-badge-neutral',
         error: 'mw-badge-danger',
         active: 'mw-badge-info',
     };
@@ -43,13 +46,14 @@ const StatusBadge = ({ status }) => {
 
 const PgSqlPage = () => {
     const { darkMode, selectedProject } = useOutletContext();
-    const { platforms, loading, deletePlatform, updatePlatformState, getPlatformState, fetchPlatforms } = usePgSql();
+    const { platforms, loading, deletePlatform, updatePlatformState, getPlatformState, fetchPlatforms, refreshPlatformState } = usePgSql();
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [selectedPlatform, setSelectedPlatform] = useState(null);
     const [platformState, setPlatformState] = useState(null);
     const [activeTab, setActiveTab] = useState('connect');
     const [showPassword, setShowPassword] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
     const filteredPlatforms = platforms.filter(p => {
         const matchesProject = !selectedProject || p.project_id === selectedProject.id;
@@ -59,12 +63,32 @@ const PgSqlPage = () => {
     });
 
     useEffect(() => {
+        let timer;
         if (selectedPlatform) {
             getPlatformState(selectedPlatform.id).then(setPlatformState);
+
+            // Auto-polling every 15 seconds
+            timer = setInterval(() => {
+                getPlatformState(selectedPlatform.id).then(setPlatformState);
+            }, 15000);
         } else {
             setPlatformState(null);
         }
+        return () => {
+            if (timer) clearInterval(timer);
+        };
     }, [selectedPlatform]);
+
+    const handleRefresh = async () => {
+        if (!selectedPlatform) return;
+        setIsRefreshing(true);
+        try {
+            const updated = await refreshPlatformState(selectedPlatform.id);
+            setPlatformState(updated);
+        } finally {
+            setIsRefreshing(false);
+        }
+    };
 
     const toggleActive = async () => {
         if (!selectedPlatform || !platformState) return;
@@ -92,7 +116,7 @@ const PgSqlPage = () => {
                         <div>
                             <div className="flex items-center gap-3">
                                 <h2 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white">{selectedPlatform.name}</h2>
-                                <StatusBadge status={platformState?.active ? 'active' : 'stopped'} />
+                                <StatusBadge status={platformState?.status || (platformState?.active ? 'active' : 'stopped')} />
                             </div>
                             <div className="flex items-center gap-4 mt-2">
                                 <span className="flex items-center gap-1.5 text-sm text-slate-400">
@@ -101,10 +125,23 @@ const PgSqlPage = () => {
                                 <span className="flex items-center gap-1.5 text-sm text-slate-500 font-mono">
                                     <Terminal size={14} /> v15.4
                                 </span>
+                                {platformState?.message && (
+                                    <span className="flex items-center gap-1.5 text-sm text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
+                                        <Activity size={14} className="text-blue-500" /> {platformState.message}
+                                    </span>
+                                )}
                             </div>
                         </div>
                     </div>
                     <div className="flex gap-3">
+                        <button
+                            onClick={handleRefresh}
+                            disabled={isRefreshing}
+                            className="mw-btn-secondary px-6 py-2.5 flex items-center gap-2"
+                        >
+                            <RefreshCcw size={16} className={isRefreshing ? 'animate-spin' : ''} />
+                            {isRefreshing ? 'REFRESHING...' : 'REFRESH'}
+                        </button>
                         <button
                             onClick={toggleActive}
                             className={cn(
@@ -374,7 +411,7 @@ const PgSqlPage = () => {
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="flex items-center gap-2 text-slate-500">
                                     <Activity size={12} />
-                                    <span className="text-base font-bold">3 Instances</span>
+                                    <span className="text-base font-bold">{platform.instances} Instances</span>
                                 </div>
                                 <div className="flex items-center gap-2 text-blue-500/70">
                                     <Database size={12} />
