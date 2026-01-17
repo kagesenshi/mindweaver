@@ -26,7 +26,7 @@ const HomePage = () => {
 
     return (
         <PageLayout
-            title={selectedProject ? `Stack: ${selectedProject.name}` : 'Unified Fleet'}
+            title={selectedProject ? `Stack: ${selectedProject.title}` : 'Unified Fleet'}
             description={`Monitoring ${filteredInstances.length} resources across all projects.`}
             searchQuery={searchTerm}
             onSearchChange={(e) => setSearchTerm(e.target.value)}
@@ -35,7 +35,7 @@ const HomePage = () => {
             isEmpty={filteredInstances.length === 0}
             emptyState={{
                 title: "Quiet in the sector",
-                description: `No active resources found ${selectedProject ? `for ${selectedProject.name}` : ''}.`,
+                description: `No active resources found ${selectedProject ? `for ${selectedProject.title}` : ''}.`,
                 icon: <Server size={48} className="text-slate-700" />
             }}
         >
@@ -57,7 +57,7 @@ const HomePage = () => {
                                 <div className="flex items-center gap-2 text-blue-500/70">
                                     <Briefcase size={12} />
                                     <span className="text-sm font-bold uppercase truncate max-w-[80px]">
-                                        {inst.project?.name || 'Service Component'}
+                                        {inst.project?.title || 'Service Component'}
                                     </span>
                                 </div>
                             </div>
