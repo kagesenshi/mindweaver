@@ -58,7 +58,6 @@ const K8sClustersPage = () => {
                             icon={<Cloud size={24} />}
                             title={cluster.title || cluster.name}
                             subtitle={cluster.type}
-                            status="active"
                             onEdit={() => {
                                 setSelectedCluster(cluster);
                                 setIsEditModalOpen(true);

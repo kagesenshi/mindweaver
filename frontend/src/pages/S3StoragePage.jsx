@@ -114,7 +114,6 @@ const S3StoragePage = () => {
                             icon={<Server size={20} />}
                             title={storage.name}
                             subtitle={storage.region}
-                            status="active"
                             onEdit={() => setEditItem(storage)}
                             onDelete={() => handleDelete(storage.id)}
                         >

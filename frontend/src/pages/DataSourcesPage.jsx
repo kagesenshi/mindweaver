@@ -88,7 +88,7 @@ const DataSourcesPage = () => {
                             icon={getIcon(source.driver)}
                             title={source.title || source.name}
                             subtitle={`${source.id} • ${source.driver}`}
-                            status={source.status || 'connected'}
+                            status={source.status}
                             onEdit={() => setEditSource(source)}
                             onDelete={() => deleteDataSource(source.id)}
                             footer={
