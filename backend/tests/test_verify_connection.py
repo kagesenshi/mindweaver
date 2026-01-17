@@ -16,7 +16,7 @@ def test_verify_connection(client: TestClient):
 
     print("\n1. Testing API Connection (Success Case)...")
     payload = {
-        "type": "API",
+        "type": "web",
         "parameters": {"base_url": "https://www.google.com", "api_key": ""},
     }
     response = client.post("/api/v1/data_sources/_test-connection", json=payload)
@@ -37,7 +37,7 @@ def test_verify_connection(client: TestClient):
     # Test API connection (Failure Case)
     print("\n2. Testing API Connection (Failure Case - Invalid URL)...")
     payload = {
-        "type": "API",
+        "type": "web",
         "parameters": {
             "base_url": "https://invalid.url.that.does.not.exist",
             "api_key": "",
@@ -51,7 +51,7 @@ def test_verify_connection(client: TestClient):
     # Test Web Scraper (Success)
     print("\n3. Testing Web Scraper (Success Case)...")
     payload = {
-        "type": "Web Scraper",
+        "type": "web",
         "parameters": {"start_url": "https://www.example.com"},
     }
     response = client.post("/api/v1/data_sources/_test-connection", json=payload)

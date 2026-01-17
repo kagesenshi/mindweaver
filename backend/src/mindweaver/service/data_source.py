@@ -138,66 +138,21 @@ class DataSourceService(ProjectScopedService[DataSource]):
         """
         Perform the actual connection test logic.
         """
-        driver = config["driver"].lower() if config["driver"] else ""
+        driver_name = config["driver"].lower() if config["driver"] else ""
         password_to_use = config.get("password")
 
+        from mindweaver.ext.data_source import get_driver
+
         try:
-            if driver == "web" or driver == "api" or driver == "web scraper":
-                # Handle special parameter mappings from tests
-                params = config.get("parameters", {})
-                host = (
-                    config.get("host")
-                    or params.get("base_url")
-                    or params.get("start_url")
-                )
+            driver = get_driver(driver_name, config)
+            if driver:
+                # Run connection test via registered driver
+                result = await driver.test_connection()
+                if result.get("status") == "error":
+                    raise ValueError(result.get("message", "Connection test failed"))
+                return result
 
-                if not host:
-                    raise ValueError("Host/URL is required for Web/API source")
-
-                # Parse host if it's a full URL
-                if "://" in host:
-                    from urllib.parse import urlparse
-
-                    parsed = urlparse(host)
-                    scheme = parsed.scheme
-                    host_only = parsed.netloc
-                    resource_only = parsed.path
-                    if parsed.query:
-                        resource_only += f"?{parsed.query}"
-                else:
-                    scheme = "https" if config.get("enable_ssl") else "http"
-                    host_only = host
-                    resource_only = config.get("resource") or ""
-
-                base_url = f"{scheme}://{host_only}"
-                if config.get("port") and ":" not in host_only:
-                    base_url += f":{config['port']}"
-
-                if resource_only:
-                    if not resource_only.startswith("/"):
-                        base_url += "/"
-                    base_url += resource_only
-
-                async with httpx.AsyncClient(
-                    verify=config.get("verify_ssl", False)
-                ) as client:
-                    auth = None
-                    if config.get("login") and password_to_use:
-                        auth = (config["login"], password_to_use)
-                    elif params.get("api_key"):
-                        # Support api_key in parameters
-                        pass  # TODO: handle as header?
-
-                    resp = await client.get(
-                        base_url, auth=auth, timeout=10.0, follow_redirects=True
-                    )
-
-                    return {
-                        "status": "success",
-                        "message": f"Connected to {base_url}. Status: {resp.status_code}",
-                    }
-
-            elif driver in [
+            if driver_name in [
                 "postgresql",
                 "mysql",
                 "mariadb",
@@ -217,7 +172,7 @@ class DataSourceService(ProjectScopedService[DataSource]):
                     "mongodb": "mongodb",
                 }
 
-                sa_driver = db_driver_map.get(driver, driver)
+                sa_driver = db_driver_map.get(driver_name, driver_name)
 
                 url_kwargs = {
                     "username": config.get("login"),
@@ -236,14 +191,11 @@ class DataSourceService(ProjectScopedService[DataSource]):
                 try:
                     engine = create_engine(url)
                     with engine.connect() as conn:
-                        if "trino" in driver:
-                            conn.execute(text("SELECT 1"))
-                        else:
-                            conn.execute(text("SELECT 1"))
+                        conn.execute(text("SELECT 1"))
 
                     return {
                         "status": "success",
-                        "message": f"Successfully connected to {driver}",
+                        "message": f"Successfully connected to {driver_name}",
                     }
                 except Exception as e:
                     raise ValueError(f"Connection failed: {str(e)}")
@@ -251,7 +203,7 @@ class DataSourceService(ProjectScopedService[DataSource]):
             else:
                 return {
                     "status": "unknown",
-                    "message": f"Driver '{driver}' connection test not fully implemented, but saved.",
+                    "message": f"Driver '{driver_name}' connection test not fully implemented, but saved.",
                 }
 
         except Exception as e:
