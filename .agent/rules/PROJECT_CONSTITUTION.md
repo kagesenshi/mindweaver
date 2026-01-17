@@ -94,6 +94,7 @@ the tests first before implementing the fixes.
 - **Templates**: Kubernetes manifests should use the `.yml.j2` extension (Jinja2).
 - **Timezones**: Always use timezone-aware columns in database models.
 - **Service**: Always refer to backend/src/mindweaver/fw/service.py to know how to handle services
+- **Widget Label**: In backend model widget provider, for relationship fields that name ends with "ID", use a label that does not include the "ID" text . Eg: "Project ID" should be shown as "Project", "K8S Cluster ID" should be shown as "K8S Cluster" and so on
 
 ### Code Quality & Deprecations
 - If a deprecation warning appear in backend for newly written work, rectify the warning. ideally there should not be any deprecation warning for newly created work. Granted, sometimes it is not feasible (require major changes), if that happens, advise the developer accordingly

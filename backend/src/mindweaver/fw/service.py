@@ -455,6 +455,25 @@ class Service(Generic[S], abc.ABC):
                 if "column_span" not in meta:
                     meta["column_span"] = 2
                 widgets[name] = meta
+
+        # Post-process for labels, especially relationship fields ending with ID
+        for name, meta in widgets.items():
+            if meta.get("type") == "relationship" and "label" not in meta:
+                label_text = name
+                for suffix in ["_ids", "_id", "ids", "id"]:
+                    if label_text.lower().endswith(suffix):
+                        label_text = label_text[: -len(suffix)]
+                        break
+                label_text = label_text.replace("_", " ").strip()
+                label_text = label_text.title()
+                # Fix common acronyms
+                label_text = (
+                    label_text.replace("K8s", "K8S")
+                    .replace("Db", "DB")
+                    .replace("Url", "URL")
+                )
+                meta["label"] = label_text
+
         return widgets
 
     @classmethod
