@@ -482,24 +482,51 @@ const DynamicForm = ({
         if (widget.type === 'range') {
             const min = widget.min ?? 0;
             const max = widget.max ?? 100;
+            const step = widget.step ?? 1;
             const val = formData[name] ?? min;
+            const percentage = ((val - min) / (max - min)) * 100;
+
+            // Generate step markers if number of steps is reasonable
+            const numSteps = Math.floor((max - min) / step);
+            const showSteps = numSteps > 0 && numSteps <= 15;
+            const steps = showSteps ? Array.from({ length: numSteps + 1 }, (_, i) => min + (i * step)) : [];
 
             return (
                 <div className="space-y-2">
-                    <div className="flex justify-between text-sm opacity-70">
-                        <span>{min}</span>
-                        <span className="font-bold text-blue-500">{val}</span>
-                        <span>{max}</span>
+                    <div className="mw-range-container">
+                        <div
+                            className="mw-range-badge"
+                            style={{ left: `${percentage}%` }}
+                        >
+                            {val}
+                        </div>
+                        <input
+                            type="range"
+                            min={min}
+                            max={max}
+                            step={step}
+                            value={val}
+                            disabled={isImmutable}
+                            onChange={(e) => handleChange(name, parseFloat(e.target.value))}
+                            className="mw-range"
+                            style={{
+                                background: `linear-gradient(to right, #2563eb 0%, #2563eb ${percentage}%, ${darkMode ? '#1e293b' : '#e2e8f0'} ${percentage}%, ${darkMode ? '#1e293b' : '#e2e8f0'} 100%)`
+                            }}
+                        />
+                        {showSteps && (
+                            <div className="mw-range-steps">
+                                {steps.map((s, i) => (
+                                    <div
+                                        key={i}
+                                        className={cn(
+                                            "mw-range-step",
+                                            val >= s ? "mw-range-step-active" : ""
+                                        )}
+                                    />
+                                ))}
+                            </div>
+                        )}
                     </div>
-                    <input
-                        type="range"
-                        min={min}
-                        max={max}
-                        value={val}
-                        disabled={isImmutable}
-                        onChange={(e) => handleChange(name, parseFloat(e.target.value))}
-                        className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer dark:bg-slate-700 accent-blue-600"
-                    />
                 </div>
             );
         }
