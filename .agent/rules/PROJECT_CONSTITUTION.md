@@ -168,3 +168,4 @@ the tests first before implementing the fixes.
 - **Verify**: Never assume code works; run tests and provide proof of verification in walkthroughs.
 - **Communicate**: If a design decision is ambiguous, ask the user for clarification before proceeding.
 - **Advise Correction**: If user made a request based on a statement that is not true, explain what is really happening and ask for confirmation first. 
+- **Session Commit**: Session commit is already handled by the session object dependency. No explicit commit on views.

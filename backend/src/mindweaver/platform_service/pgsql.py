@@ -5,7 +5,7 @@ from mindweaver.platform_service.base import (
 )
 from sqlmodel import Field
 from typing import Any, Optional
-from pydantic import field_validator, ValidationError
+from pydantic import field_validator, ValidationError, model_validator
 from mindweaver.fw.exc import FieldValidationError
 import fastapi
 from fastapi import Depends
@@ -41,6 +41,12 @@ class PgSqlPlatform(PlatformBase, table=True):
     storage_size: str = Field(default="1Gi")
     image: str = Field(default="ghcr.io/cloudnative-pg/postgresql:18")
 
+    # Resource configuration
+    cpu_request: float = Field(default=0.5)
+    cpu_limit: float = Field(default=1.0)
+    mem_request: float = Field(default=1.0)
+    mem_limit: float = Field(default=2.0)
+
     # Backup configuration (using Barman Cloud Object Store)
     enable_backup: bool = Field(default=False)
     backup_destination: str | None = Field(default=None)
@@ -67,6 +73,14 @@ class PgSqlPlatform(PlatformBase, table=True):
                 "Instances must be an odd number between 1 and 7 (1, 3, 5, 7)"
             )
         return v
+
+    @model_validator(mode="after")
+    def validate_resource_limits(self) -> "PgSqlPlatform":
+        if self.cpu_request > self.cpu_limit:
+            raise ValueError("CPU request cannot be greater than CPU limit")
+        if self.mem_request > self.mem_limit:
+            raise ValueError("Memory request cannot be greater than Memory limit")
+        return self
 
 
 class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
@@ -116,11 +130,41 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
         return {
             "image": {"order": 5, "type": "select", "options": image_options},
             "instances": {"order": 10, "type": "range", "min": 1, "max": 7, "step": 2},
-            "storage_size": {"order": 11},
-            "enable_backup": {"order": 12, "type": "boolean"},
-            "backup_destination": {"order": 13},
-            "backup_retention_policy": {"order": 14},
-            "s3_storage_id": {"order": 15},
+            "cpu_request": {
+                "order": 11,
+                "type": "range",
+                "min": 0.1,
+                "max": 16,
+                "step": 0.1,
+            },
+            "cpu_limit": {
+                "order": 12,
+                "type": "range",
+                "min": 0.1,
+                "max": 16,
+                "step": 0.1,
+            },
+            "mem_request": {
+                "order": 13,
+                "type": "range",
+                "min": 1,
+                "max": 64,
+                "step": 0.5,
+                "label": "Memory Request (Gi)",
+            },
+            "mem_limit": {
+                "order": 14,
+                "type": "range",
+                "min": 1,
+                "max": 64,
+                "step": 0.5,
+                "label": "Memory Limit (Gi)",
+            },
+            "storage_size": {"order": 15},
+            "enable_backup": {"order": 16, "type": "boolean"},
+            "backup_destination": {"order": 17},
+            "backup_retention_policy": {"order": 18},
+            "s3_storage_id": {"order": 19},
         }
 
     async def template_vars(self, model: PgSqlPlatform) -> dict:
@@ -333,8 +377,6 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
             state.db_ca_crt = db_credentials.get("db_ca_crt")
 
         state.last_heartbeat = ts_now()
-
-        await self.session.commit()
 
     @classmethod
     def register_views(

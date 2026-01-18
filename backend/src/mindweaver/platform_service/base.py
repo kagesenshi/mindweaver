@@ -167,7 +167,6 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
         state.extra_data = {}
         state.active = False
 
-        await self.session.commit()
         await self.session.refresh(model)
 
     async def list_active_platforms(self) -> list[T]:
@@ -506,9 +505,8 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
 
             state.last_heartbeat = datetime.now()
 
-            await svc.session.commit()
+            await svc.session.flush()
             await svc.session.refresh(state)
-
             return state
 
         @router.post(

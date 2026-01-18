@@ -7,6 +7,13 @@ spec:
   imageName: {{ image_name }}
   storage:
     size: {{ storage_size }}
+  resources:
+    requests:
+      cpu: "{{ cpu_request }}"
+      memory: "{{ mem_request }}Gi"
+    limits:
+      cpu: "{{ cpu_limit }}"
+      memory: "{{ mem_limit }}Gi"
 
 {% if backup_destination %}
   backup:
