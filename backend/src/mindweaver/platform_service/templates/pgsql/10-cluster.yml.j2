@@ -7,7 +7,8 @@ spec:
   imageCatalogRef:
     name: {{ image_catalog_name }}
     kind: ImageCatalog
-  imageName: "{{ image_major_version }}"
+    apiGroup: postgresql.cnpg.io
+    major: {{ image_major_version }}
   storage:
     size: {{ storage_size }}
 

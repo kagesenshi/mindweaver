@@ -1,10 +1,13 @@
+{% for name, cat_info in image_catalogs.items() %}
 apiVersion: postgresql.cnpg.io/v1
 kind: ImageCatalog
 metadata:
-  name: {{ image_catalog_name }}
+  name: {{ name }}
 spec:
   images:
-{% for img in image_catalog_images %}
+{% for img in cat_info.images %}
     - major: {{ img.major }}
       image: {{ img.image }}
+{% endfor %}
+---
 {% endfor %}

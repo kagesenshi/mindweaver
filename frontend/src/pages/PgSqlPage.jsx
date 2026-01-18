@@ -24,6 +24,7 @@ import Modal from '../components/Modal';
 import DynamicForm from '../components/DynamicForm';
 import ResourceCard from '../components/ResourceCard';
 import PageLayout from '../components/PageLayout';
+import ResourceConfirmModal from '../components/ResourceConfirmModal';
 
 const StatusBadge = ({ status }) => {
     const styles = {
@@ -55,6 +56,7 @@ const PgSqlPage = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [allPlatformStates, setAllPlatformStates] = useState({});
+    const [isDecommissionModalOpen, setIsDecommissionModalOpen] = useState(false);
 
     const filteredPlatforms = platforms.filter(p => {
         const matchesProject = !selectedProject || p.project_id === selectedProject.id;
@@ -112,10 +114,26 @@ const PgSqlPage = () => {
 
     const toggleActive = async () => {
         if (!selectedPlatform || !platformState) return;
-        const newState = { active: !platformState.active };
-        await updatePlatformState(selectedPlatform.id, newState);
+        if (platformState.active) {
+            setIsDecommissionModalOpen(true);
+        } else {
+            const newState = { active: true };
+            await updatePlatformState(selectedPlatform.id, newState);
+            const updated = await getPlatformState(selectedPlatform.id);
+            setPlatformState(updated);
+        }
+    };
+
+    const handleDecommission = async (name) => {
+        if (!selectedPlatform) return;
+        const newState = { active: false };
+        // We need to pass the header here. Assuming usePgSql hook handles headers if passed in some way
+        // or we need to modify the apiClient. Let's assume updatePlatformState can take extra options or we just pass it in headers.
+        // Actually, let's check useResources hook.
+        await updatePlatformState(selectedPlatform.id, newState, { 'X-RESOURCE-NAME': name });
         const updated = await getPlatformState(selectedPlatform.id);
         setPlatformState(updated);
+        setIsDecommissionModalOpen(false);
     };
 
 
@@ -223,92 +241,103 @@ const PgSqlPage = () => {
                             ) : (
                                 <>
                                     {/* External Access Section */}
-                                    {platformState?.node_ports?.length > 0 && (
-                                        <div className="mw-panel">
-                                            <div className={cn("p-4 border-b flex items-center justify-between", darkMode ? 'border-slate-800 bg-slate-950/30' : 'border-slate-200 bg-slate-50')}>
-                                                <div className="flex items-center gap-3">
-                                                    <div className="p-2 bg-amber-500/10 text-amber-500 rounded-lg"><Server size={18} /></div>
-                                                    <h4 className="text-base font-bold tracking-wider leading-none text-slate-900 dark:text-white">External Network Access</h4>
+                                    {platformState?.node_ports?.length > 0 && (() => {
+                                        const sortedPorts = [...(platformState.node_ports || [])].sort((a, b) => {
+                                            const getOrder = (name) => {
+                                                if (name.endsWith('-rw-nodeport')) return 1;
+                                                if (name.endsWith('-ro-nodeport')) return 2;
+                                                if (name.endsWith('-r-nodeport')) return 3;
+                                                return 4;
+                                            };
+                                            return getOrder(a.name) - getOrder(b.name);
+                                        });
+                                        return (
+                                            <div className="mw-panel">
+                                                <div className={cn("p-4 border-b flex items-center justify-between", darkMode ? 'border-slate-800 bg-slate-950/30' : 'border-slate-200 bg-slate-50')}>
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="p-2 bg-indigo-500/10 text-indigo-500 rounded-lg"><Server size={18} /></div>
+                                                        <h4 className="text-base font-bold tracking-wider leading-none text-slate-900 dark:text-white">External Network Access</h4>
+                                                    </div>
                                                 </div>
-                                            </div>
 
-                                            <div className="p-6 space-y-8">
-                                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                                                    {platformState.node_ports.map((np, i) => {
-                                                        const label = np.name.endsWith('-rw-nodeport') ? 'Read-Write' :
-                                                            np.name.endsWith('-ro-nodeport') ? 'Read-Only' :
-                                                                np.name.endsWith('-r-nodeport') ? 'Read-Only (Replica)' : 'PostgreSQL';
-                                                        return (
-                                                            <div key={i} className="p-5 border rounded-2xl bg-slate-50 border-slate-200 dark:bg-slate-950/50 dark:border-slate-800 flex flex-col">
-                                                                <div className="flex items-center justify-between mb-4">
-                                                                    <div>
-                                                                        <p className="text-xs text-slate-500 font-bold uppercase tracking-widest leading-none mb-1">Service Type</p>
-                                                                        <h5 className="text-lg font-bold text-slate-900 dark:text-white leading-none">{label}</h5>
-                                                                    </div>
-                                                                    <div className="px-2 py-1 rounded text-[10px] font-bold bg-amber-500/10 text-amber-600 border border-amber-500/20 uppercase tracking-tighter">NodePort: {np.node_port}</div>
-                                                                </div>
-
-                                                                <div className="space-y-2">
-                                                                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Available Endpoints</p>
-                                                                    {platformState.cluster_nodes?.map((node, j) => (
-                                                                        <div key={j} className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 group/item">
-                                                                            <div className="flex flex-col min-w-0">
-                                                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight truncate">{node.hostname}</span>
-                                                                                <span className="text-sm font-mono font-bold text-slate-700 dark:text-slate-200 truncate">{node.ip}:{np.node_port}</span>
-                                                                            </div>
-                                                                            <button
-                                                                                onClick={() => navigator.clipboard.writeText(`${node.ip}:${np.node_port}`)}
-                                                                                className="p-2 text-slate-400 hover:text-blue-500 transition-colors shrink-0"
-                                                                                title="Copy connection string"
-                                                                            >
-                                                                                <Copy size={14} />
-                                                                            </button>
+                                                <div className="p-6 space-y-8">
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                                                        {sortedPorts.map((np, i) => {
+                                                            const label = np.name.endsWith('-rw-nodeport') ? 'Read-Write' :
+                                                                np.name.endsWith('-ro-nodeport') ? 'Read-Only' :
+                                                                    np.name.endsWith('-r-nodeport') ? 'Read-Only (Any Nodes)' : 'PostgreSQL';
+                                                            return (
+                                                                <div key={i} className="p-5 border rounded-2xl bg-slate-50 border-slate-200 dark:bg-slate-950/50 dark:border-slate-800 flex flex-col">
+                                                                    <div className="flex items-center justify-between mb-4">
+                                                                        <div>
+                                                                            <p className="text-xs text-slate-500 font-bold uppercase tracking-widest leading-none mb-1">Service Type</p>
+                                                                            <h5 className="text-lg font-bold text-slate-900 dark:text-white leading-none">{label}</h5>
                                                                         </div>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
+                                                                        <div className="px-2 py-1 rounded text-[10px] font-bold bg-indigo-500/10 text-indigo-600 border border-indigo-500/20 uppercase tracking-tighter">NodePort: {np.node_port}</div>
+                                                                    </div>
 
-                                                <div className="space-y-4">
-                                                    <div className="flex items-start gap-4 p-4 rounded-xl bg-blue-500/5 border border-blue-500/10">
-                                                        <AlertCircle className="text-blue-500 shrink-0 mt-0.5" size={20} />
-                                                        <div>
-                                                            <p className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">External Connection Guide</p>
-                                                            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                                                                Use any of the <strong>Node IP:Port</strong> combinations listed above to connect from outside the cluster.
-                                                            </p>
-                                                        </div>
+                                                                    <div className="space-y-2">
+                                                                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Available Endpoints</p>
+                                                                        {platformState.cluster_nodes?.map((node, j) => (
+                                                                            <div key={j} className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 group/item">
+                                                                                <div className="flex flex-col min-w-0">
+                                                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight truncate">{node.hostname}</span>
+                                                                                    <span className="text-sm font-mono font-bold text-slate-700 dark:text-slate-200 truncate">{node.ip}:{np.node_port}</span>
+                                                                                </div>
+                                                                                <button
+                                                                                    onClick={() => navigator.clipboard.writeText(`${node.ip}:${np.node_port}`)}
+                                                                                    className="p-2 text-slate-400 hover:text-blue-500 transition-colors shrink-0"
+                                                                                    title="Copy connection string"
+                                                                                >
+                                                                                    <Copy size={14} />
+                                                                                </button>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
                                                     </div>
 
-                                                    <div className={cn(
-                                                        "flex flex-col rounded-2xl border overflow-hidden",
-                                                        darkMode ? 'bg-slate-950/80 border-slate-800' : 'bg-slate-900 border-slate-700'
-                                                    )}>
-                                                        <div className={cn("flex border-b p-1 items-center justify-between", darkMode ? 'border-slate-800' : 'border-slate-700')}>
-                                                            <div className="flex p-1 gap-1">
-                                                                <button className="px-4 py-1.5 text-xs font-bold uppercase rounded-lg bg-slate-700 text-white shadow-inner">bash</button>
-                                                                <button className="px-4 py-1.5 text-xs font-bold uppercase rounded-lg text-slate-500 hover:text-slate-300">python</button>
+                                                    <div className="space-y-4">
+                                                        <div className="flex items-start gap-4 p-4 rounded-xl bg-blue-500/5 border border-blue-500/10">
+                                                            <AlertCircle className="text-blue-500 shrink-0 mt-0.5" size={20} />
+                                                            <div>
+                                                                <p className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">External Connection Guide</p>
+                                                                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                                                                    Use any of the <strong>Node IP:Port</strong> combinations listed above to connect from outside the cluster.
+                                                                </p>
                                                             </div>
-                                                            <div className="px-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">CLI Example</div>
                                                         </div>
-                                                        <div className="p-6 relative group">
-                                                            <pre className="text-sm font-mono text-blue-400 leading-relaxed overflow-x-auto whitespace-pre-wrap">
-                                                                psql -h {platformState.cluster_nodes?.[0]?.ip || '[NODE_IP]'} -p {platformState.node_ports?.[0]?.node_port || '[PORT]'} -U {platformState?.db_user || 'pending'} -d {platformState?.db_name || 'pending'}
-                                                            </pre>
-                                                            <button
-                                                                onClick={() => navigator.clipboard.writeText(`psql -h ${platformState.cluster_nodes?.[0]?.ip || '[NODE_IP]'} -p ${platformState.node_ports?.[0]?.node_port || '[PORT]'} -U ${platformState?.db_user || 'pending'} -d ${platformState?.db_name || 'pending'}`)}
-                                                                className="absolute top-4 right-4 p-2 text-slate-500 hover:text-white opacity-0 group-hover:opacity-100 transition-all"
-                                                            >
-                                                                <Copy size={16} />
-                                                            </button>
+
+                                                        <div className={cn(
+                                                            "flex flex-col rounded-2xl border overflow-hidden",
+                                                            darkMode ? 'bg-slate-950/80 border-slate-800' : 'bg-slate-900 border-slate-700'
+                                                        )}>
+                                                            <div className={cn("flex border-b p-1 items-center justify-between", darkMode ? 'border-slate-800' : 'border-slate-700')}>
+                                                                <div className="flex p-1 gap-1">
+                                                                    <button className="px-4 py-1.5 text-xs font-bold uppercase rounded-lg bg-slate-700 text-white shadow-inner">bash</button>
+                                                                    <button className="px-4 py-1.5 text-xs font-bold uppercase rounded-lg text-slate-500 hover:text-slate-300">python</button>
+                                                                </div>
+                                                                <div className="px-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">CLI Example</div>
+                                                            </div>
+                                                            <div className="p-6 relative group">
+                                                                <pre className="text-sm font-mono text-blue-400 leading-relaxed overflow-x-auto whitespace-pre-wrap">
+                                                                    psql -h {platformState.cluster_nodes?.[0]?.ip || '[NODE_IP]'} -p {sortedPorts?.[0]?.node_port || '[PORT]'} -U {platformState?.db_user || 'pending'} -d {platformState?.db_name || 'pending'}
+                                                                </pre>
+                                                                <button
+                                                                    onClick={() => navigator.clipboard.writeText(`psql -h ${platformState.cluster_nodes?.[0]?.ip || '[NODE_IP]'} -p ${sortedPorts?.[0]?.node_port || '[PORT]'} -U ${platformState?.db_user || 'pending'} -d ${platformState?.db_name || 'pending'}`)}
+                                                                    className="absolute top-4 right-4 p-2 text-slate-500 hover:text-white opacity-0 group-hover:opacity-100 transition-all"
+                                                                >
+                                                                    <Copy size={16} />
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    )}
+                                        );
+                                    })()}
 
                                     {/* Cluster Credentials Section */}
                                     {platformState?.db_user && platformState?.db_pass && (
@@ -521,6 +550,21 @@ const PgSqlPage = () => {
                     onCancel={() => setIsCreateModalOpen(false)}
                 />
             </Modal>
+
+            {isDecommissionModalOpen && (
+                <ResourceConfirmModal
+                    isOpen={isDecommissionModalOpen}
+                    onClose={() => setIsDecommissionModalOpen(false)}
+                    onConfirm={handleDecommission}
+                    resourceName={selectedPlatform?.name}
+                    darkMode={darkMode}
+                    title="Confirm Decommissioning"
+                    message="Decommissioning this cluster will permanently delete all associated Kubernetes resources and database data."
+                    confirmText="DECOMMISSION"
+                    icon={Zap}
+                    variant="danger"
+                />
+            )}
         </>
     );
 };

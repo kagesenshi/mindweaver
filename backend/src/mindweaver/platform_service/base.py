@@ -399,7 +399,19 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
         async def decommission(
             svc: Annotated[cls, Depends(cls.get_service)],  # type: ignore
             model: Annotated[model_class, Depends(cls.get_model)],  # type: ignore
+            x_resource_name: Annotated[
+                Optional[str], fastapi.Header(alias="X-RESOURCE-NAME")
+            ] = None,
         ):
+            if not x_resource_name:
+                raise ModelValidationError(
+                    message="X-RESOURCE-NAME header is required for decommissioning."
+                )
+            if x_resource_name != model.name:
+                raise ModelValidationError(
+                    message=f"X-RESOURCE-NAME header '{x_resource_name}' does not match resource name '{model.name}'."
+                )
+
             await svc.decommission(model)
             await svc.poll_status(model)
             return {"status": "success"}
@@ -429,6 +441,7 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
             svc: Annotated[cls, Depends(cls.get_service)],  # type: ignore
             model: Annotated[model_class, Depends(cls.get_model)],  # type: ignore
             update: PlatformStateUpdate,
+            request: fastapi.Request,
         ):
             if not svc.state_model:
                 return {"status": "error", "message": "State model not defined"}
@@ -444,6 +457,15 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
                 if update.active:
                     await svc.deploy(model)
                 else:
+                    x_resource_name = request.headers.get("X-RESOURCE-NAME")
+                    if not x_resource_name:
+                        raise ModelValidationError(
+                            message="X-RESOURCE-NAME header is required for decommissioning."
+                        )
+                    if x_resource_name != model.name:
+                        raise ModelValidationError(
+                            message=f"X-RESOURCE-NAME header '{x_resource_name}' does not match resource name '{model.name}'."
+                        )
                     await svc.decommission(model)
                 await svc.poll_status(model)
                 state.active = update.active

@@ -115,8 +115,8 @@ export const usePgSql = () => {
         return response.data;
     };
 
-    const updatePlatformState = async (id, state) => {
-        await apiClient.post(`/platform/pgsql/${id}/_state`, state);
+    const updatePlatformState = async (id, state, headers = {}) => {
+        await apiClient.post(`/platform/pgsql/${id}/_state`, state, { headers });
         await fetchPlatforms();
     };
 

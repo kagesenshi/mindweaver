@@ -93,6 +93,16 @@ def test_pgsql_platform_crud(client: TestClient, test_project):
         mock_core_v1.assert_called_once()
         assert mock_resource.create.called
 
+        # 3.1 Decommission (Inside patch)
+        resp = client.post(
+            f"/api/v1/platform/pgsql/{model_id}/_decommission",
+            headers={
+                "X-Project-Id": str(test_project["id"]),
+                "X-RESOURCE-NAME": "my-pg",
+            },
+        )
+        resp.raise_for_status()
+
     # 4. Update
     update_data = {
         "name": "my-pg",
@@ -115,7 +125,10 @@ def test_pgsql_platform_crud(client: TestClient, test_project):
     # 5. Delete
     resp = client.delete(
         f"/api/v1/platform/pgsql/{model_id}",
-        headers={"X-Project-Id": str(test_project["id"])},
+        headers={
+            "X-Project-Id": str(test_project["id"]),
+            "X-RESOURCE-NAME": "my-pg",
+        },
     )
     resp.raise_for_status()
 
@@ -383,8 +396,12 @@ async def test_pgsql_image_selection(client: TestClient, test_project):
 
     assert vars["image_catalog_name"] == "default"
     assert vars["image_major_version"] == 16
-    assert any(img["major"] == 16 for img in vars["image_catalog_images"])
+    assert "image_catalogs" in vars
+    assert "default" in vars["image_catalogs"]
+    assert any(
+        img["major"] == 16 for img in vars["image_catalogs"]["default"]["images"]
+    )
     assert any(
         img["image"] == "ghcr.io/cloudnative-pg/postgresql:16"
-        for img in vars["image_catalog_images"]
+        for img in vars["image_catalogs"]["default"]["images"]
     )

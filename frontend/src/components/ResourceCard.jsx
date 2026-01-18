@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Edit2, Trash2 } from 'lucide-react';
 import { cn } from '../utils/cn';
-import DeleteConfirmModal from './DeleteConfirmModal';
+import ResourceConfirmModal from './ResourceConfirmModal';
 
 const StatusBadge = ({ status }) => {
     const styles = {
@@ -119,12 +119,17 @@ const ResourceCard = ({
                 </div>
             )}
             {isDeleteModalOpen && (
-                <DeleteConfirmModal
+                <ResourceConfirmModal
                     isOpen={isDeleteModalOpen}
                     onClose={() => setIsDeleteModalOpen(false)}
                     onConfirm={(name) => onDelete(name)}
                     resourceName={resourceName || title}
                     darkMode={darkMode}
+                    title="Confirm Deletion"
+                    message="This action is permanent and cannot be undone. All data and resources associated with this resource will be destroyed."
+                    confirmText="DELETE"
+                    icon={Trash2}
+                    variant="danger"
                 />
             )}
         </div>

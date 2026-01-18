@@ -123,23 +123,20 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
     async def template_vars(self, model: PgSqlPlatform) -> dict:
         vars = model.model_dump()
 
-        # Parse image catalog and version
+        # Parse image catalog and version from model
         image_parts = model.image.split(":")
         if len(image_parts) == 2:
             cat_name, major_version = image_parts
             vars["image_catalog_name"] = cat_name
             vars["image_major_version"] = int(major_version)
-
-            catalog = self.load_image_catalog()
-            cat_images = catalog.get("catalogs", {}).get(cat_name, {}).get("images", [])
-            vars["image_catalog_images"] = cat_images
         else:
             # Fallback
             vars["image_catalog_name"] = "default"
             vars["image_major_version"] = 15
-            vars["image_catalog_images"] = [
-                {"major": 15, "image": "ghcr.io/cloudnative-pg/postgresql:15"}
-            ]
+
+        # Load all image catalogs from images.yml
+        catalog = self.load_image_catalog()
+        vars["image_catalogs"] = catalog.get("catalogs", {})
 
         if model.s3_storage_id:
             from mindweaver.service.s3_storage import S3StorageService
