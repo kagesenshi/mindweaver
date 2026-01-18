@@ -233,9 +233,21 @@ export const useS3Storages = () => {
         return response.data;
     };
 
+    const uploadFile = async (id, bucket, prefix, file) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        const response = await apiClient.post(`/s3_storages/${id}/_upload`, formData, {
+            params: { bucket, prefix },
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        });
+        return response.data;
+    };
+
     useEffect(() => {
         fetchStorages();
     }, [fetchStorages]);
 
-    return { storages, loading, error, fetchStorages, createStorage, updateStorage, deleteStorage, testConnection, browseStorage };
+    return { storages, loading, error, fetchStorages, createStorage, updateStorage, deleteStorage, testConnection, browseStorage, uploadFile };
 };

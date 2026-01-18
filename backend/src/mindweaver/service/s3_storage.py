@@ -8,7 +8,7 @@ from sqlmodel import Field, Relationship
 from typing import Any, Literal, Union, Optional, Annotated
 from pydantic import BaseModel, HttpUrl, field_validator, ValidationError
 import fastapi
-from fastapi import HTTPException, Depends
+from fastapi import HTTPException, Depends, File, UploadFile
 from mindweaver.crypto import encrypt_password, decrypt_password, EncryptionError
 from mindweaver.fw.exc import FieldValidationError, MindWeaverError
 import httpx
@@ -301,6 +301,68 @@ class S3StorageService(SecretHandlerMixin, ProjectScopedService[S3Storage]):
                 raise HTTPException(
                     status_code=400, detail=f"Unsupported action: {action}"
                 )
+
+            except ClientError as e:
+                error_code = e.response.get("Error", {}).get("Code", "Unknown")
+                raise HTTPException(
+                    status_code=400, detail=f"S3 Error ({error_code}): {str(e)}"
+                )
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=str(e))
+
+        @router.post(
+            f"{model_path}/_upload",
+            operation_id=f"mw-upload-{cls.entity_type()}",
+            tags=path_tags,
+        )
+        async def upload_file(
+            svc: Annotated[cls, Depends(cls.get_service)],
+            model: Annotated[S3Storage, Depends(cls.get_model)],
+            bucket: str,
+            prefix: str = "",
+            file: UploadFile = File(...),
+        ) -> dict[str, Any]:
+            region = model.region
+            access_key = model.access_key
+            secret_key = None
+            endpoint_url = model.endpoint_url
+            verify_ssl = model.verify_ssl
+
+            if model.secret_key:
+                try:
+                    secret_key = decrypt_password(model.secret_key)
+                except EncryptionError:
+                    pass
+
+            try:
+                # Create S3 client
+                s3_config = {
+                    "aws_access_key_id": access_key,
+                    "region_name": region,
+                }
+
+                if secret_key:
+                    s3_config["aws_secret_access_key"] = secret_key
+
+                if endpoint_url:
+                    s3_config["endpoint_url"] = endpoint_url
+
+                s3_client = boto3.client("s3", verify=verify_ssl, **s3_config)
+
+                # Ensure prefix ends with / if specified and not already there
+                if prefix and not prefix.endswith("/"):
+                    prefix += "/"
+
+                key = f"{prefix}{file.filename}"
+
+                # Upload to S3
+                s3_client.upload_fileobj(file.file, bucket, key)
+
+                return {
+                    "status": "success",
+                    "message": f"Successfully uploaded '{file.filename}' to '{bucket}/{prefix}'",
+                    "key": key,
+                }
 
             except ClientError as e:
                 error_code = e.response.get("Error", {}).get("Code", "Unknown")

@@ -136,6 +136,7 @@ the tests first before implementing the fixes.
   - Multi-step logic or non-standard submission formats.
   - Specialized widgets not supported by `DynamicForm`.
 - **Naming**: Custom view paths in frontend providers must match the `_` prefix used in the backend.
+- **Identifier**: Key elements such as buttons, meaningful div, cards should have semantic identifier or class name applied to it.
 
 ### Backend Synchronization
 - Always fetch JSON schema and form metadata from the backend to render dynamic forms.
