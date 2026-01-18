@@ -12,7 +12,7 @@ from mindweaver.fw.exc import ModelValidationError
 from mindweaver.service.base import ProjectScopedNamedBase, ProjectScopedService
 from mindweaver.service.k8s_cluster import K8sCluster, K8sClusterType
 from mindweaver.service.project import Project
-from mindweaver.fw.service import before_delete
+from mindweaver.fw.service import after_update, before_delete
 import os
 import pydantic
 from sqlalchemy import Column, DateTime, String
@@ -205,6 +205,23 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
             await self.session.flush()
             logger.info(f"Deleted platform state for {model.name}")
 
+    @after_update()
+    async def _redeploy_on_update(self, model: T):
+        """Automatically redeploy if the platform is active"""
+        state = await self.platform_state(model)
+        if state and state.active:
+            logger.info(f"Re-deploying active platform {model.name} due to update")
+            try:
+                await self.deploy(model)
+                await self.poll_status(model)
+            except Exception as e:
+                logger.error(
+                    f"Failed to re-deploy platform {model.name} on update: {e}"
+                )
+                raise ModelValidationError(
+                    message=f"Failed to re-deploy platform on update: {str(e)}"
+                )
+
     async def _deploy_to_cluster(
         self, kubeconfig: str | None, manifest: str, default_namespace: str = "default"
     ):
@@ -278,7 +295,20 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
                 except kubernetes.client.exceptions.ApiException as e:
                     if e.status == 409:  # AlreadyExists
                         logger.info(
-                            f"Resource {kind} {name} already exists, skipping create"
+                            f"Resource {kind} {name} already exists, attempting to patch..."
+                        )
+                        resource.patch(
+                            body=doc,
+                            namespace=target_namespace,
+                            content_type="application/merge-patch+json",
+                        )
+                        logger.info(
+                            f"Updated {kind} {name} using merge-patch"
+                            + (
+                                f" in namespace {target_namespace}"
+                                if target_namespace
+                                else ""
+                            )
                         )
                     else:
                         logger.error(f"Failed to create {kind} {name}: {e}")
