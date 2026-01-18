@@ -50,7 +50,8 @@ const PgSqlPage = () => {
     const { darkMode, selectedProject } = useOutletContext();
     const { platforms, loading, deletePlatform, updatePlatformState, getPlatformState, fetchPlatforms, refreshPlatformState } = usePgSql();
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-    const [selectedPlatform, setSelectedPlatform] = useState(null);
+    const [selectedPlatformId, setSelectedPlatformId] = useState(null);
+    const selectedPlatform = platforms.find(p => p.id === selectedPlatformId);
     const [platformState, setPlatformState] = useState(null);
     const [activeTab, setActiveTab] = useState('connect');
     const [showPassword, setShowPassword] = useState(false);
@@ -87,12 +88,12 @@ const PgSqlPage = () => {
 
     useEffect(() => {
         let timer;
-        if (selectedPlatform) {
-            getPlatformState(selectedPlatform.id).then(setPlatformState);
+        if (selectedPlatformId) {
+            getPlatformState(selectedPlatformId).then(setPlatformState);
 
             // Auto-polling every 15 seconds
             timer = setInterval(() => {
-                getPlatformState(selectedPlatform.id).then(setPlatformState);
+                getPlatformState(selectedPlatformId).then(setPlatformState);
             }, 15000);
         } else {
             setPlatformState(null);
@@ -100,13 +101,13 @@ const PgSqlPage = () => {
         return () => {
             if (timer) clearInterval(timer);
         };
-    }, [selectedPlatform]);
+    }, [selectedPlatformId]);
 
     const handleRefresh = async () => {
-        if (!selectedPlatform) return;
+        if (!selectedPlatformId) return;
         setIsRefreshing(true);
         try {
-            const updated = await refreshPlatformState(selectedPlatform.id);
+            const updated = await refreshPlatformState(selectedPlatformId);
             setPlatformState(updated);
         } finally {
             setIsRefreshing(false);
@@ -114,25 +115,25 @@ const PgSqlPage = () => {
     };
 
     const toggleActive = async () => {
-        if (!selectedPlatform || !platformState) return;
+        if (!selectedPlatformId || !platformState) return;
         if (platformState.active) {
             setIsDecommissionModalOpen(true);
         } else {
             const newState = { active: true };
-            await updatePlatformState(selectedPlatform.id, newState);
-            const updated = await getPlatformState(selectedPlatform.id);
+            await updatePlatformState(selectedPlatformId, newState);
+            const updated = await getPlatformState(selectedPlatformId);
             setPlatformState(updated);
         }
     };
 
     const handleDecommission = async (name) => {
-        if (!selectedPlatform) return;
+        if (!selectedPlatformId) return;
         const newState = { active: false };
         // We need to pass the header here. Assuming usePgSql hook handles headers if passed in some way
         // or we need to modify the apiClient. Let's assume updatePlatformState can take extra options or we just pass it in headers.
         // Actually, let's check useResources hook.
-        await updatePlatformState(selectedPlatform.id, newState, { 'X-RESOURCE-NAME': name });
-        const updated = await getPlatformState(selectedPlatform.id);
+        await updatePlatformState(selectedPlatformId, newState, { 'X-RESOURCE-NAME': name });
+        const updated = await getPlatformState(selectedPlatformId);
         setPlatformState(updated);
         setIsDecommissionModalOpen(false);
     };
@@ -185,7 +186,7 @@ const PgSqlPage = () => {
                             {isRefreshing ? 'REFRESHING...' : 'REFRESH'}
                         </button>
                         <button
-                            onClick={() => setSelectedPlatform(null)}
+                            onClick={() => setSelectedPlatformId(null)}
                             className="mw-btn-secondary px-6 py-2.5"
                         >
                             BACK TO LIST
@@ -517,7 +518,7 @@ const PgSqlPage = () => {
                         <ResourceCard
                             key={platform.id}
                             onClick={() => {
-                                setSelectedPlatform(platform);
+                                setSelectedPlatformId(platform.id);
                                 setActiveTab('connect');
                             }}
                             icon={<Server size={20} />}
@@ -525,7 +526,7 @@ const PgSqlPage = () => {
                             subtitle={platform.id}
                             status={allPlatformStates[platform.id]?.status || (allPlatformStates[platform.id]?.active ? 'active' : 'stopped')}
                             onEdit={() => {
-                                setSelectedPlatform(platform);
+                                setSelectedPlatformId(platform.id);
                                 setActiveTab('configure');
                             }}
                             resourceName={platform.name}
