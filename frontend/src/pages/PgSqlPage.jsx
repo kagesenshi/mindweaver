@@ -16,7 +16,8 @@ import {
     Copy,
     ChevronLeft,
     CheckCircle2,
-    AlertCircle
+    AlertCircle,
+    Loader2
 } from 'lucide-react';
 import { usePgSql } from '../hooks/useResources';
 import { cn } from '../utils/cn';
@@ -163,7 +164,12 @@ const PgSqlPage = () => {
                                 </span>
                                 {platformState?.message && (
                                     <span className="flex items-center gap-1.5 text-sm text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
-                                        <Activity size={14} className="text-blue-500" /> {platformState.message}
+                                        {platformState.status === 'pending' ? (
+                                            <Loader2 size={14} className="text-blue-500 animate-spin" />
+                                        ) : (
+                                            <Activity size={14} className="text-blue-500" />
+                                        )}
+                                        <span>{platformState.message}</span>
                                     </span>
                                 )}
                             </div>
@@ -512,7 +518,11 @@ const PgSqlPage = () => {
                             onDelete={(name) => handleDelete(platform.id, name)}
                             footer={allPlatformStates[platform.id]?.message && (
                                 <div className="flex items-center gap-1.5 text-xs text-slate-500 bg-slate-100 dark:bg-slate-800/50 px-2 py-1 rounded-lg truncate">
-                                    <Activity size={12} className="text-blue-500 shrink-0" />
+                                    {allPlatformStates[platform.id]?.status === 'pending' ? (
+                                        <Loader2 size={12} className="text-blue-500 shrink-0 animate-spin" />
+                                    ) : (
+                                        <Activity size={12} className="text-blue-500 shrink-0" />
+                                    )}
                                     <span className="truncate">{allPlatformStates[platform.id].message}</span>
                                 </div>
                             )}
