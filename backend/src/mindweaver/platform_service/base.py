@@ -8,6 +8,7 @@ import kubernetes
 from kubernetes import client, config, utils, dynamic
 import logging
 from mindweaver.fw.model import Base
+from mindweaver.fw.exc import ModelValidationError
 from mindweaver.service.base import ProjectScopedNamedBase, ProjectScopedService
 from mindweaver.service.k8s_cluster import K8sCluster, K8sClusterType
 from mindweaver.service.project import Project
@@ -196,6 +197,10 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
         """Deletes the associated platform state record when the platform is deleted"""
         state = await self.platform_state(model)
         if state:
+            if state.active:
+                raise ModelValidationError(
+                    message=f"Cannot delete {model.title}: Cluster is currently active. Please decommission first."
+                )
             await self.session.delete(state)
             await self.session.flush()
             logger.info(f"Deleted platform state for {model.name}")
