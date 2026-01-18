@@ -15,9 +15,9 @@ app.conf.update(
     timezone=settings.timezone,
     enable_utc=True,
     beat_schedule={
-        "poll-all-platforms-every-minute": {
+        "poll-all-platforms-15s": {
             "task": "mindweaver.tasks.poll_all_platforms",
-            "schedule": 60.0,
+            "schedule": 15.0,
         },
     },
 )
