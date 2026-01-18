@@ -24,6 +24,7 @@ class S3Config(BaseModel):
     access_key: str
     secret_key: Optional[str] = None
     endpoint_url: Optional[str] = None  # For S3-compatible services
+    verify_ssl: bool = True
 
     @field_validator("region")
     @classmethod
@@ -57,7 +58,7 @@ class S3Storage(ProjectScopedNamedBase, table=True):
     access_key: str
     secret_key: Optional[str] = Field(default=None)
     endpoint_url: Optional[str] = Field(default=None)
-    endpoint_url: Optional[str] = Field(default=None)
+    verify_ssl: bool = Field(default=True)
 
 
 class VerifyEncryptedRequest(BaseModel):
@@ -69,6 +70,7 @@ class TestConnectionRequest(BaseModel):
     access_key: Optional[str] = None
     secret_key: Optional[str] = None
     endpoint_url: Optional[str] = None
+    verify_ssl: Optional[bool] = None
     storage_id: Optional[int] = None
 
 
@@ -169,7 +171,11 @@ class S3StorageService(SecretHandlerMixin, ProjectScopedService[S3Storage]):
     @classmethod
     def widgets(cls) -> dict[str, Any]:
         return {
-            "secret_key": {"type": "password"},
+            "endpoint_url": {"order": 3},
+            "verify_ssl": {"order": 4, "type": "boolean"},
+            "region": {"order": 5},
+            "access_key": {"order": 6},
+            "secret_key": {"order": 7, "type": "password"},
         }
 
     @classmethod
@@ -215,6 +221,7 @@ async def test_connection(
     access_key = data.access_key
     secret_key = data.secret_key
     endpoint_url = data.endpoint_url
+    verify_ssl = data.verify_ssl
 
     # If storage_id is provided, check for stored secret_key if missing in request or redacted
     if data.storage_id:
@@ -229,11 +236,17 @@ async def test_connection(
             except EncryptionError:
                 pass
 
+        if verify_ssl is None:
+            verify_ssl = existing.verify_ssl
+
     try:
         if not region:
             raise ValueError("Region is required")
         if not access_key:
             raise ValueError("Access key is required")
+
+        if verify_ssl is None:
+            verify_ssl = True
 
         # Try to connect to S3 using boto3
         try:
@@ -249,7 +262,7 @@ async def test_connection(
             if endpoint_url:
                 s3_config["endpoint_url"] = endpoint_url
 
-            s3_client = boto3.client("s3", **s3_config)
+            s3_client = boto3.client("s3", verify=verify_ssl, **s3_config)
 
             # Try to list buckets to verify access
             s3_client.list_buckets()

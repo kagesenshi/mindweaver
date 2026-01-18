@@ -114,10 +114,43 @@ def test_s3_storage_test_connection_with_endpoint_url(
     data = test_resp.json()
     assert data["status"] == "success"
 
-    # Verify boto3 was called with endpoint_url
+    # Verify boto3 was called with endpoint_url and default verify=True
     mock_boto3.client.assert_called_once()
     call_kwargs = mock_boto3.client.call_args[1]
     assert call_kwargs["endpoint_url"] == "https://minio.example.com"
+    assert call_kwargs["verify"] is True
+
+
+@patch("mindweaver.service.s3_storage.boto3")
+def test_s3_storage_test_connection_with_verify_ssl_false(
+    mock_boto3, client: TestClient, test_project
+):
+    """Test connection with verify_ssl=False."""
+    mock_s3_client = MagicMock()
+    mock_boto3.client.return_value = mock_s3_client
+    mock_s3_client.list_buckets.return_value = {}
+
+    test_resp = client.post(
+        "/api/v1/s3_storages/_test-connection",
+        headers={"X-Project-Id": str(test_project["id"])},
+        json={
+            "region": "us-east-1",
+            "access_key": "minioadmin",
+            "secret_key": "minioadmin",
+            "endpoint_url": "https://minio.example.com",
+            "verify_ssl": False,
+            "project_id": test_project["id"],
+        },
+    )
+
+    assert test_resp.status_code == 200
+    data = test_resp.json()
+    assert data["status"] == "success"
+
+    # Verify boto3 was called with verify=False
+    mock_boto3.client.assert_called_once()
+    call_kwargs = mock_boto3.client.call_args[1]
+    assert call_kwargs["verify"] is False
 
 
 @patch("mindweaver.service.s3_storage.boto3")
