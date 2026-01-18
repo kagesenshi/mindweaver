@@ -38,6 +38,7 @@ const S3StoragePage = () => {
     const filteredStorages = storages.filter(s => {
         const matchesProject = !selectedProject || s.project_id === selectedProject.id;
         const matchesSearch = (s.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (s.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
             (s.region || '').toLowerCase().includes(searchTerm.toLowerCase());
         return matchesProject && matchesSearch;
     });
@@ -110,7 +111,7 @@ const S3StoragePage = () => {
                             key={storage.id}
                             onClick={() => setEditItem(storage)}
                             icon={<Server size={20} />}
-                            title={storage.name}
+                            title={storage.title}
                             subtitle={storage.region}
                             onEdit={() => setEditItem(storage)}
                             resourceName={storage.name}
