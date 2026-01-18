@@ -52,7 +52,6 @@ def test_pgsql_platform_crud(client: TestClient, test_project):
         "enable_backup": True,
         "backup_destination": "s3://my-bucket/backups",
         "s3_storage_id": s3_id,
-        "enable_postgis": True,
     }
     resp = client.post(
         "/api/v1/platform/pgsql",
@@ -103,7 +102,6 @@ def test_pgsql_platform_crud(client: TestClient, test_project):
         "k8s_cluster_id": cluster_id,
         "project_id": test_project["id"],
         "s3_storage_id": s3_id,
-        "enable_citus": True,
     }
     resp = client.put(
         f"/api/v1/platform/pgsql/{model_id}",
@@ -296,8 +294,9 @@ def test_pgsql_immutable_fields(client: TestClient, test_project):
     immutable_fields = {
         "instances": 5,
         "storage_size": "2Gi",
-        "k8s_cluster_id": cluster_id
-        + 1,  # Assuming this doesn't exist, but immutability check should fail first or concurrently
+        "k8s_cluster_id": cluster_id + 1,
+        "name": "new-name",
+        "project_id": test_project["id"] + 1,
     }
 
     if "s3_storage_id" in resp.json()["record"]:
@@ -352,3 +351,40 @@ def test_pgsql_immutable_fields(client: TestClient, test_project):
                 resp.status_code == 422
             ), f"Expected 422 for field {field} but got {resp.status_code}: {resp.text}"
             assert f"Field '{field}' is immutable" in resp.json()["detail"][0]["msg"]
+
+
+@pytest.mark.asyncio
+async def test_pgsql_image_selection(client: TestClient, test_project):
+    from mindweaver.platform_service.pgsql import PgSqlPlatformService, PgSqlPlatform
+    from unittest.mock import MagicMock
+
+    # 1. Test widgets
+    widgets = PgSqlPlatformService.widgets()
+    assert "image" in widgets
+    assert widgets["image"]["type"] == "select"
+    options = widgets["image"]["options"]
+    assert any(opt["value"] == "default:15" for opt in options)
+    assert any(opt["value"] == "default:16" for opt in options)
+
+    # 2. Test template_vars
+    mock_request = MagicMock()
+    mock_session = MagicMock()
+
+    svc = PgSqlPlatformService(mock_request, mock_session)
+    model = PgSqlPlatform(
+        name="test-pg",
+        title="Test PG",
+        project_id=test_project["id"],
+        k8s_cluster_id=1,
+        image="default:16",
+    )
+
+    vars = await svc.template_vars(model)
+
+    assert vars["image_catalog_name"] == "default"
+    assert vars["image_major_version"] == 16
+    assert any(img["major"] == 16 for img in vars["image_catalog_images"])
+    assert any(
+        img["image"] == "ghcr.io/cloudnative-pg/postgresql:16"
+        for img in vars["image_catalog_images"]
+    )

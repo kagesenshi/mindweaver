@@ -1,0 +1,13 @@
+catalogs:
+  default:
+    images:
+      - major: 13
+        image: ghcr.io/cloudnative-pg/postgresql:13
+      - major: 14
+        image: ghcr.io/cloudnative-pg/postgresql:14
+      - major: 15
+        image: ghcr.io/cloudnative-pg/postgresql:15
+      - major: 16
+        image: ghcr.io/cloudnative-pg/postgresql:16
+      - major: 17
+        image: ghcr.io/cloudnative-pg/postgresql:17

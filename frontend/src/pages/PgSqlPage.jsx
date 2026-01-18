@@ -143,7 +143,7 @@ const PgSqlPage = () => {
                                     Instance ID: <span className="text-slate-500 font-mono font-bold uppercase tracking-tight">{selectedPlatform.id}</span>
                                 </span>
                                 <span className="flex items-center gap-1.5 text-sm text-slate-500 font-mono">
-                                    <Terminal size={14} /> v15.4
+                                    <Terminal size={14} /> {selectedPlatform.image}
                                 </span>
                                 {platformState?.message && (
                                     <span className="flex items-center gap-1.5 text-sm text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
@@ -488,14 +488,14 @@ const PgSqlPage = () => {
                                 </div>
                             )}
                         >
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2 text-slate-500">
                                     <Activity size={12} />
                                     <span className="text-base font-bold">{platform.instances} Instances</span>
                                 </div>
                                 <div className="flex items-center gap-2 text-blue-500/70">
                                     <Database size={12} />
-                                    <span className="text-base font-bold uppercase truncate max-w-[80px]">v15.4</span>
+                                    <span className="text-base font-bold uppercase truncate max-w-[120px]">{platform.image}</span>
                                 </div>
                             </div>
                         </ResourceCard>

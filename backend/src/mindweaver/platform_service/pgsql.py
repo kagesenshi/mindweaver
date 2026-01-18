@@ -16,6 +16,7 @@ import asyncio
 import tempfile
 from typing import Any, Optional, Annotated
 from kubernetes import client, config
+import yaml
 
 logger = logging.getLogger(__name__)
 
@@ -35,16 +36,13 @@ class PgSqlPlatform(PlatformBase, table=True):
 
     instances: int = Field(default=3)
     storage_size: str = Field(default="1Gi")
+    image: str = Field(default="default:15")
 
     # Backup configuration (using Barman Cloud Object Store)
     enable_backup: bool = Field(default=False)
     backup_destination: str | None = Field(default=None)
     backup_retention_policy: str = Field(default="30d")
     s3_storage_id: int | None = Field(default=None, foreign_key="mw_s3_storage.id")
-
-    # Extensions
-    enable_citus: bool = Field(default=False)
-    enable_postgis: bool = Field(default=False)
 
     @field_validator("backup_destination")
     @classmethod
@@ -84,23 +82,65 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
 
     @classmethod
     def immutable_fields(cls) -> list[str]:
-        return ["instances", "storage_size", "s3_storage_id", "k8s_cluster_id"]
+        return super().immutable_fields() + [
+            "instances",
+            "storage_size",
+            "s3_storage_id",
+            "k8s_cluster_id",
+            "image",
+        ]
+
+    @classmethod
+    def load_image_catalog(cls) -> dict:
+        """Loads the PostgreSQL image catalog from the configuration file."""
+        config_path = os.path.join(
+            os.path.dirname(__file__), "resources", "pgsql", "images.yml"
+        )
+        if not os.path.exists(config_path):
+            return {}
+        with open(config_path, "r") as f:
+            return yaml.safe_load(f)
 
     @classmethod
     def widgets(cls) -> dict[str, Any]:
+        catalog = cls.load_image_catalog()
+        image_options = []
+        for cat_name, cat_info in catalog.get("catalogs", {}).items():
+            for img in cat_info.get("images", []):
+                val = f"{cat_name}:{img['major']}"
+                image_options.append({"label": val, "value": val})
+
         return {
+            "image": {"order": 5, "type": "select", "options": image_options},
             "instances": {"order": 10, "type": "range", "min": 1, "max": 7, "step": 2},
             "storage_size": {"order": 11},
             "enable_backup": {"order": 12, "type": "boolean"},
             "backup_destination": {"order": 13},
             "backup_retention_policy": {"order": 14},
             "s3_storage_id": {"order": 15},
-            "enable_citus": {"order": 16},
-            "enable_postgis": {"order": 17},
         }
 
     async def template_vars(self, model: PgSqlPlatform) -> dict:
         vars = model.model_dump()
+
+        # Parse image catalog and version
+        image_parts = model.image.split(":")
+        if len(image_parts) == 2:
+            cat_name, major_version = image_parts
+            vars["image_catalog_name"] = cat_name
+            vars["image_major_version"] = int(major_version)
+
+            catalog = self.load_image_catalog()
+            cat_images = catalog.get("catalogs", {}).get(cat_name, {}).get("images", [])
+            vars["image_catalog_images"] = cat_images
+        else:
+            # Fallback
+            vars["image_catalog_name"] = "default"
+            vars["image_major_version"] = 15
+            vars["image_catalog_images"] = [
+                {"major": 15, "image": "ghcr.io/cloudnative-pg/postgresql:15"}
+            ]
+
         if model.s3_storage_id:
             from mindweaver.service.s3_storage import S3StorageService
 

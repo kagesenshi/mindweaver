@@ -1,0 +1,10 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: ImageCatalog
+metadata:
+  name: {{ image_catalog_name }}
+spec:
+  images:
+{% for img in image_catalog_images %}
+    - major: {{ img.major }}
+      image: {{ img.image }}
+{% endfor %}

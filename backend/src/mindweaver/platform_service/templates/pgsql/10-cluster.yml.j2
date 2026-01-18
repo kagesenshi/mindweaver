@@ -4,6 +4,10 @@ metadata:
   name: {{ name }}
 spec:
   instances: {{ instances }}
+  imageCatalogRef:
+    name: {{ image_catalog_name }}
+    kind: ImageCatalog
+  imageName: "{{ image_major_version }}"
   storage:
     size: {{ storage_size }}
 
@@ -26,13 +30,3 @@ spec:
       retentionPolicy: {{ backup_retention_policy }}
 {% endif %}
 
-{% if enable_citus or enable_postgis %}
-  managed:
-    extensions:
-    {% if enable_citus %}
-      - name: citus
-    {% endif %}
-    {% if enable_postgis %}
-      - name: postgis
-    {% endif %}
-{% endif %}
