@@ -17,7 +17,8 @@ import {
     Upload,
     ChevronUp,
     Search,
-    Download
+    Download,
+    Trash2
 } from 'lucide-react';
 import { useS3Storages } from '../hooks/useResources';
 import { useNotification } from '../providers/NotificationProvider';
@@ -25,6 +26,7 @@ import PageLayout from '../components/PageLayout';
 import ResourceCard from '../components/ResourceCard';
 import Modal from '../components/Modal';
 import DynamicForm from '../components/DynamicForm';
+import ResourceConfirmModal from '../components/ResourceConfirmModal';
 import { cn } from '../utils/cn';
 
 const S3StoragePage = () => {
@@ -39,7 +41,8 @@ const S3StoragePage = () => {
         fetchStorages,
         browseStorage,
         uploadFile,
-        downloadFile
+        downloadFile,
+        deleteFile
     } = useS3Storages();
 
     const { showSuccess, showError } = useNotification();
@@ -58,6 +61,7 @@ const S3StoragePage = () => {
     const [currentPrefix, setCurrentPrefix] = useState("");
     const [fsItems, setFsItems] = useState([]);
     const [fsLoading, setFsLoading] = useState(false);
+    const [itemToDelete, setItemToDelete] = useState(null);
 
     const fetchFsItems = useCallback(async (storageId, bucket, prefix) => {
         setFsLoading(true);
@@ -132,6 +136,17 @@ const S3StoragePage = () => {
         } catch (err) {
             console.error("Download failed", err);
             showError(err.response?.data?.detail?.msg || err.message || "Download failed");
+        }
+    };
+
+    const handleDeleteFile = async (item) => {
+        try {
+            await deleteFile(browsingStorage.id, currentBucket, item.path);
+            showSuccess(`Successfully deleted ${item.name}`);
+            fetchFsItems(browsingStorage.id, currentBucket, currentPrefix);
+        } catch (err) {
+            console.error("Delete failed", err);
+            showError(err.response?.data?.detail?.msg || err.message || "Delete failed");
         }
     };
 
@@ -420,6 +435,24 @@ const S3StoragePage = () => {
                                                 </button>
                                             )}
 
+                                            {item.type === 'file' && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setItemToDelete(item);
+                                                    }}
+                                                    className={cn(
+                                                        "p-2 rounded-lg border transition-colors opacity-0 group-hover:opacity-100",
+                                                        darkMode
+                                                            ? "bg-slate-800 text-slate-200 border-slate-700 hover:bg-rose-500/20 hover:text-rose-500"
+                                                            : "bg-white text-slate-600 border-slate-200 hover:bg-rose-50 hover:text-rose-600 shadow-sm"
+                                                    )}
+                                                    title="Delete"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            )}
+
                                             {(item.type === 'directory' || !currentBucket) && (
                                                 <ChevronRight size={18} className={cn(
                                                     "transition-all",
@@ -438,6 +471,20 @@ const S3StoragePage = () => {
                     ref={fileInputRef}
                     className="hidden"
                     onChange={handleFileChange}
+                />
+
+                {/* File Delete Confirmation */}
+                <ResourceConfirmModal
+                    isOpen={!!itemToDelete}
+                    onClose={() => setItemToDelete(null)}
+                    onConfirm={() => handleDeleteFile(itemToDelete)}
+                    resourceName={itemToDelete?.name || ''}
+                    darkMode={darkMode}
+                    title="Delete File"
+                    message="Are you sure you want to delete this file? This action is permanent."
+                    confirmText="DELETE FILE"
+                    variant="danger"
+                    icon={Trash2}
                 />
             </>
         );

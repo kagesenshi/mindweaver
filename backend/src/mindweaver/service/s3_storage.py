@@ -352,9 +352,10 @@ class S3StorageService(SecretHandlerMixin, ProjectScopedService[S3Storage]):
             svc: Annotated[cls, Depends(cls.get_service)],
             model: Annotated[S3Storage, Depends(cls.get_model)],
             bucket: str,
-            action: Literal["put"] = "put",
+            action: Literal["put", "rm"] = "put",
             prefix: str = "",
-            file: UploadFile = File(...),
+            key: Optional[str] = None,
+            file: Optional[UploadFile] = File(None),
         ) -> dict[str, Any]:
             region = model.region
             access_key = model.access_key
@@ -384,6 +385,11 @@ class S3StorageService(SecretHandlerMixin, ProjectScopedService[S3Storage]):
                 s3_client = boto3.client("s3", verify=verify_ssl, **s3_config)
 
                 if action == "put":
+                    if not file:
+                        raise HTTPException(
+                            status_code=400, detail="File is required for 'put' action"
+                        )
+
                     # Ensure prefix ends with / if specified and not already there
                     if prefix and not prefix.endswith("/"):
                         prefix += "/"
@@ -396,6 +402,22 @@ class S3StorageService(SecretHandlerMixin, ProjectScopedService[S3Storage]):
                     return {
                         "status": "success",
                         "message": f"Successfully uploaded '{file.filename}' to '{bucket}/{prefix}'",
+                        "bucket": bucket,
+                        "key": key,
+                    }
+
+                if action == "rm":
+                    if not key:
+                        raise HTTPException(
+                            status_code=400, detail="Key is required for 'rm' action"
+                        )
+
+                    # Delete from S3
+                    s3_client.delete_object(Bucket=bucket, Key=key)
+
+                    return {
+                        "status": "success",
+                        "message": f"Successfully deleted '{key}' from '{bucket}'",
                         "bucket": bucket,
                         "key": key,
                     }

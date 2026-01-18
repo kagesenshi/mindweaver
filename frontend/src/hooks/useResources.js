@@ -274,9 +274,16 @@ export const useS3Storages = () => {
         }
     };
 
+    const deleteFile = async (id, bucket, key) => {
+        const response = await apiClient.post(`/s3_storages/${id}/_fs`, null, {
+            params: { bucket, key, action: 'rm' }
+        });
+        return response.data;
+    };
+
     useEffect(() => {
         fetchStorages();
     }, [fetchStorages]);
 
-    return { storages, loading, error, fetchStorages, createStorage, updateStorage, deleteStorage, testConnection, browseStorage, uploadFile, downloadFile };
+    return { storages, loading, error, fetchStorages, createStorage, updateStorage, deleteStorage, testConnection, browseStorage, uploadFile, downloadFile, deleteFile };
 };

@@ -607,3 +607,44 @@ def test_s3_storage_fs_upload(client: TestClient, test_project):
         args, kwargs = mock_client.upload_fileobj.call_args
         assert args[1] == "test-bucket"
         assert args[2] == "test-folder/test.txt"
+
+
+def test_s3_storage_fs_delete(client: TestClient, test_project):
+    """Test deleting a file from s3 using _fs endpoint."""
+    from unittest.mock import patch, Mock
+
+    # Create a storage
+    create_resp = client.post(
+        "/api/v1/s3_storages",
+        headers={"X-Project-Id": str(test_project["id"])},
+        json={
+            "name": "delete-test-storage",
+            "title": "Delete Test Storage",
+            "region": "us-east-1",
+            "access_key": "AKIA...",
+            "secret_key": "secret",
+            "project_id": test_project["id"],
+        },
+    )
+    assert create_resp.status_code == 200
+    storage_id = create_resp.json()["record"]["id"]
+
+    # Mock boto3 client
+    with patch("boto3.client") as mock_s3:
+        mock_client = mock_s3.return_value
+
+        # Test delete
+        resp = client.post(
+            f"/api/v1/s3_storages/{storage_id}/_fs?action=rm&bucket=test-bucket&key=test-folder/test.txt",
+        )
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "success"
+        assert data["bucket"] == "test-bucket"
+        assert data["key"] == "test-folder/test.txt"
+
+        # Verify delete_object call
+        mock_client.delete_object.assert_called_once_with(
+            Bucket="test-bucket", Key="test-folder/test.txt"
+        )
