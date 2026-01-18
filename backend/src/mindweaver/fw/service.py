@@ -805,8 +805,6 @@ class Service(Generic[S], abc.ABC):
         ):
             if "violates not-null constraint" in msg:
                 # Postgres style: null value in column "project_id" ... violates not-null constraint
-                import re
-
                 match = re.search(r'column "(.*?)"', msg)
                 if match:
                     field = match.group(1)

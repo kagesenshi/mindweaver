@@ -1,4 +1,6 @@
 from sqlmodel import SQLModel, Field, Column
+from sqlalchemy.orm import declared_attr
+from sqlalchemy import UniqueConstraint
 from typing import Optional, Annotated, AsyncGenerator
 from pydantic import AfterValidator
 from uuid import UUID
@@ -43,6 +45,10 @@ class NamedBase(Base):
         sa_type=String(length=128)
     )
     title: str = Field(sa_type=String(length=500))
+
+    @declared_attr
+    def __table_args__(cls):
+        return (UniqueConstraint("name"),)
 
 
 def get_engine() -> SAAsyncEngine:
