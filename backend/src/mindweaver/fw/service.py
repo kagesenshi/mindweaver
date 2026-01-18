@@ -15,6 +15,9 @@ from .exc import NotFoundError
 from .util import camel_to_snake
 import graphlib
 import inspect
+import re
+from fastapi import HTTPException
+from mindweaver.crypto import encrypt_password, EncryptionError
 from typing import Generic, TypeVar, Any, Literal, Annotated, Union, List, Dict
 
 T = TypeVar("T", bound=NamedBase)
@@ -231,9 +234,6 @@ class SecretHandlerMixin:
 
     @before_create
     async def _handle_redacted_create(self, model: S):
-        from mindweaver.crypto import encrypt_password, EncryptionError
-        from fastapi import HTTPException
-
         for field in self.redacted_fields():
             val = getattr(model, field, None)
             if val:
@@ -246,9 +246,6 @@ class SecretHandlerMixin:
 
     @before_update
     async def _handle_redacted_update(self, model: S, data: NamedBase):
-        from mindweaver.crypto import encrypt_password, EncryptionError
-        from fastapi import HTTPException
-
         data_dict = data.model_dump(exclude_unset=True)
         for field in self.redacted_fields():
             if field in data_dict:
@@ -786,8 +783,6 @@ class Service(Generic[S], abc.ABC):
             # Try to extract the field/key name
             if "duplicate key value violates unique constraint" in msg:
                 # Postgres style: ... violates unique constraint "..." Detail: Key (name)=(asd) already exists.
-                import re
-
                 match = re.search(r"Key \((.*?)\)=\(.*\) already exists", msg)
                 if match:
                     field = match.group(1)

@@ -12,6 +12,7 @@ from mindweaver.crypto import encrypt_password, decrypt_password, EncryptionErro
 import httpx
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import URL
+from mindweaver.ext.data_source import get_driver_options, get_driver
 
 
 class DataSource(ProjectScopedNamedBase, table=True):
@@ -59,8 +60,6 @@ class DataSourceService(SecretHandlerMixin, ProjectScopedService[DataSource]):
 
     @classmethod
     def widgets(cls) -> dict[str, Any]:
-        from mindweaver.ext.data_source import get_driver_options
-
         return {
             "driver": {"type": "select", "options": get_driver_options()},
             "password": {"type": "password"},
@@ -80,8 +79,6 @@ class DataSourceService(SecretHandlerMixin, ProjectScopedService[DataSource]):
         """
         driver_name = config["driver"].lower() if config["driver"] else ""
         password_to_use = config.get("password")
-
-        from mindweaver.ext.data_source import get_driver
 
         try:
             driver = get_driver(driver_name, config)

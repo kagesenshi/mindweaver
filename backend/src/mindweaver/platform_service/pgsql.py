@@ -17,6 +17,9 @@ import tempfile
 from typing import Any, Optional, Annotated
 from kubernetes import client, config
 import yaml
+from mindweaver.service.s3_storage import S3StorageService
+from mindweaver.crypto import decrypt_password, encrypt_password
+from mindweaver.fw.model import ts_now
 
 logger = logging.getLogger(__name__)
 
@@ -137,16 +140,12 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
         vars["image_name"] = model.image
 
         if model.s3_storage_id:
-            from mindweaver.service.s3_storage import S3StorageService
-
             s3_svc = S3StorageService(self.request, self.session)
             s3_storage = await s3_svc.get(model.s3_storage_id)
             vars["s3_region"] = s3_storage.region
             vars["s3_access_key"] = s3_storage.access_key
             vars["s3_endpoint_url"] = s3_storage.endpoint_url
             if s3_storage.secret_key:
-                from mindweaver.crypto import decrypt_password
-
                 try:
                     vars["s3_secret_key"] = decrypt_password(s3_storage.secret_key)
                 except Exception:
@@ -270,8 +269,6 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
                     name=secret_name, namespace=namespace
                 )
                 if secret.data:
-                    from mindweaver.crypto import encrypt_password
-
                     db_credentials["db_user"] = base64.b64decode(
                         secret.data.get("username", "")
                     ).decode("utf-8")
@@ -334,7 +331,6 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
             state.db_pass = db_credentials.get("db_pass")
             state.db_name = db_credentials.get("db_name")
             state.db_ca_crt = db_credentials.get("db_ca_crt")
-        from mindweaver.fw.model import ts_now
 
         state.last_heartbeat = ts_now()
 
@@ -364,8 +360,6 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
                 return {}
 
             # Create a copy to modify
-            from mindweaver.crypto import decrypt_password
-
             state_dict = state.model_dump()
             if state.db_pass:
                 try:

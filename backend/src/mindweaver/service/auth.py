@@ -8,6 +8,7 @@ from mindweaver.fw.model import AsyncSession, get_session, get_engine
 import httpx
 import jwt
 import time
+from urllib.parse import urlencode
 from typing import Optional
 from pydantic import BaseModel
 
@@ -112,7 +113,6 @@ class AuthService(Service[User]):
 
             # Encode params? httpx/starlette handling this usually via params dict if we returned a request
             # But we are redirecting.
-            from urllib.parse import urlencode
 
             params = {
                 "client_id": settings.oidc_client_id,

@@ -3,7 +3,8 @@ from .base import ProjectScopedNamedBase, ProjectScopedService
 from mindweaver.fw.service import Service
 from sqlalchemy import String, Integer, DateTime, Enum as SQLEnum, ForeignKey
 from sqlalchemy_utils import JSONType
-from sqlmodel import Field, Relationship
+from sqlmodel import Field, Relationship, select
+from .data_source import DataSourceService
 from typing import Any, Literal, Optional
 from pydantic import BaseModel, field_validator, ValidationError
 from fastapi import HTTPException, Depends
@@ -200,8 +201,6 @@ class IngestionService(ProjectScopedService[Ingestion]):
         self._validate_cron_schedule(data_dict["cron_schedule"])
 
         # Fetch the data source to get its type
-        from .data_source import DataSourceService
-
         ds_service = DataSourceService(self.request, self.session)
         data_source = await ds_service.get(data_dict["data_source_id"])
         if not data_source:
@@ -255,8 +254,6 @@ class IngestionService(ProjectScopedService[Ingestion]):
         if "config" in data_dict:
             # Get data source type (either from update or existing)
             data_source_id = data_dict.get("data_source_id", existing.data_source_id)
-
-            from .data_source import DataSourceService
 
             ds_service = DataSourceService(self.request, self.session)
             data_source = await ds_service.get(data_source_id)
@@ -345,8 +342,6 @@ async def list_ingestion_runs(
         raise NotFoundError(message="Ingestion not found")
 
     # Query runs for this ingestion
-    from sqlmodel import select
-
     run_service = IngestionRunService(svc.request, svc.session)
 
     statement = (

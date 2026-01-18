@@ -4,6 +4,7 @@ from mindweaver.celery_app import app
 from mindweaver.fw.model import get_engine
 from sqlmodel.ext.asyncio.session import AsyncSession
 from mindweaver.platform_service.base import PlatformService
+from mindweaver.platform_service.pgsql import PgSqlPlatformService
 from mindweaver.config import logger
 from typing import Type
 
@@ -24,8 +25,6 @@ def poll_all_platforms():
 
     # We need to discover all subclasses of PlatformService
     # and for each, find active platforms.
-
-    from mindweaver.platform_service.pgsql import PgSqlPlatformService
 
     services = [PgSqlPlatformService]
 
@@ -57,7 +56,6 @@ def poll_platform_status(service_class_name: str, platform_id: int):
 
 async def _poll_platform_status(service_class_name: str, platform_id: int):
     # Dynamically find the service class
-    from mindweaver.platform_service.pgsql import PgSqlPlatformService
 
     mapping = {"PgSqlPlatformService": PgSqlPlatformService}
 
