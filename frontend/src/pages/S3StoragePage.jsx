@@ -5,7 +5,7 @@ import {
     Plus,
     Radio,
     Globe,
-    Shield,
+
     CheckCircle2,
     XCircle,
     Server,
@@ -529,19 +529,11 @@ const S3StoragePage = () => {
                             darkMode={darkMode}
                             onDelete={(name) => handleDelete(storage.id, name)}
                         >
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="flex items-center gap-2 text-slate-500">
-                                    <Globe size={12} />
-                                    <span className="text-base font-bold truncate" title={storage.endpoint_url || 'AWS S3'}>
-                                        {storage.endpoint_url ? new URL(storage.endpoint_url).hostname : 'AWS Standard'}
-                                    </span>
-                                </div>
-                                <div className="flex items-center gap-2 text-blue-500/70">
-                                    <Shield size={12} />
-                                    <span className="text-base font-bold uppercase truncate">
-                                        {storage.access_key ? 'Encrypted' : 'Public'}
-                                    </span>
-                                </div>
+                            <div className="flex items-center gap-2 text-slate-500">
+                                <Globe size={12} />
+                                <span className="text-base font-bold truncate" title={storage.endpoint_url || 'AWS S3'}>
+                                    {storage.endpoint_url ? new URL(storage.endpoint_url).hostname : 'AWS Standard'}
+                                </span>
                             </div>
                         </ResourceCard>
                     ))}
