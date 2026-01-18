@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, Trash2, Zap } from 'lucide-react';
+import { AlertTriangle, Trash2, Zap, Loader2 } from 'lucide-react';
 import Modal from './Modal';
 import { cn } from '../utils/cn';
 
@@ -16,19 +16,26 @@ const ResourceConfirmModal = ({
     variant = "danger" // "danger" or "warning"
 }) => {
     const [inputValue, setInputValue] = useState('');
+    const [isBusy, setIsBusy] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
             setInputValue('');
+            setIsBusy(false);
         }
     }, [isOpen]);
 
     const isMatch = inputValue === resourceName;
 
-    const handleConfirm = () => {
-        if (isMatch) {
-            onConfirm(inputValue);
-            onClose();
+    const handleConfirm = async () => {
+        if (isMatch && !isBusy) {
+            setIsBusy(true);
+            try {
+                await onConfirm(inputValue);
+                onClose();
+            } finally {
+                setIsBusy(false);
+            }
         }
     };
 
@@ -103,15 +110,16 @@ const ResourceConfirmModal = ({
                 <div className="flex flex-col gap-3 pt-4 px-8">
                     <button
                         onClick={handleConfirm}
-                        disabled={!isMatch}
+                        disabled={!isMatch || isBusy}
                         className={cn(
                             "w-full py-4 rounded-xl flex items-center justify-center gap-3 font-black uppercase tracking-[0.2em] transition-all",
-                            isMatch
+                            isMatch && !isBusy
                                 ? cn("text-white shadow-lg active:scale-[0.98]", style.button)
                                 : "bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed"
                         )}
                     >
-                        {confirmText}
+                        {isBusy ? <Loader2 size={20} className="animate-spin" /> : null}
+                        {isBusy ? 'WAITING...' : confirmText}
                     </button>
                     <button
                         onClick={onClose}

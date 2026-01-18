@@ -264,13 +264,13 @@ class SecretHandlerMixin:
                             detail=f"Failed to encrypt {field}: {str(e)}",
                         )
 
-    def post_process_model(self, model: S) -> S:
+    async def post_process_model(self, model: S) -> S:
         """
         Redact sensitive fields before returning to client.
         Creates a copy to avoid modifying the session model.
         """
         if hasattr(super(), "post_process_model"):
-            model = super().post_process_model(model)
+            model = await super().post_process_model(model)
 
         redacted_fields = self.redacted_fields()
         if not redacted_fields:
@@ -764,7 +764,7 @@ class Service(Generic[S], abc.ABC):
                                 )
         return data
 
-    def post_process_model(self, model: S) -> S:
+    async def post_process_model(self, model: S) -> S:
         """
         Post-process model before returning it to the client.
         Default is identity. Override this to redact sensitive fields.
@@ -879,7 +879,7 @@ class Service(Generic[S], abc.ABC):
         )
         async def list_all(svc: Annotated[cls, Depends(cls.get_service)]) -> ListResult[model_class]:  # type: ignore
             records = await svc.all()
-            return {"records": [svc.post_process_model(r) for r in records]}
+            return {"records": [await svc.post_process_model(r) for r in records]}
 
         @router.get(
             f"{service_path}/_create-form",
@@ -923,7 +923,7 @@ class Service(Generic[S], abc.ABC):
         )
         async def create(svc: Annotated[cls, Depends(cls.get_service)], data: CreateModel) -> Result[model_class]:  # type: ignore
             created_model = await svc.create(data)
-            return {"record": svc.post_process_model(created_model)}
+            return {"record": await svc.post_process_model(created_model)}
 
         @router.get(
             model_path,
@@ -935,7 +935,7 @@ class Service(Generic[S], abc.ABC):
             svc: Annotated[cls, Depends(cls.get_service)],
             model: Annotated[model_class, Depends(cls.get_model)],
         ) -> Result[model_class]:  # type: ignore
-            return {"record": svc.post_process_model(model)}
+            return {"record": await svc.post_process_model(model)}
 
         if UpdateModel.model_fields:
 
@@ -951,7 +951,7 @@ class Service(Generic[S], abc.ABC):
                 data: UpdateModel,
             ) -> Result[model_class]:  # type: ignore
                 updated_model = await svc.update(model.id, data)
-                return {"record": svc.post_process_model(updated_model)}
+                return {"record": await svc.post_process_model(updated_model)}
 
         @router.delete(
             model_path,

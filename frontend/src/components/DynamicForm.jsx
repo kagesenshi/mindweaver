@@ -285,7 +285,7 @@ const DynamicForm = ({
                 ? await apiClient.post(entityPath, cleanData)
                 : await apiClient.put(`${entityPath}/${initialData.id}`, cleanData);
 
-            if (onSuccess) onSuccess(response.data);
+            if (onSuccess) await onSuccess(response.data);
         } catch (err) {
             console.error('Form submission failed:', err);
             const detail = err.response?.data?.detail;

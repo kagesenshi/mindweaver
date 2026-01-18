@@ -428,8 +428,9 @@ const PgSqlPage = () => {
                                     initialData={selectedPlatform}
                                     darkMode={darkMode}
                                     onCancel={() => setActiveTab('connect')}
-                                    onSuccess={() => {
-                                        fetchPlatforms();
+                                    onSuccess={async () => {
+                                        await new Promise(resolve => setTimeout(resolve, 500));
+                                        await fetchPlatforms();
                                         setActiveTab('connect');
                                     }}
                                 />
@@ -567,8 +568,9 @@ const PgSqlPage = () => {
                     mode="create"
                     darkMode={darkMode}
                     initialData={{ project_id: selectedProject?.id }}
-                    onSuccess={() => {
-                        fetchPlatforms();
+                    onSuccess={async () => {
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        await fetchPlatforms();
                         setIsCreateModalOpen(false);
                     }}
                     onCancel={() => setIsCreateModalOpen(false)}

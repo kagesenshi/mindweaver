@@ -34,6 +34,7 @@ export const useProjects = () => {
         await apiClient.delete(`/projects/${id}`, {
             headers: { 'X-RESOURCE-NAME': confirmName }
         });
+        await new Promise(resolve => setTimeout(resolve, 500));
         await fetchProjects();
     };
 
@@ -77,6 +78,7 @@ export const useDataSources = () => {
         await apiClient.delete(`/data_sources/${id}`, {
             headers: { 'X-RESOURCE-NAME': confirmName }
         });
+        await new Promise(resolve => setTimeout(resolve, 500));
         await fetchDataSources();
     };
 
@@ -117,6 +119,7 @@ export const usePgSql = () => {
 
     const updatePlatformState = async (id, state, headers = {}) => {
         await apiClient.post(`/platform/pgsql/${id}/_state`, state, { headers });
+        await new Promise(resolve => setTimeout(resolve, 500));
         await fetchPlatforms();
     };
 
@@ -124,6 +127,7 @@ export const usePgSql = () => {
         await apiClient.delete(`/platform/pgsql/${id}`, {
             headers: { 'X-RESOURCE-NAME': confirmName }
         });
+        await new Promise(resolve => setTimeout(resolve, 500));
         await fetchPlatforms();
     };
 
@@ -177,6 +181,7 @@ export const useK8sClusters = () => {
         await apiClient.delete(`/k8s_clusters/${id}`, {
             headers: { 'X-RESOURCE-NAME': confirmName }
         });
+        await new Promise(resolve => setTimeout(resolve, 500));
         await fetchClusters();
     };
 
@@ -220,6 +225,7 @@ export const useS3Storages = () => {
         await apiClient.delete(`/s3_storages/${id}`, {
             headers: { 'X-RESOURCE-NAME': confirmName }
         });
+        await new Promise(resolve => setTimeout(resolve, 500));
         await fetchStorages();
     };
 
