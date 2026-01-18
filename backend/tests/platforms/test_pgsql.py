@@ -107,7 +107,7 @@ def test_pgsql_platform_crud(client: TestClient, test_project):
     update_data = {
         "name": "my-pg",
         "title": "My Postgres Updated",
-        "instances": 3,  # Immutable, keep same
+        "instances": 5,
         "storage_size": "2Gi",
         "k8s_cluster_id": cluster_id,
         "project_id": test_project["id"],
@@ -119,7 +119,7 @@ def test_pgsql_platform_crud(client: TestClient, test_project):
         headers={"X-Project-Id": str(test_project["id"])},
     )
     resp.raise_for_status()
-    assert resp.json()["record"]["instances"] == 3
+    assert resp.json()["record"]["instances"] == 5
     assert resp.json()["record"]["title"] == "My Postgres Updated"
 
     # 5. Delete
@@ -238,8 +238,8 @@ def test_pgsql_instances_validation(client: TestClient, test_project):
         "storage_size": "1Gi",
     }
 
-    # 1. Valid counts (1, 3, 5, 7)
-    for count in [1, 3, 5, 7]:
+    # 1. Valid odd numbers
+    for count in [1, 3, 5, 7, 9, 11]:
         data = base_data.copy()
         data["name"] = f"pg-inst-{count}"
         data["instances"] = count
@@ -250,8 +250,8 @@ def test_pgsql_instances_validation(client: TestClient, test_project):
         )
         assert resp.status_code == 200, f"Failed for count {count}: {resp.text}"
 
-    # 2. Invalid counts (even or out of range)
-    for count in [0, 2, 4, 6, 8]:
+    # 2. Invalid counts (even numbers)
+    for count in [0, 2, 4, 6, 8, 10]:
         data = base_data.copy()
         data["name"] = f"pg-inst-invalid-{count}"
         data["instances"] = count
@@ -263,10 +263,7 @@ def test_pgsql_instances_validation(client: TestClient, test_project):
         assert (
             resp.status_code == 422
         ), f"Expected 422 for count {count}, got {resp.status_code}"
-        assert (
-            "Instances must be an odd number between 1 and 7"
-            in resp.json()["detail"][0]["msg"]
-        )
+        assert "Instances must be an odd number" in resp.json()["detail"][0]["msg"]
 
 
 def test_pgsql_immutable_fields(client: TestClient, test_project):
@@ -305,7 +302,6 @@ def test_pgsql_immutable_fields(client: TestClient, test_project):
 
     # Try modifying immutable fields
     immutable_fields = {
-        "instances": 5,
         "storage_size": "2Gi",
         "k8s_cluster_id": cluster_id + 1,
         "name": "new-name",

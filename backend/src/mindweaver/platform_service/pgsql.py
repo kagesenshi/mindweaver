@@ -68,10 +68,8 @@ class PgSqlPlatform(PlatformBase, table=True):
     @field_validator("instances")
     @classmethod
     def validate_instances(cls, v: int) -> int:
-        if v not in [1, 3, 5, 7]:
-            raise ValueError(
-                "Instances must be an odd number between 1 and 7 (1, 3, 5, 7)"
-            )
+        if v < 1 or v % 2 == 0:
+            raise ValueError("Instances must be an odd number (1, 3, 5, ...)")
         return v
 
     @model_validator(mode="after")
@@ -100,7 +98,6 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
     @classmethod
     def immutable_fields(cls) -> list[str]:
         return super().immutable_fields() + [
-            "instances",
             "storage_size",
             "s3_storage_id",
             "k8s_cluster_id",
@@ -129,27 +126,27 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
 
         return {
             "image": {"order": 5, "type": "select", "options": image_options},
-            "instances": {"order": 10, "type": "range", "min": 1, "max": 7, "step": 2},
+            "instances": {"order": 10, "type": "range", "min": 1, "max": 9, "step": 2},
             "cpu_request": {
                 "order": 11,
                 "type": "range",
-                "min": 0.1,
+                "min": 0.5,
                 "max": 16,
-                "step": 0.1,
+                "step": 0.5,
             },
             "cpu_limit": {
                 "order": 12,
                 "type": "range",
-                "min": 0.1,
+                "min": 0.5,
                 "max": 16,
-                "step": 0.1,
+                "step": 0.5,
             },
             "mem_request": {
                 "order": 13,
                 "type": "range",
                 "min": 1,
                 "max": 64,
-                "step": 0.5,
+                "step": 1,
                 "label": "Memory Request (Gi)",
             },
             "mem_limit": {
@@ -157,7 +154,7 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
                 "type": "range",
                 "min": 1,
                 "max": 64,
-                "step": 0.5,
+                "step": 1,
                 "label": "Memory Limit (Gi)",
             },
             "storage_size": {"order": 15},
