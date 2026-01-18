@@ -28,8 +28,8 @@ def is_valid_name(name: str) -> str:
         raise ValueError("Name cannot be empty")
     if not re.match(r"^[a-z0-9\-]+$", name):
         raise ValueError("Name can only contain lowercase letters, numbers, and dash")
-    if len(name) > 128:
-        raise ValueError("Name cannot be longer than 128 characters")
+    if len(name) > 47:
+        raise ValueError("Name cannot be longer than 47 characters")
     return name
 
 
@@ -42,7 +42,7 @@ class Base(SQLModel):
 
 class NamedBase(Base):
     name: Annotated[str, AfterValidator(is_valid_name)] = Field(
-        sa_type=String(length=128)
+        sa_type=String(length=47)
     )
     title: str = Field(sa_type=String(length=500))
 
