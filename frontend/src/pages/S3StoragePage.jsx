@@ -215,15 +215,6 @@ const S3StoragePage = () => {
                         darkMode ? "bg-slate-900/50 border-slate-700/50" : "bg-white border-slate-200 shadow-sm"
                     )}>
                         <div className="flex items-center gap-2 overflow-hidden">
-                            <div className={cn(
-                                "flex items-center gap-1 font-bold text-sm shrink-0",
-                                darkMode ? "text-slate-400" : "text-slate-500"
-                            )}>
-                                <Server size={14} />
-                                <span>{browsingStorage.name}</span>
-                                <ChevronRight size={14} />
-                            </div>
-
                             <div className="flex items-center gap-1 overflow-hidden">
                                 <button
                                     onClick={() => {
@@ -232,13 +223,14 @@ const S3StoragePage = () => {
                                         fetchFsItems(browsingStorage.id);
                                     }}
                                     className={cn(
-                                        "px-2 py-1 rounded-md text-sm font-medium transition-colors",
+                                        "px-2 py-1 rounded-md text-sm font-bold transition-colors flex items-center gap-2",
                                         !currentBucket
                                             ? "bg-blue-500/20 text-blue-400"
                                             : cn(darkMode ? "text-slate-400 hover:bg-slate-800" : "text-slate-600 hover:bg-slate-100")
                                     )}
                                 >
-                                    Root
+                                    <Server size={14} />
+                                    <span>{browsingStorage.title}</span>
                                 </button>
 
                                 {currentBucket && (
@@ -340,10 +332,10 @@ const S3StoragePage = () => {
                             darkMode ? "border-slate-800 bg-slate-900/50" : "border-slate-100 bg-slate-50/50"
                         )}>
                             <h3 className={cn(
-                                "text-sm font-bold uppercase tracking-wider",
+                                "text-sm font-bold tracking-wider",
                                 darkMode ? "text-slate-400" : "text-slate-500"
                             )}>
-                                {currentBucket ? `Contents of ${currentBucket}/${currentPrefix}` : 'Available Buckets'}
+                                {currentBucket ? `Contents of s3://${currentBucket}/${currentPrefix}` : 'Available Buckets'}
                             </h3>
                             <div className="flex items-center gap-2 text-xs text-slate-500">
                                 <Search size={12} />
