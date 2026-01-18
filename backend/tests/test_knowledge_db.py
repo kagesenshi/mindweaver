@@ -75,7 +75,10 @@ def test_delete_knowledge_db(client: TestClient, test_project):
     # Delete the knowledge DB
     delete_resp = client.delete(
         f"/api/v1/knowledge_dbs/{db_id}",
-        headers={"X-Project-Id": str(test_project["id"])},
+        headers={
+            "X-Project-Id": str(test_project["id"]),
+            "X-RESOURCE-NAME": "to-delete",
+        },
     )
     assert delete_resp.status_code == 200
 

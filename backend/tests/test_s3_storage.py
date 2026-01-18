@@ -302,7 +302,13 @@ def test_s3_storage_delete(client: TestClient, test_project):
     storage_id = create_resp.json()["record"]["id"]
 
     # Delete the storage
-    delete_resp = client.request('DELETE', f"/api/v1/s3_storages/{storage_id}", json={"name": "delete-test"})
+    delete_resp = client.delete(
+        f"/api/v1/s3_storages/{storage_id}",
+        headers={
+            "X-Project-Id": str(test_project["id"]),
+            "X-RESOURCE-NAME": "delete-test",
+        },
+    )
     assert delete_resp.status_code == 200
 
     # Verify it's deleted

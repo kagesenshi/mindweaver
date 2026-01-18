@@ -89,7 +89,10 @@ def test_pgsql_platform_service_state_clearing(client: TestClient, test_project)
         ):
             resp = client.post(
                 f"/api/v1/platform/pgsql/{model_id}/_decommission",
-                headers={"X-Project-Id": str(test_project["id"])},
+                headers={
+                    "X-Project-Id": str(test_project["id"]),
+                    "X-RESOURCE-NAME": "test-pgsql-clear",
+                },
             )
             resp.raise_for_status()
 

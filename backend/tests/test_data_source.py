@@ -126,11 +126,14 @@ def test_delete_datasource(client: TestClient, test_project):
     source_id = resp.json()["record"]["id"]
 
     # Delete
-    resp = client.delete(
+    delete_resp = client.delete(
         f"/api/v1/data_sources/{source_id}",
-        headers={"X-Project-Id": str(test_project["id"])},
+        headers={
+            "X-Project-Id": str(test_project["id"]),
+            "X-RESOURCE-NAME": "delete-test",
+        },
     )
-    assert resp.status_code == 200
+    assert delete_resp.status_code == 200
 
     # Verify
     resp = client.get(

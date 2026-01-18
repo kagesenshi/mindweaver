@@ -81,7 +81,10 @@ def test_delete_ai_agent(client: TestClient, test_project):
     # Delete the AI agent
     delete_resp = client.delete(
         f"/api/v1/ai_agents/{agent_id}",
-        headers={"X-Project-Id": str(test_project["id"])},
+        headers={
+            "X-Project-Id": str(test_project["id"]),
+            "X-RESOURCE-NAME": "to-delete",
+        },
     )
     assert delete_resp.status_code == 200
 

@@ -623,7 +623,13 @@ def test_delete_ingestion(client: TestClient, test_project):
     ingestion_id = create_resp.json()["record"]["id"]
 
     # Delete the ingestion
-    delete_resp = client.request('DELETE', f"/api/v1/ingestions/{ingestion_id}", json={"name": "delete-test"})
+    delete_resp = client.delete(
+        f"/api/v1/ingestions/{ingestion_id}",
+        headers={
+            "X-Project-Id": str(test_project["id"]),
+            "X-RESOURCE-NAME": "delete-test",
+        },
+    )
     assert delete_resp.status_code == 200
     assert delete_resp.json()["status"] == "success"
 

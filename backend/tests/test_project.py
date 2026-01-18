@@ -61,7 +61,9 @@ def test_delete_project(client: TestClient):
     create_resp = client.post("/api/v1/projects", json={"name": "p1", "title": "P1"})
     project_id = create_resp.json()["record"]["id"]
 
-    response = client.request('DELETE', f"/api/v1/projects/{project_id}", json={"name": "test-project"})
+    response = client.delete(
+        f"/api/v1/projects/{project_id}", headers={"X-RESOURCE-NAME": "p1"}
+    )
     assert response.status_code == 200
 
     # Verify it's gone

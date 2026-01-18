@@ -75,7 +75,7 @@ def test_k8s_cluster_crud(project_scoped_crud_client: TestClient):
     # 5. Delete K8s Cluster
     resp = client.delete(
         f"/api/v1/k8s_clusters/{record_id}",
-        headers={"X-Project-Id": str(project_id)},
+        headers={"X-Project-Id": str(project_id), "X-RESOURCE-NAME": "test-cluster"},
     )
     resp.raise_for_status()
 

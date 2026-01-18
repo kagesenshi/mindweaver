@@ -98,6 +98,7 @@ the tests first before implementing the fixes.
 
 ### Code Quality & Deprecations
 - If a deprecation warning appear in backend for newly written work, rectify the warning. ideally there should not be any deprecation warning for newly created work. Granted, sometimes it is not feasible (require major changes), if that happens, advise the developer accordingly
+- Python imports MUST ALWAYS be at the top of the file. Get permission if you have to put inside functions / classes and there are no other choice.
 
 ### Modifying Agent Rules
 - If you are requested to update rule file in `.agent/rules/` first copy it out into a temporary file in
@@ -148,7 +149,7 @@ the tests first before implementing the fixes.
 2. **Backend implementation**:
    - Write `pytest` unit tests in `backend/tests`.
    - Implement models and service logic.
-   - Run `uv run pytest tests` to verify.
+   - Run `uv run --package mindweaver pytest tests` to verify.
 3. **Frontend Implementation**:
    - Create models and providers.
    - Implement pages/components.

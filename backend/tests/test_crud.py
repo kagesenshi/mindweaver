@@ -54,7 +54,9 @@ def test_crud(crud_client: TestClient):
     assert updated_record["title"] == "New title"
     assert updated_record["modified"] >= record["modified"]
 
-    resp = client.delete(f"/api/v1/models/{record_id}", json={"name": record["name"]})
+    resp = client.delete(
+        f"/api/v1/models/{record_id}", headers={"X-RESOURCE-NAME": record["name"]}
+    )
 
     resp.raise_for_status()
 
@@ -178,7 +180,7 @@ def test_project_scoped_crud(project_scoped_crud_client: TestClient):
     # Delete the record
     resp = client.delete(
         f"/api/v1/project_scoped_models/{record_id}",
-        headers={"X-Project-Id": str(project_id)},
+        headers={"X-Project-Id": str(project_id), "X-RESOURCE-NAME": record["name"]},
     )
     resp.raise_for_status()
 

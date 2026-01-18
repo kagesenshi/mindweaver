@@ -72,7 +72,10 @@ def test_delete_chat(client: TestClient, test_project):
     # Delete the chat session
     delete_resp = client.delete(
         f"/api/v1/chats/{chat_id}",
-        headers={"X-Project-Id": str(test_project["id"])},
+        headers={
+            "X-Project-Id": str(test_project["id"]),
+            "X-RESOURCE-NAME": "to-delete",
+        },
     )
     assert delete_resp.status_code == 200
 

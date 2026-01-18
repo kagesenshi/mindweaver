@@ -137,7 +137,10 @@ def test_platform_delete_state_success_after_decommission(
         # 4. Decommission the platform
         resp = client.post(
             f"/api/v1/platform/pgsql/{model_id}/_decommission",
-            headers={"X-Project-Id": str(test_project["id"])},
+            headers={
+                "X-Project-Id": str(test_project["id"]),
+                "X-RESOURCE-NAME": "success-pg",
+            },
         )
         resp.raise_for_status()
 

@@ -94,7 +94,10 @@ def test_platform_state_triggers(client: TestClient, test_project):
         resp = client.post(
             f"/api/v1/mock_trigger_platform_models/{model_id}/_state",
             json=update_data,
-            headers={"X-Project-Id": str(test_project["id"])},
+            headers={
+                "X-Project-Id": str(test_project["id"]),
+                "X-RESOURCE-NAME": "trigger-pg",
+            },
         )
         resp.raise_for_status()
         assert mock_decommission.called

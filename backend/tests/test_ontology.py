@@ -90,7 +90,10 @@ def test_delete_ontology(client: TestClient, test_project):
 
     response = client.delete(
         f"/api/v1/ontologies/{ontology_id}",
-        headers={"X-Project-ID": str(test_project["id"])},
+        headers={
+            "X-Project-ID": str(test_project["id"]),
+            "X-RESOURCE-NAME": "to-delete",
+        },
     )
     assert response.status_code == 200
 

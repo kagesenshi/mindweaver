@@ -92,7 +92,10 @@ def test_platform_service_decommission(client: TestClient, test_project):
 
                 resp = client.post(
                     f"/api/v1/mock_decommission_platform_models/{model_id}/_decommission",
-                    headers={"X-Project-Id": str(test_project["id"])},
+                    headers={
+                        "X-Project-Id": str(test_project["id"]),
+                        "X-RESOURCE-NAME": "test-svc-decomm",
+                    },
                 )
                 resp.raise_for_status()
 
