@@ -11,6 +11,7 @@ from mindweaver.fw.model import Base
 from mindweaver.service.base import ProjectScopedNamedBase, ProjectScopedService
 from mindweaver.service.k8s_cluster import K8sCluster, K8sClusterType
 from mindweaver.service.project import Project
+from mindweaver.fw.service import before_delete
 import os
 import pydantic
 from sqlalchemy import Column, DateTime, String
@@ -189,6 +190,15 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
         To be overridden by subclasses.
         """
         pass
+
+    @before_delete()
+    async def _delete_associated_state(self, model: T):
+        """Deletes the associated platform state record when the platform is deleted"""
+        state = await self.platform_state(model)
+        if state:
+            await self.session.delete(state)
+            await self.session.flush()
+            logger.info(f"Deleted platform state for {model.name}")
 
     async def _deploy_to_cluster(
         self, kubeconfig: str | None, manifest: str, default_namespace: str = "default"

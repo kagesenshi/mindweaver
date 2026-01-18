@@ -967,6 +967,13 @@ class Service(Generic[S], abc.ABC):
         async def delete(
             svc: Annotated[cls, Depends(cls.get_service)],  # type: ignore
             model: Annotated[model_class, Depends(cls.get_model)],
+            x_resource_name: Annotated[
+                str | None, Header(alias="X-RESOURCE-NAME")
+            ] = None,
         ) -> BaseResult:  # type: ignore
+            if x_resource_name != model.name:
+                raise ModelValidationError(
+                    message=f"To delete this resource, the header 'X-RESOURCE-NAME' must match the resource name ('{model.name}')"
+                )
             await svc.delete(model.id)
             return {"status": "success"}

@@ -54,7 +54,7 @@ def test_crud(crud_client: TestClient):
     assert updated_record["title"] == "New title"
     assert updated_record["modified"] >= record["modified"]
 
-    resp = client.delete(f"/api/v1/models/{record_id}")
+    resp = client.delete(f"/api/v1/models/{record_id}", json={"name": record["name"]})
 
     resp.raise_for_status()
 

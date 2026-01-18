@@ -30,8 +30,10 @@ export const useProjects = () => {
         return response.data;
     };
 
-    const deleteProject = async (id) => {
-        await apiClient.delete(`/projects/${id}`);
+    const deleteProject = async (id, confirmName) => {
+        await apiClient.delete(`/projects/${id}`, {
+            headers: { 'X-RESOURCE-NAME': confirmName }
+        });
         await fetchProjects();
     };
 
@@ -71,8 +73,10 @@ export const useDataSources = () => {
         return response.data;
     };
 
-    const deleteDataSource = async (id) => {
-        await apiClient.delete(`/data_sources/${id}`);
+    const deleteDataSource = async (id, confirmName) => {
+        await apiClient.delete(`/data_sources/${id}`, {
+            headers: { 'X-RESOURCE-NAME': confirmName }
+        });
         await fetchDataSources();
     };
 
@@ -116,8 +120,10 @@ export const usePgSql = () => {
         await fetchPlatforms();
     };
 
-    const deletePlatform = async (id) => {
-        await apiClient.delete(`/platform/pgsql/${id}`);
+    const deletePlatform = async (id, confirmName) => {
+        await apiClient.delete(`/platform/pgsql/${id}`, {
+            headers: { 'X-RESOURCE-NAME': confirmName }
+        });
         await fetchPlatforms();
     };
 
@@ -167,8 +173,10 @@ export const useK8sClusters = () => {
         return response.data;
     };
 
-    const deleteCluster = async (id) => {
-        await apiClient.delete(`/k8s_clusters/${id}`);
+    const deleteCluster = async (id, confirmName) => {
+        await apiClient.delete(`/k8s_clusters/${id}`, {
+            headers: { 'X-RESOURCE-NAME': confirmName }
+        });
         await fetchClusters();
     };
 
@@ -208,8 +216,10 @@ export const useS3Storages = () => {
         return response.data;
     };
 
-    const deleteStorage = async (id) => {
-        await apiClient.delete(`/s3_storages/${id}`);
+    const deleteStorage = async (id, confirmName) => {
+        await apiClient.delete(`/s3_storages/${id}`, {
+            headers: { 'X-RESOURCE-NAME': confirmName }
+        });
         await fetchStorages();
     };
 

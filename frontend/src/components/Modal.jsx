@@ -25,7 +25,10 @@ const Modal = ({ isOpen, onClose, title, children, darkMode, maxWidth = "max-w-4
             />
 
             {/* Content */}
-            <div className={cn("mw-modal w-full", maxWidth)}>
+            <div
+                className={cn("mw-modal w-full", maxWidth)}
+                onClick={(e) => e.stopPropagation()}
+            >
                 <div className="flex items-center justify-between p-8 border-b border-slate-200 dark:border-slate-800">
                     <h3 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">{title}</h3>
                     <button

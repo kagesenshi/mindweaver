@@ -90,7 +90,9 @@ const DataSourcesPage = () => {
                             subtitle={`${source.id} • ${source.driver}`}
                             status={source.status}
                             onEdit={() => setEditSource(source)}
-                            onDelete={() => deleteDataSource(source.id)}
+                            resourceName={source.name}
+                            darkMode={darkMode}
+                            onDelete={(name) => deleteDataSource(source.id, name)}
                             footer={
                                 <button
                                     onClick={() => handleTest(source.id)}

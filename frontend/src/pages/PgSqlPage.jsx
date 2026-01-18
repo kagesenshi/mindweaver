@@ -119,10 +119,8 @@ const PgSqlPage = () => {
     };
 
 
-    const handleDelete = async (id) => {
-        if (window.confirm('Are you sure you want to delete this cluster?')) {
-            await deletePlatform(id);
-        }
+    const handleDelete = async (id, confirmName) => {
+        await deletePlatform(id, confirmName);
     };
 
     if (selectedPlatform) {
@@ -480,7 +478,9 @@ const PgSqlPage = () => {
                                 setSelectedPlatform(platform);
                                 setActiveTab('configure');
                             }}
-                            onDelete={() => handleDelete(platform.id)}
+                            resourceName={platform.name}
+                            darkMode={darkMode}
+                            onDelete={(name) => handleDelete(platform.id, name)}
                             footer={allPlatformStates[platform.id]?.message && (
                                 <div className="flex items-center gap-1.5 text-xs text-slate-500 bg-slate-100 dark:bg-slate-800/50 px-2 py-1 rounded-lg truncate">
                                     <Activity size={12} className="text-blue-500 shrink-0" />

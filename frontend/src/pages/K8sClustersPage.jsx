@@ -21,10 +21,8 @@ const K8sClustersPage = () => {
         (cluster.type || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    const handleDelete = async (id) => {
-        if (window.confirm('Are you sure you want to delete this cluster?')) {
-            await deleteCluster(id);
-        }
+    const handleDelete = async (id, confirmName) => {
+        await deleteCluster(id, confirmName);
     };
 
     return (
@@ -62,7 +60,9 @@ const K8sClustersPage = () => {
                                 setSelectedCluster(cluster);
                                 setIsEditModalOpen(true);
                             }}
-                            onDelete={() => handleDelete(cluster.id)}
+                            resourceName={cluster.name}
+                            darkMode={darkMode}
+                            onDelete={(name) => deleteCluster(cluster.id, name)}
                             footer={
                                 <div className="flex items-center gap-4">
                                     <div className="flex items-center gap-2 text-slate-500">

@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Edit2, Trash2 } from 'lucide-react';
 import { cn } from '../utils/cn';
+import DeleteConfirmModal from './DeleteConfirmModal';
 
 const StatusBadge = ({ status }) => {
     const styles = {
@@ -29,6 +30,8 @@ const ResourceCard = ({
     title,
     subtitle,
     status,
+    resourceName,
+    darkMode,
     onEdit,
     onDelete,
     onClick,
@@ -37,6 +40,7 @@ const ResourceCard = ({
     footer,
     className
 }) => {
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     return (
         <div
             onClick={onClick}
@@ -88,7 +92,7 @@ const ResourceCard = ({
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        onDelete();
+                                        setIsDeleteModalOpen(true);
                                     }}
                                     className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all"
                                     title="Delete"
@@ -113,6 +117,15 @@ const ResourceCard = ({
                         {footer}
                     </div>
                 </div>
+            )}
+            {isDeleteModalOpen && (
+                <DeleteConfirmModal
+                    isOpen={isDeleteModalOpen}
+                    onClose={() => setIsDeleteModalOpen(false)}
+                    onConfirm={(name) => onDelete(name)}
+                    resourceName={resourceName || title}
+                    darkMode={darkMode}
+                />
             )}
         </div>
     );

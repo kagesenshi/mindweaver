@@ -52,10 +52,8 @@ const S3StoragePage = () => {
         setEditItem(null);
     };
 
-    const handleDelete = async (id) => {
-        if (window.confirm('Are you sure you want to delete this storage?')) {
-            await deleteStorage(id);
-        }
+    const handleDelete = async (id, confirmName) => {
+        await deleteStorage(id, confirmName);
     };
 
     const runTestConnection = async (formData) => {
@@ -115,7 +113,9 @@ const S3StoragePage = () => {
                             title={storage.name}
                             subtitle={storage.region}
                             onEdit={() => setEditItem(storage)}
-                            onDelete={() => handleDelete(storage.id)}
+                            resourceName={storage.name}
+                            darkMode={darkMode}
+                            onDelete={(name) => handleDelete(storage.id, name)}
                         >
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="flex items-center gap-2 text-slate-500">
