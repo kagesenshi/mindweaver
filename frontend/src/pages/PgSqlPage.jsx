@@ -469,6 +469,20 @@ const PgSqlPage = () => {
                         </div>
                     )}
                 </div>
+                {isDecommissionModalOpen && (
+                    <ResourceConfirmModal
+                        isOpen={isDecommissionModalOpen}
+                        onClose={() => setIsDecommissionModalOpen(false)}
+                        onConfirm={handleDecommission}
+                        resourceName={selectedPlatform?.name}
+                        darkMode={darkMode}
+                        title="Confirm Decommissioning"
+                        message="Decommissioning this cluster will permanently delete all associated Kubernetes resources and database data."
+                        confirmText="DECOMMISSION"
+                        icon={Zap}
+                        variant="danger"
+                    />
+                )}
             </div >
         );
     }
@@ -561,20 +575,7 @@ const PgSqlPage = () => {
                 />
             </Modal>
 
-            {isDecommissionModalOpen && (
-                <ResourceConfirmModal
-                    isOpen={isDecommissionModalOpen}
-                    onClose={() => setIsDecommissionModalOpen(false)}
-                    onConfirm={handleDecommission}
-                    resourceName={selectedPlatform?.name}
-                    darkMode={darkMode}
-                    title="Confirm Decommissioning"
-                    message="Decommissioning this cluster will permanently delete all associated Kubernetes resources and database data."
-                    confirmText="DECOMMISSION"
-                    icon={Zap}
-                    variant="danger"
-                />
-            )}
+
         </>
     );
 };
