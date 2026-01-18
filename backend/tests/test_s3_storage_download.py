@@ -3,8 +3,8 @@ import pytest
 from unittest.mock import patch, Mock
 
 
-def test_s3_storage_download(client: TestClient, test_project):
-    """Test downloading a file from s3 using _download endpoint."""
+def test_s3_storage_get_file(client: TestClient, test_project):
+    """Test getting a file from s3 using _fs endpoint with action=get."""
     # Create a storage
     create_resp = client.post(
         "/api/v1/s3_storages",
@@ -35,7 +35,7 @@ def test_s3_storage_download(client: TestClient, test_project):
         }
 
         resp = client.get(
-            f"/api/v1/s3_storages/{storage_id}/_download?bucket=test-bucket&key=folder/test.txt"
+            f"/api/v1/s3_storages/{storage_id}/_fs?action=get&bucket=test-bucket&key=folder/test.txt"
         )
 
         assert resp.status_code == 200

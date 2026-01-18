@@ -236,8 +236,8 @@ export const useS3Storages = () => {
     const uploadFile = async (id, bucket, prefix, file) => {
         const formData = new FormData();
         formData.append('file', file);
-        const response = await apiClient.post(`/s3_storages/${id}/_upload`, formData, {
-            params: { bucket, prefix },
+        const response = await apiClient.post(`/s3_storages/${id}/_fs`, formData, {
+            params: { bucket, prefix, action: 'put' },
             headers: {
                 'Content-Type': 'multipart/form-data'
             }
@@ -247,8 +247,8 @@ export const useS3Storages = () => {
 
     const downloadFile = async (id, bucket, key) => {
         try {
-            const response = await apiClient.get(`/s3_storages/${id}/_download`, {
-                params: { bucket, key },
+            const response = await apiClient.get(`/s3_storages/${id}/_fs`, {
+                params: { bucket, key, action: 'get' },
                 responseType: 'blob'
             });
 

@@ -208,10 +208,11 @@ class S3StorageService(SecretHandlerMixin, ProjectScopedService[S3Storage]):
         async def fs_ops(
             svc: Annotated[cls, Depends(cls.get_service)],
             model: Annotated[S3Storage, Depends(cls.get_model)],
-            action: Literal["ls"] = "ls",
+            action: Literal["ls", "get"] = "ls",
             bucket: Optional[str] = None,
             prefix: str = "",
-        ) -> dict[str, Any]:
+            key: Optional[str] = None,
+        ):
             region = model.region
             access_key = model.access_key
             secret_key = None
@@ -298,6 +299,28 @@ class S3StorageService(SecretHandlerMixin, ProjectScopedService[S3Storage]):
                             "items": items,
                         }
 
+                elif action == "get":
+                    if not bucket or not key:
+                        raise HTTPException(
+                            status_code=400,
+                            detail="Bucket and Key are required for 'get' action",
+                        )
+
+                    # Get object from S3
+                    response = s3_client.get_object(Bucket=bucket, Key=key)
+
+                    filename = key.split("/")[-1]
+
+                    return fastapi.responses.StreamingResponse(
+                        response["Body"],
+                        media_type=response.get(
+                            "ContentType", "application/octet-stream"
+                        ),
+                        headers={
+                            "Content-Disposition": f'attachment; filename="{filename}"'
+                        },
+                    )
+
                 raise HTTPException(
                     status_code=400, detail=f"Unsupported action: {action}"
                 )
@@ -311,14 +334,15 @@ class S3StorageService(SecretHandlerMixin, ProjectScopedService[S3Storage]):
                 raise HTTPException(status_code=500, detail=str(e))
 
         @router.post(
-            f"{model_path}/_upload",
-            operation_id=f"mw-upload-{cls.entity_type()}",
+            f"{model_path}/_fs",
+            operation_id=f"mw-fs-post-{cls.entity_type()}",
             tags=path_tags,
         )
-        async def upload_file(
+        async def fs_ops_post(
             svc: Annotated[cls, Depends(cls.get_service)],
             model: Annotated[S3Storage, Depends(cls.get_model)],
             bucket: str,
+            action: Literal["put"] = "put",
             prefix: str = "",
             file: UploadFile = File(...),
         ) -> dict[str, Any]:
@@ -349,78 +373,25 @@ class S3StorageService(SecretHandlerMixin, ProjectScopedService[S3Storage]):
 
                 s3_client = boto3.client("s3", verify=verify_ssl, **s3_config)
 
-                # Ensure prefix ends with / if specified and not already there
-                if prefix and not prefix.endswith("/"):
-                    prefix += "/"
+                if action == "put":
+                    # Ensure prefix ends with / if specified and not already there
+                    if prefix and not prefix.endswith("/"):
+                        prefix += "/"
 
-                key = f"{prefix}{file.filename}"
+                    key = f"{prefix}{file.filename}"
 
-                # Upload to S3
-                s3_client.upload_fileobj(file.file, bucket, key)
+                    # Upload to S3
+                    s3_client.upload_fileobj(file.file, bucket, key)
 
-                return {
-                    "status": "success",
-                    "message": f"Successfully uploaded '{file.filename}' to '{bucket}/{prefix}'",
-                    "key": key,
-                }
+                    return {
+                        "status": "success",
+                        "message": f"Successfully uploaded '{file.filename}' to '{bucket}/{prefix}'",
+                        "bucket": bucket,
+                        "key": key,
+                    }
 
-            except ClientError as e:
-                error_code = e.response.get("Error", {}).get("Code", "Unknown")
                 raise HTTPException(
-                    status_code=400, detail=f"S3 Error ({error_code}): {str(e)}"
-                )
-            except Exception as e:
-                raise HTTPException(status_code=500, detail=str(e))
-
-        @router.get(
-            f"{model_path}/_download",
-            operation_id=f"mw-download-{cls.entity_type()}",
-            tags=path_tags,
-        )
-        async def download_file(
-            svc: Annotated[cls, Depends(cls.get_service)],
-            model: Annotated[S3Storage, Depends(cls.get_model)],
-            bucket: str,
-            key: str,
-        ):
-            region = model.region
-            access_key = model.access_key
-            secret_key = None
-            endpoint_url = model.endpoint_url
-            verify_ssl = model.verify_ssl
-
-            if model.secret_key:
-                try:
-                    secret_key = decrypt_password(model.secret_key)
-                except EncryptionError:
-                    pass
-
-            try:
-                # Create S3 client
-                s3_config = {
-                    "aws_access_key_id": access_key,
-                    "region_name": region,
-                }
-
-                if secret_key:
-                    s3_config["aws_secret_access_key"] = secret_key
-
-                if endpoint_url:
-                    s3_config["endpoint_url"] = endpoint_url
-
-                s3_client = boto3.client("s3", verify=verify_ssl, **s3_config)
-
-                # Get object from S3
-                response = s3_client.get_object(Bucket=bucket, Key=key)
-
-                filename = key.split("/")[-1]
-
-                return fastapi.responses.StreamingResponse(
-                    response["Body"],
-                    media_type=response.get("ContentType", "application/octet-stream"),
-                    headers={
-                        "Content-Disposition": f'attachment; filename="{filename}"'
-                    },
+                    status_code=400, detail=f"Unsupported action: {action}"
                 )
 
             except ClientError as e:

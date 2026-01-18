@@ -550,16 +550,23 @@ def test_s3_storage_fs_ls(client: TestClient, test_project):
             }
         ]
 
+        # Test getting a file (get action)
+        import io
+
+        file_content = b"fake content"
+        mock_client.get_object.return_value = {
+            "Body": io.BytesIO(file_content),
+            "ContentType": "text/plain",
+        }
+
         resp = client.get(
-            f"/api/v1/s3_storages/{storage_id}/_fs?action=ls&bucket=bucket1"
+            f"/api/v1/s3_storages/{storage_id}/_fs?action=get&bucket=bucket1&key=file1.txt"
         )
         assert resp.status_code == 200
-        data = resp.json()
-        assert data["type"] == "objects"
-        assert data["bucket"] == "bucket1"
-        assert len(data["items"]) == 2
-        assert any(item["name"] == "folder1/" for item in data["items"])
-        assert any(item["name"] == "file1.txt" for item in data["items"])
+        assert resp.content == file_content
+        assert resp.headers["content-disposition"] == 'attachment; filename="file1.txt"'
+        assert "text/plain" in resp.headers["content-type"]
+
 
 def test_s3_storage_fs_upload(client: TestClient, test_project):
     """Test uploading a file to s3 using _fs endpoint."""
@@ -589,18 +596,18 @@ def test_s3_storage_fs_upload(client: TestClient, test_project):
         # Test upload
         file_content = b"hello s3"
         file = io.BytesIO(file_content)
-        
+
         resp = client.post(
-            f"/api/v1/s3_storages/{storage_id}/_fs?bucket=test-bucket&prefix=test-folder/",
-            files={"file": ("test.txt", file, "text/plain")}
+            f"/api/v1/s3_storages/{storage_id}/_fs?action=put&bucket=test-bucket&prefix=test-folder/",
+            files={"file": ("test.txt", file, "text/plain")},
         )
-        
+
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "success"
         assert data["bucket"] == "test-bucket"
         assert data["key"] == "test-folder/test.txt"
-        
+
         # Verify upload_fileobj call
         mock_client.upload_fileobj.assert_called_once()
         args, kwargs = mock_client.upload_fileobj.call_args
