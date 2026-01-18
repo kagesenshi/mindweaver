@@ -80,7 +80,7 @@ const ResourceConfirmModal = ({
                 </div>
 
                 <div className="space-y-3 pt-4 border-t border-slate-200 dark:border-slate-800">
-                    <p className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest text-center">
+                    <p className="text-sm font-bold text-slate-700 dark:text-slate-300 text-center">
                         Please type <span className={cn("font-mono select-all px-1.5 py-0.5 rounded border", style.matchText)}>{resourceName}</span> to confirm.
                     </p>
                     <div className="px-8">
