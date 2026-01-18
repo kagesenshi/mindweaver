@@ -247,30 +247,27 @@ export const useS3Storages = () => {
 
     const downloadFile = async (id, bucket, key) => {
         try {
+            // Request the presigned URL as JSON
             const response = await apiClient.get(`/s3_storages/${id}/_fs`, {
                 params: { bucket, key, action: 'get' },
-                responseType: 'blob'
+                headers: {
+                    'Accept': 'application/json'
+                }
             });
 
-            // response.data is already a Blob when responseType is 'blob'
-            const blob = response.data;
-            const url = window.URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-
-            // Extract filename from key
-            const filename = key.split('/').filter(Boolean).pop() || 'file';
-            link.setAttribute('download', filename);
-
-            // Append to body, click and cleanup
-            document.body.appendChild(link);
-            link.click();
-
-            // Give it a moment before cleanup to ensure trigger
-            setTimeout(() => {
+            const { url } = response.data;
+            if (url) {
+                // Trigger download by opening the URL
+                const link = document.createElement('a');
+                link.href = url;
+                link.target = '_blank';
+                // Note: We don't set 'download' attribute here because S3/presigned URLs
+                // usually handle Content-Disposition themselves, and it might error
+                // with some CORS policies if the domains differ.
+                document.body.appendChild(link);
+                link.click();
                 document.body.removeChild(link);
-                window.URL.revokeObjectURL(url);
-            }, 100);
+            }
         } catch (err) {
             console.error("Failed to download file:", err);
             throw err;

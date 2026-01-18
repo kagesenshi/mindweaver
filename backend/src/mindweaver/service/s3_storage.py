@@ -208,6 +208,7 @@ class S3StorageService(SecretHandlerMixin, ProjectScopedService[S3Storage]):
         async def fs_ops(
             svc: Annotated[cls, Depends(cls.get_service)],
             model: Annotated[S3Storage, Depends(cls.get_model)],
+            request: fastapi.Request,
             action: Literal["ls", "get"] = "ls",
             bucket: Optional[str] = None,
             prefix: str = "",
@@ -306,19 +307,28 @@ class S3StorageService(SecretHandlerMixin, ProjectScopedService[S3Storage]):
                             detail="Bucket and Key are required for 'get' action",
                         )
 
-                    # Get object from S3
-                    response = s3_client.get_object(Bucket=bucket, Key=key)
+                    # Generate presigned URL for the user to download directly
+                    try:
+                        presigned_url = s3_client.generate_presigned_url(
+                            "get_object",
+                            Params={"Bucket": bucket, "Key": key},
+                            ExpiresIn=3600,
+                        )
+                    except Exception as e:
+                        raise HTTPException(
+                            status_code=500,
+                            detail=f"Failed to generate presigned URL: {str(e)}",
+                        )
 
-                    filename = key.split("/")[-1]
+                    # If the client explicitly requests JSON, return the URL as JSON
+                    # This is useful for frontend to handle the redirect manually (e.g. window.open)
+                    accept = request.headers.get("accept", "")
+                    if "application/json" in accept:
+                        return {"url": presigned_url}
 
-                    return fastapi.responses.StreamingResponse(
-                        response["Body"],
-                        media_type=response.get(
-                            "ContentType", "application/octet-stream"
-                        ),
-                        headers={
-                            "Content-Disposition": f'attachment; filename="{filename}"'
-                        },
+                    # Default to redirecting the browser
+                    return fastapi.responses.RedirectResponse(
+                        presigned_url, status_code=307
                     )
 
                 raise HTTPException(

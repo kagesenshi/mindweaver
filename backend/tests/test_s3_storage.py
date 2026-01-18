@@ -551,21 +551,15 @@ def test_s3_storage_fs_ls(client: TestClient, test_project):
         ]
 
         # Test getting a file (get action)
-        import io
-
-        file_content = b"fake content"
-        mock_client.get_object.return_value = {
-            "Body": io.BytesIO(file_content),
-            "ContentType": "text/plain",
-        }
+        presigned_url = "http://fake-s3-presigned-url.com/file"
+        mock_client.generate_presigned_url.return_value = presigned_url
 
         resp = client.get(
-            f"/api/v1/s3_storages/{storage_id}/_fs?action=get&bucket=bucket1&key=file1.txt"
+            f"/api/v1/s3_storages/{storage_id}/_fs?action=get&bucket=bucket1&key=file1.txt",
+            follow_redirects=False,
         )
-        assert resp.status_code == 200
-        assert resp.content == file_content
-        assert resp.headers["content-disposition"] == 'attachment; filename="file1.txt"'
-        assert "text/plain" in resp.headers["content-type"]
+        assert resp.status_code == 307
+        assert resp.headers["location"] == presigned_url
 
 
 def test_s3_storage_fs_upload(client: TestClient, test_project):

@@ -25,25 +25,30 @@ def test_s3_storage_get_file(client: TestClient, test_project):
     with patch("boto3.client") as mock_s3:
         mock_client = mock_s3.return_value
 
-        # Mock get_object response
-        import io
+        presigned_url = "http://fake-s3-presigned-url.com/file"
+        mock_client.generate_presigned_url.return_value = presigned_url
 
-        file_content = b"fake s3 content"
-        mock_client.get_object.return_value = {
-            "Body": io.BytesIO(file_content),
-            "ContentType": "text/plain",
-        }
-
+        # Test 1: Default redirect behavior
         resp = client.get(
-            f"/api/v1/s3_storages/{storage_id}/_fs?action=get&bucket=test-bucket&key=folder/test.txt"
+            f"/api/v1/s3_storages/{storage_id}/_fs?action=get&bucket=test-bucket&key=folder/test.txt",
+            follow_redirects=False,
+        )
+
+        assert resp.status_code == 307
+        assert resp.headers["location"] == presigned_url
+
+        # Test 2: JSON response behavior (requested by frontend)
+        resp = client.get(
+            f"/api/v1/s3_storages/{storage_id}/_fs?action=get&bucket=test-bucket&key=folder/test.txt",
+            headers={"Accept": "application/json"},
         )
 
         assert resp.status_code == 200
-        assert resp.content == file_content
-        assert resp.headers["content-disposition"] == 'attachment; filename="test.txt"'
-        assert "text/plain" in resp.headers["content-type"]
+        assert resp.json()["url"] == presigned_url
 
-        # Verify get_object call
-        mock_client.get_object.assert_called_once_with(
-            Bucket="test-bucket", Key="folder/test.txt"
+        # Verify generate_presigned_url call
+        mock_client.generate_presigned_url.assert_called_with(
+            "get_object",
+            Params={"Bucket": "test-bucket", "Key": "folder/test.txt"},
+            ExpiresIn=3600,
         )
