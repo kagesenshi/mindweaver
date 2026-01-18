@@ -245,9 +245,41 @@ export const useS3Storages = () => {
         return response.data;
     };
 
+    const downloadFile = async (id, bucket, key) => {
+        try {
+            const response = await apiClient.get(`/s3_storages/${id}/_download`, {
+                params: { bucket, key },
+                responseType: 'blob'
+            });
+
+            // response.data is already a Blob when responseType is 'blob'
+            const blob = response.data;
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+
+            // Extract filename from key
+            const filename = key.split('/').filter(Boolean).pop() || 'file';
+            link.setAttribute('download', filename);
+
+            // Append to body, click and cleanup
+            document.body.appendChild(link);
+            link.click();
+
+            // Give it a moment before cleanup to ensure trigger
+            setTimeout(() => {
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+            }, 100);
+        } catch (err) {
+            console.error("Failed to download file:", err);
+            throw err;
+        }
+    };
+
     useEffect(() => {
         fetchStorages();
     }, [fetchStorages]);
 
-    return { storages, loading, error, fetchStorages, createStorage, updateStorage, deleteStorage, testConnection, browseStorage, uploadFile };
+    return { storages, loading, error, fetchStorages, createStorage, updateStorage, deleteStorage, testConnection, browseStorage, uploadFile, downloadFile };
 };

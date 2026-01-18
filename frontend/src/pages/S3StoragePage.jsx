@@ -16,7 +16,8 @@ import {
     RotateCcw,
     Upload,
     ChevronUp,
-    Search
+    Search,
+    Download
 } from 'lucide-react';
 import { useS3Storages } from '../hooks/useResources';
 import { useNotification } from '../providers/NotificationProvider';
@@ -37,7 +38,8 @@ const S3StoragePage = () => {
         testConnection,
         fetchStorages,
         browseStorage,
-        uploadFile
+        uploadFile,
+        downloadFile
     } = useS3Storages();
 
     const { showSuccess, showError } = useNotification();
@@ -121,6 +123,15 @@ const S3StoragePage = () => {
         } finally {
             setUploading(false);
             if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
+    const handleDownload = async (item) => {
+        try {
+            await downloadFile(browsingStorage.id, currentBucket, item.path);
+        } catch (err) {
+            console.error("Download failed", err);
+            showError(err.response?.data?.detail?.msg || err.message || "Download failed");
         }
     };
 
@@ -390,12 +401,32 @@ const S3StoragePage = () => {
                                             </div>
                                         </div>
 
-                                        {(item.type === 'directory' || !currentBucket) && (
-                                            <ChevronRight size={18} className={cn(
-                                                "transition-all",
-                                                darkMode ? "text-slate-600 group-hover:text-slate-400 group-hover:translate-x-1" : "text-slate-300 group-hover:text-slate-500 group-hover:translate-x-1"
-                                            )} />
-                                        )}
+                                        <div className="flex items-center gap-2">
+                                            {item.type === 'file' && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDownload(item);
+                                                    }}
+                                                    className={cn(
+                                                        "p-2 rounded-lg border transition-colors opacity-0 group-hover:opacity-100",
+                                                        darkMode
+                                                            ? "bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700 hover:text-white"
+                                                            : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-blue-600 shadow-sm"
+                                                    )}
+                                                    title="Download"
+                                                >
+                                                    <Download size={16} />
+                                                </button>
+                                            )}
+
+                                            {(item.type === 'directory' || !currentBucket) && (
+                                                <ChevronRight size={18} className={cn(
+                                                    "transition-all",
+                                                    darkMode ? "text-slate-600 group-hover:text-slate-400 group-hover:translate-x-1" : "text-slate-300 group-hover:text-slate-500 group-hover:translate-x-1"
+                                                )} />
+                                            )}
+                                        </div>
                                     </div>
                                 ))
                             )}
