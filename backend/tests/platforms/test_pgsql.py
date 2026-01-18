@@ -376,8 +376,25 @@ async def test_pgsql_image_selection(client: TestClient, test_project):
     assert "image" in widgets
     assert widgets["image"]["type"] == "select"
     options = widgets["image"]["options"]
-    assert any(opt["value"] == "default:15" for opt in options)
-    assert any(opt["value"] == "default:16" for opt in options)
+    assert any(
+        opt["value"] == "ghcr.io/cloudnative-pg/postgresql:15" for opt in options
+    )
+    assert any(
+        opt["value"] == "ghcr.io/cloudnative-pg/postgresql:16" for opt in options
+    )
+    # Check that labels are correctly retrieved
+    pg16_opt = next(
+        opt for opt in options if opt["value"] == "ghcr.io/cloudnative-pg/postgresql:16"
+    )
+    assert pg16_opt["label"] == "PostgreSQL 16"
+
+    assert any(
+        opt["value"] == "ghcr.io/cloudnative-pg/postgresql:18" for opt in options
+    )
+    pg18_opt = next(
+        opt for opt in options if opt["value"] == "ghcr.io/cloudnative-pg/postgresql:18"
+    )
+    assert pg18_opt["label"] == "PostgreSQL 18"
 
     # 2. Test template_vars
     mock_request = MagicMock()
@@ -389,19 +406,10 @@ async def test_pgsql_image_selection(client: TestClient, test_project):
         title="Test PG",
         project_id=test_project["id"],
         k8s_cluster_id=1,
-        image="default:16",
+        image="ghcr.io/cloudnative-pg/postgresql:16",
     )
 
     vars = await svc.template_vars(model)
 
-    assert vars["image_catalog_name"] == "default"
-    assert vars["image_major_version"] == 16
-    assert "image_catalogs" in vars
-    assert "default" in vars["image_catalogs"]
-    assert any(
-        img["major"] == 16 for img in vars["image_catalogs"]["default"]["images"]
-    )
-    assert any(
-        img["image"] == "ghcr.io/cloudnative-pg/postgresql:16"
-        for img in vars["image_catalogs"]["default"]["images"]
-    )
+    # These are legacy artifacts of template_vars but let's check image_name primarily
+    assert vars["image_name"] == "ghcr.io/cloudnative-pg/postgresql:16"

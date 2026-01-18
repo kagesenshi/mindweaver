@@ -36,7 +36,7 @@ class PgSqlPlatform(PlatformBase, table=True):
 
     instances: int = Field(default=3)
     storage_size: str = Field(default="1Gi")
-    image: str = Field(default="default:15")
+    image: str = Field(default="ghcr.io/cloudnative-pg/postgresql:18")
 
     # Backup configuration (using Barman Cloud Object Store)
     enable_backup: bool = Field(default=False)
@@ -105,10 +105,10 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
     def widgets(cls) -> dict[str, Any]:
         catalog = cls.load_image_catalog()
         image_options = []
-        for cat_name, cat_info in catalog.get("catalogs", {}).items():
-            for img in cat_info.get("images", []):
-                val = f"{cat_name}:{img['major']}"
-                image_options.append({"label": val, "value": val})
+        for img in catalog.get("images", []):
+            val = img["image"]
+            label = img.get("label", val)
+            image_options.append({"label": label, "value": val})
 
         return {
             "image": {"order": 5, "type": "select", "options": image_options},
@@ -134,9 +134,7 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
             vars["image_catalog_name"] = "default"
             vars["image_major_version"] = 15
 
-        # Load all image catalogs from images.yml
-        catalog = self.load_image_catalog()
-        vars["image_catalogs"] = catalog.get("catalogs", {})
+        vars["image_name"] = model.image
 
         if model.s3_storage_id:
             from mindweaver.service.s3_storage import S3StorageService

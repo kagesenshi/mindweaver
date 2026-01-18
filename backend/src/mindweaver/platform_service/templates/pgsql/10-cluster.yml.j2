@@ -4,11 +4,7 @@ metadata:
   name: {{ name }}
 spec:
   instances: {{ instances }}
-  imageCatalogRef:
-    name: {{ image_catalog_name }}
-    kind: ImageCatalog
-    apiGroup: postgresql.cnpg.io
-    major: {{ image_major_version }}
+  imageName: {{ image_name }}
   storage:
     size: {{ storage_size }}
 
