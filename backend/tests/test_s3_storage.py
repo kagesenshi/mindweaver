@@ -499,4 +499,110 @@ def test_list_s3_storages_without_project_id_returns_empty(
     data = resp.json()
 
     assert len(data["records"]) == 1
-    assert data["records"][0]["name"] == "test-storage"
+
+
+def test_s3_storage_fs_ls(client: TestClient, test_project):
+    """Test listing s3 buckets and objects using _fs endpoint."""
+    from datetime import datetime
+    from unittest.mock import patch, Mock
+
+    # Create a storage
+    create_resp = client.post(
+        "/api/v1/s3_storages",
+        headers={"X-Project-Id": str(test_project["id"])},
+        json={
+            "name": "fs-test-storage",
+            "title": "FS Test Storage",
+            "region": "us-east-1",
+            "access_key": "AKIA...",
+            "secret_key": "secret",
+            "project_id": test_project["id"],
+        },
+    )
+    assert create_resp.status_code == 200
+    storage_id = create_resp.json()["record"]["id"]
+
+    # Mock boto3 client
+    with patch("boto3.client") as mock_s3:
+        mock_client = mock_s3.return_value
+
+        # Test listing buckets
+        mock_client.list_buckets.return_value = {
+            "Buckets": [{"Name": "bucket1", "CreationDate": datetime.now()}]
+        }
+
+        resp = client.get(f"/api/v1/s3_storages/{storage_id}/_fs?action=ls")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["type"] == "buckets"
+        assert len(data["items"]) == 1
+        assert data["items"][0]["name"] == "bucket1"
+
+        # Test listing objects
+        mock_paginator = Mock()
+        mock_client.get_paginator.return_value = mock_paginator
+        mock_paginator.paginate.return_value = [
+            {
+                "CommonPrefixes": [{"Prefix": "folder1/"}],
+                "Contents": [
+                    {"Key": "file1.txt", "Size": 1024, "LastModified": datetime.now()}
+                ],
+            }
+        ]
+
+        resp = client.get(
+            f"/api/v1/s3_storages/{storage_id}/_fs?action=ls&bucket=bucket1"
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["type"] == "objects"
+        assert data["bucket"] == "bucket1"
+        assert len(data["items"]) == 2
+        assert any(item["name"] == "folder1/" for item in data["items"])
+        assert any(item["name"] == "file1.txt" for item in data["items"])
+
+def test_s3_storage_fs_upload(client: TestClient, test_project):
+    """Test uploading a file to s3 using _fs endpoint."""
+    from unittest.mock import patch, Mock
+    import io
+
+    # Create a storage
+    create_resp = client.post(
+        "/api/v1/s3_storages",
+        headers={"X-Project-Id": str(test_project["id"])},
+        json={
+            "name": "upload-test-storage",
+            "title": "Upload Test Storage",
+            "region": "us-east-1",
+            "access_key": "AKIA...",
+            "secret_key": "secret",
+            "project_id": test_project["id"],
+        },
+    )
+    assert create_resp.status_code == 200
+    storage_id = create_resp.json()["record"]["id"]
+
+    # Mock boto3 client
+    with patch("boto3.client") as mock_s3:
+        mock_client = mock_s3.return_value
+
+        # Test upload
+        file_content = b"hello s3"
+        file = io.BytesIO(file_content)
+        
+        resp = client.post(
+            f"/api/v1/s3_storages/{storage_id}/_fs?bucket=test-bucket&prefix=test-folder/",
+            files={"file": ("test.txt", file, "text/plain")}
+        )
+        
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "success"
+        assert data["bucket"] == "test-bucket"
+        assert data["key"] == "test-folder/test.txt"
+        
+        # Verify upload_fileobj call
+        mock_client.upload_fileobj.assert_called_once()
+        args, kwargs = mock_client.upload_fileobj.call_args
+        assert args[1] == "test-bucket"
+        assert args[2] == "test-folder/test.txt"

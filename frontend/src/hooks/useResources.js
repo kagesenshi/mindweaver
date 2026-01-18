@@ -228,9 +228,14 @@ export const useS3Storages = () => {
         return response.data;
     };
 
+    const browseStorage = async (id, params = {}) => {
+        const response = await apiClient.get(`/s3_storages/${id}/_fs`, { params });
+        return response.data;
+    };
+
     useEffect(() => {
         fetchStorages();
     }, [fetchStorages]);
 
-    return { storages, loading, error, fetchStorages, createStorage, updateStorage, deleteStorage, testConnection };
+    return { storages, loading, error, fetchStorages, createStorage, updateStorage, deleteStorage, testConnection, browseStorage };
 };

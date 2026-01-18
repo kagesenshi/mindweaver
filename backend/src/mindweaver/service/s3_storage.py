@@ -200,6 +200,116 @@ class S3StorageService(SecretHandlerMixin, ProjectScopedService[S3Storage]):
             ) -> bool:
                 return svc.verify_secret_key(model, data.secret_key)
 
+        @router.get(
+            f"{model_path}/_fs",
+            operation_id=f"mw-fs-{cls.entity_type()}",
+            tags=path_tags,
+        )
+        async def fs_ops(
+            svc: Annotated[cls, Depends(cls.get_service)],
+            model: Annotated[S3Storage, Depends(cls.get_model)],
+            action: Literal["ls"] = "ls",
+            bucket: Optional[str] = None,
+            prefix: str = "",
+        ) -> dict[str, Any]:
+            region = model.region
+            access_key = model.access_key
+            secret_key = None
+            endpoint_url = model.endpoint_url
+            verify_ssl = model.verify_ssl
+
+            if model.secret_key:
+                try:
+                    secret_key = decrypt_password(model.secret_key)
+                except EncryptionError:
+                    pass
+
+            try:
+                # Create S3 client
+                s3_config = {
+                    "aws_access_key_id": access_key,
+                    "region_name": region,
+                }
+
+                if secret_key:
+                    s3_config["aws_secret_access_key"] = secret_key
+
+                if endpoint_url:
+                    s3_config["endpoint_url"] = endpoint_url
+
+                s3_client = boto3.client("s3", verify=verify_ssl, **s3_config)
+
+                if action == "ls":
+                    if not bucket:
+                        # List buckets
+                        response = s3_client.list_buckets()
+                        return {
+                            "type": "buckets",
+                            "items": [
+                                {
+                                    "name": b["Name"],
+                                    "creation_date": b["CreationDate"].isoformat(),
+                                }
+                                for b in response.get("Buckets", [])
+                            ],
+                        }
+                    else:
+                        # List objects in bucket
+                        paginator = s3_client.get_paginator("list_objects_v2")
+                        # Use delimiter to get "folders"
+                        pages = paginator.paginate(
+                            Bucket=bucket, Prefix=prefix, Delimiter="/"
+                        )
+
+                        items = []
+                        for page in pages:
+                            # Add folders (CommonPrefixes)
+                            for cp in page.get("CommonPrefixes", []):
+                                items.append(
+                                    {
+                                        "name": cp["Prefix"].split("/")[-2] + "/",
+                                        "path": cp["Prefix"],
+                                        "type": "directory",
+                                    }
+                                )
+
+                            # Add files (Contents)
+                            for obj in page.get("Contents", []):
+                                # Skip the prefix itself if it appears as an object (common in some S3 implementations for folders)
+                                if obj["Key"] == prefix:
+                                    continue
+
+                                items.append(
+                                    {
+                                        "name": obj["Key"].split("/")[-1],
+                                        "path": obj["Key"],
+                                        "type": "file",
+                                        "size": obj["Size"],
+                                        "last_modified": obj[
+                                            "LastModified"
+                                        ].isoformat(),
+                                    }
+                                )
+
+                        return {
+                            "type": "objects",
+                            "bucket": bucket,
+                            "prefix": prefix,
+                            "items": items,
+                        }
+
+                raise HTTPException(
+                    status_code=400, detail=f"Unsupported action: {action}"
+                )
+
+            except ClientError as e:
+                error_code = e.response.get("Error", {}).get("Code", "Unknown")
+                raise HTTPException(
+                    status_code=400, detail=f"S3 Error ({error_code}): {str(e)}"
+                )
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=str(e))
+
 
 router = S3StorageService.router()
 
