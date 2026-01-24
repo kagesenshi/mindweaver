@@ -69,22 +69,30 @@ const PgSqlPage = () => {
     });
 
     useEffect(() => {
-        if (platforms.length > 0) {
-            const fetchStates = async () => {
-                const states = {};
-                await Promise.all(platforms.map(async (p) => {
-                    try {
-                        const state = await getPlatformState(p.id);
-                        states[p.id] = state;
-                    } catch (e) {
-                        console.error(`Failed to fetch state for platform ${p.id}`, e);
-                    }
-                }));
-                setAllPlatformStates(states);
-            };
+        let timer;
+        const fetchStates = async () => {
+            if (platforms.length === 0) return;
+            const states = {};
+            await Promise.all(platforms.map(async (p) => {
+                try {
+                    const state = await getPlatformState(p.id);
+                    states[p.id] = state;
+                } catch (e) {
+                    console.error(`Failed to fetch state for platform ${p.id}`, e);
+                }
+            }));
+            setAllPlatformStates(states);
+        };
+
+        if (platforms.length > 0 && !selectedPlatformId) {
             fetchStates();
+            timer = setInterval(fetchStates, 5000);
         }
-    }, [platforms]);
+
+        return () => {
+            if (timer) clearInterval(timer);
+        };
+    }, [platforms, selectedPlatformId]);
 
     useEffect(() => {
         let timer;

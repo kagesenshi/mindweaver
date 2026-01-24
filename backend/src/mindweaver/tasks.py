@@ -74,6 +74,7 @@ async def _poll_platform_status(service_class_name: str, platform_id: int):
         try:
             model = await svc.get(platform_id)
             await svc.poll_status(model)
+            await session.commit()
             logger.info(
                 f"Successfully polled {service_class_name} instance {platform_id}"
             )
