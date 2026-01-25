@@ -125,6 +125,82 @@ def widgets(cls) -> Dict[str, Any]:
 -   `column_span`: `1` (half width) or `2` (full width).
 -   `label`: Custom label text.
 
+## Hooks Mechanism
+
+Services support lifecycle hooks for custom logic during CRUD operations. Decorate methods with:
+
+-   `@before_create` / `@after_create`
+-   `@before_update` / `@after_update`
+-   `@before_delete` / `@after_delete`
+
+Hooks accept arguments depending on the event (e.g., `(self, model)` or `(self, model, data)`).
+
+```python
+from mindweaver.fw.service import before_create
+
+class MyService(Service[MyModel]):
+    @before_create
+    async def validate_custom_logic(self, model: MyModel):
+        if model.some_field == "invalid":
+            raise ValueError("Invalid value")
+```
+
+Hooks are topologically sorted if dependencies (`before=` or `after=` arguments) are specified, allowing complex execution orders.
+
+## Secret Handling
+
+To handle sensitive fields (like passwords or API keys) securely:
+
+1.  Inherit from `SecretHandlerMixin` in your Service.
+2.  Override `redacted_fields` to list sensitive field names.
+
+```python
+from mindweaver.fw.service import Service, SecretHandlerMixin
+
+class MyService(SecretHandlerMixin, Service[MyModel]):
+    @classmethod
+    def redacted_fields(cls) -> list[str]:
+        return ["password", "api_key"]
+```
+
+-   **Encryption**: Fields are automatically encrypted before being stored in the database.
+-   **Redaction**: Fields are returned as `__REDACTED__` in API responses.
+-   **Updates**: Clients can send `__REDACTED__` (to keep existing value), `__CLEAR__` (to empty it), or a new value (which will be encrypted).
+
+## Project Scoping and Multi-tenancy
+
+The framework supports multi-tenancy via the `X-Project-ID` header.
+
+1.  **Models**: Use `ProjectScopedNamedBase`.
+2.  **Services**: The base `Service` automatically:
+    -   Filters `get`, `all`, and `search` queries by the project ID found in the header.
+    -   Injects `project_id` on creation.
+    -   Validates that relationship fields (foreign keys) point to records within the *same* project.
+
+## Field Configuration
+
+You can control field behavior and visibility by overriding Service class methods:
+
+-   **`internal_fields()`**: Fields excluded from create/update payloads (e.g., `id`, `uuid`, `created`, `modified`).
+-   **`immutable_fields()`**: Fields that cannot be changed after creation (default: `["name"]`).
+-   **`hidden_fields()`**: Fields completely hidden from the API (default: `["uuid"]`).
+-   **`noninheritable_fields()`**: Fields not copied during updates (default: `["uuid", "modified", "deleted"]`).
+
+## Error Handling
+
+The framework provides standardized error handling:
+
+-   **`ModelValidationError`**: Raise this for business logic validation failures. It maps to a 422 Unprocessable Entity response.
+-   **Integrity Errors**: Database constraints (Unique, Not Null, Foreign Key) are automatically caught and translated into user-friendly `ModelValidationError` messages.
+
+```python
+from mindweaver.fw.exc import ModelValidationError
+
+# In a service method or hook
+if some_condition:
+    raise ModelValidationError(message="Custom validation failed")
+```
+
 ## Creating Unit Tests in Backend
 
 Tests are located in `backend/tests` and use `pytest`.
