@@ -92,7 +92,7 @@ const PgSqlPage = () => {
         return () => {
             if (timer) clearInterval(timer);
         };
-    }, [platforms, selectedPlatformId]);
+    }, [platforms, selectedPlatformId, getPlatformState]);
 
     useEffect(() => {
         let timer;
@@ -109,7 +109,7 @@ const PgSqlPage = () => {
         return () => {
             if (timer) clearInterval(timer);
         };
-    }, [selectedPlatformId]);
+    }, [selectedPlatformId, getPlatformState]);
 
     const handleRefresh = async () => {
         if (!selectedPlatformId) return;

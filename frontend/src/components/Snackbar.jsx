@@ -1,9 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { X, AlertCircle, CheckCircle2, Info, AlertTriangle } from 'lucide-react';
 import { cn } from '../utils/cn';
 
 const Snackbar = ({ message, type = 'error', onClose, duration = 5000 }) => {
     const [isExiting, setIsExiting] = useState(false);
+
+    const handleClose = useCallback(() => {
+        setIsExiting(true);
+        setTimeout(onClose, 300); // Wait for animation
+    }, [onClose]);
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -11,12 +16,7 @@ const Snackbar = ({ message, type = 'error', onClose, duration = 5000 }) => {
         }, duration);
 
         return () => clearTimeout(timer);
-    }, [duration]);
-
-    const handleClose = () => {
-        setIsExiting(true);
-        setTimeout(onClose, 300); // Wait for animation
-    };
+    }, [duration, handleClose]);
 
     const icons = {
         error: <AlertCircle size={20} />,

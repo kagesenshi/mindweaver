@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '../utils/cn';
 
@@ -7,7 +7,7 @@ export const Tooltip = ({ children, content, side = 'right', className, disabled
     const [position, setPosition] = useState({ top: 0, left: 0 });
     const triggerRef = useRef(null);
 
-    const updatePosition = () => {
+    const updatePosition = useCallback(() => {
         if (triggerRef.current) {
             const rect = triggerRef.current.getBoundingClientRect();
             // Simple right-side positioning for sidebar use case
@@ -18,7 +18,7 @@ export const Tooltip = ({ children, content, side = 'right', className, disabled
                 });
             }
         }
-    };
+    }, [side]);
 
     useEffect(() => {
         if (isVisible) {
@@ -30,7 +30,7 @@ export const Tooltip = ({ children, content, side = 'right', className, disabled
             window.removeEventListener('scroll', updatePosition);
             window.removeEventListener('resize', updatePosition);
         };
-    }, [isVisible]);
+    }, [isVisible, updatePosition]);
 
     if (disabled) return children;
 
