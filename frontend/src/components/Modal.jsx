@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
 import { cn } from '../utils/cn';
 
-const Modal = ({ isOpen, onClose, title, children, darkMode, maxWidth = "max-w-4xl" }) => {
+const Modal = ({ isOpen, onClose, title, children, maxWidth = "max-w-4xl" }) => {
     useEffect(() => {
         if (isOpen) {
             document.body.style.overflow = 'hidden';

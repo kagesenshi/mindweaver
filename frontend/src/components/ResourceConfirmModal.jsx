@@ -12,7 +12,8 @@ const ResourceConfirmModal = ({
     title = "Confirm Action",
     message = "This action is permanent and cannot be undone.",
     confirmText = "CONFIRM",
-    icon: Icon = AlertTriangle,
+    // eslint-disable-next-line no-unused-vars
+    icon: IconComponent = AlertTriangle,
     variant = "danger" // "danger" or "warning"
 }) => {
     const [inputValue, setInputValue] = useState('');
@@ -76,7 +77,7 @@ const ResourceConfirmModal = ({
             <div className="space-y-6">
                 <div className="flex flex-col items-center text-center space-y-4">
                     <div className={cn("w-16 h-16 rounded-full flex items-center justify-center shadow-inner", style.iconBox)}>
-                        <Icon size={32} />
+                        <IconComponent size={32} />
                     </div>
                     <div className="space-y-2">
                         <h4 className={cn("text-xl font-bold uppercase tracking-tight", style.header)}>Dangerous Action</h4>

@@ -5,15 +5,11 @@ import { Save, X, RefreshCcw, AlertCircle, Plus, Trash2 } from 'lucide-react';
 import Select from 'react-select';
 
 // Helper sub-component for Key-Value JSON fields
-const KeyValueWidget = ({ name, value, onChange, darkMode, hasError, isImmutable }) => {
-    const [items, setItems] = useState([]);
-    const inputBg = darkMode ? "bg-slate-950 border-slate-800 text-slate-200" : "bg-slate-100 border-slate-200 text-slate-900";
-    const disabledBg = darkMode ? "bg-slate-900 border-slate-800 text-slate-500" : "bg-slate-200 border-slate-300 text-slate-400";
-
+const KeyValueWidget = ({ name, value, onChange, darkMode, isImmutable }) => {
     // Initial load: convert object to array of items
-    useEffect(() => {
+    const [items, setItems] = useState(() => {
         if (value && typeof value === 'object' && !Array.isArray(value)) {
-            const initialItems = Object.entries(value).map(([k, v]) => {
+            return Object.entries(value).map(([k, v]) => {
                 let type = 'string';
                 if (typeof v === 'number') {
                     type = Number.isInteger(v) ? 'integer' : 'float';
@@ -22,11 +18,12 @@ const KeyValueWidget = ({ name, value, onChange, darkMode, hasError, isImmutable
                 }
                 return { key: k, value: v, type };
             });
-            setItems(initialItems);
-        } else if (!value || Object.keys(value).length === 0) {
-            setItems([]);
         }
-    }, []); // Only on mount to avoid loops
+        return [];
+    });
+
+    const inputBg = darkMode ? "bg-slate-950 border-slate-800 text-slate-200" : "bg-slate-100 border-slate-200 text-slate-900";
+    const disabledBg = darkMode ? "bg-slate-900 border-slate-800 text-slate-500" : "bg-slate-200 border-slate-300 text-slate-400";
 
     const handleItemChange = (index, field, val) => {
         const newItems = [...items];
@@ -259,7 +256,7 @@ const DynamicForm = ({
         };
 
         fetchSchema();
-    }, [entityPath, mode]);
+    }, [entityPath, mode, initialData]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -562,7 +559,6 @@ const DynamicForm = ({
                     value={formData[name]}
                     onChange={handleChange}
                     darkMode={darkMode}
-                    hasError={hasError}
                     isImmutable={isImmutable}
                 />
             );

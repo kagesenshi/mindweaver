@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import {
     Server,
@@ -11,7 +11,7 @@ import ResourceCard from '../components/ResourceCard';
 import PageLayout from '../components/PageLayout';
 
 const HomePage = () => {
-    const { darkMode, selectedProject } = useOutletContext();
+    const { selectedProject } = useOutletContext();
     const { platforms, loading } = usePgSql();
     const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
