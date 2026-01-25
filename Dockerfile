@@ -25,6 +25,7 @@ RUN uv sync --frozen --no-dev
 
 # Test Stage
 FROM backend-base AS test
+RUN apt-get update && apt-get install -y libpq-dev postgresql && rm -rf /var/lib/apt/lists/*
 RUN uv sync --frozen
 CMD ["uv", "run", "pytest", "tests"]
 
