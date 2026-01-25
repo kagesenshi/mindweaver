@@ -1,4 +1,8 @@
-# Agent Skills
+---
+name: MindWeaver Development
+description: Guide for creating backend services, platform services, dynamic forms, widgets, and tests in MindWeaver.
+---
+# MindWeaver Development
 
 This document outlines core skills for working with the MindWeaver codebase.
 
