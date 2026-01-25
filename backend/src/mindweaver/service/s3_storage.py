@@ -13,7 +13,53 @@ from mindweaver.crypto import encrypt_password, decrypt_password, EncryptionErro
 from mindweaver.fw.exc import FieldValidationError, MindWeaverError
 import httpx
 import boto3
+import asyncio
 from botocore.exceptions import ClientError, NoCredentialsError
+
+
+def _list_objects_sync(s3_client, bucket: str, prefix: str):
+    """
+    Synchronously list objects in S3 bucket using paginator.
+    This function is intended to be run in a separate thread.
+    """
+    paginator = s3_client.get_paginator("list_objects_v2")
+    # Use delimiter to get "folders"
+    pages = paginator.paginate(Bucket=bucket, Prefix=prefix, Delimiter="/")
+
+    items = []
+    for page in pages:
+        # Add folders (CommonPrefixes)
+        for cp in page.get("CommonPrefixes", []):
+            items.append(
+                {
+                    "name": cp["Prefix"].split("/")[-2] + "/",
+                    "path": cp["Prefix"],
+                    "type": "directory",
+                }
+            )
+
+        # Add files (Contents)
+        for obj in page.get("Contents", []):
+            # Skip the prefix itself if it appears as an object (common in some S3 implementations for folders)
+            if obj["Key"] == prefix:
+                continue
+
+            items.append(
+                {
+                    "name": obj["Key"].split("/")[-1],
+                    "path": obj["Key"],
+                    "type": "file",
+                    "size": obj["Size"],
+                    "last_modified": obj["LastModified"].isoformat(),
+                }
+            )
+
+    return {
+        "type": "objects",
+        "bucket": bucket,
+        "prefix": prefix,
+        "items": items,
+    }
 
 
 # S3 Configuration schema
@@ -244,7 +290,7 @@ class S3StorageService(SecretHandlerMixin, ProjectScopedService[S3Storage]):
                 if action == "ls":
                     if not bucket:
                         # List buckets
-                        response = s3_client.list_buckets()
+                        response = await asyncio.to_thread(s3_client.list_buckets)
                         return {
                             "type": "buckets",
                             "items": [
@@ -257,48 +303,9 @@ class S3StorageService(SecretHandlerMixin, ProjectScopedService[S3Storage]):
                         }
                     else:
                         # List objects in bucket
-                        paginator = s3_client.get_paginator("list_objects_v2")
-                        # Use delimiter to get "folders"
-                        pages = paginator.paginate(
-                            Bucket=bucket, Prefix=prefix, Delimiter="/"
+                        return await asyncio.to_thread(
+                            _list_objects_sync, s3_client, bucket, prefix
                         )
-
-                        items = []
-                        for page in pages:
-                            # Add folders (CommonPrefixes)
-                            for cp in page.get("CommonPrefixes", []):
-                                items.append(
-                                    {
-                                        "name": cp["Prefix"].split("/")[-2] + "/",
-                                        "path": cp["Prefix"],
-                                        "type": "directory",
-                                    }
-                                )
-
-                            # Add files (Contents)
-                            for obj in page.get("Contents", []):
-                                # Skip the prefix itself if it appears as an object (common in some S3 implementations for folders)
-                                if obj["Key"] == prefix:
-                                    continue
-
-                                items.append(
-                                    {
-                                        "name": obj["Key"].split("/")[-1],
-                                        "path": obj["Key"],
-                                        "type": "file",
-                                        "size": obj["Size"],
-                                        "last_modified": obj[
-                                            "LastModified"
-                                        ].isoformat(),
-                                    }
-                                )
-
-                        return {
-                            "type": "objects",
-                            "bucket": bucket,
-                            "prefix": prefix,
-                            "items": items,
-                        }
 
                 elif action == "get":
                     if not bucket or not key:
@@ -309,7 +316,8 @@ class S3StorageService(SecretHandlerMixin, ProjectScopedService[S3Storage]):
 
                     # Generate presigned URL for the user to download directly
                     try:
-                        presigned_url = s3_client.generate_presigned_url(
+                        presigned_url = await asyncio.to_thread(
+                            s3_client.generate_presigned_url,
                             "get_object",
                             Params={"Bucket": bucket, "Key": key},
                             ExpiresIn=3600,
@@ -397,7 +405,9 @@ class S3StorageService(SecretHandlerMixin, ProjectScopedService[S3Storage]):
                     key = f"{prefix}{file.filename}"
 
                     # Upload to S3
-                    s3_client.upload_fileobj(file.file, bucket, key)
+                    await asyncio.to_thread(
+                        s3_client.upload_fileobj, file.file, bucket, key
+                    )
 
                     return {
                         "status": "success",
@@ -413,7 +423,9 @@ class S3StorageService(SecretHandlerMixin, ProjectScopedService[S3Storage]):
                         )
 
                     # Delete from S3
-                    s3_client.delete_object(Bucket=bucket, Key=key)
+                    await asyncio.to_thread(
+                        s3_client.delete_object, Bucket=bucket, Key=key
+                    )
 
                     return {
                         "status": "success",
@@ -499,7 +511,7 @@ async def test_connection(
             s3_client = boto3.client("s3", verify=verify_ssl, **s3_config)
 
             # Try to list buckets to verify access
-            s3_client.list_buckets()
+            await asyncio.to_thread(s3_client.list_buckets)
 
             return {
                 "status": "success",
