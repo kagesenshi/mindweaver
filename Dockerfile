@@ -12,6 +12,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 WORKDIR /app
 ENV PYTHONUNBUFFERED=1
 ENV PATH="/app/.venv/bin:$PATH"
+RUN apt-get update && apt-get install -y libpq-dev postgresql && rm -rf /var/lib/apt/lists/*
 
 COPY backend/pyproject.toml backend/uv.lock ./
 COPY backend/src ./src
@@ -20,12 +21,14 @@ COPY backend/alembic.ini ./
 COPY backend/README.md ./
 COPY backend/tests ./tests
 
+# Create non-root user
+RUN groupadd -r app && useradd -m -g app -s /sbin/nologin app && chown app:app -R /app 
+USER app
 # Install prod dependencies
 RUN uv sync --frozen --no-dev
 
 # Test Stage
 FROM backend-base AS test
-RUN apt-get update && apt-get install -y libpq-dev postgresql && rm -rf /var/lib/apt/lists/*
 RUN uv sync --frozen
 CMD ["uv", "run", "pytest", "tests"]
 
@@ -53,5 +56,12 @@ COPY nginx.conf /etc/nginx/nginx.conf
 COPY start.sh /app/start.sh
 RUN chmod +x /app/start.sh
 
-EXPOSE 80
+RUN groupadd -r app && useradd -r -g app -s /sbin/nologin app
+
+# Set ownership
+RUN chown -R app:app /app /var/lib/nginx /var/log/nginx /usr/share/nginx/html
+
+USER app
+
+EXPOSE 8080
 CMD ["/app/start.sh"]
