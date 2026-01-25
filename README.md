@@ -98,8 +98,6 @@ uv run --package mindweaver pytest backend/tests
 
 The frontend is a React application built with Vite. Currently, there is no test script defined in `frontend/package.json`.
 
-*Note: The `run-all-tests.sh` script references `flutter test` for the frontend, which appears to be outdated as the frontend is now React-based.*
-
 ## Architecture
 
 *   **Backend**: Python, FastAPI, SQLModel, Celery, Alembic. Located in `backend/`.
