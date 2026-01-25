@@ -1,54 +1,56 @@
-# Backend Base Stage for common dependencies
-FROM python:3.13-slim AS backend-base
-
-# Install uv for fast dependency management
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
-# Create a non-root user and group
-RUN groupadd --system app \
- && useradd --system --gid app --create-home --home-dir /home/app app
-
-RUN apt-get update && apt-get install -y postgresql && rm -rf /var/lib/apt/lists/*
-
-USER app
-# Set working directory
+# Frontend Builder
+FROM node:20-slim AS frontend-builder
 WORKDIR /app
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+COPY frontend ./
+RUN npm run build
 
-# Copy dependency files
-COPY --chown=app:app backend .
+# Backend Base
+FROM python:3.13-slim AS backend-base
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+WORKDIR /app
+ENV PYTHONUNBUFFERED=1
+ENV PATH="/app/.venv/bin:$PATH"
 
-# Install dependencies (only production by default)
+COPY backend/pyproject.toml backend/uv.lock ./
+COPY backend/src ./src
+COPY backend/migration ./migration
+COPY backend/alembic.ini ./
+COPY backend/README.md ./
+COPY backend/tests ./tests
+
+# Install prod dependencies
 RUN uv sync --frozen --no-dev
 
-# Set environment variables
-ENV PATH="/app/.venv/bin:$PATH"
-ENV PYTHONUNBUFFERED=1
-
-# Backend Test Stage
+# Test Stage
 FROM backend-base AS test
-
 RUN uv sync --frozen
 CMD ["uv", "run", "pytest", "tests"]
 
-# Backend Production Stage
-FROM backend-base AS backend
-# Expose port
-EXPOSE 8000
+# Final Image
+FROM python:3.13-slim
+RUN apt-get update && apt-get install -y nginx && rm -rf /var/lib/apt/lists/*
 
-# Run migrations and start the application
-CMD ["uvicorn", "mindweaver.app:app", "--host", "0.0.0.0", "--port", "8000"]
-
-# Frontend Build Stage
-FROM ghcr.io/cirruslabs/flutter:stable AS frontend-builder
 WORKDIR /app
-# Copy pubspec files first to leverage Docker cache
-COPY frontend/pubspec.yaml frontend/pubspec.lock ./
-RUN flutter pub get
-# Copy the rest of the frontend source
-COPY frontend .
-RUN flutter build web --release
+ENV PATH="/app/.venv/bin:$PATH"
+ENV PYTHONUNBUFFERED=1
 
-# Frontend Production Stage
-FROM nginx:stable-alpine AS frontend
-COPY --from=frontend-builder /app/build/web /usr/share/nginx/html
+# Copy venv from backend-base
+COPY --from=backend-base /app/.venv /app/.venv
+
+# Copy code
+COPY backend/src /app/src
+COPY backend/migration /app/migration
+COPY backend/alembic.ini /app/alembic.ini
+
+# Copy frontend
+COPY --from=frontend-builder /app/dist /usr/share/nginx/html
+
+# Configs
+COPY nginx.conf /etc/nginx/nginx.conf
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
 EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["/app/start.sh"]
