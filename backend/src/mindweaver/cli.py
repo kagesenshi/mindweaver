@@ -12,8 +12,14 @@ from mindweaver.service.data_source import DataSource
 from mindweaver.crypto import generate_fernet_key, rotate_key, EncryptionError
 import asyncio
 import time
-from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
+
+try:
+    from watchdog.observers import Observer
+    from watchdog.events import FileSystemEventHandler
+except ImportError:
+    Observer = None
+    FileSystemEventHandler = object
+
 import sqlalchemy as sa
 import uvicorn
 import subprocess
@@ -171,6 +177,12 @@ def run_with_reloader(cmd, watch_dir: str = None):
     """
     Run a command and restart it when files in watch_dir change.
     """
+    if Observer is None:
+        logger.error(
+            "Watchdog is not installed. This feature requires the 'watchdog' package."
+        )
+        return
+
     if watch_dir is None:
         watch_dir = str(Path(__file__).parent)
 
