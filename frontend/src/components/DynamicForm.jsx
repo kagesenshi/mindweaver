@@ -198,14 +198,14 @@ const DynamicForm = ({
                 // Merge initial data with defaults from schema if needed
                 if (mode === 'create') {
                     const defaults = {};
-                    const properties = record.jsonschema.properties || {};
+                    const properties = data.jsonschema.properties || {};
                     Object.entries(properties).forEach(([key, prop]) => {
                         // Check for jsonschema default
                         if (prop.default !== undefined) {
                             defaults[key] = prop.default;
                         }
                         // Check for widget metadata default
-                        const widget = record.widgets?.[key];
+                        const widget = data.widgets?.[key];
                         if (widget?.default_value !== undefined) {
                             defaults[key] = widget.default_value;
                         }
@@ -214,9 +214,9 @@ const DynamicForm = ({
                 }
 
                 // Fetch relationship options
-                if (record.widgets) {
+                if (data.widgets) {
                     const relOptions = {};
-                    for (const [key, widget] of Object.entries(record.widgets)) {
+                    for (const [key, widget] of Object.entries(data.widgets)) {
                         if (widget.type === 'relationship' && widget.endpoint) {
                             try {
                                 let url = widget.endpoint;
