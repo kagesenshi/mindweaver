@@ -114,3 +114,29 @@ async def test_pgsql_template_rendering(mock_service_dependencies):
     assert 'memory: "{{ mem_request }}Gi"' in content
     assert 'cpu: "{{ cpu_limit }}"' in content
     assert 'memory: "{{ mem_limit }}Gi"' in content
+
+
+def test_pgsql_widgets_caching():
+    """Test that widgets loading caches the result"""
+    # Reset cache manually to ensure clean state
+    PgSqlPlatformService._image_catalog_cache = None
+
+    # First call - should load from file
+    catalog1 = PgSqlPlatformService.load_image_catalog()
+    assert catalog1 is not None
+    assert "images" in catalog1
+    assert len(catalog1["images"]) > 0
+
+    # Modify cache manually to verify it is being used in subsequent calls
+    test_cache = {"images": [{"image": "test", "label": "test"}]}
+    PgSqlPlatformService._image_catalog_cache = test_cache
+
+    # Second call - should return the cached object
+    catalog2 = PgSqlPlatformService.load_image_catalog()
+    assert catalog2 is test_cache
+
+    # Restore cache to original state (optional, but good for other tests)
+    PgSqlPlatformService._image_catalog_cache = None
+    catalog3 = PgSqlPlatformService.load_image_catalog()
+    assert catalog3 != test_cache
+    assert "images" in catalog3

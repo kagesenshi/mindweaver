@@ -86,6 +86,7 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
         os.path.dirname(__file__), "templates", "pgsql"
     )
     state_model: type[PgSqlPlatformState] = PgSqlPlatformState
+    _image_catalog_cache: dict | None = None
 
     @classmethod
     def model_class(cls) -> type[PgSqlPlatform]:
@@ -107,13 +108,20 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
     @classmethod
     def load_image_catalog(cls) -> dict:
         """Loads the PostgreSQL image catalog from the configuration file."""
+        if cls._image_catalog_cache is not None:
+            return cls._image_catalog_cache
+
         config_path = os.path.join(
             os.path.dirname(__file__), "resources", "pgsql", "images.yml"
         )
         if not os.path.exists(config_path):
-            return {}
+            cls._image_catalog_cache = {}
+            return cls._image_catalog_cache
+
         with open(config_path, "r") as f:
-            return yaml.safe_load(f)
+            data = yaml.safe_load(f) or {}
+            cls._image_catalog_cache = data
+            return cls._image_catalog_cache
 
     @classmethod
     def widgets(cls) -> dict[str, Any]:
