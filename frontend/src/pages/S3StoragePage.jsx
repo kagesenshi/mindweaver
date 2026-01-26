@@ -34,8 +34,6 @@ const S3StoragePage = () => {
     const {
         storages,
         loading,
-        createStorage,
-        updateStorage,
         deleteStorage,
         testConnection,
         fetchStorages,

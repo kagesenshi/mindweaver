@@ -9,14 +9,13 @@ import {
     Edit2
 } from 'lucide-react';
 import { useProjects } from '../hooks/useResources';
-import { cn } from '../utils/cn';
 import Modal from '../components/Modal';
 import DynamicForm from '../components/DynamicForm';
 import PageLayout from '../components/PageLayout';
 
 const ProjectsPage = () => {
     const { darkMode, refreshProjects } = useOutletContext();
-    const { projects, loading, createProject, deleteProject, fetchProjects } = useProjects();
+    const { projects, loading, deleteProject, fetchProjects } = useProjects();
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedProject, setSelectedProject] = useState(null);

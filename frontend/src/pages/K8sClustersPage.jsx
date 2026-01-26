@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useK8sClusters } from '../hooks/useResources';
 import { Server, Cloud, Activity, Plus, Edit2 } from 'lucide-react';
-import { cn } from '../utils/cn';
 import Modal from '../components/Modal';
 import DynamicForm from '../components/DynamicForm';
 import ResourceCard from '../components/ResourceCard';
@@ -20,10 +19,6 @@ const K8sClustersPage = () => {
         (cluster.title || cluster.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (cluster.type || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
-
-    const handleDelete = async (id, confirmName) => {
-        await deleteCluster(id, confirmName);
-    };
 
     return (
         <>

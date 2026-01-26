@@ -13,7 +13,7 @@ import {
     Server,
     HardDrive
 } from 'lucide-react';
-import { useDataSources, useProjects } from '../hooks/useResources';
+import { useDataSources } from '../hooks/useResources';
 import { cn } from '../utils/cn';
 import ResourceCard from '../components/ResourceCard';
 import Modal from '../components/Modal';

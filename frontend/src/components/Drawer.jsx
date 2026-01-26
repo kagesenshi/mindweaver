@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { cn } from '../utils/cn';
 
 const Drawer = ({
@@ -17,12 +17,14 @@ const Drawer = ({
 
     const containerRef = useRef(null);
 
-    const handleOpenChange = (newState) => {
+    const handleOpenChange = useCallback((newState) => {
         if (!isControlled) {
             setInternalIsOpen(newState);
         }
-        onOpenChange?.(newState);
-    };
+        if (onOpenChange) {
+            onOpenChange(newState);
+        }
+    }, [isControlled, onOpenChange]);
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -37,7 +39,7 @@ const Drawer = ({
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
         };
-    }, [isOpen]);
+    }, [isOpen, handleOpenChange]);
 
     // Active drawer background - needed for the "patch" to hide the seam
     // Default to strict black for dark mode if not specified, compatible with Header
