@@ -1,6 +1,7 @@
 from datetime import datetime
 import abc
 import asyncio
+import functools
 import fastapi
 from fastapi import Depends
 import jinja2 as j2
@@ -43,6 +44,11 @@ class PlatformStateBase(Base):
         default_factory=list, sa_type=JSONType()
     )
     extra_data: dict[str, Any] = Field(default_factory=dict, sa_type=JSONType())
+
+
+@functools.lru_cache(maxsize=32)
+def _get_jinja_env(template_directory: str) -> j2.Environment:
+    return j2.Environment(loader=j2.FileSystemLoader(template_directory))
 
 
 class PlatformStateUpdate(pydantic.BaseModel):
@@ -102,7 +108,7 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
             )
 
         # Load templates
-        env = j2.Environment(loader=j2.FileSystemLoader(self.template_directory))
+        env = _get_jinja_env(self.template_directory)
         templates = env.list_templates()
 
         rendered_manifests = []
