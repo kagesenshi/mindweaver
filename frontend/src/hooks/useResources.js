@@ -10,7 +10,7 @@ export const useProjects = () => {
         setLoading(true);
         try {
             const response = await apiClient.get('/projects');
-            setProjects(response.data.records || []);
+            setProjects(response.data.data || []);
         } catch (err) {
             setError(err);
         } finally {
@@ -54,7 +54,7 @@ export const useDataSources = () => {
         setLoading(true);
         try {
             const response = await apiClient.get('/data_sources');
-            setDataSources(response.data.records || []);
+            setDataSources(response.data.data || []);
         } catch (err) {
             setError(err);
         } finally {
@@ -103,7 +103,7 @@ export const usePgSql = () => {
         setLoading(true);
         try {
             const response = await apiClient.get('/platform/pgsql');
-            setPlatforms(response.data.records || []);
+            setPlatforms(response.data.data || []);
         } catch (err) {
             setError(err);
         } finally {
@@ -157,7 +157,7 @@ export const useK8sClusters = () => {
         setLoading(true);
         try {
             const response = await apiClient.get('/k8s_clusters');
-            setClusters(response.data.records || []);
+            setClusters(response.data.data || []);
         } catch (err) {
             setError(err);
         } finally {
@@ -201,7 +201,7 @@ export const useS3Storages = () => {
         setLoading(true);
         try {
             const response = await apiClient.get('/s3_storages');
-            setStorages(response.data.records || []);
+            setStorages(response.data.data || []);
         } catch (err) {
             setError(err);
         } finally {

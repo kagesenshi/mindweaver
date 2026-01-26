@@ -8,7 +8,7 @@ async def test_widget_metadata_generation(client: TestClient):
     response = client.get("/api/v1/knowledge_dbs/_create-form")
     assert response.status_code == 200
     data = response.json()
-    widgets = data["record"]["widgets"]
+    widgets = data["data"]["widgets"]
 
     # Preferred Defaults
     # project_id (order 0, span 1)

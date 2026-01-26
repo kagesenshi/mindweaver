@@ -19,7 +19,7 @@ def test_pgsql_auto_deploy_on_update(client: TestClient, test_project):
         headers={"X-Project-Id": str(test_project["id"])},
     )
     resp.raise_for_status()
-    cluster_id = resp.json()["record"]["id"]
+    cluster_id = resp.json()["data"]["id"]
 
     # 2. Create PgSqlPlatform
     model_data = {
@@ -36,7 +36,7 @@ def test_pgsql_auto_deploy_on_update(client: TestClient, test_project):
         headers={"X-Project-Id": str(test_project["id"])},
     )
     resp.raise_for_status()
-    model_id = resp.json()["record"]["id"]
+    model_id = resp.json()["data"]["id"]
 
     with patch(
         "mindweaver.platform_service.pgsql.PgSqlPlatformService.deploy",
@@ -96,7 +96,7 @@ def test_pgsql_auto_deploy_fail_raises_422(client: TestClient, test_project):
         headers={"X-Project-Id": str(test_project["id"])},
     )
     resp.raise_for_status()
-    cluster_id = resp.json()["record"]["id"]
+    cluster_id = resp.json()["data"]["id"]
 
     model_data = {
         "name": "fail-pg",
@@ -110,7 +110,7 @@ def test_pgsql_auto_deploy_fail_raises_422(client: TestClient, test_project):
         headers={"X-Project-Id": str(test_project["id"])},
     )
     resp.raise_for_status()
-    model_id = resp.json()["record"]["id"]
+    model_id = resp.json()["data"]["id"]
 
     with patch(
         "mindweaver.platform_service.pgsql.PgSqlPlatformService.deploy",

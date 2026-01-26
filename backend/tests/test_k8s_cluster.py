@@ -15,7 +15,7 @@ def test_k8s_cluster_crud(project_scoped_crud_client: TestClient):
         },
     )
     resp.raise_for_status()
-    project_id = resp.json()["record"]["id"]
+    project_id = resp.json()["data"]["id"]
 
     # 1. Create K8s Cluster
     cluster_data = {
@@ -32,10 +32,10 @@ def test_k8s_cluster_crud(project_scoped_crud_client: TestClient):
     )
     resp.raise_for_status()
     data = resp.json()
-    record_id = data["record"]["id"]
-    assert data["record"]["name"] == "test-cluster"
-    assert data["record"]["type"] == "remote"
-    assert data["record"]["kubeconfig"] == cluster_data["kubeconfig"]
+    record_id = data["data"]["id"]
+    assert data["data"]["name"] == "test-cluster"
+    assert data["data"]["type"] == "remote"
+    assert data["data"]["kubeconfig"] == cluster_data["kubeconfig"]
 
     # 2. Get K8s Cluster
     resp = client.get(
@@ -43,7 +43,7 @@ def test_k8s_cluster_crud(project_scoped_crud_client: TestClient):
         headers={"X-Project-Id": str(project_id)},
     )
     resp.raise_for_status()
-    assert resp.json()["record"]["name"] == "test-cluster"
+    assert resp.json()["data"]["name"] == "test-cluster"
 
     # 3. List K8s Clusters
     resp = client.get(
@@ -51,7 +51,7 @@ def test_k8s_cluster_crud(project_scoped_crud_client: TestClient):
         headers={"X-Project-Id": str(project_id)},
     )
     resp.raise_for_status()
-    records = resp.json()["records"]
+    records = resp.json()["data"]
     assert len(records) == 1
     assert records[0]["id"] == record_id
 
@@ -69,8 +69,8 @@ def test_k8s_cluster_crud(project_scoped_crud_client: TestClient):
         headers={"X-Project-Id": str(project_id)},
     )
     resp.raise_for_status()
-    assert resp.json()["record"]["title"] == "Updated Test Cluster"
-    assert resp.json()["record"]["type"] == "remote"
+    assert resp.json()["data"]["title"] == "Updated Test Cluster"
+    assert resp.json()["data"]["type"] == "remote"
 
     # 5. Delete K8s Cluster
     resp = client.delete(

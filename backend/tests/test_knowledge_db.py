@@ -16,13 +16,13 @@ def test_knowledge_db(client: TestClient, test_project):
     )
     resp.raise_for_status()
     data = resp.json()
-    assert data["record"]["name"] == "my-docs"
-    assert data["record"]["type"] == "knowledge-graph"
+    assert data["data"]["name"] == "my-docs"
+    assert data["data"]["type"] == "knowledge-graph"
 
-    record_id = data["record"]["id"]
+    record_id = data["data"]["id"]
     resp = client.get(f"/api/v1/knowledge_dbs/{record_id}")
     resp.raise_for_status()
-    assert resp.json()["record"]["id"] == record_id
+    assert resp.json()["data"]["id"] == record_id
 
 
 def test_list_knowledge_dbs_without_project_id_returns_empty(
@@ -50,8 +50,8 @@ def test_list_knowledge_dbs_without_project_id_returns_empty(
     resp.raise_for_status()
     data = resp.json()
 
-    assert len(data["records"]) == 1
-    assert data["records"][0]["name"] == "test-kb"
+    assert len(data["data"]) == 1
+    assert data["data"][0]["name"] == "test-kb"
 
 
 def test_delete_knowledge_db(client: TestClient, test_project):
@@ -70,7 +70,7 @@ def test_delete_knowledge_db(client: TestClient, test_project):
         headers={"X-Project-Id": str(test_project["id"])},
     )
     create_resp.raise_for_status()
-    db_id = create_resp.json()["record"]["id"]
+    db_id = create_resp.json()["data"]["id"]
 
     # Delete the knowledge DB
     delete_resp = client.delete(

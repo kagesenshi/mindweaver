@@ -80,7 +80,7 @@ def test_project(client: TestClient):
         },
     )
     assert response.status_code == 200
-    return response.json()["record"]
+    return response.json()["data"]
 
 
 @pytest.fixture(scope="function")

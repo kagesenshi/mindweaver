@@ -21,10 +21,10 @@ def test_s3_storage_create_valid(client: TestClient, test_project):
         print(f"Error response: {resp.json()}")
     assert resp.status_code == 200
     data = resp.json()
-    assert data["record"]["name"] == "production-s3"
-    assert data["record"]["region"] == "us-east-1"
+    assert data["data"]["name"] == "production-s3"
+    assert data["data"]["region"] == "us-east-1"
     # Secret key should be encrypted
-    assert data["record"]["secret_key"] != "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+    assert data["data"]["secret_key"] != "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 
 
 def test_s3_storage_create_with_endpoint(client: TestClient, test_project):
@@ -45,7 +45,7 @@ def test_s3_storage_create_with_endpoint(client: TestClient, test_project):
 
     assert resp.status_code == 200
     data = resp.json()
-    assert data["record"]["endpoint_url"] == "https://minio.example.com"
+    assert data["data"]["endpoint_url"] == "https://minio.example.com"
 
 
 # ============================================================================
@@ -143,8 +143,8 @@ def test_s3_storage_list(client: TestClient, test_project):
     )
     assert resp.status_code == 200
     data = resp.json()
-    assert "records" in data
-    assert len(data["records"]) > 0
+    assert "data" in data
+    assert len(data["data"]) > 0
 
 
 def test_s3_storage_get(client: TestClient, test_project):
@@ -162,13 +162,13 @@ def test_s3_storage_get(client: TestClient, test_project):
         },
     )
     assert create_resp.status_code == 200
-    storage_id = create_resp.json()["record"]["id"]
+    storage_id = create_resp.json()["data"]["id"]
 
     # Get the storage
     get_resp = client.get(f"/api/v1/s3_storages/{storage_id}")
     assert get_resp.status_code == 200
     data = get_resp.json()
-    assert data["record"]["name"] == "get-test-storage"
+    assert data["data"]["name"] == "get-test-storage"
 
 
 def test_s3_storage_update(client: TestClient, test_project):
@@ -187,7 +187,7 @@ def test_s3_storage_update(client: TestClient, test_project):
         },
     )
     assert create_resp.status_code == 200
-    storage_id = create_resp.json()["record"]["id"]
+    storage_id = create_resp.json()["data"]["id"]
 
     # Update the storage
     update_resp = client.put(
@@ -204,8 +204,8 @@ def test_s3_storage_update(client: TestClient, test_project):
 
     assert update_resp.status_code == 200
     data = update_resp.json()
-    assert data["record"]["title"] == "Updated Test"
-    assert data["record"]["region"] == "us-west-2"
+    assert data["data"]["title"] == "Updated Test"
+    assert data["data"]["region"] == "us-west-2"
 
 
 def test_s3_storage_update_retain_secret(client: TestClient, test_project):
@@ -224,8 +224,8 @@ def test_s3_storage_update_retain_secret(client: TestClient, test_project):
         },
     )
     assert create_resp.status_code == 200
-    storage_id = create_resp.json()["record"]["id"]
-    original_encrypted_secret = create_resp.json()["record"]["secret_key"]
+    storage_id = create_resp.json()["data"]["id"]
+    original_encrypted_secret = create_resp.json()["data"]["secret_key"]
 
     # Update without providing secret_key
     update_resp = client.put(
@@ -243,7 +243,7 @@ def test_s3_storage_update_retain_secret(client: TestClient, test_project):
     assert update_resp.status_code == 200
     data = update_resp.json()
     # Secret should be retained (same encrypted value)
-    assert data["record"]["secret_key"] == original_encrypted_secret
+    assert data["data"]["secret_key"] == original_encrypted_secret
 
 
 def test_s3_storage_update_clear_secret(client: TestClient, test_project):
@@ -262,7 +262,7 @@ def test_s3_storage_update_clear_secret(client: TestClient, test_project):
         },
     )
     assert create_resp.status_code == 200
-    storage_id = create_resp.json()["record"]["id"]
+    storage_id = create_resp.json()["data"]["id"]
 
     # Update with clear marker
     update_resp = client.put(
@@ -281,7 +281,7 @@ def test_s3_storage_update_clear_secret(client: TestClient, test_project):
     assert update_resp.status_code == 200
     data = update_resp.json()
     # Secret should be cleared
-    assert data["record"]["secret_key"] == ""
+    assert data["data"]["secret_key"] == ""
 
 
 def test_s3_storage_delete(client: TestClient, test_project):
@@ -299,7 +299,7 @@ def test_s3_storage_delete(client: TestClient, test_project):
         },
     )
     assert create_resp.status_code == 200
-    storage_id = create_resp.json()["record"]["id"]
+    storage_id = create_resp.json()["data"]["id"]
 
     # Delete the storage
     delete_resp = client.delete(
@@ -340,7 +340,7 @@ def test_s3_storage_secret_key_encryption(client: TestClient, test_project):
 
     assert resp.status_code == 200
     data = resp.json()
-    stored_secret = data["record"]["secret_key"]
+    stored_secret = data["data"]["secret_key"]
 
     # Stored secret should be redacted when returned to client
     assert stored_secret == "__REDACTED__"
@@ -362,8 +362,8 @@ def test_s3_storage_update_new_secret(client: TestClient, test_project):
         },
     )
     assert create_resp.status_code == 200
-    storage_id = create_resp.json()["record"]["id"]
-    old_encrypted_secret = create_resp.json()["record"]["secret_key"]
+    storage_id = create_resp.json()["data"]["id"]
+    old_encrypted_secret = create_resp.json()["data"]["secret_key"]
 
     # Update with new secret
     new_secret = "brand_new_secret_key"
@@ -382,7 +382,7 @@ def test_s3_storage_update_new_secret(client: TestClient, test_project):
 
     assert update_resp.status_code == 200
     data = update_resp.json()
-    new_encrypted_secret = data["record"]["secret_key"]
+    new_encrypted_secret = data["data"]["secret_key"]
 
     # New secret should also be redacted
     assert new_encrypted_secret == "__REDACTED__"
@@ -407,7 +407,7 @@ def test_s3_storage_verify_encrypted(client: TestClient, test_project):
         },
     )
     assert resp.status_code == 200
-    storage_id = resp.json()["record"]["id"]
+    storage_id = resp.json()["data"]["id"]
 
     # Verify correct secret
     verify_resp = client.post(
@@ -445,7 +445,7 @@ def test_s3_storage_update_with_redacted_secret(client: TestClient, test_project
         },
     )
     assert resp.status_code == 200
-    storage_id = resp.json()["record"]["id"]
+    storage_id = resp.json()["data"]["id"]
 
     # Update with __REDACTED__
     update_resp = client.put(
@@ -498,7 +498,7 @@ def test_list_s3_storages_without_project_id_returns_empty(
     resp.raise_for_status()
     data = resp.json()
 
-    assert len(data["records"]) == 1
+    assert len(data["data"]) == 1
 
 
 def test_s3_storage_fs_ls(client: TestClient, test_project):
@@ -520,7 +520,7 @@ def test_s3_storage_fs_ls(client: TestClient, test_project):
         },
     )
     assert create_resp.status_code == 200
-    storage_id = create_resp.json()["record"]["id"]
+    storage_id = create_resp.json()["data"]["id"]
 
     # Mock boto3 client
     with patch("boto3.client") as mock_s3:
@@ -581,7 +581,7 @@ def test_s3_storage_fs_upload(client: TestClient, test_project):
         },
     )
     assert create_resp.status_code == 200
-    storage_id = create_resp.json()["record"]["id"]
+    storage_id = create_resp.json()["data"]["id"]
 
     # Mock boto3 client
     with patch("boto3.client") as mock_s3:
@@ -627,7 +627,7 @@ def test_s3_storage_fs_delete(client: TestClient, test_project):
         },
     )
     assert create_resp.status_code == 200
-    storage_id = create_resp.json()["record"]["id"]
+    storage_id = create_resp.json()["data"]["id"]
 
     # Mock boto3 client
     with patch("boto3.client") as mock_s3:

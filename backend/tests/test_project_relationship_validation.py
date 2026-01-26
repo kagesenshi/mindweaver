@@ -8,13 +8,13 @@ def test_cross_project_relationship_validation(client: TestClient):
         "/api/v1/projects", json={"name": "p-alpha", "title": "Project Alpha"}
     )
     assert resp_p1.status_code == 200, resp_p1.json()
-    p1 = resp_p1.json()["record"]
+    p1 = resp_p1.json()["data"]
 
     resp_p2 = client.post(
         "/api/v1/projects", json={"name": "p-beta", "title": "Project Beta"}
     )
     assert resp_p2.status_code == 200, resp_p2.json()
-    p2 = resp_p2.json()["record"]
+    p2 = resp_p2.json()["data"]
 
     # 2. Create a DataSource in Project Alpha
     headers_p1 = {"X-Project-ID": str(p1["id"])}
@@ -30,7 +30,7 @@ def test_cross_project_relationship_validation(client: TestClient):
         headers=headers_p1,
     )
     assert resp_ds1.status_code == 200, resp_ds1.json()
-    ds1 = resp_ds1.json()["record"]
+    ds1 = resp_ds1.json()["data"]
 
     # 3. Create an S3 Storage in Project Beta
     headers_p2 = {"X-Project-ID": str(p2["id"])}
@@ -47,7 +47,7 @@ def test_cross_project_relationship_validation(client: TestClient):
         headers=headers_p2,
     )
     assert resp_s3.status_code == 200, resp_s3.json()
-    s3_beta = resp_s3.json()["record"]
+    s3_beta = resp_s3.json()["data"]
 
     # 4. Attempt to create an Ingestion in Project Beta referencing Alpha DataSource
     resp = client.post(
@@ -79,7 +79,7 @@ def test_same_project_relationship_works(client: TestClient):
         "/api/v1/projects", json={"name": "p-gamma", "title": "Project Gamma"}
     )
     assert resp_p1.status_code == 200, resp_p1.json()
-    p1 = resp_p1.json()["record"]
+    p1 = resp_p1.json()["data"]
     headers_p1 = {"X-Project-ID": str(p1["id"])}
 
     # 2. Create DataSource and S3 in Gamma
@@ -95,7 +95,7 @@ def test_same_project_relationship_works(client: TestClient):
         headers=headers_p1,
     )
     assert resp_ds1.status_code == 200, resp_ds1.json()
-    ds1 = resp_ds1.json()["record"]
+    ds1 = resp_ds1.json()["data"]
 
     resp_s3 = client.post(
         "/api/v1/s3_storages",
@@ -110,7 +110,7 @@ def test_same_project_relationship_works(client: TestClient):
         headers=headers_p1,
     )
     assert resp_s3.status_code == 200, resp_s3.json()
-    s3_gamma = resp_s3.json()["record"]
+    s3_gamma = resp_s3.json()["data"]
 
     # 3. Create Ingestion in Gamma - should work
     resp = client.post(

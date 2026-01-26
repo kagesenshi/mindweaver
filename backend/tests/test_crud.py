@@ -16,17 +16,17 @@ def test_crud(crud_client: TestClient):
 
     resp.raise_for_status()
     data = resp.json()
-    record_id = data["record"]["id"]
+    record_id = data["data"]["id"]
 
     resp = client.get(f"/api/v1/models/{record_id}")
 
     resp.raise_for_status()
 
     result = resp.json()
-    assert result["record"]["id"] == record_id
-    assert result["record"]["name"] == data["record"]["name"]
+    assert result["data"]["id"] == record_id
+    assert result["data"]["name"] == data["data"]["name"]
 
-    record = data["record"]
+    record = data["data"]
     update_request = copy.deepcopy(record)
 
     update_request["id"] = record_id
@@ -42,7 +42,7 @@ def test_crud(crud_client: TestClient):
     resp = client.put(f"/api/v1/models/{record_id}", json=update_request)
     resp.raise_for_status()
 
-    updated_record = resp.json()["record"]
+    updated_record = resp.json()["data"]
 
     # should remain the same
     assert updated_record["id"] == record["id"]
@@ -79,7 +79,7 @@ def test_project_scoped_crud(project_scoped_crud_client: TestClient):
         },
     )
     resp.raise_for_status()
-    project_id = resp.json()["record"]["id"]
+    project_id = resp.json()["data"]["id"]
 
     # Create a second project for testing project scoping
     resp = client.post(
@@ -91,7 +91,7 @@ def test_project_scoped_crud(project_scoped_crud_client: TestClient):
         },
     )
     resp.raise_for_status()
-    project2_id = resp.json()["record"]["id"]
+    project2_id = resp.json()["data"]["id"]
 
     resp = client.post(
         "/api/v1/project_scoped_models",
@@ -100,10 +100,10 @@ def test_project_scoped_crud(project_scoped_crud_client: TestClient):
     )
     resp.raise_for_status()
     data = resp.json()
-    record_id = data["record"]["id"]
+    record_id = data["data"]["id"]
 
     # Verify the record has the correct project_id
-    assert data["record"]["project_id"] == project_id
+    assert data["data"]["project_id"] == project_id
 
     # Get the record with project_id header
     resp = client.get(
@@ -112,16 +112,16 @@ def test_project_scoped_crud(project_scoped_crud_client: TestClient):
     )
     resp.raise_for_status()
     result = resp.json()
-    assert result["record"]["id"] == record_id
-    assert result["record"]["name"] == data["record"]["name"]
-    assert result["record"]["project_id"] == project_id
+    assert result["data"]["id"] == record_id
+    assert result["data"]["name"] == data["data"]["name"]
+    assert result["data"]["project_id"] == project_id
 
     # List all records for project 1 - should return 1 record
     resp = client.get(
         "/api/v1/project_scoped_models", headers={"X-Project-Id": str(project_id)}
     )
     resp.raise_for_status()
-    records = resp.json()["records"]
+    records = resp.json()["data"]
     assert len(records) == 1
     assert records[0]["id"] == record_id
 
@@ -130,17 +130,17 @@ def test_project_scoped_crud(project_scoped_crud_client: TestClient):
         "/api/v1/project_scoped_models", headers={"X-Project-Id": str(project2_id)}
     )
     resp.raise_for_status()
-    records = resp.json()["records"]
+    records = resp.json()["data"]
     assert len(records) == 0
 
     # List all records without project_id - should return all records
     resp = client.get("/api/v1/project_scoped_models")
     resp.raise_for_status()
-    records = resp.json()["records"]
+    records = resp.json()["data"]
     assert len(records) == 1
 
     # Update the record
-    record = data["record"]
+    record = data["data"]
     update_request = copy.deepcopy(record)
     update_request["id"] = record_id
     update_request["title"] = "New title"
@@ -164,7 +164,7 @@ def test_project_scoped_crud(project_scoped_crud_client: TestClient):
     )
     resp.raise_for_status()
 
-    updated_record = resp.json()["record"]
+    updated_record = resp.json()["data"]
 
     # Verify immutable fields remain the same
     assert updated_record["id"] == record["id"]
@@ -202,14 +202,14 @@ def test_project_id_immutability(project_scoped_crud_client: TestClient):
         json={"name": "p1", "title": "Project 1"},
     )
     resp.raise_for_status()
-    p1_id = resp.json()["record"]["id"]
+    p1_id = resp.json()["data"]["id"]
 
     resp = client.post(
         "/api/v1/projects",
         json={"name": "p2", "title": "Project 2"},
     )
     resp.raise_for_status()
-    p2_id = resp.json()["record"]["id"]
+    p2_id = resp.json()["data"]["id"]
 
     # Create a record in p1
     resp = client.post(
@@ -218,7 +218,7 @@ def test_project_id_immutability(project_scoped_crud_client: TestClient):
         headers={"X-Project-Id": str(p1_id)},
     )
     resp.raise_for_status()
-    record = resp.json()["record"]
+    record = resp.json()["data"]
     record_id = record["id"]
     assert record["project_id"] == p1_id
 
@@ -247,7 +247,7 @@ def test_project_id_immutability(project_scoped_crud_client: TestClient):
         headers={"X-Project-Id": str(p1_id)},
     )
     resp.raise_for_status()
-    updated_record = resp.json()["record"]
+    updated_record = resp.json()["data"]
 
     # Verify project_id remained p1_id
     assert updated_record["project_id"] == p1_id
@@ -268,7 +268,7 @@ def test_form_schemas(crud_client: TestClient):
     resp = client.get("/api/v1/models/_create-form")
     resp.raise_for_status()
     data = resp.json()
-    schema = data["record"]["jsonschema"]
+    schema = data["data"]["jsonschema"]
     assert schema["type"] == "object"
     assert "name" in schema["properties"]
 
@@ -276,6 +276,6 @@ def test_form_schemas(crud_client: TestClient):
     resp = client.get("/api/v1/models/_edit-form")
     resp.raise_for_status()
     data = resp.json()
-    schema = data["record"]["jsonschema"]
+    schema = data["data"]["jsonschema"]
     assert schema["type"] == "object"
     assert "title" in schema["properties"]

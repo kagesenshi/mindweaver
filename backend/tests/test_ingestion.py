@@ -20,7 +20,7 @@ def test_create_ingestion_full_refresh(client: TestClient, test_project):
         },
     )
     assert ds_resp.status_code == 200
-    data_source_id = ds_resp.json()["record"]["id"]
+    data_source_id = ds_resp.json()["data"]["id"]
 
     # Create a s3 storage
     ls_resp = client.post(
@@ -37,7 +37,7 @@ def test_create_ingestion_full_refresh(client: TestClient, test_project):
         },
     )
     assert ls_resp.status_code == 200
-    s3_storage_id = ls_resp.json()["record"]["id"]
+    s3_storage_id = ls_resp.json()["data"]["id"]
 
     # Create ingestion
     resp = client.post(
@@ -62,9 +62,9 @@ def test_create_ingestion_full_refresh(client: TestClient, test_project):
 
     assert resp.status_code == 200
     data = resp.json()
-    assert data["record"]["name"] == "daily-users"
-    assert data["record"]["ingestion_type"] == "full_refresh"
-    assert data["record"]["config"]["table_name"] == "users"
+    assert data["data"]["name"] == "daily-users"
+    assert data["data"]["ingestion_type"] == "full_refresh"
+    assert data["data"]["config"]["table_name"] == "users"
 
 
 def test_create_ingestion_incremental(client: TestClient, test_project):
@@ -85,7 +85,7 @@ def test_create_ingestion_incremental(client: TestClient, test_project):
         },
     )
     assert ds_resp.status_code == 200
-    data_source_id = ds_resp.json()["record"]["id"]
+    data_source_id = ds_resp.json()["data"]["id"]
 
     # Create s3 storage
     ls_resp = client.post(
@@ -102,7 +102,7 @@ def test_create_ingestion_incremental(client: TestClient, test_project):
         },
     )
     assert ls_resp.status_code == 200
-    s3_storage_id = ls_resp.json()["record"]["id"]
+    s3_storage_id = ls_resp.json()["data"]["id"]
 
     # Create incremental ingestion
     resp = client.post(
@@ -131,9 +131,9 @@ def test_create_ingestion_incremental(client: TestClient, test_project):
 
     assert resp.status_code == 200
     data = resp.json()
-    assert data["record"]["name"] == "incremental-orders"
-    assert data["record"]["ingestion_type"] == "incremental"
-    assert data["record"]["config"]["primary_keys"] == ["order_id"]
+    assert data["data"]["name"] == "incremental-orders"
+    assert data["data"]["ingestion_type"] == "incremental"
+    assert data["data"]["config"]["primary_keys"] == ["order_id"]
 
 
 def test_create_ingestion_incremental_missing_fields(client: TestClient, test_project):
@@ -154,7 +154,7 @@ def test_create_ingestion_incremental_missing_fields(client: TestClient, test_pr
         },
     )
     assert ds_resp.status_code == 200
-    data_source_id = ds_resp.json()["record"]["id"]
+    data_source_id = ds_resp.json()["data"]["id"]
 
     # Create s3 storage
     ls_resp = client.post(
@@ -171,7 +171,7 @@ def test_create_ingestion_incremental_missing_fields(client: TestClient, test_pr
         },
     )
     assert ls_resp.status_code == 200
-    s3_storage_id = ls_resp.json()["record"]["id"]
+    s3_storage_id = ls_resp.json()["data"]["id"]
 
     # Try to create incremental ingestion without primary keys
     resp = client.post(
@@ -221,7 +221,7 @@ def test_execute_ingestion(client: TestClient, test_project):
         },
     )
     assert ds_resp.status_code == 200
-    data_source_id = ds_resp.json()["record"]["id"]
+    data_source_id = ds_resp.json()["data"]["id"]
 
     # Create s3 storage
     ls_resp = client.post(
@@ -238,7 +238,7 @@ def test_execute_ingestion(client: TestClient, test_project):
         },
     )
     assert ls_resp.status_code == 200
-    s3_storage_id = ls_resp.json()["record"]["id"]
+    s3_storage_id = ls_resp.json()["data"]["id"]
 
     # Create ingestion
     ing_resp = client.post(
@@ -261,14 +261,14 @@ def test_execute_ingestion(client: TestClient, test_project):
         },
     )
     assert ing_resp.status_code == 200
-    ingestion_id = ing_resp.json()["record"]["id"]
+    ingestion_id = ing_resp.json()["data"]["id"]
 
     # Execute the ingestion
     exec_resp = client.post(f"/api/v1/ingestions/{ingestion_id}/execute")
     assert exec_resp.status_code == 200
     data = exec_resp.json()
     assert data["status"] == "success"
-    assert "record" in data
+    assert "data" in data
 
 
 def test_list_ingestion_runs(client: TestClient, test_project):
@@ -289,7 +289,7 @@ def test_list_ingestion_runs(client: TestClient, test_project):
         },
     )
     assert ds_resp.status_code == 200
-    data_source_id = ds_resp.json()["record"]["id"]
+    data_source_id = ds_resp.json()["data"]["id"]
 
     # Create s3 storage
     ls_resp = client.post(
@@ -306,7 +306,7 @@ def test_list_ingestion_runs(client: TestClient, test_project):
         },
     )
     assert ls_resp.status_code == 200
-    s3_storage_id = ls_resp.json()["record"]["id"]
+    s3_storage_id = ls_resp.json()["data"]["id"]
 
     # Create ingestion
     ing_resp = client.post(
@@ -329,7 +329,7 @@ def test_list_ingestion_runs(client: TestClient, test_project):
         },
     )
     assert ing_resp.status_code == 200
-    ingestion_id = ing_resp.json()["record"]["id"]
+    ingestion_id = ing_resp.json()["data"]["id"]
 
     # Execute the ingestion to create a run
     client.post(f"/api/v1/ingestions/{ingestion_id}/execute")
@@ -338,9 +338,9 @@ def test_list_ingestion_runs(client: TestClient, test_project):
     runs_resp = client.get(f"/api/v1/ingestions/{ingestion_id}/runs")
     assert runs_resp.status_code == 200
     data = runs_resp.json()
-    assert "records" in data
-    assert len(data["records"]) > 0
-    assert data["records"][0]["ingestion_id"] == ingestion_id
+    assert "data" in data
+    assert len(data["data"]) > 0
+    assert data["data"][0]["ingestion_id"] == ingestion_id
 
 
 def test_list_all_ingestions(client: TestClient, test_project):
@@ -361,7 +361,7 @@ def test_list_all_ingestions(client: TestClient, test_project):
         },
     )
     assert ds_resp.status_code == 200
-    data_source_id = ds_resp.json()["record"]["id"]
+    data_source_id = ds_resp.json()["data"]["id"]
 
     # Create s3 storage
     ls_resp = client.post(
@@ -377,7 +377,7 @@ def test_list_all_ingestions(client: TestClient, test_project):
             "project_id": test_project["id"],
         },
     )
-    s3_storage_id = ls_resp.json()["record"]["id"]
+    s3_storage_id = ls_resp.json()["data"]["id"]
 
     # Create multiple ingestions
     for i in range(3):
@@ -407,8 +407,8 @@ def test_list_all_ingestions(client: TestClient, test_project):
     )
     assert resp.status_code == 200
     data = resp.json()
-    assert "records" in data
-    assert len(data["records"]) >= 3
+    assert "data" in data
+    assert len(data["data"]) >= 3
 
 
 def test_get_single_ingestion(client: TestClient, test_project):
@@ -429,7 +429,7 @@ def test_get_single_ingestion(client: TestClient, test_project):
         },
     )
     assert ds_resp.status_code == 200
-    data_source_id = ds_resp.json()["record"]["id"]
+    data_source_id = ds_resp.json()["data"]["id"]
 
     # Create s3 storage
     ls_resp = client.post(
@@ -445,7 +445,7 @@ def test_get_single_ingestion(client: TestClient, test_project):
             "project_id": test_project["id"],
         },
     )
-    s3_storage_id = ls_resp.json()["record"]["id"]
+    s3_storage_id = ls_resp.json()["data"]["id"]
 
     # Create ingestion
     create_resp = client.post(
@@ -467,14 +467,14 @@ def test_get_single_ingestion(client: TestClient, test_project):
             "project_id": test_project["id"],
         },
     )
-    ingestion_id = create_resp.json()["record"]["id"]
+    ingestion_id = create_resp.json()["data"]["id"]
 
     # Get the ingestion
     get_resp = client.get(f"/api/v1/ingestions/{ingestion_id}")
     assert get_resp.status_code == 200
     data = get_resp.json()
-    assert data["record"]["id"] == ingestion_id
-    assert data["record"]["name"] == "get-test"
+    assert data["data"]["id"] == ingestion_id
+    assert data["data"]["name"] == "get-test"
 
 
 def test_update_ingestion(client: TestClient, test_project):
@@ -495,7 +495,7 @@ def test_update_ingestion(client: TestClient, test_project):
         },
     )
     assert ds_resp.status_code == 200
-    data_source_id = ds_resp.json()["record"]["id"]
+    data_source_id = ds_resp.json()["data"]["id"]
 
     # Create s3 storage
     ls_resp = client.post(
@@ -511,7 +511,7 @@ def test_update_ingestion(client: TestClient, test_project):
             "project_id": test_project["id"],
         },
     )
-    s3_storage_id = ls_resp.json()["record"]["id"]
+    s3_storage_id = ls_resp.json()["data"]["id"]
 
     # Create ingestion
     create_resp = client.post(
@@ -533,7 +533,7 @@ def test_update_ingestion(client: TestClient, test_project):
             "project_id": test_project["id"],
         },
     )
-    ingestion_id = create_resp.json()["record"]["id"]
+    ingestion_id = create_resp.json()["data"]["id"]
 
     # Update the ingestion
     update_resp = client.put(
@@ -558,10 +558,10 @@ def test_update_ingestion(client: TestClient, test_project):
     assert update_resp.status_code == 200
     data = update_resp.json()
     # Name cannot be changed after creation (immutable field)
-    assert data["record"]["name"] == "update-test"
-    assert data["record"]["title"] == "Updated Test"
-    assert data["record"]["cron_schedule"] == "0 4 * * *"
-    assert data["record"]["timezone"] == "America/New_York"
+    assert data["data"]["name"] == "update-test"
+    assert data["data"]["title"] == "Updated Test"
+    assert data["data"]["cron_schedule"] == "0 4 * * *"
+    assert data["data"]["timezone"] == "America/New_York"
 
 
 def test_delete_ingestion(client: TestClient, test_project):
@@ -582,7 +582,7 @@ def test_delete_ingestion(client: TestClient, test_project):
         },
     )
     assert ds_resp.status_code == 200
-    data_source_id = ds_resp.json()["record"]["id"]
+    data_source_id = ds_resp.json()["data"]["id"]
 
     # Create s3 storage
     ls_resp = client.post(
@@ -598,7 +598,7 @@ def test_delete_ingestion(client: TestClient, test_project):
             "project_id": test_project["id"],
         },
     )
-    s3_storage_id = ls_resp.json()["record"]["id"]
+    s3_storage_id = ls_resp.json()["data"]["id"]
 
     # Create ingestion
     create_resp = client.post(
@@ -620,7 +620,7 @@ def test_delete_ingestion(client: TestClient, test_project):
             "project_id": test_project["id"],
         },
     )
-    ingestion_id = create_resp.json()["record"]["id"]
+    ingestion_id = create_resp.json()["data"]["id"]
 
     # Delete the ingestion
     delete_resp = client.delete(
@@ -656,7 +656,7 @@ def test_create_ingestion_with_date_range(client: TestClient, test_project):
         },
     )
     assert ds_resp.status_code == 200
-    data_source_id = ds_resp.json()["record"]["id"]
+    data_source_id = ds_resp.json()["data"]["id"]
 
     # Create s3 storage
     ls_resp = client.post(
@@ -672,7 +672,7 @@ def test_create_ingestion_with_date_range(client: TestClient, test_project):
             "project_id": test_project["id"],
         },
     )
-    s3_storage_id = ls_resp.json()["record"]["id"]
+    s3_storage_id = ls_resp.json()["data"]["id"]
 
     # Create ingestion with date range
     resp = client.post(
@@ -700,8 +700,8 @@ def test_create_ingestion_with_date_range(client: TestClient, test_project):
     assert resp.status_code == 200
     data = resp.json()
     # Dates are returned with timestamp format
-    assert data["record"]["start_date"].startswith("2025-01-01")
-    assert data["record"]["end_date"].startswith("2025-12-31")
+    assert data["data"]["start_date"].startswith("2025-01-01")
+    assert data["data"]["end_date"].startswith("2025-12-31")
 
 
 def test_create_ingestion_with_complex_cron(client: TestClient, test_project):
@@ -722,7 +722,7 @@ def test_create_ingestion_with_complex_cron(client: TestClient, test_project):
         },
     )
     assert ds_resp.status_code == 200
-    data_source_id = ds_resp.json()["record"]["id"]
+    data_source_id = ds_resp.json()["data"]["id"]
 
     # Create s3 storage
     ls_resp = client.post(
@@ -738,7 +738,7 @@ def test_create_ingestion_with_complex_cron(client: TestClient, test_project):
             "project_id": test_project["id"],
         },
     )
-    s3_storage_id = ls_resp.json()["record"]["id"]
+    s3_storage_id = ls_resp.json()["data"]["id"]
 
     # Test various cron schedules
     cron_schedules = [
@@ -771,7 +771,7 @@ def test_create_ingestion_with_complex_cron(client: TestClient, test_project):
         if resp.status_code != 200:
             print(f"Failed cron {cron}: {resp.json()}")
         assert resp.status_code == 200
-        assert resp.json()["record"]["cron_schedule"] == cron
+        assert resp.json()["data"]["cron_schedule"] == cron
 
 
 def test_create_ingestion_with_invalid_cron_schedule(client: TestClient, test_project):
@@ -792,7 +792,7 @@ def test_create_ingestion_with_invalid_cron_schedule(client: TestClient, test_pr
         },
     )
     assert ds_resp.status_code == 200
-    data_source_id = ds_resp.json()["record"]["id"]
+    data_source_id = ds_resp.json()["data"]["id"]
 
     # Create s3 storage
     ls_resp = client.post(
@@ -808,7 +808,7 @@ def test_create_ingestion_with_invalid_cron_schedule(client: TestClient, test_pr
             "project_id": test_project["id"],
         },
     )
-    s3_storage_id = ls_resp.json()["record"]["id"]
+    s3_storage_id = ls_resp.json()["data"]["id"]
 
     # Test various invalid cron schedules
     invalid_cron_schedules = [
@@ -876,7 +876,7 @@ def test_create_ingestion_with_multiple_primary_keys(client: TestClient, test_pr
         },
     )
     assert ds_resp.status_code == 200
-    data_source_id = ds_resp.json()["record"]["id"]
+    data_source_id = ds_resp.json()["data"]["id"]
 
     # Create s3 storage
     ls_resp = client.post(
@@ -892,7 +892,7 @@ def test_create_ingestion_with_multiple_primary_keys(client: TestClient, test_pr
             "project_id": test_project["id"],
         },
     )
-    s3_storage_id = ls_resp.json()["record"]["id"]
+    s3_storage_id = ls_resp.json()["data"]["id"]
 
     # Create incremental ingestion with multiple primary keys
     resp = client.post(
@@ -921,8 +921,8 @@ def test_create_ingestion_with_multiple_primary_keys(client: TestClient, test_pr
 
     assert resp.status_code == 200
     data = resp.json()
-    assert len(data["record"]["config"]["primary_keys"]) == 3
-    assert "tenant_id" in data["record"]["config"]["primary_keys"]
+    assert len(data["data"]["config"]["primary_keys"]) == 3
+    assert "tenant_id" in data["data"]["config"]["primary_keys"]
 
 
 def test_ingestion_with_different_timezones(client: TestClient, test_project):
@@ -943,7 +943,7 @@ def test_ingestion_with_different_timezones(client: TestClient, test_project):
         },
     )
     assert ds_resp.status_code == 200
-    data_source_id = ds_resp.json()["record"]["id"]
+    data_source_id = ds_resp.json()["data"]["id"]
 
     # Create s3 storage
     ls_resp = client.post(
@@ -959,7 +959,7 @@ def test_ingestion_with_different_timezones(client: TestClient, test_project):
             "project_id": test_project["id"],
         },
     )
-    s3_storage_id = ls_resp.json()["record"]["id"]
+    s3_storage_id = ls_resp.json()["data"]["id"]
 
     timezones = ["UTC", "America/New_York", "Europe/London", "Asia/Tokyo"]
 
@@ -984,7 +984,7 @@ def test_ingestion_with_different_timezones(client: TestClient, test_project):
             },
         )
         assert resp.status_code == 200
-        assert resp.json()["record"]["timezone"] == tz
+        assert resp.json()["data"]["timezone"] == tz
 
 
 def test_list_ingestions_without_project_id_returns_empty(
@@ -1007,7 +1007,7 @@ def test_list_ingestions_without_project_id_returns_empty(
         },
     )
     assert ds_resp.status_code == 200
-    data_source_id = ds_resp.json()["record"]["id"]
+    data_source_id = ds_resp.json()["data"]["id"]
 
     # Create s3 storage
     ls_resp = client.post(
@@ -1023,7 +1023,7 @@ def test_list_ingestions_without_project_id_returns_empty(
             "project_id": test_project["id"],
         },
     )
-    s3_storage_id = ls_resp.json()["record"]["id"]
+    s3_storage_id = ls_resp.json()["data"]["id"]
 
     # Create an ingestion in the project
     resp = client.post(
@@ -1053,5 +1053,5 @@ def test_list_ingestions_without_project_id_returns_empty(
     resp.raise_for_status()
     data = resp.json()
 
-    assert len(data["records"]) == 1
-    assert data["records"][0]["name"] == "test-ingestion"
+    assert len(data["data"]) == 1
+    assert data["data"][0]["name"] == "test-ingestion"

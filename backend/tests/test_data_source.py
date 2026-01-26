@@ -23,7 +23,7 @@ def test_datasource_basic(client: TestClient, test_project):
 
     resp.raise_for_status()
     data = resp.json()
-    record = data["record"]
+    record = data["data"]
     assert record["name"] == "my-pg-db"
     assert record["driver"] == "postgresql"
     assert record["host"] == "localhost"
@@ -39,17 +39,17 @@ def test_datasource_create_form(client: TestClient, test_project):
     )
     assert resp.status_code == 200
     data = resp.json()
-    assert "record" in data
-    assert "jsonschema" in data["record"]
-    assert "widgets" in data["record"]
+    assert "data" in data
+    assert "jsonschema" in data["data"]
+    assert "widgets" in data["data"]
     # Verify new fields are present in properties
-    props = data["record"]["jsonschema"]["properties"]
+    props = data["data"]["jsonschema"]["properties"]
     assert "driver" in props
     assert "enable_ssl" in props
     assert "enable_ssl" in props
     assert "verify_ssl" in props
-    assert data["record"]["widgets"]["password"]["type"] == "password"
-    assert data["record"]["widgets"]["parameters"]["type"] == "key-value"
+    assert data["data"]["widgets"]["password"]["type"] == "password"
+    assert data["data"]["widgets"]["parameters"]["type"] == "key-value"
 
 
 def test_datasource_web_source(client: TestClient, test_project):
@@ -70,7 +70,7 @@ def test_datasource_web_source(client: TestClient, test_project):
     )
 
     assert resp.status_code == 200
-    record = resp.json()["record"]
+    record = resp.json()["data"]
     assert record["driver"] == "web"
     assert record["enable_ssl"] is True
     assert record["verify_ssl"] is True
@@ -90,7 +90,7 @@ def test_datasource_update(client: TestClient, test_project):
             "project_id": test_project["id"],
         },
     )
-    source_id = resp.json()["record"]["id"]
+    source_id = resp.json()["data"]["id"]
 
     # Update
     resp = client.put(
@@ -106,7 +106,7 @@ def test_datasource_update(client: TestClient, test_project):
     )
 
     assert resp.status_code == 200
-    record = resp.json()["record"]
+    record = resp.json()["data"]
     assert record["title"] == "Updated Title"
     assert record["verify_ssl"] is True
 
@@ -123,7 +123,7 @@ def test_delete_datasource(client: TestClient, test_project):
             "project_id": test_project["id"],
         },
     )
-    source_id = resp.json()["record"]["id"]
+    source_id = resp.json()["data"]["id"]
 
     # Delete
     delete_resp = client.delete(
@@ -159,7 +159,7 @@ def test_datasource_password_redaction(client: TestClient, test_project):
         },
     )
     assert resp.status_code == 200
-    record = resp.json()["record"]
+    record = resp.json()["data"]
     assert record["password"] == "__REDACTED__"
 
     source_id = record["id"]
@@ -170,7 +170,7 @@ def test_datasource_password_redaction(client: TestClient, test_project):
         headers={"X-Project-Id": str(test_project["id"])},
     )
     assert resp.status_code == 200
-    record = resp.json()["record"]
+    record = resp.json()["data"]
     assert record["password"] == "__REDACTED__"
 
     # List
@@ -179,7 +179,7 @@ def test_datasource_password_redaction(client: TestClient, test_project):
         headers={"X-Project-Id": str(test_project["id"])},
     )
     assert resp.status_code == 200
-    records = resp.json()["records"]
+    records = resp.json()["data"]
     found = False
     for r in records:
         if r["id"] == source_id:

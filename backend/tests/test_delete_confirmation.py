@@ -14,7 +14,7 @@ def test_delete_confirmation_header(crud_client: TestClient):
         },
     )
     resp.raise_for_status()
-    record_id = resp.json()["record"]["id"]
+    record_id = resp.json()["data"]["id"]
 
     # 2. Try to delete without header - should fail
     resp = client.delete(f"/api/v1/models/{record_id}")

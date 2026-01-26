@@ -77,7 +77,7 @@ def test_cluster_service_api(client: TestClient, test_project):
         headers={"X-Project-Id": str(test_project["id"])},
     )
     resp.raise_for_status()
-    cluster_id = resp.json()["record"]["id"]
+    cluster_id = resp.json()["data"]["id"]
 
     # 2. Create a Sample Cluster Service Model
     svc_data = {
@@ -92,7 +92,7 @@ def test_cluster_service_api(client: TestClient, test_project):
         headers={"X-Project-Id": str(test_project["id"])},
     )
     resp.raise_for_status()
-    svc_id = resp.json()["record"]["id"]
+    svc_id = resp.json()["data"]["id"]
 
     # 3. Test k8s_cluster retrieval via API
     resp = client.get(
@@ -126,7 +126,7 @@ def test_cluster_service_kubeconfig_missing_api(client: TestClient, test_project
         headers={"X-Project-Id": str(test_project["id"])},
     )
     resp.raise_for_status()
-    cluster_id = resp.json()["record"]["id"]
+    cluster_id = resp.json()["data"]["id"]
 
     # 2. Create a Sample Cluster Service Model
     svc_data = {
@@ -141,7 +141,7 @@ def test_cluster_service_kubeconfig_missing_api(client: TestClient, test_project
         headers={"X-Project-Id": str(test_project["id"])},
     )
     resp.raise_for_status()
-    svc_id = resp.json()["record"]["id"]
+    svc_id = resp.json()["data"]["id"]
 
     # 3. Test kubeconfig retrieval failure via API
     # Since the method raises ValueError and TestClient propagates it, we use pytest.raises

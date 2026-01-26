@@ -17,9 +17,9 @@ def test_create_ontology(client: TestClient, test_project):
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["record"]["name"] == "test-ontology"
-    assert data["record"]["title"] == "Test Ontology"
-    assert data["record"]["project_id"] == test_project["id"]
+    assert data["data"]["name"] == "test-ontology"
+    assert data["data"]["title"] == "Test Ontology"
+    assert data["data"]["project_id"] == test_project["id"]
 
 
 def test_list_ontologies(client: TestClient, test_project):
@@ -41,8 +41,8 @@ def test_list_ontologies(client: TestClient, test_project):
     )
     assert response.status_code == 200
     data = response.json()
-    assert len(data["records"]) >= 1
-    assert any(r["name"] == "ontology-1" for r in data["records"])
+    assert len(data["data"]) >= 1
+    assert any(r["name"] == "ontology-1" for r in data["data"])
 
 
 def test_update_ontology(client: TestClient, test_project):
@@ -56,7 +56,7 @@ def test_update_ontology(client: TestClient, test_project):
         },
         headers={"X-Project-ID": str(test_project["id"])},
     )
-    ontology_id = create_res.json()["record"]["id"]
+    ontology_id = create_res.json()["data"]["id"]
 
     # Update allows both description and title
     response = client.put(
@@ -71,8 +71,8 @@ def test_update_ontology(client: TestClient, test_project):
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["record"]["description"] == "New desc"
-    assert data["record"]["title"] == "Updated Title"
+    assert data["data"]["description"] == "New desc"
+    assert data["data"]["title"] == "Updated Title"
 
 
 def test_delete_ontology(client: TestClient, test_project):
@@ -86,7 +86,7 @@ def test_delete_ontology(client: TestClient, test_project):
         },
         headers={"X-Project-ID": str(test_project["id"])},
     )
-    ontology_id = create_res.json()["record"]["id"]
+    ontology_id = create_res.json()["data"]["id"]
 
     response = client.delete(
         f"/api/v1/ontologies/{ontology_id}",

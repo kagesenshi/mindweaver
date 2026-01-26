@@ -321,7 +321,7 @@ async def execute_ingestion(
     return {
         "status": "success",
         "message": "Ingestion execution triggered",
-        "record": new_run,
+        "data": new_run,
     }
 
 
@@ -354,5 +354,5 @@ async def list_ingestion_runs(
 
     return {
         "status": "success",
-        "records": runs,
+        "data": runs,
     }

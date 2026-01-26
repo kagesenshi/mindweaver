@@ -47,7 +47,7 @@ def test_platform_state_triggers(client: TestClient, test_project):
         headers={"X-Project-Id": str(test_project["id"])},
     )
     resp.raise_for_status()
-    cluster_id = resp.json()["record"]["id"]
+    cluster_id = resp.json()["data"]["id"]
 
     # 2. Create Model
     model_data = {
@@ -62,7 +62,7 @@ def test_platform_state_triggers(client: TestClient, test_project):
         headers={"X-Project-Id": str(test_project["id"])},
     )
     resp.raise_for_status()
-    model_id = resp.json()["record"]["id"]
+    model_id = resp.json()["data"]["id"]
 
     # 3. Mock deploy and decommission on the SERVICE class,
     # but we need to mock it on the instance or globally.

@@ -18,13 +18,13 @@ def test_ai_agent(client: TestClient, test_project):
     )
     resp.raise_for_status()
     data = resp.json()
-    assert data["record"]["name"] == "support-agent"
-    assert data["record"]["model"] == "gpt-4"
+    assert data["data"]["name"] == "support-agent"
+    assert data["data"]["model"] == "gpt-4"
 
-    record_id = data["record"]["id"]
+    record_id = data["data"]["id"]
     resp = client.get(f"/api/v1/ai_agents/{record_id}")
     resp.raise_for_status()
-    assert resp.json()["record"]["id"] == record_id
+    assert resp.json()["data"]["id"] == record_id
 
 
 def test_list_ai_agents_without_project_id_returns_empty(
@@ -54,8 +54,8 @@ def test_list_ai_agents_without_project_id_returns_empty(
     resp.raise_for_status()
     data = resp.json()
 
-    assert len(data["records"]) == 1
-    assert data["records"][0]["name"] == "test-agent"
+    assert len(data["data"]) == 1
+    assert data["data"][0]["name"] == "test-agent"
 
 
 def test_delete_ai_agent(client: TestClient, test_project):
@@ -76,7 +76,7 @@ def test_delete_ai_agent(client: TestClient, test_project):
         headers={"X-Project-Id": str(test_project["id"])},
     )
     create_resp.raise_for_status()
-    agent_id = create_resp.json()["record"]["id"]
+    agent_id = create_resp.json()["data"]["id"]
 
     # Delete the AI agent
     delete_resp = client.delete(

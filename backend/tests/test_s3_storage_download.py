@@ -19,7 +19,7 @@ def test_s3_storage_get_file(client: TestClient, test_project):
         },
     )
     assert create_resp.status_code == 200
-    storage_id = create_resp.json()["record"]["id"]
+    storage_id = create_resp.json()["data"]["id"]
 
     # Mock boto3 client
     with patch("boto3.client") as mock_s3:

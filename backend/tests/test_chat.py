@@ -18,13 +18,13 @@ def test_chat(client: TestClient, test_project):
     )
     resp.raise_for_status()
     data = resp.json()
-    assert data["record"]["name"] == "chat-session-1"
-    assert len(data["record"]["messages"]) == 2
+    assert data["data"]["name"] == "chat-session-1"
+    assert len(data["data"]["messages"]) == 2
 
-    record_id = data["record"]["id"]
+    record_id = data["data"]["id"]
     resp = client.get(f"/api/v1/chats/{record_id}")
     resp.raise_for_status()
-    assert resp.json()["record"]["id"] == record_id
+    assert resp.json()["data"]["id"] == record_id
 
 
 def test_list_chats_without_project_id_returns_empty(client: TestClient, test_project):
@@ -48,8 +48,8 @@ def test_list_chats_without_project_id_returns_empty(client: TestClient, test_pr
     resp.raise_for_status()
     data = resp.json()
 
-    assert len(data["records"]) == 1
-    assert data["records"][0]["name"] == "chat-session-1"
+    assert len(data["data"]) == 1
+    assert data["data"][0]["name"] == "chat-session-1"
 
 
 def test_delete_chat(client: TestClient, test_project):
@@ -67,7 +67,7 @@ def test_delete_chat(client: TestClient, test_project):
         headers={"X-Project-Id": str(test_project["id"])},
     )
     create_resp.raise_for_status()
-    chat_id = create_resp.json()["record"]["id"]
+    chat_id = create_resp.json()["data"]["id"]
 
     # Delete the chat session
     delete_resp = client.delete(

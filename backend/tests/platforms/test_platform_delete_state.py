@@ -28,7 +28,7 @@ def test_platform_delete_state_denial_when_active(client: TestClient, test_proje
             headers={"X-Project-Id": str(test_project["id"])},
         )
         resp.raise_for_status()
-        cluster_id = resp.json()["record"]["id"]
+        cluster_id = resp.json()["data"]["id"]
 
         # 2. Create PgSqlCluster
         model_data = {
@@ -45,7 +45,7 @@ def test_platform_delete_state_denial_when_active(client: TestClient, test_proje
             headers={"X-Project-Id": str(test_project["id"])},
         )
         resp.raise_for_status()
-        model_id = resp.json()["record"]["id"]
+        model_id = resp.json()["data"]["id"]
 
         # 3. Create state and set to active
         update_data = {
@@ -102,7 +102,7 @@ def test_platform_delete_state_success_after_decommission(
             headers={"X-Project-Id": str(test_project["id"])},
         )
         resp.raise_for_status()
-        cluster_id = resp.json()["record"]["id"]
+        cluster_id = resp.json()["data"]["id"]
 
         # 2. Create PgSqlCluster
         model_data = {
@@ -119,7 +119,7 @@ def test_platform_delete_state_success_after_decommission(
             headers={"X-Project-Id": str(test_project["id"])},
         )
         resp.raise_for_status()
-        model_id = resp.json()["record"]["id"]
+        model_id = resp.json()["data"]["id"]
 
         # 3. Create state and set to active
         update_data = {

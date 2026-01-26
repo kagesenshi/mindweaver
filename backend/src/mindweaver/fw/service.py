@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, create_model, AnyUrl
+from pydantic import BaseModel, Field, create_model, AnyUrl, ConfigDict
 import fastapi
 from fastapi import Depends, Header
 import sqlalchemy as sa
@@ -51,7 +51,7 @@ class BaseResult(BaseModel):
 
 
 class Result(BaseResult, Generic[T]):
-    record: T
+    data: T
 
 
 class FormSchema(BaseModel):
@@ -62,7 +62,7 @@ class FormSchema(BaseModel):
 
 
 class FormResult(BaseResult):
-    record: FormSchema
+    data: FormSchema
 
 
 class PaginationMeta(BaseModel):
@@ -73,8 +73,10 @@ class PaginationMeta(BaseModel):
 
 
 class ListResult(BaseResult, Generic[T]):
-    records: list[T] | None = None
+    data: list[T] | None = None
     meta: PaginationMeta | None = None
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 def redefine_model(name, Model: type[BaseModel], *, exclude=None) -> type[BaseModel]:
@@ -877,7 +879,7 @@ class Service(Generic[S], abc.ABC):
         )
         async def list_all(svc: Annotated[cls, Depends(cls.get_service)]) -> ListResult[model_class]:  # type: ignore
             records = await svc.all()
-            return {"records": [await svc.post_process_model(r) for r in records]}
+            return {"data": [await svc.post_process_model(r) for r in records]}
 
         @router.get(
             f"{service_path}/_create-form",
@@ -887,7 +889,7 @@ class Service(Generic[S], abc.ABC):
         )
         async def get_create_form() -> FormResult:
             return {
-                "record": {
+                "data": {
                     "jsonschema": CreateModel.model_json_schema(),
                     "widgets": cls.get_widgets(),
                     "immutable_fields": cls.immutable_fields(),
@@ -905,7 +907,7 @@ class Service(Generic[S], abc.ABC):
             )
             async def get_edit_form() -> FormResult:
                 return {
-                    "record": {
+                    "data": {
                         "jsonschema": UpdateModel.model_json_schema(),
                         "widgets": cls.get_widgets(),
                         "immutable_fields": cls.immutable_fields(),
@@ -921,7 +923,7 @@ class Service(Generic[S], abc.ABC):
         )
         async def create(svc: Annotated[cls, Depends(cls.get_service)], data: CreateModel) -> Result[model_class]:  # type: ignore
             created_model = await svc.create(data)
-            return {"record": await svc.post_process_model(created_model)}
+            return {"data": await svc.post_process_model(created_model)}
 
         @router.get(
             model_path,
@@ -933,7 +935,7 @@ class Service(Generic[S], abc.ABC):
             svc: Annotated[cls, Depends(cls.get_service)],
             model: Annotated[model_class, Depends(cls.get_model)],
         ) -> Result[model_class]:  # type: ignore
-            return {"record": await svc.post_process_model(model)}
+            return {"data": await svc.post_process_model(model)}
 
         if UpdateModel.model_fields:
 
@@ -949,7 +951,7 @@ class Service(Generic[S], abc.ABC):
                 data: UpdateModel,
             ) -> Result[model_class]:  # type: ignore
                 updated_model = await svc.update(model.id, data)
-                return {"record": await svc.post_process_model(updated_model)}
+                return {"data": await svc.post_process_model(updated_model)}
 
         @router.delete(
             model_path,

@@ -17,7 +17,7 @@ def test_connection_endpoint(client: TestClient, test_project):
             "project_id": test_project["id"],
         },
     )
-    source_id = resp.json()["record"]["id"]
+    source_id = resp.json()["data"]["id"]
 
     # Test Connection
     # We rely on external network or mocking, but for basic routed test:

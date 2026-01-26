@@ -34,7 +34,7 @@ def test_pgsql_platform_service_state_clearing(client: TestClient, test_project)
         headers={"X-Project-Id": str(test_project["id"])},
     )
     resp.raise_for_status()
-    cluster_id = resp.json()["record"]["id"]
+    cluster_id = resp.json()["data"]["id"]
 
     # 2. Setup Model
     model_data = {
@@ -51,7 +51,7 @@ def test_pgsql_platform_service_state_clearing(client: TestClient, test_project)
         headers={"X-Project-Id": str(test_project["id"])},
     )
     resp.raise_for_status()
-    model_id = resp.json()["record"]["id"]
+    model_id = resp.json()["data"]["id"]
 
     # 3. Setup State with some data
     from mindweaver.crypto import encrypt_password

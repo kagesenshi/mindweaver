@@ -192,8 +192,8 @@ const DynamicForm = ({
             try {
                 const viewName = mode === 'create' ? '_create-form' : '_edit-form';
                 const response = await apiClient.get(`${entityPath}/${viewName}`);
-                const record = response.data.record;
-                setSchema(record);
+                const data = response.data.data;
+                setSchema(data);
 
                 // Merge initial data with defaults from schema if needed
                 if (mode === 'create') {
@@ -232,10 +232,10 @@ const DynamicForm = ({
                                 let items = [];
                                 if (Array.isArray(relResponse.data)) {
                                     items = relResponse.data;
-                                } else if (relResponse.data.records) {
-                                    items = relResponse.data.records;
                                 } else if (relResponse.data.data) {
                                     items = relResponse.data.data;
+                                } else if (relResponse.data.records) {
+                                    items = relResponse.data.records;
                                 }
 
                                 relOptions[key] = items;

@@ -202,7 +202,7 @@ def test_s3_storage_test_connection_with_stored_secret(
         },
     )
     assert create_resp.status_code == 200
-    storage_id = create_resp.json()["record"]["id"]
+    storage_id = create_resp.json()["data"]["id"]
 
     # Test connection without providing secret key (should use stored one)
     mock_s3_client = MagicMock()
@@ -245,7 +245,7 @@ def test_s3_storage_test_connection_with_redacted_secret(
         },
     )
     assert create_resp.status_code == 200
-    storage_id = create_resp.json()["record"]["id"]
+    storage_id = create_resp.json()["data"]["id"]
 
     # Test connection with "__REDACTED__" secret key
     mock_s3_client = MagicMock()

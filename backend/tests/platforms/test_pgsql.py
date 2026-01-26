@@ -20,7 +20,7 @@ def test_pgsql_platform_crud(client: TestClient, test_project):
         headers={"X-Project-Id": str(test_project["id"])},
     )
     resp.raise_for_status()
-    cluster_id = resp.json()["record"]["id"]
+    cluster_id = resp.json()["data"]["id"]
 
     # 1.1 Setup S3Storage
     s3_data = {
@@ -39,7 +39,7 @@ def test_pgsql_platform_crud(client: TestClient, test_project):
         headers={"X-Project-Id": str(test_project["id"])},
     )
     resp.raise_for_status()
-    s3_id = resp.json()["record"]["id"]
+    s3_id = resp.json()["data"]["id"]
 
     # 2. Create PgSqlCluster
     model_data = {
@@ -59,10 +59,10 @@ def test_pgsql_platform_crud(client: TestClient, test_project):
         headers={"X-Project-Id": str(test_project["id"])},
     )
     resp.raise_for_status()
-    model_id = resp.json()["record"]["id"]
-    assert resp.json()["record"]["s3_storage_id"] == s3_id
-    assert resp.json()["record"]["instances"] == 3
-    assert resp.json()["record"]["storage_size"] == "2Gi"
+    model_id = resp.json()["data"]["id"]
+    assert resp.json()["data"]["s3_storage_id"] == s3_id
+    assert resp.json()["data"]["instances"] == 3
+    assert resp.json()["data"]["storage_size"] == "2Gi"
 
     # 3. Apply
     with patch("kubernetes.config.new_client_from_config") as mock_new_client, patch(
@@ -119,8 +119,8 @@ def test_pgsql_platform_crud(client: TestClient, test_project):
         headers={"X-Project-Id": str(test_project["id"])},
     )
     resp.raise_for_status()
-    assert resp.json()["record"]["instances"] == 5
-    assert resp.json()["record"]["title"] == "My Postgres Updated"
+    assert resp.json()["data"]["instances"] == 5
+    assert resp.json()["data"]["title"] == "My Postgres Updated"
 
     # 5. Delete
     resp = client.delete(
@@ -148,7 +148,7 @@ def test_pgsql_backup_destination_validation(client: TestClient, test_project):
         headers={"X-Project-Id": str(test_project["id"])},
     )
     resp.raise_for_status()
-    cluster_id = resp.json()["record"]["id"]
+    cluster_id = resp.json()["data"]["id"]
 
     # Base data for PgSqlPlatform
     base_data = {
@@ -169,7 +169,7 @@ def test_pgsql_backup_destination_validation(client: TestClient, test_project):
         headers={"X-Project-Id": str(test_project["id"])},
     )
     assert resp.status_code == 200
-    assert resp.json()["record"]["backup_destination"] == "s3://my-bucket/backups"
+    assert resp.json()["data"]["backup_destination"] == "s3://my-bucket/backups"
 
     # 2. Invalid protocol
     data = base_data.copy()
@@ -227,7 +227,7 @@ def test_pgsql_instances_validation(client: TestClient, test_project):
         headers={"X-Project-Id": str(test_project["id"])},
     )
     resp.raise_for_status()
-    cluster_id = resp.json()["record"]["id"]
+    cluster_id = resp.json()["data"]["id"]
 
     # Base data
     base_data = {
@@ -281,7 +281,7 @@ def test_pgsql_immutable_fields(client: TestClient, test_project):
         headers={"X-Project-Id": str(test_project["id"])},
     )
     resp.raise_for_status()
-    cluster_id = resp.json()["record"]["id"]
+    cluster_id = resp.json()["data"]["id"]
 
     # Base data
     base_data = {
@@ -298,7 +298,7 @@ def test_pgsql_immutable_fields(client: TestClient, test_project):
         headers={"X-Project-Id": str(test_project["id"])},
     )
     resp.raise_for_status()
-    model_id = resp.json()["record"]["id"]
+    model_id = resp.json()["data"]["id"]
 
     # Try modifying immutable fields
     immutable_fields = {
@@ -308,7 +308,7 @@ def test_pgsql_immutable_fields(client: TestClient, test_project):
         "project_id": test_project["id"] + 1,
     }
 
-    if "s3_storage_id" in resp.json()["record"]:
+    if "s3_storage_id" in resp.json()["data"]:
         immutable_fields["s3_storage_id"] = 999
 
     for field, value in immutable_fields.items():

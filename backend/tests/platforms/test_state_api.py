@@ -30,7 +30,7 @@ def test_platform_state_api(client: TestClient, test_project):
             headers={"X-Project-Id": str(test_project["id"])},
         )
         resp.raise_for_status()
-        cluster_id = resp.json()["record"]["id"]
+        cluster_id = resp.json()["data"]["id"]
 
         # 2. Create PgSqlCluster
         model_data = {
@@ -47,7 +47,7 @@ def test_platform_state_api(client: TestClient, test_project):
             headers={"X-Project-Id": str(test_project["id"])},
         )
         resp.raise_for_status()
-        model_id = resp.json()["record"]["id"]
+        model_id = resp.json()["data"]["id"]
 
         # 3. Get initial state (should be empty object or default)
         resp = client.get(

@@ -26,7 +26,7 @@ def test_decommission_safety_header_required(client: TestClient, test_project):
             headers={"X-Project-Id": str(test_project["id"])},
         )
         resp.raise_for_status()
-        cluster_id = resp.json()["record"]["id"]
+        cluster_id = resp.json()["data"]["id"]
 
         # 2. Create PgSqlCluster
         model_data = {
@@ -43,7 +43,7 @@ def test_decommission_safety_header_required(client: TestClient, test_project):
             headers={"X-Project-Id": str(test_project["id"])},
         )
         resp.raise_for_status()
-        model_id = resp.json()["record"]["id"]
+        model_id = resp.json()["data"]["id"]
 
         # 3. Create state and set to active
         client.post(
@@ -106,7 +106,7 @@ def test_update_state_active_false_safety_header_required(
             json=cluster_data,
             headers={"X-Project-Id": str(test_project["id"])},
         )
-        cluster_id = resp.json()["record"]["id"]
+        cluster_id = resp.json()["data"]["id"]
 
         model_data = {
             "name": "safety-pg-2",
@@ -121,7 +121,7 @@ def test_update_state_active_false_safety_header_required(
             json=model_data,
             headers={"X-Project-Id": str(test_project["id"])},
         )
-        model_id = resp.json()["record"]["id"]
+        model_id = resp.json()["data"]["id"]
 
         client.post(
             f"/api/v1/platform/pgsql/{model_id}/_state",
