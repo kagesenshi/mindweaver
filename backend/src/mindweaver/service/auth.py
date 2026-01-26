@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
 from mindweaver.config import settings
 from mindweaver.fw.model import AsyncSession, get_session, get_engine
+import asyncio
 import httpx
 import jwt
 import time
@@ -25,6 +26,33 @@ class User(Base, table=True):
 class Token(BaseModel):
     access_token: str
     token_type: str
+
+
+_oidc_config_cache: Optional[dict] = None
+_oidc_last_fetched: float = 0
+_oidc_fetch_lock = asyncio.Lock()
+
+
+async def get_oidc_config(client: httpx.AsyncClient) -> dict:
+    global _oidc_config_cache, _oidc_last_fetched
+
+    now = time.monotonic()
+    # First check (unlocked)
+    if _oidc_config_cache and (now - _oidc_last_fetched < 3600):
+        return _oidc_config_cache
+
+    async with _oidc_fetch_lock:
+        # Second check (locked)
+        if _oidc_config_cache and (now - _oidc_last_fetched < 3600):
+            return _oidc_config_cache
+
+        issuer = settings.oidc_issuer.rstrip("/")
+        discovery_url = f"{issuer}/.well-known/openid-configuration"
+        resp = await client.get(discovery_url)
+        resp.raise_for_status()
+        _oidc_config_cache = resp.json()
+        _oidc_last_fetched = time.monotonic()
+        return _oidc_config_cache
 
 
 async def get_current_user(request: Request, session: AsyncSession) -> User:
@@ -88,11 +116,7 @@ class AuthService(Service[User]):
             # Discover OIDC endpoints
             async with httpx.AsyncClient() as client:
                 try:
-                    issuer = settings.oidc_issuer.rstrip("/")
-                    discovery_url = f"{issuer}/.well-known/openid-configuration"
-                    resp = await client.get(discovery_url)
-                    resp.raise_for_status()
-                    oidc_config = resp.json()
+                    oidc_config = await get_oidc_config(client)
                     auth_endpoint = oidc_config.get("authorization_endpoint")
                     if not auth_endpoint:
                         raise HTTPException(
@@ -140,11 +164,7 @@ class AuthService(Service[User]):
             async with httpx.AsyncClient() as client:
                 # Discover endpoints
                 try:
-                    issuer = settings.oidc_issuer.rstrip("/")
-                    discovery_url = f"{issuer}/.well-known/openid-configuration"
-                    resp = await client.get(discovery_url)
-                    resp.raise_for_status()
-                    oidc_config = resp.json()
+                    oidc_config = await get_oidc_config(client)
                     token_endpoint = oidc_config.get("token_endpoint")
                     if not token_endpoint:
                         raise HTTPException(
