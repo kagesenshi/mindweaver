@@ -18,25 +18,25 @@ export const useProjects = () => {
         }
     }, []);
 
-    const createProject = async (data) => {
+    const createProject = useCallback(async (data) => {
         const response = await apiClient.post('/projects', data);
         await fetchProjects();
         return response.data;
-    };
+    }, [fetchProjects]);
 
-    const updateProject = async (id, data) => {
+    const updateProject = useCallback(async (id, data) => {
         const response = await apiClient.put(`/projects/${id}`, data);
         await fetchProjects();
         return response.data;
-    };
+    }, [fetchProjects]);
 
-    const deleteProject = async (id, confirmName) => {
+    const deleteProject = useCallback(async (id, confirmName) => {
         await apiClient.delete(`/projects/${id}`, {
             headers: { 'X-RESOURCE-NAME': confirmName }
         });
         await new Promise(resolve => setTimeout(resolve, 500));
         await fetchProjects();
-    };
+    }, [fetchProjects]);
 
     useEffect(() => {
         fetchProjects();
@@ -62,30 +62,30 @@ export const useDataSources = () => {
         }
     }, []);
 
-    const createDataSource = async (data) => {
+    const createDataSource = useCallback(async (data) => {
         const response = await apiClient.post('/data_sources', data);
         await fetchDataSources();
         return response.data;
-    };
+    }, [fetchDataSources]);
 
-    const updateDataSource = async (id, data) => {
+    const updateDataSource = useCallback(async (id, data) => {
         const response = await apiClient.put(`/data_sources/${id}`, data);
         await fetchDataSources();
         return response.data;
-    };
+    }, [fetchDataSources]);
 
-    const deleteDataSource = async (id, confirmName) => {
+    const deleteDataSource = useCallback(async (id, confirmName) => {
         await apiClient.delete(`/data_sources/${id}`, {
             headers: { 'X-RESOURCE-NAME': confirmName }
         });
         await new Promise(resolve => setTimeout(resolve, 500));
         await fetchDataSources();
-    };
+    }, [fetchDataSources]);
 
-    const testConnection = async (id) => {
+    const testConnection = useCallback(async (id) => {
         const response = await apiClient.post(`/data_sources/${id}/_test-connection`);
         return response.data;
-    };
+    }, []);
 
     useEffect(() => {
         fetchDataSources();
@@ -111,35 +111,35 @@ export const usePgSql = () => {
         }
     }, []);
 
-    const createPlatform = async (data) => {
+    const createPlatform = useCallback(async (data) => {
         const response = await apiClient.post('/platform/pgsql', data);
         await fetchPlatforms();
         return response.data;
-    };
+    }, [fetchPlatforms]);
 
-    const updatePlatformState = async (id, state, headers = {}) => {
+    const updatePlatformState = useCallback(async (id, state, headers = {}) => {
         await apiClient.post(`/platform/pgsql/${id}/_state`, state, { headers });
         await new Promise(resolve => setTimeout(resolve, 500));
         await fetchPlatforms();
-    };
+    }, [fetchPlatforms]);
 
-    const deletePlatform = async (id, confirmName) => {
+    const deletePlatform = useCallback(async (id, confirmName) => {
         await apiClient.delete(`/platform/pgsql/${id}`, {
             headers: { 'X-RESOURCE-NAME': confirmName }
         });
         await new Promise(resolve => setTimeout(resolve, 500));
         await fetchPlatforms();
-    };
+    }, [fetchPlatforms]);
 
-    const getPlatformState = async (id) => {
+    const getPlatformState = useCallback(async (id) => {
         const response = await apiClient.get(`/platform/pgsql/${id}/_state`);
         return response.data;
-    };
+    }, []);
 
-    const refreshPlatformState = async (id) => {
+    const refreshPlatformState = useCallback(async (id) => {
         const response = await apiClient.post(`/platform/pgsql/${id}/_refresh`);
         return response.data;
-    };
+    }, []);
 
     useEffect(() => {
         fetchPlatforms();
@@ -165,25 +165,25 @@ export const useK8sClusters = () => {
         }
     }, []);
 
-    const createCluster = async (data) => {
+    const createCluster = useCallback(async (data) => {
         const response = await apiClient.post('/k8s_clusters', data);
         await fetchClusters();
         return response.data;
-    };
+    }, [fetchClusters]);
 
-    const updateCluster = async (id, data) => {
+    const updateCluster = useCallback(async (id, data) => {
         const response = await apiClient.put(`/k8s_clusters/${id}`, data);
         await fetchClusters();
         return response.data;
-    };
+    }, [fetchClusters]);
 
-    const deleteCluster = async (id, confirmName) => {
+    const deleteCluster = useCallback(async (id, confirmName) => {
         await apiClient.delete(`/k8s_clusters/${id}`, {
             headers: { 'X-RESOURCE-NAME': confirmName }
         });
         await new Promise(resolve => setTimeout(resolve, 500));
         await fetchClusters();
-    };
+    }, [fetchClusters]);
 
     useEffect(() => {
         fetchClusters();
@@ -209,37 +209,37 @@ export const useS3Storages = () => {
         }
     }, []);
 
-    const createStorage = async (data) => {
+    const createStorage = useCallback(async (data) => {
         const response = await apiClient.post('/s3_storages', data);
         await fetchStorages();
         return response.data;
-    };
+    }, [fetchStorages]);
 
-    const updateStorage = async (id, data) => {
+    const updateStorage = useCallback(async (id, data) => {
         const response = await apiClient.put(`/s3_storages/${id}`, data);
         await fetchStorages();
         return response.data;
-    };
+    }, [fetchStorages]);
 
-    const deleteStorage = async (id, confirmName) => {
+    const deleteStorage = useCallback(async (id, confirmName) => {
         await apiClient.delete(`/s3_storages/${id}`, {
             headers: { 'X-RESOURCE-NAME': confirmName }
         });
         await new Promise(resolve => setTimeout(resolve, 500));
         await fetchStorages();
-    };
+    }, [fetchStorages]);
 
-    const testConnection = async (data) => {
+    const testConnection = useCallback(async (data) => {
         const response = await apiClient.post('/s3_storages/_test-connection', data);
         return response.data;
-    };
+    }, []);
 
-    const browseStorage = async (id, params = {}) => {
+    const browseStorage = useCallback(async (id, params = {}) => {
         const response = await apiClient.get(`/s3_storages/${id}/_fs`, { params });
         return response.data;
-    };
+    }, []);
 
-    const uploadFile = async (id, bucket, prefix, file) => {
+    const uploadFile = useCallback(async (id, bucket, prefix, file) => {
         const formData = new FormData();
         formData.append('file', file);
         const response = await apiClient.post(`/s3_storages/${id}/_fs`, formData, {
@@ -249,9 +249,9 @@ export const useS3Storages = () => {
             }
         });
         return response.data;
-    };
+    }, []);
 
-    const downloadFile = async (id, bucket, key) => {
+    const downloadFile = useCallback(async (id, bucket, key) => {
         try {
             // Request the presigned URL as JSON
             const response = await apiClient.get(`/s3_storages/${id}/_fs`, {
@@ -278,14 +278,14 @@ export const useS3Storages = () => {
             console.error("Failed to download file:", err);
             throw err;
         }
-    };
+    }, []);
 
-    const deleteFile = async (id, bucket, key) => {
+    const deleteFile = useCallback(async (id, bucket, key) => {
         const response = await apiClient.post(`/s3_storages/${id}/_fs`, null, {
             params: { bucket, key, action: 'rm' }
         });
         return response.data;
-    };
+    }, []);
 
     useEffect(() => {
         fetchStorages();
