@@ -494,8 +494,8 @@ const PgSqlPage = () => {
     return (
         <>
             <PageLayout
-                title="Cloudnative PG Clusters"
-                description="High-availability PostgreSQL managed by Kubernetes operators."
+                title="PostgreSQL Clusters"
+                description="High-availability PostgreSQL managed on Kubernetes"
                 createConfig={{
                     title: "Provision PGSQL Cluster",
                     entityPath: "/platform/pgsql",
