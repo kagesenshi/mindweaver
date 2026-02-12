@@ -10,8 +10,8 @@ class Settings(BaseSettings):
     db_host: str = "localhost"
     db_port: int = 5432
     db_name: str = "mindweaver"
-    db_user: str | None = None
-    db_pass: str | None = None
+    db_user: str = "postgres"
+    db_pass: str = "password"
     timezone: str = "Asia/Kuala_Lumpur"
     enable_db_reset: bool = False
     enable_test_views: bool = False

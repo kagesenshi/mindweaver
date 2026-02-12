@@ -86,14 +86,7 @@ def handle_crypto_generate_key(args: CryptoGenerateKeyArgs):
     Generate a new Fernet encryption key.
     """
     key = generate_fernet_key()
-    print("\n" + "=" * 60)
-    print("Generated new Fernet encryption key:")
-    print("=" * 60)
-    print(key)
-    print("=" * 60)
-    print("\nIMPORTANT: Store this key securely!")
-    print("Set it as the MINDWEAVER_FERNET_KEY environment variable.")
-    print("=" * 60 + "\n")
+    print(f"MINDWEAVER_FERNET_KEY={key}")
 
 
 class CryptoRotateKeyArgs(argparse.Namespace):

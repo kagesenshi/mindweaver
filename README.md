@@ -23,52 +23,19 @@ This will start:
 *   PostgreSQL on `localhost:5432` (User: `postgres`, Password: `password`, DB: `mindweaver`)
 *   Redis on `localhost:6379`
 
-### 2. Backend Setup
+### 2. Application Setup
 
-Navigate to the `backend` directory:
-
-```bash
-cd backend
-```
-
-Install dependencies:
+Run the unified setup script from the root directory:
 
 ```bash
-uv sync
+python setup-dev.py
 ```
 
-Configure environment variables. Create a `.env` file in the `backend` directory (or export these variables in your shell):
-
-```bash
-echo "MINDWEAVER_DB_USER=postgres" > .env
-echo "MINDWEAVER_DB_PASS=password" >> .env
-```
-
-Run database migrations:
-
-```bash
-uv run mindweaver db migrate
-```
-
-(Optional) Generate an encryption key:
-
-```bash
-uv run mindweaver crypto generate-key
-```
-
-### 3. Frontend Setup
-
-Navigate to the `frontend` directory:
-
-```bash
-cd ../frontend
-```
-
-Install dependencies:
-
-```bash
-npm install
-```
+This will automatically:
+- Install backend dependencies using `uv`.
+- Install frontend dependencies using `npm`.
+- Run database migrations.
+- Suggest an encryption key.
 
 ## Running the Application
 
