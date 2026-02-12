@@ -121,7 +121,7 @@ body {
   }
 
   .mw-modal {
-    @apply border rounded-[40px] shadow-2xl relative z-10 overflow-hidden duration-300 bg-white border-slate-200 dark:bg-[#0c0e12] dark:border-slate-800;
+    @apply border rounded-[24px] shadow-2xl relative z-10 overflow-hidden duration-300 bg-white border-slate-200 dark:bg-[#0c0e12] dark:border-slate-800;
   }
 
   .mw-nav-item {

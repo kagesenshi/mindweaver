@@ -91,7 +91,7 @@ const ResourceConfirmModal = ({
                     <p className="text-sm font-bold text-slate-700 dark:text-slate-300 text-center">
                         Please type <span className={cn("font-mono select-all px-1.5 py-0.5 rounded border", style.matchText)}>{resourceName}</span> to confirm.
                     </p>
-                    <div className="px-8">
+                    <div className="px-6">
                         <input
                             type="text"
                             value={inputValue}
@@ -108,7 +108,7 @@ const ResourceConfirmModal = ({
                     </div>
                 </div>
 
-                <div className="flex flex-col gap-3 pt-4 px-8">
+                <div className="flex flex-col gap-3 pt-4 px-6">
                     <button
                         onClick={handleConfirm}
                         disabled={!isMatch || isBusy}

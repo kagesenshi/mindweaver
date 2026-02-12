@@ -29,7 +29,7 @@ const Modal = ({ isOpen, onClose, title, children, maxWidth = "max-w-4xl" }) => 
                 className={cn("mw-modal w-full", maxWidth)}
                 onClick={(e) => e.stopPropagation()}
             >
-                <div className="flex items-center justify-between p-8 border-b border-slate-200 dark:border-slate-800">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800">
                     <h3 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">{title}</h3>
                     <button
                         onClick={onClose}
@@ -39,7 +39,7 @@ const Modal = ({ isOpen, onClose, title, children, maxWidth = "max-w-4xl" }) => 
                     </button>
                 </div>
 
-                <div className="p-8 max-h-[80vh] overflow-y-auto">
+                <div className="p-6 max-h-[80vh] overflow-y-auto">
                     {children}
                 </div>
             </div>
