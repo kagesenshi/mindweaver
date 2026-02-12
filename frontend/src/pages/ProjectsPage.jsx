@@ -11,11 +11,13 @@ import { useProjects } from '../hooks/useResources';
 import Modal from '../components/Modal';
 import DynamicForm from '../components/DynamicForm';
 import PageLayout from '../components/PageLayout';
+import ResourceConfirmModal from '../components/ResourceConfirmModal';
 
 const ProjectsPage = () => {
     const { darkMode, refreshProjects } = useOutletContext();
     const { projects, loading, deleteProject, fetchProjects } = useProjects();
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedProject, setSelectedProject] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -87,9 +89,9 @@ const ProjectsPage = () => {
                                         <Edit2 size={18} />
                                     </button>
                                     <button
-                                        onClick={async () => {
-                                            await deleteProject(proj.id);
-                                            refreshProjects?.();
+                                        onClick={() => {
+                                            setSelectedProject(proj);
+                                            setIsDeleteModalOpen(true);
                                         }}
                                         className="mw-btn-icon-danger"
                                         title="Delete Project"
@@ -135,6 +137,26 @@ const ProjectsPage = () => {
                     />
                 )}
             </Modal>
+
+            {isDeleteModalOpen && selectedProject && (
+                <ResourceConfirmModal
+                    isOpen={isDeleteModalOpen}
+                    onClose={() => {
+                        setIsDeleteModalOpen(false);
+                        setSelectedProject(null);
+                    }}
+                    onConfirm={async (typedName) => {
+                        await deleteProject(selectedProject.id, typedName);
+                        setIsDeleteModalOpen(false);
+                        setSelectedProject(null);
+                        refreshProjects?.();
+                    }}
+                    resourceName={selectedProject.title}
+                    darkMode={darkMode}
+                    title="Delete Project"
+                    message="Are you sure you want to delete this project? All associated resources will be permanently removed."
+                />
+            )}
         </React.Fragment>
     );
 };
