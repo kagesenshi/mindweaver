@@ -1,11 +1,15 @@
-import React from 'react';
-import { Search, Loader2, Inbox } from 'lucide-react';
+import React, { useState } from 'react';
+import { useOutletContext } from 'react-router-dom';
+import { Search, Loader2, Plus } from 'lucide-react';
 import { cn } from '../utils/cn';
+import Modal from './Modal';
+import DynamicForm from './DynamicForm';
 
 const PageLayout = ({
     title,
     description,
     headerActions,
+    createConfig, // { title, entityPath, buttonText, icon, initialData, onSuccess, renderExtraActions, extraContent }
     searchQuery,
     onSearchChange,
     searchPlaceholder = "Search...",
@@ -15,6 +19,11 @@ const PageLayout = ({
     emptyState = null,
     className
 }) => {
+    const { darkMode } = useOutletContext() || {};
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+    const CreateIcon = createConfig?.icon || Plus;
+
     return (
         <div className={cn("space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300", className)}>
             <div className="mw-page-header">
@@ -28,11 +37,17 @@ const PageLayout = ({
                         </p>
                     )}
                 </div>
-                {headerActions && (
-                    <div className="flex items-center gap-2">
-                        {headerActions}
-                    </div>
-                )}
+                <div className="flex items-center gap-2">
+                    {createConfig && (
+                        <button
+                            onClick={() => setIsCreateModalOpen(true)}
+                            className="mw-btn-primary px-4 py-2"
+                        >
+                            <CreateIcon size={16} /> {createConfig.buttonText || 'CREATE'}
+                        </button>
+                    )}
+                    {headerActions}
+                </div>
             </div>
 
             {onSearchChange && (
@@ -66,6 +81,38 @@ const PageLayout = ({
                 </PageLayout.EmptyState>
             ) : (
                 children
+            )}
+
+            {createConfig && (
+                <Modal
+                    isOpen={isCreateModalOpen}
+                    onClose={() => {
+                        setIsCreateModalOpen(false);
+                        if (createConfig.onClose) {
+                            createConfig.onClose();
+                        }
+                    }}
+                    title={createConfig.title || `Create ${title}`}
+                    darkMode={darkMode}
+                >
+                    <div className="space-y-4">
+                        {createConfig.extraContent}
+                        <DynamicForm
+                            entityPath={createConfig.entityPath}
+                            mode="create"
+                            initialData={createConfig.initialData}
+                            darkMode={darkMode}
+                            onSuccess={async (data) => {
+                                setIsCreateModalOpen(false);
+                                if (createConfig.onSuccess) {
+                                    await createConfig.onSuccess(data);
+                                }
+                            }}
+                            onCancel={() => setIsCreateModalOpen(false)}
+                            renderExtraActions={createConfig.renderExtraActions}
+                        />
+                    </div>
+                </Modal>
             )}
         </div>
     );

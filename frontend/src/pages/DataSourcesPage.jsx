@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import {
-    Plus,
     Library,
     Database,
     Link as LinkIcon,
@@ -23,7 +22,6 @@ import DynamicForm from '../components/DynamicForm';
 const DataSourcesPage = () => {
     const { darkMode } = useOutletContext();
     const { dataSources, loading, deleteDataSource, testConnection, fetchDataSources } = useDataSources();
-    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [editSource, setEditSource] = useState(null);
     const [testingId, setTestingId] = useState(null);
     const [testResult, setTestResult] = useState(null);
@@ -62,14 +60,14 @@ const DataSourcesPage = () => {
             <PageLayout
                 title="Data Source Registry"
                 description="Global connection identities for Trino, Airflow, and ETL runtimes."
-                headerActions={
-                    <button
-                        onClick={() => setIsCreateModalOpen(true)}
-                        className="mw-btn-primary px-4 py-2"
-                    >
-                        <Plus size={16} /> REGISTER SOURCE
-                    </button>
-                }
+                createConfig={{
+                    title: "Register Data Source",
+                    entityPath: "/data_sources",
+                    buttonText: "REGISTER SOURCE",
+                    onSuccess: () => {
+                        fetchDataSources();
+                    }
+                }}
                 searchQuery={searchTerm}
                 onSearchChange={(e) => setSearchTerm(e.target.value)}
                 searchPlaceholder="Search data sources..."
@@ -134,24 +132,6 @@ const DataSourcesPage = () => {
                     ))}
                 </div>
             </PageLayout>
-
-            <Modal
-                isOpen={isCreateModalOpen}
-                onClose={() => setIsCreateModalOpen(false)}
-                title="Register Data Source"
-                darkMode={darkMode}
-            >
-                <DynamicForm
-                    entityPath="/data_sources"
-                    mode="create"
-                    darkMode={darkMode}
-                    onSuccess={() => {
-                        setIsCreateModalOpen(false);
-                        fetchDataSources();
-                    }}
-                    onCancel={() => setIsCreateModalOpen(false)}
-                />
-            </Modal>
 
             <Modal
                 isOpen={!!editSource}

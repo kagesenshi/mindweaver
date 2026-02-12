@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useK8sClusters } from '../hooks/useResources';
-import { Server, Cloud, Activity, Plus, Edit2 } from 'lucide-react';
+import { Server, Cloud, Activity, Edit2 } from 'lucide-react';
 import Modal from '../components/Modal';
 import DynamicForm from '../components/DynamicForm';
 import ResourceCard from '../components/ResourceCard';
@@ -10,7 +10,6 @@ import PageLayout from '../components/PageLayout';
 const K8sClustersPage = () => {
     const { darkMode, selectedProject } = useOutletContext();
     const { clusters, fetchClusters, loading, deleteCluster } = useK8sClusters();
-    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedCluster, setSelectedCluster] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -25,14 +24,15 @@ const K8sClustersPage = () => {
             <PageLayout
                 title="Kubernetes Clusters"
                 description="Manage infrastructure endpoints and compute contexts."
-                headerActions={
-                    <button
-                        onClick={() => setIsCreateModalOpen(true)}
-                        className="mw-btn-primary px-4 py-2"
-                    >
-                        <Plus size={16} /> ADD CLUSTER
-                    </button>
-                }
+                createConfig={{
+                    title: "Add Kubernetes Cluster",
+                    entityPath: "/k8s_clusters",
+                    buttonText: "ADD CLUSTER",
+                    initialData: { project_id: selectedProject?.id },
+                    onSuccess: () => {
+                        fetchClusters();
+                    }
+                }}
                 searchQuery={searchTerm}
                 onSearchChange={(e) => setSearchTerm(e.target.value)}
                 searchPlaceholder="Search clusters..."
@@ -74,25 +74,6 @@ const K8sClustersPage = () => {
                     ))}
                 </div>
             </PageLayout>
-
-            <Modal
-                isOpen={isCreateModalOpen}
-                onClose={() => setIsCreateModalOpen(false)}
-                title="Add Kubernetes Cluster"
-                darkMode={darkMode}
-            >
-                <DynamicForm
-                    entityPath="/k8s_clusters"
-                    mode="create"
-                    darkMode={darkMode}
-                    initialData={{ project_id: selectedProject?.id }}
-                    onSuccess={() => {
-                        fetchClusters();
-                        setIsCreateModalOpen(false);
-                    }}
-                    onCancel={() => setIsCreateModalOpen(false)}
-                />
-            </Modal>
 
             <Modal
                 isOpen={isEditModalOpen}

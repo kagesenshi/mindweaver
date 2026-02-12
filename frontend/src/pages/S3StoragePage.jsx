@@ -2,7 +2,6 @@ import React, { useState, useCallback, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import {
     HardDrive,
-    Plus,
     Radio,
     Globe,
 
@@ -47,7 +46,6 @@ const S3StoragePage = () => {
     const fileInputRef = useRef(null);
     const [uploading, setUploading] = useState(false);
 
-    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [editItem, setEditItem] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [testResult, setTestResult] = useState(null);
@@ -486,14 +484,39 @@ const S3StoragePage = () => {
             <PageLayout
                 title="S3 Object Storage"
                 description="Manage S3-compatible object storage connections for your data platform."
-                headerActions={
-                    <button
-                        onClick={() => setIsCreateModalOpen(true)}
-                        className="mw-btn-primary px-4 py-2"
-                    >
-                        <Plus size={16} /> NEW STORAGE
-                    </button>
-                }
+                createConfig={{
+                    title: "New S3 Storage",
+                    entityPath: "/s3_storages",
+                    buttonText: "NEW STORAGE",
+                    initialData: {
+                        project_id: selectedProject?.id,
+                        region: 'us-east-1'
+                    },
+                    onSuccess: handleCreate,
+                    onClose: () => setTestResult(null),
+                    renderExtraActions: (formData) => (
+                        <button
+                            type="button"
+                            onClick={() => runTestConnection(formData)}
+                            disabled={testingConnection}
+                            className="mw-btn-secondary px-6 py-4"
+                        >
+                            {testingConnection ? <Radio className="animate-pulse" size={18} /> : <Radio size={18} />}
+                            TEST CONNECTION
+                        </button>
+                    ),
+                    extraContent: testResult && (
+                        <div className={cn(
+                            "p-4 rounded-xl border flex items-center gap-3 text-sm font-bold",
+                            testResult.success
+                                ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600"
+                                : "bg-rose-500/10 border-rose-500/20 text-rose-600"
+                        )}>
+                            {testResult.success ? <CheckCircle2 size={18} /> : <XCircle size={18} />}
+                            {testResult.message}
+                        </div>
+                    )
+                }}
                 searchQuery={searchTerm}
                 onSearchChange={(e) => setSearchTerm(e.target.value)}
                 searchPlaceholder="Search storages..."
@@ -530,53 +553,6 @@ const S3StoragePage = () => {
                     ))}
                 </div>
             </PageLayout>
-
-            {/* Create Modal */}
-            <Modal
-                isOpen={isCreateModalOpen}
-                onClose={() => {
-                    setIsCreateModalOpen(false);
-                    setTestResult(null);
-                }}
-                title="New S3 Storage"
-                darkMode={darkMode}
-            >
-                <div className="space-y-4">
-                    {testResult && (
-                        <div className={cn(
-                            "p-4 rounded-xl border flex items-center gap-3 text-sm font-bold",
-                            testResult.success
-                                ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600"
-                                : "bg-rose-500/10 border-rose-500/20 text-rose-600"
-                        )}>
-                            {testResult.success ? <CheckCircle2 size={18} /> : <XCircle size={18} />}
-                            {testResult.message}
-                        </div>
-                    )}
-                    <DynamicForm
-                        entityPath="/s3_storages"
-                        mode="create"
-                        darkMode={darkMode}
-                        initialData={{
-                            project_id: selectedProject?.id,
-                            region: 'us-east-1'
-                        }}
-                        onSuccess={handleCreate}
-                        onCancel={() => setIsCreateModalOpen(false)}
-                        renderExtraActions={(formData) => (
-                            <button
-                                type="button"
-                                onClick={() => runTestConnection(formData)}
-                                disabled={testingConnection}
-                                className="mw-btn-secondary px-6 py-4"
-                            >
-                                {testingConnection ? <Radio className="animate-pulse" size={18} /> : <Radio size={18} />}
-                                TEST CONNECTION
-                            </button>
-                        )}
-                    />
-                </div>
-            </Modal>
 
             {/* Edit Modal */}
             <Modal

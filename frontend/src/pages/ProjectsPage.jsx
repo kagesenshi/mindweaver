@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import {
-    Plus,
     Briefcase,
     Monitor,
     Trash2,
@@ -16,7 +15,6 @@ import PageLayout from '../components/PageLayout';
 const ProjectsPage = () => {
     const { darkMode, refreshProjects } = useOutletContext();
     const { projects, loading, deleteProject, fetchProjects } = useProjects();
-    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedProject, setSelectedProject] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -32,14 +30,15 @@ const ProjectsPage = () => {
             <PageLayout
                 title="Project Registry"
                 description="Tenant management and resource isolation."
-                headerActions={
-                    <button
-                        onClick={() => setIsCreateModalOpen(true)}
-                        className="mw-btn-primary px-4 py-2"
-                    >
-                        <Plus size={16} /> CREATE PROJECT
-                    </button>
-                }
+                createConfig={{
+                    title: "Create New Project",
+                    entityPath: "/projects",
+                    buttonText: "CREATE PROJECT",
+                    onSuccess: () => {
+                        fetchProjects();
+                        refreshProjects?.();
+                    }
+                }}
                 searchQuery={searchTerm}
                 onSearchChange={(e) => setSearchTerm(e.target.value)}
                 searchPlaceholder="Search projects by title or description..."
@@ -107,25 +106,6 @@ const ProjectsPage = () => {
                     ))}
                 </div>
             </PageLayout>
-
-            <Modal
-                isOpen={isCreateModalOpen}
-                onClose={() => setIsCreateModalOpen(false)}
-                title="Create New Project"
-                darkMode={darkMode}
-            >
-                <DynamicForm
-                    entityPath="/projects"
-                    mode="create"
-                    darkMode={darkMode}
-                    onSuccess={() => {
-                        setIsCreateModalOpen(false);
-                        fetchProjects();
-                        refreshProjects?.();
-                    }}
-                    onCancel={() => setIsCreateModalOpen(false)}
-                />
-            </Modal>
 
             <Modal
                 isOpen={isEditModalOpen}

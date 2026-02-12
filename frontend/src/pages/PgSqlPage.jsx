@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import {
-    Plus,
     Database,
     Server,
     Settings,
@@ -49,7 +48,6 @@ const StatusBadge = ({ status }) => {
 const PgSqlPage = () => {
     const { darkMode, selectedProject } = useOutletContext();
     const { platforms, loading, deletePlatform, updatePlatformState, getPlatformState, fetchPlatforms, refreshPlatformState } = usePgSql();
-    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [selectedPlatformId, setSelectedPlatformId] = useState(null);
     const selectedPlatform = platforms.find(p => p.id === selectedPlatformId);
     const [platformState, setPlatformState] = useState(null);
@@ -498,14 +496,16 @@ const PgSqlPage = () => {
             <PageLayout
                 title="Cloudnative PG Clusters"
                 description="High-availability PostgreSQL managed by Kubernetes operators."
-                headerActions={
-                    <button
-                        onClick={() => setIsCreateModalOpen(true)}
-                        className="mw-btn-primary px-4 py-2"
-                    >
-                        <Plus size={16} /> NEW CLUSTER
-                    </button>
-                }
+                createConfig={{
+                    title: "Provision PGSQL Cluster",
+                    entityPath: "/platform/pgsql",
+                    buttonText: "NEW CLUSTER",
+                    initialData: { project_id: selectedProject?.id },
+                    onSuccess: async () => {
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        await fetchPlatforms();
+                    }
+                }}
                 searchQuery={searchTerm}
                 onSearchChange={(e) => setSearchTerm(e.target.value)}
                 searchPlaceholder="Search PostgreSQL clusters..."
@@ -561,28 +561,6 @@ const PgSqlPage = () => {
                     ))}
                 </div>
             </PageLayout>
-
-            <Modal
-                isOpen={isCreateModalOpen}
-                onClose={() => setIsCreateModalOpen(false)}
-                title="Provision PGSQL Cluster"
-                darkMode={darkMode}
-            >
-                <DynamicForm
-                    entityPath="/platform/pgsql"
-                    mode="create"
-                    darkMode={darkMode}
-                    initialData={React.useMemo(() => ({ project_id: selectedProject?.id }), [selectedProject?.id])}
-                    onSuccess={async () => {
-                        await new Promise(resolve => setTimeout(resolve, 500));
-                        await fetchPlatforms();
-                        setIsCreateModalOpen(false);
-                    }}
-                    onCancel={() => setIsCreateModalOpen(false)}
-                />
-            </Modal>
-
-
         </>
     );
 };
