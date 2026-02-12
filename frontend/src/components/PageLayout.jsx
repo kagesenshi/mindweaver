@@ -56,23 +56,31 @@ const PageLayout = ({
                     <p className="text-slate-500 text-base font-medium">Loading...</p>
                 </div>
             ) : isEmpty ? (
-                emptyState ? (
-                    React.isValidElement(emptyState) ? emptyState : (
-                        <div className="col-span-full py-20 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[40px]">
-                            {emptyState.icon && <div className="flex justify-center mb-4">{emptyState.icon}</div>}
-                            <h3 className="text-lg font-bold text-slate-400">{emptyState.title}</h3>
-                            <p className="text-slate-500 text-sm">{emptyState.description}</p>
-                        </div>
-                    )
-                ) : (
-                    <div className="col-span-full py-20 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[40px]">
-                        <h3 className="text-lg font-bold text-slate-400">No items found</h3>
-                        <p className="text-slate-500 text-sm">There are no items to display.</p>
-                    </div>
-                )
+                <PageLayout.EmptyState
+                    icon={emptyState?.icon}
+                    title={emptyState?.title || "No items found"}
+                    description={emptyState?.description || "There are no items to display."}
+                    className={emptyState?.className}
+                >
+                    {React.isValidElement(emptyState) ? emptyState : emptyState?.children}
+                </PageLayout.EmptyState>
             ) : (
                 children
             )}
+        </div>
+    );
+};
+
+PageLayout.EmptyState = ({ icon, title, description, children, className }) => {
+    return (
+        <div className={cn(
+            "col-span-full py-20 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[40px]",
+            className
+        )}>
+            {icon && <div className="flex justify-center mb-4">{icon}</div>}
+            <h3 className="text-lg font-bold text-slate-400">{title}</h3>
+            {description && <p className="text-slate-500 text-sm">{description}</p>}
+            {children}
         </div>
     );
 };

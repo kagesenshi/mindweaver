@@ -236,23 +236,19 @@ const PgSqlPage = () => {
                     {activeTab === 'connect' ? (
                         <div className="space-y-6 animate-in fade-in duration-500">
                             {!platformState?.active ? (
-                                <div className="mw-panel p-12 flex flex-col items-center justify-center text-center space-y-6 bg-slate-50/50 dark:bg-slate-950/20 border-dashed">
-                                    <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-400">
-                                        <Zap size={40} />
-                                    </div>
-                                    <div className="max-w-md">
-                                        <h4 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Cluster Not Deployed</h4>
-                                        <p className="text-slate-500 dark:text-slate-400">
-                                            This PostgreSQL cluster is currently not deployed. Deploy the cluster to see connection details and access endpoints.
-                                        </p>
-                                    </div>
+                                <PageLayout.EmptyState
+                                    icon={<Zap size={40} />}
+                                    title="Cluster Not Deployed"
+                                    description="This PostgreSQL cluster is currently not deployed. Deploy the cluster to see connection details and access endpoints."
+                                    className="p-12 bg-slate-50/50 dark:bg-slate-950/20"
+                                >
                                     <button
                                         onClick={toggleActive}
-                                        className="mw-btn-primary px-8 py-3 flex items-center gap-2 text-base"
+                                        className="mw-btn-primary px-8 py-3 flex items-center gap-2 text-base mt-6"
                                     >
                                         <Zap size={18} /> DEPLOY CLUSTER
                                     </button>
-                                </div>
+                                </PageLayout.EmptyState>
                             ) : (
                                 <>
                                     {/* External Access Section */}

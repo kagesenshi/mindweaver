@@ -43,20 +43,16 @@ const ProjectsPage = () => {
                 searchQuery={searchTerm}
                 onSearchChange={(e) => setSearchTerm(e.target.value)}
                 searchPlaceholder="Search projects by title or description..."
+                isLoading={loading}
+                isEmpty={filteredProjects.length === 0}
+                emptyState={{
+                    title: "No projects found",
+                    description: "Create a new project to start managing resources.",
+                    icon: <Briefcase size={48} className="text-slate-700" />
+                }}
             >
                 <div className="grid grid-cols-1 gap-4">
-                    {loading ? (
-                        <div className="py-20 flex flex-col items-center justify-center space-y-4">
-                            <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                            <p className="text-slate-500 text-base font-medium">Fetching projects...</p>
-                        </div>
-                    ) : filteredProjects.length === 0 ? (
-                        <div className="py-20 text-center border-2 border-dashed border-slate-800 rounded-[40px]">
-                            <Briefcase size={48} className="mx-auto text-slate-700 mb-4" />
-                            <h3 className="text-lg font-bold text-slate-400">No projects found</h3>
-                            <p className="text-slate-500 text-sm">Create a new project to start managing resources.</p>
-                        </div>
-                    ) : filteredProjects.map(proj => (
+                    {filteredProjects.map(proj => (
                         <div key={proj.id} className="mw-card flex items-center justify-between group">
                             <div className="flex items-center gap-6">
                                 <div className="mw-icon-box">
@@ -110,55 +106,55 @@ const ProjectsPage = () => {
                         </div>
                     ))}
                 </div>
+            </PageLayout>
 
-                <Modal
-                    isOpen={isCreateModalOpen}
-                    onClose={() => setIsCreateModalOpen(false)}
-                    title="Create New Project"
+            <Modal
+                isOpen={isCreateModalOpen}
+                onClose={() => setIsCreateModalOpen(false)}
+                title="Create New Project"
+                darkMode={darkMode}
+            >
+                <DynamicForm
+                    entityPath="/projects"
+                    mode="create"
                     darkMode={darkMode}
-                >
+                    onSuccess={() => {
+                        setIsCreateModalOpen(false);
+                        fetchProjects();
+                        refreshProjects?.();
+                    }}
+                    onCancel={() => setIsCreateModalOpen(false)}
+                />
+            </Modal>
+
+            <Modal
+                isOpen={isEditModalOpen}
+                onClose={() => {
+                    setIsEditModalOpen(false);
+                    setSelectedProject(null);
+                }}
+                title="Edit Project"
+                darkMode={darkMode}
+            >
+                {selectedProject && (
                     <DynamicForm
                         entityPath="/projects"
-                        mode="create"
+                        mode="edit"
+                        initialData={selectedProject}
                         darkMode={darkMode}
                         onSuccess={() => {
-                            setIsCreateModalOpen(false);
+                            setIsEditModalOpen(false);
+                            setSelectedProject(null);
                             fetchProjects();
                             refreshProjects?.();
                         }}
-                        onCancel={() => setIsCreateModalOpen(false)}
+                        onCancel={() => {
+                            setIsEditModalOpen(false);
+                            setSelectedProject(null);
+                        }}
                     />
-                </Modal>
-
-                <Modal
-                    isOpen={isEditModalOpen}
-                    onClose={() => {
-                        setIsEditModalOpen(false);
-                        setSelectedProject(null);
-                    }}
-                    title="Edit Project"
-                    darkMode={darkMode}
-                >
-                    {selectedProject && (
-                        <DynamicForm
-                            entityPath="/projects"
-                            mode="edit"
-                            initialData={selectedProject}
-                            darkMode={darkMode}
-                            onSuccess={() => {
-                                setIsEditModalOpen(false);
-                                setSelectedProject(null);
-                                fetchProjects();
-                                refreshProjects?.();
-                            }}
-                            onCancel={() => {
-                                setIsEditModalOpen(false);
-                                setSelectedProject(null);
-                            }}
-                        />
-                    )}
-                </Modal>
-            </PageLayout>
+                )}
+            </Modal>
         </React.Fragment>
     );
 };

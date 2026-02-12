@@ -351,11 +351,12 @@ const S3StoragePage = () => {
                                     <span className="font-bold">Fetching S3 data...</span>
                                 </div>
                             ) : fsItems.length === 0 ? (
-                                <div className="p-12 flex flex-col items-center justify-center gap-4 text-slate-600">
-                                    <Search size={48} opacity={0.2} />
-                                    <span className="text-lg font-bold">No items found</span>
-                                    <p className="text-sm">This {currentBucket ? 'folder' : 'storage'} is empty.</p>
-                                </div>
+                                <PageLayout.EmptyState
+                                    icon={<Search size={48} opacity={0.2} />}
+                                    title="No items found"
+                                    description={`This ${currentBucket ? 'folder' : 'storage'} is empty.`}
+                                    className="border-none py-12"
+                                />
                             ) : (
                                 fsItems.map((item, idx) => (
                                     <div
