@@ -576,7 +576,7 @@ const PgSqlPage = () => {
                     entityPath="/platform/pgsql"
                     mode="create"
                     darkMode={darkMode}
-                    initialData={{ project_id: selectedProject?.id }}
+                    initialData={React.useMemo(() => ({ project_id: selectedProject?.id }), [selectedProject?.id])}
                     onSuccess={async () => {
                         await new Promise(resolve => setTimeout(resolve, 500));
                         await fetchPlatforms();

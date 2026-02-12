@@ -177,6 +177,8 @@ const DynamicForm = ({
     darkMode,
     renderExtraActions
 }) => {
+    // Note: initialData is used as the basis for initial state, but shouldn't trigger
+    // a re-fetch of the schema itself. The schema is determined by entityPath and mode.
     const [schema, setSchema] = useState(null);
     const [formData, setFormData] = useState(initialData);
     const [fieldErrors, setFieldErrors] = useState({});
@@ -256,7 +258,7 @@ const DynamicForm = ({
         };
 
         fetchSchema();
-    }, [entityPath, mode, initialData]);
+    }, [entityPath, mode]); // Removed initialData from dependencies to prevent infinite loop
 
     const handleSubmit = async (e) => {
         e.preventDefault();
