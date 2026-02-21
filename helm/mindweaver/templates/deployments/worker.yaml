@@ -41,10 +41,7 @@ spec:
           env:
             {{- include "mindweaver.dbEnv" . | nindent 12 }}
           envFrom:
-            - configMapRef:
-                name: {{ include "mindweaver.fullname" . }}-config
-            - secretRef:
-                name: {{ include "mindweaver.fullname" . }}-secret
+            {{- include "mindweaver.envFrom" . | nindent 12 }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

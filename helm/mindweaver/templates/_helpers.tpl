@@ -93,3 +93,13 @@ Mindweaver database environment variables
       key: password
 {{- end }}
 {{- end }}
+
+{{/*
+Mindweaver envFrom helper
+*/}}
+{{- define "mindweaver.envFrom" -}}
+- configMapRef:
+    name: {{ include "mindweaver.fullname" . }}-config
+- secretRef:
+    name: {{ include "mindweaver.fullname" . }}-secret
+{{- end }}
