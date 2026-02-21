@@ -27,6 +27,48 @@ spec:
       serviceAccountName: {{ include "mindweaver.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if .Values.config.db.migrate }}
+      initContainers:
+        - name: init-db-migration
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["uv", "run", "mindweaver", "db", "migrate"]
+          {{- if .Values.postgresql.enabled }}
+          env:
+            - name: MINDWEAVER_DB_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "mindweaver.fullname" . }}-db-app
+                  key: host
+            - name: MINDWEAVER_DB_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "mindweaver.fullname" . }}-db-app
+                  key: port
+            - name: MINDWEAVER_DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "mindweaver.fullname" . }}-db-app
+                  key: dbname
+            - name: MINDWEAVER_DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "mindweaver.fullname" . }}-db-app
+                  key: user
+            - name: MINDWEAVER_DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "mindweaver.fullname" . }}-db-app
+                  key: password
+          {{- end }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "mindweaver.fullname" . }}-config
+            - secretRef:
+                name: {{ include "mindweaver.fullname" . }}-secret
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
@@ -49,6 +91,26 @@ spec:
             {{- toYaml .Values.resources | nindent 12 }}
           {{- if .Values.postgresql.enabled }}
           env:
+            - name: MINDWEAVER_DB_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "mindweaver.fullname" . }}-db-app
+                  key: host
+            - name: MINDWEAVER_DB_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "mindweaver.fullname" . }}-db-app
+                  key: port
+            - name: MINDWEAVER_DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "mindweaver.fullname" . }}-db-app
+                  key: dbname
+            - name: MINDWEAVER_DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "mindweaver.fullname" . }}-db-app
+                  key: user
             - name: MINDWEAVER_DB_PASS
               valueFrom:
                 secretKeyRef:

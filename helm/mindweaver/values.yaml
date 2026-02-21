@@ -87,6 +87,7 @@ config:
     port: 5432
     name: "mindweaver"
     user: "postgres"
+    migrate: true
   redis:
     host: "mw-redis"
     port: 6379
