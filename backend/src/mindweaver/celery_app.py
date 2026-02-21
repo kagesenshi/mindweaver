@@ -5,7 +5,7 @@ app = Celery(
     "mindweaver",
     broker=settings.celery_broker_url,
     backend=settings.celery_result_backend,
-    include=["mindweaver.tasks"],
+    include=["mindweaver.tasks.platform_status"],
 )
 
 app.conf.update(
@@ -16,7 +16,7 @@ app.conf.update(
     enable_utc=True,
     beat_schedule={
         "poll-all-platforms-15s": {
-            "task": "mindweaver.tasks.poll_all_platforms",
+            "task": "mindweaver.tasks.platform_status.poll_all_platforms",
             "schedule": 15.0,
         },
     },
