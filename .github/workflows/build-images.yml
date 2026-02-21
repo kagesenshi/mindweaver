@@ -5,7 +5,7 @@ on:
     branches:
       - main
     tags:
-      - 'v*'
+      - "v*"
   workflow_dispatch:
 
 permissions:
@@ -14,9 +14,11 @@ permissions:
 
 jobs:
   build-image:
-    runs-on: mindweaver-runners
-    environment: HOMELAB
+    runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -24,30 +26,8 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Login to Registry
-        uses: docker/login-action@v3
-        with:
-          registry: registry.kagesenshi.org
-          username: ${{ secrets.REGISTRY_USERNAME }}
-          password: ${{ secrets.REGISTRY_PASSWORD }}
-
-      - name: Login to Registry Cache
-        uses: docker/login-action@v3
-        with:
-          registry: registry-1.kagesenshi.org
-          username: ${{ secrets.REGISTRY_USERNAME }}
-          password: ${{ secrets.REGISTRY_PASSWORD }}
-
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-        with:
-          driver-opts: image=registry-1.kagesenshi.org/moby/buildkit:buildx-stable-1
-          buildkitd-config-inline: |
-            [registry."docker.io"]
-              mirrors = ["registry-1.kagesenshi.org"]
 
       - name: Build test image
         uses: docker/build-push-action@v5
@@ -57,13 +37,8 @@ jobs:
           target: test
           load: true
           tags: mindweaver-test:latest
-          build-args: |
-            HTTP_PROXY=${{ vars.PROXY }}
-            HTTPS_PROXY=${{ vars.PROXY }}
-            http_proxy=${{ vars.PROXY }}
-            https_proxy=${{ vars.PROXY }}
-          cache-from: type=local,src=/cache
-          cache-to: type=local,dest=/cache,mode=max
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Run tests
         run: docker run --rm mindweaver-test:latest
@@ -73,39 +48,9 @@ jobs:
         with:
           context: .
           file: Dockerfile
-          build-args: |
-            HTTP_PROXY=${{ vars.PROXY }}
-            HTTPS_PROXY=${{ vars.PROXY }}
-            http_proxy=${{ vars.PROXY }}
-            https_proxy=${{ vars.PROXY }}
           push: true
           tags: |
             ghcr.io/${{ github.repository_owner }}/mindweaver/mindweaver:latest
             ghcr.io/${{ github.repository_owner }}/mindweaver/mindweaver:${{ github.sha }}
-          cache-from: type=local,src=/cache
-          cache-to: type=local,dest=/cache,mode=max
-
-  notify-argocd:
-    runs-on: mindweaver-runners
-    needs: [build-image]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ARGOCD_SERVER != ''
-    environment: HOMELAB
-    steps:
-      - name: Install ArgoCD CLI
-        run: |
-          curl -sSL -o /tmp/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
-          chmod +x /tmp/argocd
-          
-      - name: Sync Application with New Images
-        env:
-          ARGOCD_SERVER: ${{ vars.ARGOCD_SERVER }}
-        run: |
-          /tmp/argocd login $ARGOCD_SERVER \
-            --auth-token ${{ secrets.ARGOCD_TOKEN }} \
-            --insecure
-          
-          /tmp/argocd app set mindweaver \
-            --kustomize-image backend=ghcr.io/${{ github.repository_owner }}/mindweaver/mindweaver:${{ github.sha }} \
-            --kustomize-image frontend=ghcr.io/${{ github.repository_owner }}/mindweaver/mindweaver:${{ github.sha }}
-          
-          /tmp/argocd app sync mindweaver
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
