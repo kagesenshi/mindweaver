@@ -9,7 +9,7 @@ Mindweaver is a 100% open-source data & AI orchestration platform, providing an 
     - **AI Visualization**: AI-powered dashboard and visualization creation.
     - **Advanced Modeling**: Data Vault modeling support.
 - **Roadmap Targets**:
-    - **Version 1.0**: Focus on 100% open-source orchestration capability.
+    - **Version 1.0**: Focus on Data Platform deployment orchestration capability.
     - **Version 1.1**: Introduction of Data Ingestion support.
     - **Version 1.2**: Introduction of RAG support.
     - **Version 1.3**: Introduction of Data Vault support.
