@@ -41,8 +41,8 @@ RUN groupadd -r app && useradd -m -g app -s /sbin/nologin app && \
 # Test Stage
 FROM backend-base AS test
 COPY backend/tests ./tests
-RUN uv sync --frozen
 USER app
+RUN uv sync --frozen
 CMD ["uv", "run", "pytest", "tests"]
 
 # Final Image
