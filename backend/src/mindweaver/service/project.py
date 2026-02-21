@@ -1,7 +1,7 @@
 import enum
 from typing import Any, Optional
 from . import NamedBase
-from . import Service
+from . import Service, before_create, before_update
 from sqlmodel import Field, Column
 from sqlalchemy import String, Enum as SQLEnum
 
@@ -14,6 +14,9 @@ class K8sClusterType(enum.StrEnum):
 class Project(NamedBase, table=True):
     __tablename__ = "mw_project"
     description: str = Field(default="", nullable=True)
+    k8s_namespace: Optional[str] = Field(
+        default=None, sa_type=String(length=32), nullable=True
+    )
 
     k8s_cluster_type: K8sClusterType = Field(
         default=K8sClusterType.REMOTE,
@@ -35,10 +38,23 @@ class ProjectService(Service[Project]):
     def model_class(cls) -> type[Project]:
         return Project
 
+    @before_create
+    async def _set_default_namespace(self, model: Project):
+        """Set default k8s_namespace to project name if not provided"""
+        if not model.k8s_namespace:
+            model.k8s_namespace = model.name
+
+    @before_update
+    async def _handle_namespace_update(self, model: Project, data: Project):
+        """Handle k8s_namespace update, ensuring it defaults to name if cleared"""
+        if hasattr(data, "k8s_namespace") and not data.k8s_namespace:
+            data.k8s_namespace = model.name
+
     @classmethod
     def widgets(cls) -> dict[str, Any]:
         return {
             "description": {"order": 5, "column_span": 2},
+            "k8s_namespace": {"order": 6, "column_span": 2, "label": "K8S Namespace"},
             "k8s_cluster_type": {
                 "order": 10,
                 "type": "select",

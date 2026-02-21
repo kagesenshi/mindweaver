@@ -550,7 +550,7 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
 
     async def _resolve_namespace(self, model: T) -> str:
         """Resolves the namespace for the platform.
-        Currently uses the project name.
+        Uses project.k8s_namespace if exists, else falls back to project.name.
         """
         result = await self.session.exec(
             select(Project).where(Project.id == model.project_id)
@@ -559,4 +559,4 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
         if not project:
             # Fallback to default if project not found (should not happen due to FK)
             return "default"
-        return project.name
+        return project.k8s_namespace or project.name
