@@ -1,6 +1,19 @@
 # Mindweaver
 
-This is a full-stack application with a Python backend and a React frontend.
+Mindweaver is a 100% open-source data & AI orchestration platform, providing an all-in-one solution for data warehousing, data lakes, and AI platforms.
+
+- **Orchestration**: Currently provides orchestration capabilities to deploy key data platform components such as PostgreSQL, Trino, Airflow, Superset, Kafka, and others.
+- **Future Roadmap**:
+    - **GraphRAG Platform**: Comprehensive support for GraphRAG and ontology management.
+    - **SQL RAG**: Implementing SQL RAG with Trino integration.
+    - **AI Visualization**: AI-powered dashboard and visualization creation.
+    - **Advanced Modeling**: Data Vault modeling support.
+- **Roadmap Targets**:
+    - **Version 1.0**: Focus on 100% open-source orchestration capability.
+    - **Version 1.1**: Introduction of Data Ingestion support.
+    - **Version 1.2**: Introduction of RAG support.
+    - **Version 1.3**: Introduction of Data Vault support.
+- **Current Focus**: Priority is placed on streamlining the deployment of dependency components to establish a robust foundation.
 
 ## Prerequisites
 
