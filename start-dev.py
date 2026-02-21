@@ -5,11 +5,11 @@ from pathlib import Path
 here = Path(__file__).parent
 
 fe = subprocess.Popen(
-    ["npm", "run", "dev", "--", "--port", "3000"], cwd=here / "frontend"
+    ["npm", "run", "dev", "--", "--port", "3000", "--host", "::"], cwd=here / "frontend"
 )
 
 be = subprocess.Popen(
-    ["uv", "run", "mindweaver", "run", "--port", "8000"], cwd=here / "backend"
+    ["uv", "run", "mindweaver", "run", "--port", "8000", "--bind", "::"], cwd=here / "backend"
 )
 
 import os

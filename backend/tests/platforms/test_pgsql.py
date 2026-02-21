@@ -6,21 +6,20 @@ from mindweaver.platform_service.pgsql import PgSqlPlatformService
 
 
 def test_pgsql_platform_crud(client: TestClient, test_project):
-    # 1. Setup K8sCluster
-    cluster_data = {
-        "name": "test-cluster-pg",
-        "title": "Test Cluster PG",
-        "type": "remote",
-        "kubeconfig": 'apiVersion: v1\nkind: Config\nclusters: []\ncontexts: []\ncurrent-context: ""\nusers: []',
-        "project_id": test_project["id"],
+    # 1. Update Project with K8s info
+    project_update = {
+        "name": test_project["name"],
+        "title": test_project["title"],
+        "description": test_project["description"],
+        "k8s_cluster_type": "remote",
+        "k8s_cluster_kubeconfig": 'apiVersion: v1\nkind: Config\nclusters: []\ncontexts: []\ncurrent-context: ""\nusers: []',
     }
-    resp = client.post(
-        "/api/v1/k8s_clusters",
-        json=cluster_data,
+    resp = client.put(
+        f"/api/v1/projects/{test_project['id']}",
+        json=project_update,
         headers={"X-Project-Id": str(test_project["id"])},
     )
     resp.raise_for_status()
-    cluster_id = resp.json()["data"]["id"]
 
     # 1.1 Setup S3Storage
     s3_data = {
@@ -46,11 +45,6 @@ def test_pgsql_platform_crud(client: TestClient, test_project):
         "name": "my-pg",
         "title": "My Postgres",
         "project_id": test_project["id"],
-        "k8s_cluster_id": cluster_id,
-        "instances": 3,
-        "storage_size": "2Gi",
-        "enable_backup": True,
-        "backup_destination": "s3://my-bucket/backups",
         "s3_storage_id": s3_id,
     }
     resp = client.post(
@@ -62,7 +56,7 @@ def test_pgsql_platform_crud(client: TestClient, test_project):
     model_id = resp.json()["data"]["id"]
     assert resp.json()["data"]["s3_storage_id"] == s3_id
     assert resp.json()["data"]["instances"] == 3
-    assert resp.json()["data"]["storage_size"] == "2Gi"
+    assert resp.json()["data"]["storage_size"] == "1Gi"
 
     # 3. Apply
     with patch("kubernetes.config.new_client_from_config") as mock_new_client, patch(
@@ -108,8 +102,6 @@ def test_pgsql_platform_crud(client: TestClient, test_project):
         "name": "my-pg",
         "title": "My Postgres Updated",
         "instances": 5,
-        "storage_size": "2Gi",
-        "k8s_cluster_id": cluster_id,
         "project_id": test_project["id"],
         "s3_storage_id": s3_id,
     }
@@ -134,28 +126,27 @@ def test_pgsql_platform_crud(client: TestClient, test_project):
 
 
 def test_pgsql_backup_destination_validation(client: TestClient, test_project):
-    # Setup K8sCluster
-    cluster_data = {
-        "name": "test-cluster-pg-val",
-        "title": "Test Cluster PG Val",
-        "type": "remote",
-        "kubeconfig": 'apiVersion: v1\nkind: Config\nclusters: []\ncontexts: []\ncurrent-context: ""\nusers: []',
-        "project_id": test_project["id"],
+    # 1. Update Project with K8s info
+    project_update = {
+        "name": test_project["name"],
+        "title": test_project["title"],
+        "description": test_project["description"],
+        "k8s_cluster_type": "remote",
+        "k8s_cluster_kubeconfig": 'apiVersion: v1\nkind: Config\nclusters: []\ncontexts: []\ncurrent-context: ""\nusers: []',
     }
-    resp = client.post(
-        "/api/v1/k8s_clusters",
-        json=cluster_data,
+    resp = client.put(
+        f"/api/v1/projects/{test_project['id']}",
+        json=project_update,
         headers={"X-Project-Id": str(test_project["id"])},
     )
     resp.raise_for_status()
-    cluster_id = resp.json()["data"]["id"]
 
     # Base data for PgSqlPlatform
     base_data = {
         "name": "my-pg",
         "title": "My Postgres",
         "project_id": test_project["id"],
-        "k8s_cluster_id": cluster_id,
+        "project_id": test_project["id"],
         "enable_backup": True,
     }
 
@@ -213,28 +204,27 @@ def test_pgsql_backup_destination_validation(client: TestClient, test_project):
 
 
 def test_pgsql_instances_validation(client: TestClient, test_project):
-    # Setup K8sCluster
-    cluster_data = {
-        "name": "test-cluster-pg-inst",
-        "title": "Test Cluster PG Inst",
-        "type": "remote",
-        "kubeconfig": 'apiVersion: v1\nkind: Config\nclusters: []\ncontexts: []\ncurrent-context: ""\nusers: []',
-        "project_id": test_project["id"],
+    # 1. Update Project with K8s info
+    project_update = {
+        "name": test_project["name"],
+        "title": test_project["title"],
+        "description": test_project["description"],
+        "k8s_cluster_type": "remote",
+        "k8s_cluster_kubeconfig": 'apiVersion: v1\nkind: Config\nclusters: []\ncontexts: []\ncurrent-context: ""\nusers: []',
     }
-    resp = client.post(
-        "/api/v1/k8s_clusters",
-        json=cluster_data,
+    resp = client.put(
+        f"/api/v1/projects/{test_project['id']}",
+        json=project_update,
         headers={"X-Project-Id": str(test_project["id"])},
     )
     resp.raise_for_status()
-    cluster_id = resp.json()["data"]["id"]
 
     # Base data
     base_data = {
         "name": "my-pg-inst",
         "title": "My Postgres Inst",
         "project_id": test_project["id"],
-        "k8s_cluster_id": cluster_id,
+        "project_id": test_project["id"],
         "storage_size": "1Gi",
     }
 
@@ -267,28 +257,26 @@ def test_pgsql_instances_validation(client: TestClient, test_project):
 
 
 def test_pgsql_immutable_fields(client: TestClient, test_project):
-    # Setup K8sCluster
-    cluster_data = {
-        "name": "test-cluster-pg-immutable",
-        "title": "Test Cluster PG Immutable",
-        "type": "remote",
-        "kubeconfig": 'apiVersion: v1\nkind: Config\nclusters: []\ncontexts: []\ncurrent-context: ""\nusers: []',
-        "project_id": test_project["id"],
+    # 1. Update Project with K8s info
+    project_update = {
+        "name": test_project["name"],
+        "title": test_project["title"],
+        "description": test_project["description"],
+        "k8s_cluster_type": "remote",
+        "k8s_cluster_kubeconfig": 'apiVersion: v1\nkind: Config\nclusters: []\ncontexts: []\ncurrent-context: ""\nusers: []',
     }
-    resp = client.post(
-        "/api/v1/k8s_clusters",
-        json=cluster_data,
+    resp = client.put(
+        f"/api/v1/projects/{test_project['id']}",
+        json=project_update,
         headers={"X-Project-Id": str(test_project["id"])},
     )
     resp.raise_for_status()
-    cluster_id = resp.json()["data"]["id"]
 
     # Base data
     base_data = {
         "name": "my-pg-immutable",
         "title": "My Postgres Immutable",
         "project_id": test_project["id"],
-        "k8s_cluster_id": cluster_id,
         "instances": 3,
         "storage_size": "1Gi",
     }
@@ -303,7 +291,6 @@ def test_pgsql_immutable_fields(client: TestClient, test_project):
     # Try modifying immutable fields
     immutable_fields = {
         "storage_size": "2Gi",
-        "k8s_cluster_id": cluster_id + 1,
         "name": "new-name",
         "project_id": test_project["id"] + 1,
     }
@@ -316,8 +303,7 @@ def test_pgsql_immutable_fields(client: TestClient, test_project):
             "name": "my-pg-immutable",
             "title": "My Postgres Immutable Updated",
             "project_id": test_project["id"],
-            "k8s_cluster_id": cluster_id,  # Default correct value
-            field: value,  # Overwrites if field is k8s_cluster_id
+            field: value,
         }
 
         # If we are testing s3_storage_id, ensure we have valid s3 id format/type if needed,
@@ -401,7 +387,6 @@ async def test_pgsql_image_selection(client: TestClient, test_project):
         name="test-pg",
         title="Test PG",
         project_id=test_project["id"],
-        k8s_cluster_id=1,
         image="ghcr.io/cloudnative-pg/postgresql:16",
     )
 

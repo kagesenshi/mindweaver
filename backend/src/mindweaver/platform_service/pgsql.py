@@ -101,7 +101,6 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
         return super().immutable_fields() + [
             "storage_size",
             "s3_storage_id",
-            "k8s_cluster_id",
             "image",
         ]
 

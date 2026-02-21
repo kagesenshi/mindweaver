@@ -18,7 +18,6 @@ class MockTargetService(Service[MockTarget]):
 
 class MockModel(NamedBase):
     project_id: int = Field(foreign_key="mw_project.id")
-    k8s_cluster_id: int = Field(foreign_key="mw_k8s_cluster.id")
     knowledge_db_ids: list[int] = Field(
         default=[], sa_type=JSONType(), foreign_key="mw_knowledge_db.id"
     )
@@ -42,7 +41,6 @@ def test_relationship_label_generation():
     try:
         # Register mock services to registry
         Service._registry["mw_project"] = MockTargetService
-        Service._registry["mw_k8s_cluster"] = MockTargetService
         Service._registry["mw_datasource"] = MockTargetService
         Service._registry["mw_knowledge_db"] = MockTargetService
         Service._registry["mw_s3_storage"] = MockTargetService
@@ -52,9 +50,6 @@ def test_relationship_label_generation():
         # Check relationship detection and label generation
         assert widgets["project_id"]["type"] == "relationship"
         assert widgets["project_id"]["label"] == "Project"
-
-        assert widgets["k8s_cluster_id"]["type"] == "relationship"
-        assert widgets["k8s_cluster_id"]["label"] == "K8S Cluster"
 
         assert widgets["s3_storage_id"]["type"] == "relationship"
         assert widgets["s3_storage_id"]["label"] == "S3 Storage"

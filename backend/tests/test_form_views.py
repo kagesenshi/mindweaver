@@ -15,26 +15,13 @@ def test_project_form_views(client: TestClient):
     assert "name" in data["data"]["immutable_fields"]
     assert "id" in data["data"]["internal_fields"]
 
+    # Check K8s fields in project form
+    assert "k8s_cluster_type" in data["data"]["widgets"]
+    assert data["data"]["widgets"]["k8s_cluster_type"]["type"] == "select"
+    assert "k8s_cluster_kubeconfig" in data["data"]["widgets"]
+    assert data["data"]["widgets"]["k8s_cluster_kubeconfig"]["type"] == "textarea"
 
-def test_k8s_cluster_form_views(client: TestClient):
-    response = client.get("/api/v1/k8s_clusters/_create-form")
-    assert response.status_code == 200
-    data = response.json()
 
-    # Check enum widget for 'type'
-    assert "type" in data["data"]["widgets"]
-    assert data["data"]["widgets"]["type"]["type"] == "select"
-    assert "options" in data["data"]["widgets"]["type"]
-    options = data["data"]["widgets"]["type"]["options"]
-    assert any(o["value"] == "remote" and o["label"] == "Remote" for o in options)
-    assert any(
-        o["value"] == "in-cluster" and o["label"] == "In Cluster" for o in options
-    )
-
-    # Check relationship widget for 'project_id'
-    assert "project_id" in data["data"]["widgets"]
-    assert data["data"]["widgets"]["project_id"]["type"] == "relationship"
-    assert data["data"]["widgets"]["project_id"]["endpoint"] == "/api/v1/projects"
 
 
 def test_ai_agent_form_views(client: TestClient):

@@ -9,8 +9,7 @@ from mindweaver.platform_service.base import (
     PlatformBase,
     PlatformService,
 )
-from mindweaver.service.project import Project
-from mindweaver.service.k8s_cluster import K8sCluster
+from mindweaver.service.project import Project, K8sClusterType
 from mindweaver.config import settings
 from pytest_postgresql.executor import PostgreSQLExecutor
 from psycopg.connection import Connection
@@ -111,28 +110,21 @@ def test_platform_state_extra_data_json():
 async def test_platform_service_state(db_session):
     """Test platform_state() method in PlatformService"""
     # Create required dependencies
-    project = Project(name="test-project", title="Test Project")
+    project = Project(
+        name="test-project",
+        title="Test Project",
+        k8s_cluster_type=K8sClusterType.REMOTE,
+        k8s_cluster_kubeconfig="apiVersion: v1",
+    )
     db_session.add(project)
     await db_session.flush()
     await db_session.refresh(project)
-
-    cluster = K8sCluster(
-        project_id=project.id,
-        name="test-cluster",
-        title="Test Cluster",
-        type="remote",
-        kubeconfig="apiVersion: v1",
-    )
-    db_session.add(cluster)
-    await db_session.flush()
-    await db_session.refresh(cluster)
 
     # Create a mock platform
     platform = MockPlatform(
         project_id=project.id,
         name="test-platform",
         title="Test Platform",
-        k8s_cluster_id=cluster.id,
     )
     db_session.add(platform)
     await db_session.flush()
@@ -163,7 +155,6 @@ async def test_platform_service_state(db_session):
         project_id=project.id,
         name="other-platform",
         title="Other Platform",
-        k8s_cluster_id=cluster.id,
     )
     db_session.add(other_platform)
     await db_session.flush()

@@ -9,7 +9,7 @@ from mindweaver.platform_service.pgsql import (
     PgSqlPlatform,
     PgSqlPlatformState,
 )
-from mindweaver.service.k8s_cluster import K8sCluster, K8sClusterType
+from mindweaver.service.project import K8sClusterType
 
 
 @pytest.mark.asyncio
@@ -25,24 +25,22 @@ async def test_pgsql_poll_status(postgresql_proc, test_project):
     engine = create_async_engine(settings.db_async_uri)
 
     async with AsyncSession(engine) as session:
-        # 1. Setup K8sCluster
-        cluster = K8sCluster(
-            name="test-cluster-poll",
-            title="Test Cluster Poll",
-            type=K8sClusterType.REMOTE,
-            kubeconfig="apiVersion: v1\nkind: Config",
-            project_id=test_project["id"],
-        )
-        session.add(cluster)
+        # 1. Update project with K8s info
+        project_id = test_project["id"]
+        # In this test, test_project is a dict from fixture, but we need to update it in DB
+        # However, the fixture usually handles session. Let's just update the model.
+        from mindweaver.service.project import Project
+        db_project = await session.get(Project, project_id)
+        db_project.k8s_cluster_type = K8sClusterType.REMOTE
+        db_project.k8s_cluster_kubeconfig = "apiVersion: v1\nkind: Config"
+        session.add(db_project)
         await session.commit()
-        await session.refresh(cluster)
 
         # 2. Setup PgSqlPlatform
         platform = PgSqlPlatform(
             name="test-pg-poll",
             title="Test PG Poll",
-            project_id=test_project["id"],
-            k8s_cluster_id=cluster.id,
+            project_id=project_id,
         )
         session.add(platform)
         await session.commit()

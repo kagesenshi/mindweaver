@@ -16,28 +16,26 @@ def test_platform_state_api(client: TestClient, test_project):
         "mindweaver.platform_service.pgsql.PgSqlPlatformService.poll_status",
         return_value=None,
     ):
-        # 1. Setup K8sCluster
-        cluster_data = {
-            "name": "test-cluster-state",
-            "title": "Test Cluster State",
-            "type": "remote",
-            "kubeconfig": 'apiVersion: v1\nkind: Config\nclusters: []\ncontexts: []\ncurrent-context: ""\nusers: []',
-            "project_id": test_project["id"],
+        # 1. Update project with K8s info
+        project_update = {
+            "name": test_project["name"],
+            "title": test_project["title"],
+            "description": test_project["description"],
+            "k8s_cluster_type": "remote",
+            "k8s_cluster_kubeconfig": 'apiVersion: v1\nkind: Config\nclusters: []\ncontexts: []\ncurrent-context: ""\nusers: []',
         }
-        resp = client.post(
-            "/api/v1/k8s_clusters",
-            json=cluster_data,
-            headers={"X-Project-Id": str(test_project["id"])},
+        resp = client.put(
+            f"/api/v1/projects/{test_project['id']}",
+            json=project_update,
+            headers={"X-Project-Id": str(test_project['id'])},
         )
         resp.raise_for_status()
-        cluster_id = resp.json()["data"]["id"]
 
         # 2. Create PgSqlCluster
         model_data = {
             "name": "state-pg",
             "title": "State Postgres",
             "project_id": test_project["id"],
-            "k8s_cluster_id": cluster_id,
             "instances": 3,
             "storage_size": "2Gi",
         }

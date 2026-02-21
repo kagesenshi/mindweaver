@@ -15,7 +15,7 @@ def mock_service_dependencies():
 
 def test_pgsql_resource_defaults():
     """Test default values for resource limits"""
-    model = PgSqlPlatform(name="test-pgsql", project_id=1, k8s_cluster_id=1)
+    model = PgSqlPlatform(name="test-pgsql", project_id=1)
     assert model.cpu_request == 0.5
     assert model.cpu_limit == 1.0
     assert model.mem_request == 1.0
@@ -30,7 +30,6 @@ def test_pgsql_resource_validation():
             "name": "test-pgsql",
             "title": "Test PGSQL",
             "project_id": 1,
-            "k8s_cluster_id": 1,
             "cpu_request": 1.0,
             "cpu_limit": 2.0,
             "mem_request": 2.0,
@@ -46,7 +45,6 @@ def test_pgsql_resource_validation():
                 "name": "test-pgsql",
                 "title": "Test PGSQL",
                 "project_id": 1,
-                "k8s_cluster_id": 1,
                 "cpu_request": 2.0,
                 "cpu_limit": 1.0,
             }
@@ -60,7 +58,6 @@ def test_pgsql_resource_validation():
                 "name": "test-pgsql",
                 "title": "Test PGSQL",
                 "project_id": 1,
-                "k8s_cluster_id": 1,
                 "mem_request": 5.0,
                 "mem_limit": 4.0,
             }
@@ -77,7 +74,6 @@ async def test_pgsql_template_rendering(mock_service_dependencies):
     model = PgSqlPlatform(
         name="test-db",
         project_id=1,
-        k8s_cluster_id=1,
         cpu_request=0.5,
         cpu_limit=1.0,
         mem_request=2.0,

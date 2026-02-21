@@ -11,8 +11,7 @@ import logging
 from mindweaver.fw.model import Base
 from mindweaver.fw.exc import ModelValidationError
 from mindweaver.service.base import ProjectScopedNamedBase, ProjectScopedService
-from mindweaver.service.k8s_cluster import K8sCluster, K8sClusterType
-from mindweaver.service.project import Project
+from mindweaver.service.project import Project, K8sClusterType
 from mindweaver.fw.service import after_update, before_delete
 import os
 import pydantic
@@ -59,7 +58,7 @@ class PlatformStateUpdate(pydantic.BaseModel):
 
 
 class PlatformBase(ProjectScopedNamedBase):
-    k8s_cluster_id: int = Field(foreign_key="mw_k8s_cluster.id", index=True)
+    pass
 
 
 T = TypeVar("T", bound=PlatformBase)
@@ -530,24 +529,24 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
             state = await svc.platform_state(id)
             return state or {}
 
-    async def k8s_cluster(self, model: T) -> K8sCluster:
-        """returns the associated K8sCluster model"""
+    async def project(self, model: T) -> Project:
+        """returns the associated Project model"""
         result = await self.session.exec(
-            select(K8sCluster).where(K8sCluster.id == model.k8s_cluster_id)
+            select(Project).where(Project.id == model.project_id)
         )
-        cluster = result.one_or_none()
-        if not cluster:
-            raise ValueError(f"K8sCluster with id {model.k8s_cluster_id} not found")
-        return cluster
+        project = result.one_or_none()
+        if not project:
+            raise ValueError(f"Project with id {model.project_id} not found")
+        return project
 
     async def kubeconfig(self, model: T) -> str | None:
-        """returns the kubeconfig string from the associated cluster"""
-        cluster = await self.k8s_cluster(model)
-        if cluster.type == K8sClusterType.IN_CLUSTER:
+        """returns the kubeconfig string from the associated project"""
+        project = await self.project(model)
+        if project.k8s_cluster_type == K8sClusterType.IN_CLUSTER:
             return None
-        if not cluster.kubeconfig:
-            raise ValueError(f"K8sCluster {cluster.name} has no kubeconfig")
-        return cluster.kubeconfig
+        if not project.k8s_cluster_kubeconfig:
+            raise ValueError(f"Project {project.name} has no kubeconfig")
+        return project.k8s_cluster_kubeconfig
 
     async def _resolve_namespace(self, model: T) -> str:
         """Resolves the namespace for the platform.
