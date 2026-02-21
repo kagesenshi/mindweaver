@@ -83,22 +83,20 @@ affinity: {}
 
 config:
   db:
-    host: "mw-db-rw"
-    port: 5432
-    name: "mindweaver"
-    user: "postgres"
     migrate: true
   redis:
     host: "mw-redis"
     port: 6379
   timezone: "Asia/Kuala_Lumpur"
   enableAuth: true
-  oidc:
-    issuer: ""
 
 # Sensitive settings to be stored in Secret
 secret:
   db:
+    host: "mw-db-rw"
+    port: 5432
+    name: "mindweaver"
+    user: "postgres"
     password: "password"
   jwtSecret: "unsafe-secret-key-change-me"
   fernetKey: "" # Should be provided

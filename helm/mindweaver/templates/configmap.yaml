@@ -5,10 +5,6 @@ metadata:
   labels:
     {{- include "mindweaver.labels" . | nindent 4 }}
 data:
-  MINDWEAVER_DB_HOST: {{ if .Values.postgresql.enabled }}{{ include "mindweaver.fullname" . }}-db-rw{{ else }}{{ .Values.config.db.host | quote }}{{ end }}
-  MINDWEAVER_DB_PORT: {{ .Values.config.db.port | quote }}
-  MINDWEAVER_DB_NAME: {{ if .Values.postgresql.enabled }}{{ .Values.postgresql.database | quote }}{{ else }}{{ .Values.config.db.name | quote }}{{ end }}
-  MINDWEAVER_DB_USER: {{ if .Values.postgresql.enabled }}{{ .Values.postgresql.owner | quote }}{{ else }}{{ .Values.config.db.user | quote }}{{ end }}
   MINDWEAVER_TIMEZONE: {{ .Values.config.timezone | quote }}
   MINDWEAVER_ENABLE_AUTH: {{ .Values.config.enableAuth | quote }}
   MINDWEAVER_CELERY_BROKER_URL: "redis://{{ .Values.config.redis.host }}:{{ .Values.config.redis.port }}/0"
