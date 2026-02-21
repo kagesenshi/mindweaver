@@ -38,34 +38,8 @@ spec:
           args: ["-A", "mindweaver.celery_app", "worker", "-l", "info"]
           resources:
             {{- toYaml .Values.worker.resources | nindent 12 }}
-          {{- if .Values.postgresql.enabled }}
           env:
-            - name: MINDWEAVER_DB_HOST
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "mindweaver.fullname" . }}-db-app
-                  key: host
-            - name: MINDWEAVER_DB_PORT
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "mindweaver.fullname" . }}-db-app
-                  key: port
-            - name: MINDWEAVER_DB_NAME
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "mindweaver.fullname" . }}-db-app
-                  key: dbname
-            - name: MINDWEAVER_DB_USER
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "mindweaver.fullname" . }}-db-app
-                  key: user
-            - name: MINDWEAVER_DB_PASS
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "mindweaver.fullname" . }}-db-app
-                  key: password
-          {{- end }}
+            {{- include "mindweaver.dbEnv" . | nindent 12 }}
           envFrom:
             - configMapRef:
                 name: {{ include "mindweaver.fullname" . }}-config
