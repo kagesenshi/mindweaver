@@ -84,9 +84,6 @@ affinity: {}
 config:
   db:
     migrate: true
-  redis:
-    host: "mw-redis"
-    port: 6379
   timezone: "Asia/Kuala_Lumpur"
   enableAuth: true
 
@@ -98,6 +95,9 @@ secret:
     name: "mindweaver"
     user: "postgres"
     password: "password"
+  redis:
+    host: "mw-redis"
+    port: 6379
   jwtSecret: "unsafe-secret-key-change-me"
   fernetKey: "" # Should be provided
   oidc:

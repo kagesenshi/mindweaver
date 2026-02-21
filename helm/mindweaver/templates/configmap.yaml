@@ -7,6 +7,4 @@ metadata:
 data:
   MINDWEAVER_TIMEZONE: {{ .Values.config.timezone | quote }}
   MINDWEAVER_ENABLE_AUTH: {{ .Values.config.enableAuth | quote }}
-  MINDWEAVER_CELERY_BROKER_URL: "redis://{{ .Values.config.redis.host }}:{{ .Values.config.redis.port }}/0"
-  MINDWEAVER_CELERY_RESULT_BACKEND: "redis://{{ .Values.config.redis.host }}:{{ .Values.config.redis.port }}/0"
   MINDWEAVER_EMBEDDED_WORKER: "false"
