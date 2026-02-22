@@ -9,7 +9,7 @@ import CallbackPage from './pages/CallbackPage'
 import ProjectsPage from './pages/ProjectsPage'
 import DataSourcesPage from './pages/DataSourcesPage'
 import PgSqlPage from './pages/pgsql/Page'
-import S3StoragePage from './pages/S3StoragePage'
+import S3StoragePage from './pages/s3_storage/Page'
 import { AuthProvider } from './providers/AuthProvider'
 
 import { ProtectedRoute } from './components/ProtectedRoute'
