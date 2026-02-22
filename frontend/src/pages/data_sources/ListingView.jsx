@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useOutletContext } from 'react-router-dom';
 import {
     Library,
     Database,
@@ -12,16 +11,14 @@ import {
     Server,
     HardDrive
 } from 'lucide-react';
-import { useDataSources } from '../hooks/useResources';
-import { cn } from '../utils/cn';
-import ResourceCard from '../components/ResourceCard';
-import Modal from '../components/Modal';
-import PageLayout from '../components/PageLayout';
-import DynamicForm from '../components/DynamicForm';
+import { cn } from '../../utils/cn';
+import ResourceCard from '../../components/ResourceCard';
+import Modal from '../../components/Modal';
+import PageLayout from '../../components/PageLayout';
+import DynamicForm from '../../components/DynamicForm';
 
-const DataSourcesPage = () => {
-    const { darkMode } = useOutletContext();
-    const { dataSources, loading, deleteDataSource, testConnection, fetchDataSources } = useDataSources();
+const ListingView = ({ darkMode, dataSourcesHook }) => {
+    const { dataSources, loading, deleteDataSource, testConnection, fetchDataSources } = dataSourcesHook;
     const [editSource, setEditSource] = useState(null);
     const [testingId, setTestingId] = useState(null);
     const [testResult, setTestResult] = useState(null);
@@ -44,7 +41,6 @@ const DataSourcesPage = () => {
             setTestingId(null);
         }
     };
-
 
     const getIcon = (driver) => {
         const d = (driver || '').toLowerCase();
@@ -157,4 +153,4 @@ const DataSourcesPage = () => {
     );
 };
 
-export default DataSourcesPage;
+export default ListingView;
