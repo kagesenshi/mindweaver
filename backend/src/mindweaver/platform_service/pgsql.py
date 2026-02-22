@@ -414,7 +414,7 @@ class PgSqlBackupAction(BaseAction):
 
             custom_api = client.CustomObjectsApi(k8s_client)
 
-            timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%dt%H%M%S")
+            timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%d-%H%M%S")
             backup_name = f"backup-{timestamp}"
 
             backup_body = {
