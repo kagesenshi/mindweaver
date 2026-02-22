@@ -38,11 +38,16 @@ export const useProjects = () => {
         await fetchProjects();
     }, [fetchProjects]);
 
+    const getProjectState = useCallback(async (id) => {
+        const response = await apiClient.get(`/projects/${id}/_state`);
+        return response.data;
+    }, []);
+
     useEffect(() => {
         fetchProjects();
     }, [fetchProjects]);
 
-    return { projects, loading, error, fetchProjects, createProject, updateProject, deleteProject };
+    return { projects, loading, error, fetchProjects, createProject, updateProject, deleteProject, getProjectState };
 };
 
 export const useDataSources = () => {

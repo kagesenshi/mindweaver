@@ -1,5 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
+from unittest.mock import patch
 
 
 def test_create_project(client: TestClient):
@@ -129,3 +130,74 @@ def test_project_scoping(client: TestClient):
     recs_all = resp_all.json()["data"]
 
     assert len(recs_all) == 2
+
+
+@patch(
+    "mindweaver.platform_service.base.PlatformService._deploy_to_cluster",
+    return_value=None,
+)
+@patch(
+    "mindweaver.platform_service.base.PlatformService._decommission_from_cluster",
+    return_value=None,
+)
+@patch(
+    "mindweaver.platform_service.pgsql.PgSqlPlatformService.poll_status",
+    return_value=None,
+)
+def test_project_state(
+    mock_poll_status, mock_decommission, mock_deploy, client: TestClient
+):
+    # Create project
+    p1 = client.post(
+        "/api/v1/projects",
+        json={
+            "name": "state-test",
+            "title": "State Test",
+            "k8s_cluster_type": "in-cluster",
+        },
+    ).json()["data"]
+
+    # Check initial state
+    resp = client.get(f"/api/v1/projects/{p1['id']}/_state")
+    assert resp.status_code == 200
+    state_data = resp.json()
+    assert state_data["pgsql"] == 0
+    assert state_data["trino"] == 0
+
+    # Create PgSql platform
+    headers_p1 = {"X-Project-ID": str(p1["id"])}
+    plat = client.post(
+        "/api/v1/platform/pgsql",
+        json={
+            "name": "pg-test",
+            "title": "PG Test",
+            "instances": 1,
+            "project_id": p1["id"],
+        },
+        headers=headers_p1,
+    ).json()["data"]
+
+    # Check state again, should still be 0 since active state hasn't been set
+    resp = client.get(f"/api/v1/projects/{p1['id']}/_state")
+    assert resp.json()["pgsql"] == 0
+
+    # Update platform state to active
+    client.post(
+        f"/api/v1/platform/pgsql/{plat['id']}/_state",
+        json={"active": True, "status": "online"},
+        headers=headers_p1,
+    )
+
+    # Check project state, should now be 1
+    resp = client.get(f"/api/v1/projects/{p1['id']}/_state")
+    assert resp.json()["pgsql"] == 1
+
+    # Decommission platform
+    client.post(
+        f"/api/v1/platform/pgsql/{plat['id']}/_decommission",
+        headers={"X-RESOURCE-NAME": "pg-test", **headers_p1},
+    )
+
+    # Check project state, should be 0 again
+    resp = client.get(f"/api/v1/projects/{p1['id']}/_state")
+    assert resp.json()["pgsql"] == 0
