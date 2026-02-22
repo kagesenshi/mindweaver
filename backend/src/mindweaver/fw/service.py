@@ -16,9 +16,11 @@ from .util import camel_to_snake
 import graphlib
 import inspect
 import re
+import asyncio
 from fastapi import HTTPException
 from mindweaver.crypto import encrypt_password, EncryptionError
 from typing import Generic, TypeVar, Any, Literal, Annotated, Union, List, Dict
+from mindweaver.fw.action import ActionRequest, BaseAction
 
 T = TypeVar("T", bound=NamedBase)
 S = TypeVar("S", bound=SQLModel)
@@ -441,6 +443,33 @@ class Service(Generic[S], abc.ABC):
     def entity_type(cls) -> str:
         model_class = cls.model_class()
         return camel_to_snake(model_class.__name__)
+
+    @classmethod
+    def get_actions(cls) -> dict[str, type[BaseAction]]:
+        """Returns all registered actions for this class and its bases."""
+        actions = {}
+        for base in reversed(cls.__mro__):
+            if "_actions" in base.__dict__ and isinstance(
+                base.__dict__["_actions"], dict
+            ):
+                actions.update(base.__dict__["_actions"])
+        return actions
+
+    @classmethod
+    def register_action(cls, name: str):
+        """Decorator to register a new action on the service."""
+
+        def decorator(cls_func):
+            if "_actions" not in cls.__dict__:
+                cls._actions = {}
+            if name in cls._actions:
+                raise ValueError(
+                    f"Action '{name}' is already registered on {cls.__name__}"
+                )
+            cls._actions[name] = cls_func
+            return cls_func
+
+        return decorator
 
     @classmethod
     def get_widgets(cls) -> Dict[str, Any]:
@@ -972,3 +1001,68 @@ class Service(Generic[S], abc.ABC):
                 )
             await svc.delete(model.id)
             return {"status": "success"}
+
+        @router.get(
+            f"{model_path}/_actions",
+            operation_id=f"mw-list-actions-{entity_type}",
+            dependencies=cls.extra_dependencies(),
+            tags=path_tags,
+        )
+        async def list_actions(
+            svc: Annotated[cls, Depends(cls.get_service)],  # type: ignore
+            model: Annotated[model_class, Depends(cls.get_model)],  # type: ignore
+        ):
+            actions = cls.get_actions()
+            available_actions = []
+            for name, action_cls in actions.items():
+                action_instance = action_cls(model, svc)
+
+                if hasattr(action_instance, "available"):
+                    if asyncio.iscoroutinefunction(action_instance.available):
+                        is_available = await action_instance.available()
+                    else:
+                        is_available = action_instance.available()
+                    if not is_available:
+                        continue
+
+                available_actions.append(name)
+
+            return {"actions": available_actions}
+
+        @router.post(
+            f"{model_path}/_actions",
+            operation_id=f"mw-execute-action-{entity_type}",
+            dependencies=cls.extra_dependencies(),
+            tags=path_tags,
+        )
+        async def execute_action(
+            svc: Annotated[cls, Depends(cls.get_service)],  # type: ignore
+            model: Annotated[model_class, Depends(cls.get_model)],  # type: ignore
+            request: ActionRequest,
+        ):
+            actions = cls.get_actions()
+            if request.action not in actions:
+                raise fastapi.HTTPException(
+                    status_code=400, detail=f"Action '{request.action}' not found"
+                )
+
+            action_cls = actions[request.action]
+            action_instance = action_cls(model, svc)
+
+            if hasattr(action_instance, "available"):
+                if asyncio.iscoroutinefunction(action_instance.available):
+                    is_available = await action_instance.available()
+                else:
+                    is_available = action_instance.available()
+                if not is_available:
+                    raise fastapi.HTTPException(
+                        status_code=400,
+                        detail=f"Action '{request.action}' is not available",
+                    )
+
+            params = dict(request.parameters)
+
+            if asyncio.iscoroutinefunction(action_instance.__call__):
+                return await action_instance(**params)
+            else:
+                return action_instance(**params)
