@@ -37,8 +37,7 @@ spec:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: ["celery"]
-          args: ["-A", "mindweaver.celery_app", "beat", "-l", "info"]
+          command: ["uv", "run", "mindweaver", "scheduler"]
           resources:
             {{- toYaml .Values.beat.resources | nindent 12 }}
           env:

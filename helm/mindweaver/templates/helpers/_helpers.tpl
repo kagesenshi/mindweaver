@@ -71,3 +71,10 @@ Mindweaver envFrom helper
 - secretRef:
     name: {{ include "mindweaver.fullname" . }}-secret
 {{- end }}
+
+{{/*
+Create mindweaver.releasename variable containing .Release.Name
+*/}}
+{{- define "mindweaver.releasename" -}}
+{{- .Release.Name }}
+{{- end }}

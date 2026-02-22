@@ -10,6 +10,7 @@ wheels/
 # Virtual environments
 .venv
 celerybeat-*
-
+values.yml
+*.swp
 # Helm
 helm/mindweaver/charts/*.tgz
