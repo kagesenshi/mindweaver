@@ -100,7 +100,6 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
     def immutable_fields(cls) -> list[str]:
         return super().immutable_fields() + [
             "storage_size",
-            "s3_storage_id",
             "image",
         ]
 
