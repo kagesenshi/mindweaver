@@ -288,18 +288,20 @@ const PgSqlPage = () => {
                                                                     <div className="space-y-2">
                                                                         <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Available Endpoints</p>
                                                                         {platformState.cluster_nodes?.map((node, j) => (
-                                                                            <div key={j} className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 group/item">
-                                                                                <div className="flex flex-col min-w-0">
-                                                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight truncate">{node.hostname}</span>
-                                                                                    <span className="text-sm font-mono font-bold text-slate-700 dark:text-slate-200 truncate">{node.ip}:{np.node_port}</span>
-                                                                                </div>
-                                                                                <button
-                                                                                    onClick={() => navigator.clipboard.writeText(`${node.ip}:${np.node_port}`)}
-                                                                                    className="p-2 text-slate-400 hover:text-blue-500 transition-colors shrink-0"
-                                                                                    title="Copy connection string"
-                                                                                >
-                                                                                    <Copy size={14} />
-                                                                                </button>
+                                                                            <div key={j} className="flex flex-col gap-1 p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 group/item">
+                                                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight truncate px-1">{node.hostname}</span>
+                                                                                {node.ipv4 && (
+                                                                                    <div className="flex items-center justify-between">
+                                                                                        <span className="text-sm font-mono font-bold text-slate-700 dark:text-slate-200 truncate px-1">{node.ipv4}:{np.node_port}</span>
+                                                                                        <button
+                                                                                            onClick={() => navigator.clipboard.writeText(`${node.ipv4}:${np.node_port}`)}
+                                                                                            className="p-1 text-slate-400 hover:text-blue-500 transition-colors shrink-0"
+                                                                                            title="Copy IPv4 connection string"
+                                                                                        >
+                                                                                            <Copy size={14} />
+                                                                                        </button>
+                                                                                    </div>
+                                                                                )}
                                                                             </div>
                                                                         ))}
                                                                     </div>
@@ -332,10 +334,10 @@ const PgSqlPage = () => {
                                                             </div>
                                                             <div className="p-6 relative group">
                                                                 <pre className="text-sm font-mono text-blue-400 leading-relaxed overflow-x-auto whitespace-pre-wrap">
-                                                                    psql -h {platformState.cluster_nodes?.[0]?.ip || '[NODE_IP]'} -p {sortedPorts?.[0]?.node_port || '[PORT]'} -U {platformState?.db_user || 'pending'} -d {platformState?.db_name || 'pending'}
+                                                                    psql -h {platformState.cluster_nodes?.[0]?.ipv4 || '[NODE_IP]'} -p {sortedPorts?.[0]?.node_port || '[PORT]'} -U {platformState?.db_user || 'pending'} -d {platformState?.db_name || 'pending'}
                                                                 </pre>
                                                                 <button
-                                                                    onClick={() => navigator.clipboard.writeText(`psql -h ${platformState.cluster_nodes?.[0]?.ip || '[NODE_IP]'} -p ${sortedPorts?.[0]?.node_port || '[PORT]'} -U ${platformState?.db_user || 'pending'} -d ${platformState?.db_name || 'pending'}`)}
+                                                                    onClick={() => navigator.clipboard.writeText(`psql -h ${platformState.cluster_nodes?.[0]?.ipv4 || '[NODE_IP]'} -p ${sortedPorts?.[0]?.node_port || '[PORT]'} -U ${platformState?.db_user || 'pending'} -d ${platformState?.db_name || 'pending'}`)}
                                                                     className="absolute top-4 right-4 p-2 text-slate-500 hover:text-white opacity-0 group-hover:opacity-100 transition-all"
                                                                 >
                                                                     <Copy size={16} />

@@ -299,12 +299,15 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
             try:
                 nodes = core_v1.list_node()
                 for node in nodes.items:
-                    node_info = {"hostname": "unknown", "ip": "unknown"}
+                    node_info = {"hostname": "unknown", "ipv4": None, "ipv6": None}
                     for addr in node.status.addresses:
                         if addr.type == "Hostname":
                             node_info["hostname"] = addr.address
                         elif addr.type == "InternalIP":
-                            node_info["ip"] = addr.address
+                            if ":" in addr.address:
+                                node_info["ipv6"] = addr.address
+                            else:
+                                node_info["ipv4"] = addr.address
                     cluster_nodes.append(node_info)
             except Exception as e:
                 logger.error(f"Failed to fetch nodes: {e}")
