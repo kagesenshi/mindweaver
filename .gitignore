@@ -10,3 +10,6 @@ wheels/
 # Virtual environments
 .venv
 celerybeat-*
+
+# Helm
+helm/mindweaver/charts/*.tgz

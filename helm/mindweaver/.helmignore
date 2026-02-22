@@ -1,0 +1,16 @@
+# Patterns to ignore when packaging a Helm chart.
+# Similar to .gitignore, but for Helm.
+.git
+.gitignore
+.helmignore
+.vscode
+.idea
+*.swp
+*.bak
+*~
+.DS_Store
+# Temporary/Verification files
+verification-*.yaml
+template-*.yaml
+grep-*.txt
+test-output.yaml
