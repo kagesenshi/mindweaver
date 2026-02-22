@@ -8,6 +8,8 @@ import Modal from '../../components/Modal';
 import DynamicForm from '../../components/DynamicForm';
 import ResourceConfirmModal from '../../components/ResourceConfirmModal';
 import PageLayout from '../../components/PageLayout';
+import Drawer from '../../components/Drawer';
+import { useNotification } from '../../providers/NotificationProvider';
 
 const StatusBadge = ({ status }) => {
     const styles = {
@@ -42,6 +44,12 @@ const ServiceView = ({
     const [showPassword, setShowPassword] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [isDecommissionModalOpen, setIsDecommissionModalOpen] = useState(false);
+    const [availableActions, setAvailableActions] = useState([]);
+    const [isExecutingAction, setIsExecutingAction] = useState(null);
+
+    const { showSuccess, showError } = useNotification();
+
+    const { fetchActions, executeAction } = pgsql;
 
     useEffect(() => {
         let timer;
@@ -59,6 +67,14 @@ const ServiceView = ({
             if (timer) clearInterval(timer);
         };
     }, [selectedPlatformId, getPlatformState]);
+
+    useEffect(() => {
+        if (selectedPlatformId && platformState?.active) {
+            fetchActions(selectedPlatformId).then(setAvailableActions);
+        } else {
+            setAvailableActions([]);
+        }
+    }, [selectedPlatformId, platformState?.active, fetchActions]);
 
     const handleRefresh = async () => {
         if (!selectedPlatformId) return;
@@ -90,6 +106,20 @@ const ServiceView = ({
         const updated = await getPlatformState(selectedPlatformId);
         setPlatformState(updated);
         setIsDecommissionModalOpen(false);
+    };
+
+    const handleExecuteAction = async (actionName) => {
+        if (!selectedPlatformId) return;
+        setIsExecutingAction(actionName);
+        try {
+            await executeAction(selectedPlatformId, actionName);
+            showSuccess(`Action ${actionName} triggered successfully`);
+            await handleRefresh();
+        } catch (err) {
+            showError(`Failed to trigger action ${actionName}: ${err.message}`);
+        } finally {
+            setIsExecutingAction(null);
+        }
     };
 
     return (
@@ -125,6 +155,38 @@ const ServiceView = ({
                     </div>
                 </div>
                 <div className="flex gap-3">
+                    {availableActions.length > 0 && (
+                        <Drawer
+                            darkMode={darkMode}
+                            trigger={({ isOpen }) => (
+                                <button className={cn(
+                                    "mw-btn-secondary px-6 py-2.5 flex items-center gap-2 min-w-[140px]",
+                                    isOpen && "bg-slate-100 dark:bg-slate-800"
+                                )}>
+                                    <Zap size={16} className="text-blue-500" />
+                                    <span>ACTIONS</span>
+                                </button>
+                            )}
+                        >
+                            <div className="flex flex-col min-w-[200px]">
+                                {availableActions.map(action => (
+                                    <button
+                                        key={action}
+                                        onClick={() => handleExecuteAction(action)}
+                                        disabled={isExecutingAction === action}
+                                        className="w-full text-left px-5 py-3.5 text-xs font-bold uppercase tracking-widest hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-all flex items-center justify-between group first:rounded-t-lg last:rounded-b-lg border-b last:border-b-0 border-slate-100 dark:border-slate-800/50"
+                                    >
+                                        <span className="text-slate-700 dark:text-slate-300 group-hover:text-blue-500">{action}</span>
+                                        {isExecutingAction === action ? (
+                                            <Loader2 size={14} className="animate-spin text-blue-500" />
+                                        ) : (
+                                            <Zap size={14} className="text-slate-400 group-hover:text-blue-500 opacity-60 group-hover:opacity-100 transition-all" />
+                                        )}
+                                    </button>
+                                ))}
+                            </div>
+                        </Drawer>
+                    )}
                     <button
                         onClick={handleRefresh}
                         disabled={isRefreshing}

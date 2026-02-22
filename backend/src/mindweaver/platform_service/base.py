@@ -13,6 +13,7 @@ from mindweaver.fw.exc import ModelValidationError
 from mindweaver.service.base import ProjectScopedNamedBase, ProjectScopedService
 from mindweaver.service.project import Project, K8sClusterType
 from mindweaver.fw.service import after_update, before_delete
+from mindweaver.fw.state import BaseState
 import os
 import pydantic
 from sqlalchemy import Column, DateTime, String
@@ -450,21 +451,6 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
             await svc.poll_status(model)
             return {"status": "success"}
 
-        @router.get(
-            f"{model_path}/_state",
-            operation_id=f"mw-get-state-{entity_type}",
-            dependencies=cls.extra_dependencies(),
-            tags=path_tags,
-        )
-        async def get_state(
-            svc: Annotated[cls, Depends(cls.get_service)],  # type: ignore
-            model: Annotated[model_class, Depends(cls.get_model)],  # type: ignore
-        ):
-            state = await svc.platform_state(model)
-            if not state:
-                return {}
-            return state
-
         @router.post(
             f"{model_path}/_state",
             operation_id=f"mw-update-state-{entity_type}",
@@ -560,3 +546,14 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
             # Fallback to default if project not found (should not happen due to FK)
             return "default"
         return project.k8s_namespace or project.name
+
+
+@PlatformService.with_state()
+class DefaultPlatformState(BaseState):
+    async def get(self):
+        state = await self.svc.platform_state(self.model)
+        if hasattr(state, "model_dump"):
+            return state.model_dump()
+        if not state:
+            return {}
+        return state

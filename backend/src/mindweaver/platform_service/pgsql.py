@@ -2,7 +2,9 @@ from mindweaver.platform_service.base import (
     PlatformBase,
     PlatformService,
     PlatformStateBase,
+    DefaultPlatformState,
 )
+from mindweaver.fw.action import BaseAction
 from sqlmodel import Field
 from typing import Any, Optional
 from pydantic import field_validator, ValidationError, model_validator
@@ -20,6 +22,7 @@ import yaml
 from mindweaver.service.s3_storage import S3StorageService
 from mindweaver.crypto import decrypt_password, encrypt_password
 from mindweaver.fw.model import ts_now
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -384,39 +387,79 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
 
         state.last_heartbeat = ts_now()
 
-    @classmethod
-    def register_views(
-        cls, router: fastapi.APIRouter, service_path: str, model_path: str
-    ):
-        """Register views for the service, overriding the state endpoint to decrypt password"""
-        model_class = cls.model_class()
-        entity_type = cls.entity_type()
-        path_tags = cls.path_tags()
 
-        @router.get(
-            f"{model_path}/_state",
-            operation_id=f"mw-get-state-{entity_type}-custom",
-            dependencies=cls.extra_dependencies(),
-            tags=path_tags,
-        )
-        async def get_state(
-            svc: Annotated[cls, Depends(cls.get_service)],
-            model: Annotated[model_class, Depends(cls.get_model)],
-        ):
-            state = await svc.platform_state(model)
-            if not state:
-                return {}
+@PgSqlPlatformService.register_action("backup")
+class PgSqlBackupAction(BaseAction):
+    """Action to trigger a CNPG backup."""
 
-            # Create a copy to modify
-            state_dict = state.model_dump()
-            if state.db_pass:
-                try:
-                    state_dict["db_pass"] = decrypt_password(state.db_pass)
-                except Exception:
-                    pass
-            return state_dict
+    async def available(self) -> bool:
+        """Only available for active platforms."""
+        state = await self.svc.platform_state(self.model)
+        return state is not None and state.active
 
-        super().register_views(router, service_path, model_path)
+    async def __call__(self, **kwargs):
+        """Creates a Backup custom resource in Kubernetes."""
+        kubeconfig = await self.svc.kubeconfig(self.model)
+        namespace = await self.svc._resolve_namespace(self.model)
+
+        def _create_backup():
+            if kubeconfig is None:
+                config.load_incluster_config()
+                k8s_client = client.ApiClient()
+            else:
+                with tempfile.NamedTemporaryFile(mode="w") as kf:
+                    kf.write(kubeconfig)
+                    kf.flush()
+                    k8s_client = config.new_client_from_config(config_file=kf.name)
+
+            custom_api = client.CustomObjectsApi(k8s_client)
+
+            timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%dt%H%M%S")
+            backup_name = f"backup-{timestamp}"
+
+            backup_body = {
+                "apiVersion": "postgresql.cnpg.io/v1",
+                "kind": "Backup",
+                "metadata": {"name": backup_name, "namespace": namespace},
+                "spec": {
+                    "method": "barmanObjectStore",
+                    "cluster": {"name": self.model.name},
+                },
+            }
+
+            try:
+                custom_api.create_namespaced_custom_object(
+                    group="postgresql.cnpg.io",
+                    version="v1",
+                    namespace=namespace,
+                    plural="backups",
+                    body=backup_body,
+                )
+                logger.info(
+                    f"Triggered backup {backup_name} for cluster {self.model.name}"
+                )
+                return {"status": "success", "backup_name": backup_name}
+            except client.exceptions.ApiException as e:
+                logger.error(f"Failed to trigger backup: {e}")
+                raise RuntimeError(f"Failed to trigger backup: {e.reason}")
+
+        return await asyncio.to_thread(_create_backup)
+
+
+@PgSqlPlatformService.with_state()
+class PgSqlState(DefaultPlatformState):
+    async def get(self):
+        state_dict = await super().get()
+        if not state_dict:
+            return {}
+
+        state = await self.svc.platform_state(self.model)
+        if state and state.db_pass:
+            try:
+                state_dict["db_pass"] = decrypt_password(state.db_pass)
+            except Exception:
+                pass
+        return state_dict
 
 
 router = PgSqlPlatformService.router()

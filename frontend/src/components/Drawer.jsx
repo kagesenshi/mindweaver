@@ -67,10 +67,10 @@ const Drawer = ({
                     "transition-all duration-300 relative outline-none",
                     isOpen
                         ? cn(
-                            "z-50 ring-2 ring-blue-500/20",
+                            "z-50",
                             isTop
-                                ? "rounded-t-none rounded-b-xl" // Trigger opens UP, so it connects at top.
-                                : "rounded-b-none rounded-t-xl", // Trigger opens DOWN, so it connects at bottom.
+                                ? "rounded-t-none rounded-b-xl"
+                                : "rounded-b-none rounded-t-xl",
                             finalActiveBg
                         )
                         : "rounded-xl hover:ring-2 hover:ring-blue-500/20"
@@ -114,12 +114,13 @@ const Drawer = ({
 
             {isOpen && (
                 <div className={cn(
-                    "absolute left-0 right-0 z-40 p-1.5 shadow-xl ring-2 ring-blue-500/20",
+                    "absolute z-40 p-1.5 shadow-xl ring-2 ring-blue-500/20",
                     "transition-all animate-in fade-in zoom-in-95 duration-200",
+                    "w-max min-w-full",
                     finalActiveBg,
                     isTop
-                        ? "bottom-[calc(100%-1px)] rounded-t-xl rounded-b-none slide-in-from-bottom-2"
-                        : "top-[calc(100%-1px)] rounded-b-xl rounded-t-none slide-in-from-top-2",
+                        ? "bottom-[calc(100%-1px)] rounded-t-xl rounded-b-none slide-in-from-bottom-2 left-0"
+                        : "top-[calc(100%-1px)] rounded-b-xl rounded-t-none slide-in-from-top-2 left-0",
                 )}>
                     {children}
                 </div>

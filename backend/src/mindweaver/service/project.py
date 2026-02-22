@@ -1,5 +1,6 @@
 import enum
 from typing import Any, Optional, Annotated
+from mindweaver.fw.state import BaseState
 from . import NamedBase
 from . import Service, before_create, before_update
 from sqlmodel import Field, Column, select, func
@@ -74,46 +75,30 @@ class ProjectService(Service[Project]):
             },
         }
 
-    @classmethod
-    def register_views(
-        cls, router: fastapi.APIRouter, service_path: str, model_path: str
-    ):
-        model_class = cls.model_class()
-        entity_type = cls.entity_type()
-        path_tags = cls.path_tags()
 
-        @router.get(
-            f"{model_path}/_state",
-            operation_id=f"mw-get-state-{entity_type}",
-            dependencies=cls.extra_dependencies(),
-            tags=path_tags,
+@ProjectService.with_state()
+class ProjectState(BaseState):
+    async def get(self):
+        from mindweaver.platform_service.pgsql import (
+            PgSqlPlatform,
+            PgSqlPlatformState,
         )
-        async def get_state(
-            svc: Annotated[cls, Depends(cls.get_service)],
-            model: Annotated[model_class, Depends(cls.get_model)],
-        ):
-            from mindweaver.platform_service.pgsql import (
-                PgSqlPlatform,
+
+        stmt = (
+            select(func.count(PgSqlPlatform.id))
+            .join(
                 PgSqlPlatformState,
+                PgSqlPlatform.id == PgSqlPlatformState.platform_id,
+                isouter=True,
             )
+            .where(PgSqlPlatform.project_id == self.model.id)
+            .where(PgSqlPlatformState.active == True)
+        )
 
-            stmt = (
-                select(func.count(PgSqlPlatform.id))
-                .join(
-                    PgSqlPlatformState,
-                    PgSqlPlatform.id == PgSqlPlatformState.platform_id,
-                    isouter=True,
-                )
-                .where(PgSqlPlatform.project_id == model.id)
-                .where(PgSqlPlatformState.active == True)
-            )
+        result = await self.svc.session.exec(stmt)
+        pgsql_count = result.one_or_none() or 0
 
-            result = await svc.session.exec(stmt)
-            pgsql_count = result.one_or_none() or 0
-
-            return {"pgsql": pgsql_count, "trino": 0, "spark": 0, "airflow": 0}
-
-        super().register_views(router, service_path, model_path)
+        return {"pgsql": pgsql_count, "trino": 0, "spark": 0, "airflow": 0}
 
 
 router = ProjectService.router()

@@ -146,11 +146,33 @@ export const usePgSql = () => {
         return response.data;
     }, []);
 
+    const fetchActions = useCallback(async (id) => {
+        const response = await apiClient.get(`/platform/pgsql/${id}/_actions`);
+        return response.data.actions || [];
+    }, []);
+
+    const executeAction = useCallback(async (id, action, parameters = {}) => {
+        const response = await apiClient.post(`/platform/pgsql/${id}/_actions`, { action, parameters });
+        return response.data;
+    }, []);
+
     useEffect(() => {
         fetchPlatforms();
     }, [fetchPlatforms]);
 
-    return { platforms, loading, error, fetchPlatforms, createPlatform, updatePlatformState, deletePlatform, getPlatformState, refreshPlatformState };
+    return {
+        platforms,
+        loading,
+        error,
+        fetchPlatforms,
+        createPlatform,
+        updatePlatformState,
+        deletePlatform,
+        getPlatformState,
+        refreshPlatformState,
+        fetchActions,
+        executeAction
+    };
 };
 
 export const useK8sClusters = () => {

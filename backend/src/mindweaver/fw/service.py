@@ -21,6 +21,7 @@ from fastapi import HTTPException
 from mindweaver.crypto import encrypt_password, EncryptionError
 from typing import Generic, TypeVar, Any, Literal, Annotated, Union, List, Dict
 from mindweaver.fw.action import ActionRequest, BaseAction
+from mindweaver.fw.state import BaseState
 
 T = TypeVar("T", bound=NamedBase)
 S = TypeVar("S", bound=SQLModel)
@@ -443,6 +444,27 @@ class Service(Generic[S], abc.ABC):
     def entity_type(cls) -> str:
         model_class = cls.model_class()
         return camel_to_snake(model_class.__name__)
+
+    @classmethod
+    def get_state_class(cls) -> type[BaseState] | None:
+        """Returns the registered state class for this service and its bases."""
+        for base in cls.__mro__:
+            if (
+                "_state_class" in base.__dict__
+                and base.__dict__["_state_class"] is not None
+            ):
+                return base.__dict__["_state_class"]
+        return None
+
+    @classmethod
+    def with_state(cls):
+        """Decorator to register a state class on the service."""
+
+        def decorator(state_cls: type[BaseState]):
+            cls._state_class = state_cls
+            return state_cls
+
+        return decorator
 
     @classmethod
     def get_actions(cls) -> dict[str, type[BaseAction]]:
@@ -1001,6 +1023,25 @@ class Service(Generic[S], abc.ABC):
                 )
             await svc.delete(model.id)
             return {"status": "success"}
+
+        state_class = cls.get_state_class()
+        if state_class:
+
+            @router.get(
+                f"{model_path}/_state",
+                operation_id=f"mw-get-state-{entity_type}",
+                dependencies=cls.extra_dependencies(),
+                tags=path_tags,
+            )
+            async def get_state(
+                svc: Annotated[cls, Depends(cls.get_service)],  # type: ignore
+                model: Annotated[model_class, Depends(cls.get_model)],  # type: ignore
+            ):
+                state_instance = state_class(model, svc)
+                if asyncio.iscoroutinefunction(state_instance.get):
+                    return await state_instance.get()
+                else:
+                    return state_instance.get()
 
         @router.get(
             f"{model_path}/_actions",
