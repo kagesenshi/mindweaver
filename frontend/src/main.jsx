@@ -8,7 +8,7 @@ import LoginPage from './pages/LoginPage'
 import CallbackPage from './pages/CallbackPage'
 import ProjectsPage from './pages/ProjectsPage'
 import DataSourcesPage from './pages/DataSourcesPage'
-import PgSqlPage from './pages/PgSqlPage'
+import PgSqlPage from './pages/pgsql/Page'
 import S3StoragePage from './pages/S3StoragePage'
 import { AuthProvider } from './providers/AuthProvider'
 
