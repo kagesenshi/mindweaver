@@ -10,6 +10,7 @@ from fastapi import HTTPException, Depends
 from mindweaver.fw.exc import MindWeaverError
 from mindweaver.crypto import encrypt_password, decrypt_password, EncryptionError
 import httpx
+import asyncio
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import URL
 from mindweaver.ext.data_source import get_driver_options, get_driver
@@ -125,10 +126,13 @@ class DataSourceService(SecretHandlerMixin, ProjectScopedService[DataSource]):
                 if config.get("parameters"):
                     url = url.update_query_dict(config["parameters"])
 
-                try:
-                    engine = create_engine(url)
+                def _do_test_connection(url_to_test: URL) -> None:
+                    engine = create_engine(url_to_test)
                     with engine.connect() as conn:
                         conn.execute(text("SELECT 1"))
+
+                try:
+                    await asyncio.to_thread(_do_test_connection, url)
 
                     return {
                         "status": "success",
