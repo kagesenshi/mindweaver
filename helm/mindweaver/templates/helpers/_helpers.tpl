@@ -70,6 +70,4 @@ Mindweaver envFrom helper
     name: {{ include "mindweaver.fullname" . }}-config
 - secretRef:
     name: {{ include "mindweaver.fullname" . }}-secret
-- secretRef:
-    name: {{ include "mindweaver.fullname" . }}-default-auth
 {{- end }}
