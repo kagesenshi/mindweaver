@@ -1,18 +1,14 @@
 # SPDX-FileCopyrightText: Copyright © 2025 Mohd Izhar Firdaus Bin Ismail
 # SPDX-License-Identifier: AGPLv3+
 
-from . import NamedBase
-from .base import ProjectScopedNamedBase, ProjectScopedService
+from mindweaver.service import NamedBase
+from mindweaver.service.base import ProjectScopedNamedBase, ProjectScopedService
 from mindweaver.fw.service import SecretHandlerMixin
 from sqlalchemy import String, Text, Boolean
 from sqlalchemy_utils import JSONType
 from sqlmodel import Field
-from typing import Any, Literal, Optional
-from pydantic import BaseModel
-from fastapi import HTTPException, Depends
-from mindweaver.fw.exc import MindWeaverError
-from mindweaver.crypto import encrypt_password, decrypt_password, EncryptionError
-import httpx
+from typing import Any, Optional
+from fastapi import HTTPException
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import URL
 from mindweaver.ext.data_source import get_driver_options, get_driver
@@ -151,111 +147,3 @@ class DataSourceService(SecretHandlerMixin, ProjectScopedService[DataSource]):
             raise HTTPException(
                 status_code=422, detail=f"Connection test failed: {str(e)}"
             )
-
-
-router = DataSourceService.router()
-
-
-class TestConnectionRequest(BaseModel):
-    # Allow overriding fields for testing "dirty" state, effectively optional
-    driver: Optional[str] = None
-    type: Optional[str] = None  # Alias for driver used in tests
-    host: Optional[str] = None
-    port: Optional[int] = None
-    resource: Optional[str] = None
-    login: Optional[str] = None
-    password: Optional[str] = None
-    api_key: Optional[str] = None  # Alias for password used in tests
-    enable_ssl: Optional[bool] = None
-    verify_ssl: Optional[bool] = None
-    parameters: Optional[dict[str, Any]] = None
-
-    def get_driver(self) -> Optional[str]:
-        return self.driver or self.type
-
-    def get_password(self) -> Optional[str]:
-        return self.password or self.api_key
-
-
-router = DataSourceService.router()
-
-
-@router.post(
-    f"{DataSourceService.service_path()}/_test-connection",
-    tags=DataSourceService.path_tags(),
-)
-async def test_connection_no_id(
-    data: TestConnectionRequest,
-    svc: DataSourceService = Depends(DataSourceService.get_service),
-):
-    """
-    Test connection to a data source without a saved record.
-    """
-    config = {
-        "driver": data.get_driver(),
-        "host": data.host,
-        "port": data.port,
-        "resource": data.resource,
-        "login": data.login,
-        "password": data.get_password(),
-        "enable_ssl": data.enable_ssl,
-        "verify_ssl": data.verify_ssl,
-        "parameters": data.parameters or {},
-    }
-    return await svc.perform_test_connection(config)
-
-
-@router.post(
-    f"{DataSourceService.service_path()}/{{model_id}}/_test-connection",
-    tags=DataSourceService.path_tags(),
-)
-async def test_connection(
-    model_id: int,
-    data: TestConnectionRequest = None,
-    svc: DataSourceService = Depends(DataSourceService.get_service),
-):
-    """
-    Test connection to a data source.
-    Uses stored configuration, optionally overridden by provided data.
-    """
-    existing = await svc.get(model_id)
-    if not existing:
-        raise HTTPException(status_code=404, detail="Data source not found")
-
-    # Merge existing with overrides
-    config = {
-        "driver": existing.driver,
-        "host": existing.host,
-        "port": existing.port,
-        "resource": existing.resource,
-        "login": existing.login,
-        "password": existing.password,
-        "enable_ssl": existing.enable_ssl,
-        "verify_ssl": existing.verify_ssl,
-        "parameters": existing.parameters or {},
-    }
-
-    if data:
-        overrides = data.model_dump(exclude_unset=True)
-        # Handle special field mappings for overrides
-        if data.type:
-            overrides["driver"] = data.type
-        if data.api_key:
-            overrides["password"] = data.api_key
-
-        for k, v in overrides.items():
-            if v is not None:
-                config[k] = v
-
-    # Decrypt password if it's from DB and hasn't been overridden
-    is_using_stored_password = not data or (
-        data.password is None and data.api_key is None
-    )
-
-    if is_using_stored_password and existing.password:
-        try:
-            config["password"] = decrypt_password(existing.password)
-        except EncryptionError:
-            pass
-
-    return await svc.perform_test_connection(config)
