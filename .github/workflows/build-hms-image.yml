@@ -30,8 +30,9 @@ jobs:
 
       - name: Download external dependencies
         run: |
-          chmod +x images/hive-metastore/download.sh
-          ./images/hive-metastore/download.sh
+          cd images/hive-metastore
+          chmod +x download.sh
+          ./download.sh
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
