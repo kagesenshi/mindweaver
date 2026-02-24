@@ -82,6 +82,53 @@ Platform services manage external resources (like Kubernetes deployments).
 
 5.  **Register the Router**: As with standard services, register the router in `app.py`. The `PlatformService` adds `_deploy`, `_decommission`, `_state`, and `_refresh` endpoints.
 
+## Custom Actions
+
+Services support registering custom actions (e.g., triggering a backup) using the `@register_action` decorator and inheriting from `BaseAction`.
+
+1.  **Define the Action**: Inherit from `mindweaver.fw.action.BaseAction` and implement the `__call__` method. You can also override the `available` method to control when the action is available.
+2.  **Register the Action**: Decorate the action class with `@MyService.register_action("action_name")`.
+
+```python
+from mindweaver.fw.action import BaseAction
+
+@MyService.register_action("my_action")
+class MyCustomAction(BaseAction):
+    async def available(self) -> bool:
+        # Check if action should be available for the given model instance
+        return True
+
+    async def __call__(self, **kwargs):
+        # Implement the action logic
+        # self.model contains the current model instance
+        # self.svc contains the service instance
+        return {"status": "success", "message": f"Action executed for {self.model.name}"}
+```
+
+## Custom Views (Endpoints)
+
+You can easily register additional endpoints at the service level or the model level using decorators on your service class.
+
+-   **`@service_view(method, path, **kwargs)`**: Registers a custom endpoint at the service level (e.g., `/api/v1/my_models/my-custom-path`).
+-   **`@model_view(method, path, **kwargs)`**: Registers a custom endpoint at the model level, where the path automatically includes the model's ID (e.g., `/api/v1/my_models/{id}/my-custom-path`).
+
+```python
+class MyService(Service[MyModel]):
+    @classmethod
+    def model_class(cls):
+        return MyModel
+
+@MyService.service_view("POST", "/bulk-update", description="Bulk update operation")
+async def bulk_update_endpoint():
+    # Accessible via POST /api/v1/my_models/bulk-update
+    return {"status": "bulk updating"}
+
+@MyService.model_view("GET", "/status")
+async def get_model_status():
+    # Accessible via GET /api/v1/my_models/{id}/status
+    return {"status": "running"}
+```
+
 ## Using Widgets
 
 Widgets control how fields are rendered in the dynamic form. The backend infers widgets from model fields, but you can override them.
