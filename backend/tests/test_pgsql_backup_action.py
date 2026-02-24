@@ -7,8 +7,9 @@ from datetime import datetime
 from mindweaver.platform_service.pgsql import (
     PgSqlPlatform,
     PgSqlPlatformService,
-    PgSqlBackupAction,
 )
+from mindweaver.platform_service.pgsql.actions import PgSqlBackupAction
+
 from mindweaver.platform_service.base import PlatformStateBase
 
 
@@ -46,10 +47,12 @@ async def test_pgsql_backup_action_call():
 
     action = PgSqlBackupAction(model, svc)
 
-    with patch("mindweaver.platform_service.pgsql.config") as mock_config, patch(
-        "mindweaver.platform_service.pgsql.client"
+    with patch(
+        "mindweaver.platform_service.pgsql.actions.config"
+    ) as mock_config, patch(
+        "mindweaver.platform_service.pgsql.actions.client"
     ) as mock_client, patch(
-        "mindweaver.platform_service.pgsql.tempfile.NamedTemporaryFile"
+        "mindweaver.platform_service.pgsql.actions.tempfile.NamedTemporaryFile"
     ) as mock_tempfile:
 
         # Setup mocks

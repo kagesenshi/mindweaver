@@ -1,40 +1,25 @@
 from mindweaver.platform_service.base import (
     PlatformBase,
     PlatformService,
-    PlatformStateBase,
-    DefaultPlatformState,
 )
-from mindweaver.fw.action import BaseAction
 from sqlmodel import Field
-from typing import Any, Optional
+from typing import Any
 from pydantic import field_validator, ValidationError, model_validator
 from mindweaver.fw.exc import FieldValidationError
-import fastapi
-from fastapi import Depends
 import base64
 import logging
 import os
 import asyncio
 import tempfile
-from typing import Any, Optional, Annotated
 from kubernetes import client, config
 import yaml
 from mindweaver.service.s3_storage import S3StorageService
-from mindweaver.crypto import decrypt_password, encrypt_password
+from mindweaver.crypto import encrypt_password, decrypt_password
 from mindweaver.fw.model import ts_now
-from datetime import datetime, timezone
+
+from .state import PgSqlPlatformState, PgSqlState
 
 logger = logging.getLogger(__name__)
-
-
-class PgSqlPlatformState(PlatformStateBase, table=True):
-    __tablename__ = "mw_pgsql_platform_state"
-    platform_id: int = Field(foreign_key="mw_pgsql_platform.id", index=True)
-
-    db_user: Optional[str] = Field(default=None)
-    db_pass: Optional[str] = Field(default=None)
-    db_name: Optional[str] = Field(default=None)
-    db_ca_crt: Optional[str] = Field(default=None)
 
 
 class PgSqlPlatform(PlatformBase, table=True):
@@ -85,9 +70,7 @@ class PgSqlPlatform(PlatformBase, table=True):
 
 
 class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
-    template_directory: str = os.path.join(
-        os.path.dirname(__file__), "templates", "pgsql"
-    )
+    template_directory: str = os.path.join(os.path.dirname(__file__), "templates")
     state_model: type[PgSqlPlatformState] = PgSqlPlatformState
     _image_catalog_cache: dict | None = None
 
@@ -112,9 +95,7 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
         if cls._image_catalog_cache is not None:
             return cls._image_catalog_cache
 
-        config_path = os.path.join(
-            os.path.dirname(__file__), "resources", "pgsql", "images.yml"
-        )
+        config_path = os.path.join(os.path.dirname(__file__), "resources", "images.yml")
         if not os.path.exists(config_path):
             cls._image_catalog_cache = {}
             return cls._image_catalog_cache
@@ -388,78 +369,5 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
         state.last_heartbeat = ts_now()
 
 
-@PgSqlPlatformService.register_action("backup")
-class PgSqlBackupAction(BaseAction):
-    """Action to trigger a CNPG backup."""
-
-    async def available(self) -> bool:
-        """Only available for active platforms."""
-        state = await self.svc.platform_state(self.model)
-        return state is not None and state.active
-
-    async def __call__(self, **kwargs):
-        """Creates a Backup custom resource in Kubernetes."""
-        kubeconfig = await self.svc.kubeconfig(self.model)
-        namespace = await self.svc._resolve_namespace(self.model)
-
-        def _create_backup():
-            if kubeconfig is None:
-                config.load_incluster_config()
-                k8s_client = client.ApiClient()
-            else:
-                with tempfile.NamedTemporaryFile(mode="w") as kf:
-                    kf.write(kubeconfig)
-                    kf.flush()
-                    k8s_client = config.new_client_from_config(config_file=kf.name)
-
-            custom_api = client.CustomObjectsApi(k8s_client)
-
-            timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%d-%H%M%S")
-            backup_name = f"backup-{timestamp}"
-
-            backup_body = {
-                "apiVersion": "postgresql.cnpg.io/v1",
-                "kind": "Backup",
-                "metadata": {"name": backup_name, "namespace": namespace},
-                "spec": {
-                    "method": "barmanObjectStore",
-                    "cluster": {"name": self.model.name},
-                },
-            }
-
-            try:
-                custom_api.create_namespaced_custom_object(
-                    group="postgresql.cnpg.io",
-                    version="v1",
-                    namespace=namespace,
-                    plural="backups",
-                    body=backup_body,
-                )
-                logger.info(
-                    f"Triggered backup {backup_name} for cluster {self.model.name}"
-                )
-                return {"status": "success", "backup_name": backup_name}
-            except client.exceptions.ApiException as e:
-                logger.error(f"Failed to trigger backup: {e}")
-                raise RuntimeError(f"Failed to trigger backup: {e.reason}")
-
-        return await asyncio.to_thread(_create_backup)
-
-
-@PgSqlPlatformService.with_state()
-class PgSqlState(DefaultPlatformState):
-    async def get(self):
-        state_dict = await super().get()
-        if not state_dict:
-            return {}
-
-        state = await self.svc.platform_state(self.model)
-        if state and state.db_pass:
-            try:
-                state_dict["db_pass"] = decrypt_password(state.db_pass)
-            except Exception:
-                pass
-        return state_dict
-
-
+PgSqlPlatformService.with_state()(PgSqlState)
 router = PgSqlPlatformService.router()
