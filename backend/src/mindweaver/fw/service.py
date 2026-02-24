@@ -494,6 +494,57 @@ class Service(Generic[S], abc.ABC):
         return decorator
 
     @classmethod
+    def get_custom_views(cls) -> list[dict]:
+        """Returns all registered custom views for this class and its bases."""
+        views = []
+        for base in reversed(cls.__mro__):
+            if "_custom_views" in base.__dict__ and isinstance(
+                base.__dict__["_custom_views"], list
+            ):
+                views.extend(base.__dict__["_custom_views"])
+        return views
+
+    @classmethod
+    def service_view(cls, method: str, path: str, **kwargs):
+        """Decorator to register a new service level custom view on the service."""
+
+        def decorator(cls_func):
+            if "_custom_views" not in cls.__dict__:
+                cls._custom_views = []
+            cls._custom_views.append(
+                {
+                    "type": "service",
+                    "method": method,
+                    "path": path,
+                    "func": cls_func,
+                    "kwargs": kwargs,
+                }
+            )
+            return cls_func
+
+        return decorator
+
+    @classmethod
+    def model_view(cls, method: str, path: str, **kwargs):
+        """Decorator to register a new model level custom view on the service."""
+
+        def decorator(cls_func):
+            if "_custom_views" not in cls.__dict__:
+                cls._custom_views = []
+            cls._custom_views.append(
+                {
+                    "type": "model",
+                    "method": method,
+                    "path": path,
+                    "func": cls_func,
+                    "kwargs": kwargs,
+                }
+            )
+            return cls_func
+
+        return decorator
+
+    @classmethod
     def get_widgets(cls) -> Dict[str, Any]:
         """
         Infer widgets from model fields (relationships and enums).
@@ -1107,3 +1158,25 @@ class Service(Generic[S], abc.ABC):
                 return await action_instance(**params)
             else:
                 return action_instance(**params)
+
+        for view_spec in cls.get_custom_views():
+            func = view_spec["func"]
+            method = view_spec["method"]
+            path = view_spec["path"]
+            view_type = view_spec["type"]
+            kwargs = dict(view_spec["kwargs"])
+
+            # Use tags from service if not provided in kwargs
+            if "tags" not in kwargs:
+                kwargs["tags"] = path_tags
+
+            # Use dependencies from service if not provided in kwargs
+            if "dependencies" not in kwargs:
+                kwargs["dependencies"] = cls.extra_dependencies()
+
+            if view_type == "service":
+                full_path = f"{service_path}{path}"
+            else:
+                full_path = f"{model_path}{path}"
+
+            router.add_api_route(full_path, func, methods=[method], **kwargs)

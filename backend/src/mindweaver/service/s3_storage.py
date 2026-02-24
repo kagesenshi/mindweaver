@@ -224,235 +224,217 @@ class S3StorageService(SecretHandlerMixin, ProjectScopedService[S3Storage]):
             "secret_key": {"order": 7, "type": "password"},
         }
 
-    @classmethod
-    def register_views(
-        cls, router: fastapi.APIRouter, service_path: str, model_path: str
-    ):
-        super().register_views(router, service_path, model_path)
 
-        path_tags = cls.path_tags()
+if settings.enable_test_views:
 
-        if settings.enable_test_views:
+    @S3StorageService.model_view(
+        method="POST",
+        path="/_verify-encrypted",
+        operation_id=f"mw-verify-encrypted-{S3StorageService.entity_type()}",
+    )
+    async def verify_encrypted(
+        svc: Annotated[S3StorageService, Depends(S3StorageService.get_service)],
+        model: Annotated[S3Storage, Depends(S3StorageService.get_model)],
+        data: VerifyEncryptedRequest,
+    ) -> bool:
+        return svc.verify_secret_key(model, data.secret_key)
 
-            @router.post(
-                f"{model_path}/_verify-encrypted",
-                operation_id=f"mw-verify-encrypted-{cls.entity_type()}",
-                tags=path_tags,
-            )
-            async def verify_encrypted(
-                svc: Annotated[cls, Depends(cls.get_service)],
-                model: Annotated[S3Storage, Depends(cls.get_model)],
-                data: VerifyEncryptedRequest,
-            ) -> bool:
-                return svc.verify_secret_key(model, data.secret_key)
 
-        @router.get(
-            f"{model_path}/_fs",
-            operation_id=f"mw-fs-{cls.entity_type()}",
-            tags=path_tags,
-        )
-        async def fs_ops(
-            svc: Annotated[cls, Depends(cls.get_service)],
-            model: Annotated[S3Storage, Depends(cls.get_model)],
-            request: fastapi.Request,
-            action: Literal["ls", "get"] = "ls",
-            bucket: Optional[str] = None,
-            prefix: str = "",
-            key: Optional[str] = None,
-        ):
-            region = model.region
-            access_key = model.access_key
-            secret_key = None
-            endpoint_url = model.endpoint_url
-            verify_ssl = model.verify_ssl
+@S3StorageService.model_view(
+    method="GET",
+    path="/_fs",
+    operation_id=f"mw-fs-{S3StorageService.entity_type()}",
+)
+async def fs_ops(
+    svc: Annotated[S3StorageService, Depends(S3StorageService.get_service)],
+    model: Annotated[S3Storage, Depends(S3StorageService.get_model)],
+    request: fastapi.Request,
+    action: Literal["ls", "get"] = "ls",
+    bucket: Optional[str] = None,
+    prefix: str = "",
+    key: Optional[str] = None,
+):
+    region = model.region
+    access_key = model.access_key
+    secret_key = None
+    endpoint_url = model.endpoint_url
+    verify_ssl = model.verify_ssl
 
-            if model.secret_key:
-                try:
-                    secret_key = decrypt_password(model.secret_key)
-                except EncryptionError:
-                    pass
+    if model.secret_key:
+        try:
+            secret_key = decrypt_password(model.secret_key)
+        except EncryptionError:
+            pass
 
-            try:
-                # Create S3 client
-                s3_config = {
-                    "aws_access_key_id": access_key,
-                    "region_name": region,
-                }
+    try:
+        # Create S3 client
+        s3_config = {
+            "aws_access_key_id": access_key,
+            "region_name": region,
+        }
 
-                if secret_key:
-                    s3_config["aws_secret_access_key"] = secret_key
+        if secret_key:
+            s3_config["aws_secret_access_key"] = secret_key
 
-                if endpoint_url:
-                    s3_config["endpoint_url"] = endpoint_url
+        if endpoint_url:
+            s3_config["endpoint_url"] = endpoint_url
 
-                s3_client = boto3.client("s3", verify=verify_ssl, **s3_config)
+        s3_client = boto3.client("s3", verify=verify_ssl, **s3_config)
 
-                if action == "ls":
-                    if not bucket:
-                        # List buckets
-                        response = await asyncio.to_thread(s3_client.list_buckets)
-                        return {
-                            "type": "buckets",
-                            "items": [
-                                {
-                                    "name": b["Name"],
-                                    "creation_date": b["CreationDate"].isoformat(),
-                                }
-                                for b in response.get("Buckets", [])
-                            ],
+        if action == "ls":
+            if not bucket:
+                # List buckets
+                response = await asyncio.to_thread(s3_client.list_buckets)
+                return {
+                    "type": "buckets",
+                    "items": [
+                        {
+                            "name": b["Name"],
+                            "creation_date": b["CreationDate"].isoformat(),
                         }
-                    else:
-                        # List objects in bucket
-                        return await asyncio.to_thread(
-                            _list_objects_sync, s3_client, bucket, prefix
-                        )
-
-                elif action == "get":
-                    if not bucket or not key:
-                        raise HTTPException(
-                            status_code=400,
-                            detail="Bucket and Key are required for 'get' action",
-                        )
-
-                    # Generate presigned URL for the user to download directly
-                    try:
-                        presigned_url = await asyncio.to_thread(
-                            s3_client.generate_presigned_url,
-                            "get_object",
-                            Params={"Bucket": bucket, "Key": key},
-                            ExpiresIn=3600,
-                        )
-                    except Exception as e:
-                        raise HTTPException(
-                            status_code=500,
-                            detail=f"Failed to generate presigned URL: {str(e)}",
-                        )
-
-                    # If the client explicitly requests JSON, return the URL as JSON
-                    # This is useful for frontend to handle the redirect manually (e.g. window.open)
-                    accept = request.headers.get("accept", "")
-                    if "application/json" in accept:
-                        return {"url": presigned_url}
-
-                    # Default to redirecting the browser
-                    return fastapi.responses.RedirectResponse(
-                        presigned_url, status_code=307
-                    )
-
-                raise HTTPException(
-                    status_code=400, detail=f"Unsupported action: {action}"
-                )
-
-            except ClientError as e:
-                error_code = e.response.get("Error", {}).get("Code", "Unknown")
-                raise HTTPException(
-                    status_code=400, detail=f"S3 Error ({error_code}): {str(e)}"
-                )
-            except Exception as e:
-                raise HTTPException(status_code=500, detail=str(e))
-
-        @router.post(
-            f"{model_path}/_fs",
-            operation_id=f"mw-fs-post-{cls.entity_type()}",
-            tags=path_tags,
-        )
-        async def fs_ops_post(
-            svc: Annotated[cls, Depends(cls.get_service)],
-            model: Annotated[S3Storage, Depends(cls.get_model)],
-            bucket: str,
-            action: Literal["put", "rm"] = "put",
-            prefix: str = "",
-            key: Optional[str] = None,
-            file: Optional[UploadFile] = File(None),
-        ) -> dict[str, Any]:
-            region = model.region
-            access_key = model.access_key
-            secret_key = None
-            endpoint_url = model.endpoint_url
-            verify_ssl = model.verify_ssl
-
-            if model.secret_key:
-                try:
-                    secret_key = decrypt_password(model.secret_key)
-                except EncryptionError:
-                    pass
-
-            try:
-                # Create S3 client
-                s3_config = {
-                    "aws_access_key_id": access_key,
-                    "region_name": region,
+                        for b in response.get("Buckets", [])
+                    ],
                 }
-
-                if secret_key:
-                    s3_config["aws_secret_access_key"] = secret_key
-
-                if endpoint_url:
-                    s3_config["endpoint_url"] = endpoint_url
-
-                s3_client = boto3.client("s3", verify=verify_ssl, **s3_config)
-
-                if action == "put":
-                    if not file:
-                        raise HTTPException(
-                            status_code=400, detail="File is required for 'put' action"
-                        )
-
-                    # Ensure prefix ends with / if specified and not already there
-                    if prefix and not prefix.endswith("/"):
-                        prefix += "/"
-
-                    key = f"{prefix}{file.filename}"
-
-                    # Upload to S3
-                    await asyncio.to_thread(
-                        s3_client.upload_fileobj, file.file, bucket, key
-                    )
-
-                    return {
-                        "status": "success",
-                        "message": f"Successfully uploaded '{file.filename}' to '{bucket}/{prefix}'",
-                        "bucket": bucket,
-                        "key": key,
-                    }
-
-                if action == "rm":
-                    if not key:
-                        raise HTTPException(
-                            status_code=400, detail="Key is required for 'rm' action"
-                        )
-
-                    # Delete from S3
-                    await asyncio.to_thread(
-                        s3_client.delete_object, Bucket=bucket, Key=key
-                    )
-
-                    return {
-                        "status": "success",
-                        "message": f"Successfully deleted '{key}' from '{bucket}'",
-                        "bucket": bucket,
-                        "key": key,
-                    }
-
-                raise HTTPException(
-                    status_code=400, detail=f"Unsupported action: {action}"
+            else:
+                # List objects in bucket
+                return await asyncio.to_thread(
+                    _list_objects_sync, s3_client, bucket, prefix
                 )
 
-            except ClientError as e:
-                error_code = e.response.get("Error", {}).get("Code", "Unknown")
+        elif action == "get":
+            if not bucket or not key:
                 raise HTTPException(
-                    status_code=400, detail=f"S3 Error ({error_code}): {str(e)}"
+                    status_code=400,
+                    detail="Bucket and Key are required for 'get' action",
+                )
+
+            # Generate presigned URL for the user to download directly
+            try:
+                presigned_url = await asyncio.to_thread(
+                    s3_client.generate_presigned_url,
+                    "get_object",
+                    Params={"Bucket": bucket, "Key": key},
+                    ExpiresIn=3600,
                 )
             except Exception as e:
-                raise HTTPException(status_code=500, detail=str(e))
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to generate presigned URL: {str(e)}",
+                )
+
+            # If the client explicitly requests JSON, return the URL as JSON
+            # This is useful for frontend to handle the redirect manually (e.g. window.open)
+            accept = request.headers.get("accept", "")
+            if "application/json" in accept:
+                return {"url": presigned_url}
+
+            # Default to redirecting the browser
+            return fastapi.responses.RedirectResponse(presigned_url, status_code=307)
+
+        raise HTTPException(status_code=400, detail=f"Unsupported action: {action}")
+
+    except ClientError as e:
+        error_code = e.response.get("Error", {}).get("Code", "Unknown")
+        raise HTTPException(
+            status_code=400, detail=f"S3 Error ({error_code}): {str(e)}"
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-router = S3StorageService.router()
+@S3StorageService.model_view(
+    method="POST",
+    path="/_fs",
+    operation_id=f"mw-fs-post-{S3StorageService.entity_type()}",
+)
+async def fs_ops_post(
+    svc: Annotated[S3StorageService, Depends(S3StorageService.get_service)],
+    model: Annotated[S3Storage, Depends(S3StorageService.get_model)],
+    bucket: str,
+    action: Literal["put", "rm"] = "put",
+    prefix: str = "",
+    key: Optional[str] = None,
+    file: Optional[UploadFile] = File(None),
+) -> dict[str, Any]:
+    region = model.region
+    access_key = model.access_key
+    secret_key = None
+    endpoint_url = model.endpoint_url
+    verify_ssl = model.verify_ssl
+
+    if model.secret_key:
+        try:
+            secret_key = decrypt_password(model.secret_key)
+        except EncryptionError:
+            pass
+
+    try:
+        # Create S3 client
+        s3_config = {
+            "aws_access_key_id": access_key,
+            "region_name": region,
+        }
+
+        if secret_key:
+            s3_config["aws_secret_access_key"] = secret_key
+
+        if endpoint_url:
+            s3_config["endpoint_url"] = endpoint_url
+
+        s3_client = boto3.client("s3", verify=verify_ssl, **s3_config)
+
+        if action == "put":
+            if not file:
+                raise HTTPException(
+                    status_code=400, detail="File is required for 'put' action"
+                )
+
+            # Ensure prefix ends with / if specified and not already there
+            if prefix and not prefix.endswith("/"):
+                prefix += "/"
+
+            key = f"{prefix}{file.filename}"
+
+            # Upload to S3
+            await asyncio.to_thread(s3_client.upload_fileobj, file.file, bucket, key)
+
+            return {
+                "status": "success",
+                "message": f"Successfully uploaded '{file.filename}' to '{bucket}/{prefix}'",
+                "bucket": bucket,
+                "key": key,
+            }
+
+        if action == "rm":
+            if not key:
+                raise HTTPException(
+                    status_code=400, detail="Key is required for 'rm' action"
+                )
+
+            # Delete from S3
+            await asyncio.to_thread(s3_client.delete_object, Bucket=bucket, Key=key)
+
+            return {
+                "status": "success",
+                "message": f"Successfully deleted '{key}' from '{bucket}'",
+                "bucket": bucket,
+                "key": key,
+            }
+
+        raise HTTPException(status_code=400, detail=f"Unsupported action: {action}")
+
+    except ClientError as e:
+        error_code = e.response.get("Error", {}).get("Code", "Unknown")
+        raise HTTPException(
+            status_code=400, detail=f"S3 Error ({error_code}): {str(e)}"
+        )
+    except Exception as e:
+        raise HTTPException(statuscode=500, detail=str(e))
 
 
-@router.post(
-    f"{S3StorageService.service_path()}/_test-connection",
-    tags=S3StorageService.path_tags(),
+@S3StorageService.service_view(
+    method="POST",
+    path="/_test-connection",
 )
 async def test_connection(
     data: TestConnectionRequest,
@@ -531,3 +513,6 @@ async def test_connection(
         raise
     except Exception as e:
         raise FieldValidationError(message=str(e))
+
+
+router = S3StorageService.router()
