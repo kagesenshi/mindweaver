@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright © 2025 Mohd Izhar Firdaus Bin Ismail
+# SPDX-License-Identifier: AGPLv3+
+
 from sqlmodel import SQLModel, Field, Column
 from sqlalchemy.orm import declared_attr
 from sqlalchemy import UniqueConstraint

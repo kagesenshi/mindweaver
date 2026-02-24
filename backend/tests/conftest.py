@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright © 2025 Mohd Izhar Firdaus Bin Ismail
+# SPDX-License-Identifier: AGPLv3+
+
 import os
 
 os.environ["MINDWEAVER_EXPERIMENTAL_AI_AGENT"] = "true"

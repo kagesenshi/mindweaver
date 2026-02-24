@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright © 2025 Mohd Izhar Firdaus Bin Ismail
+# SPDX-License-Identifier: AGPLv3+
+
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config

@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
+# SPDX-License-Identifier: AGPLv3+
+
 from mindweaver.ext.data_source import (
     get_driver_options,
     DriverRegistry,

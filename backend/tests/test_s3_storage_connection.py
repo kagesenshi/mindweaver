@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
+# SPDX-License-Identifier: AGPLv3+
+
 """Tests for s3 storage test_connection endpoint."""
 
 from fastapi.testclient import TestClient

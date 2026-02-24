@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
+# SPDX-License-Identifier: AGPLv3+
+
 from typing import Dict, Type, Optional, Any
 from .base import DataSourceDriver
 

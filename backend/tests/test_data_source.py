@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright © 2025 Mohd Izhar Firdaus Bin Ismail
+# SPDX-License-Identifier: AGPLv3+
+
 from fastapi.testclient import TestClient
 from mindweaver.config import logger
 import pytest

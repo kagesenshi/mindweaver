@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright © 2025 Mohd Izhar Firdaus Bin Ismail
+# SPDX-License-Identifier: AGPLv3+
+
 import fastapi
 from .config import settings
 from .service.data_source import router as ds_router

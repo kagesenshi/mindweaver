@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright © 2025 Mohd Izhar Firdaus Bin Ismail
+# SPDX-License-Identifier: AGPLv3+
+
 from . import NamedBase, Base
 from .ontology import Ontology
 from .base import ProjectScopedNamedBase, ProjectScopedService

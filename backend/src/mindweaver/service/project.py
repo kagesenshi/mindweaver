@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright © 2025 Mohd Izhar Firdaus Bin Ismail
+# SPDX-License-Identifier: AGPLv3+
+
 import enum
 from typing import Any, Optional, Annotated
 from mindweaver.fw.state import BaseState

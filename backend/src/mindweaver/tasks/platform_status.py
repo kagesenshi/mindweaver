@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
+# SPDX-License-Identifier: AGPLv3+
+
 from mindweaver.celery_app import app
 from mindweaver.fw.model import get_engine
 from sqlmodel.ext.asyncio.session import AsyncSession

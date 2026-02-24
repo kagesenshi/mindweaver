@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
+# SPDX-License-Identifier: AGPLv3+
+
 from sqlmodel import Field
 from typing import Optional
 from mindweaver.platform_service.base import PlatformStateBase, DefaultPlatformState

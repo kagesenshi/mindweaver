@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright © 2025 Mohd Izhar Firdaus Bin Ismail
+# SPDX-License-Identifier: AGPLv3+
+
 from . import NamedBase, Base
 from .base import ProjectScopedNamedBase, ProjectScopedService
 from sqlalchemy import String

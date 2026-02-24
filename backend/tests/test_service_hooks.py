@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright © 2025 Mohd Izhar Firdaus Bin Ismail
+# SPDX-License-Identifier: AGPLv3+
+
 import pytest
 from unittest.mock import MagicMock, AsyncMock
 from mindweaver.fw.service import (
