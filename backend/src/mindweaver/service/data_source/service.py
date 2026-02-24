@@ -14,42 +14,7 @@ from sqlalchemy.engine import URL
 from mindweaver.ext.data_source import get_driver_options, get_driver
 
 
-class DataSource(ProjectScopedNamedBase, table=True):
-    __tablename__ = "mw_datasource"
-
-    description: Optional[str] = Field(
-        default=None, sa_type=Text, sa_column_kwargs={"info": {"column_span": 2}}
-    )
-    driver: str = Field(
-        sa_type=String(length=50),
-        description="Source type / driver (e.g. web, postgresql, trino)",
-        sa_column_kwargs={
-            "info": {
-                "widget": "select",
-                "label": "Driver",
-            }
-        },
-    )
-    host: Optional[str] = Field(default=None, sa_type=String(length=255))
-    port: Optional[int] = Field(default=None)
-    resource: Optional[str] = Field(
-        default=None,
-        sa_type=String(length=500),
-        description="Path, database name, schema, etc.",
-    )
-    login: Optional[str] = Field(default=None, sa_type=String(length=255))
-    password: Optional[str] = Field(
-        default=None,
-        sa_type=String(length=500),
-        sa_column_kwargs={"info": {"widget": "password"}},
-    )
-    enable_ssl: bool = Field(default=False, sa_type=Boolean)
-    verify_ssl: bool = Field(default=False, sa_type=Boolean)
-    parameters: dict[str, Any] = Field(
-        default={},
-        sa_type=JSONType(),
-        description="Extra driver parameters (querystring format)",
-    )
+from .model import DataSource
 
 
 class DataSourceService(SecretHandlerMixin, ProjectScopedService[DataSource]):
