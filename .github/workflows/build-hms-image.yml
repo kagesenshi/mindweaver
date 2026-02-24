@@ -6,8 +6,8 @@ on:
       - main
     paths:
       - "images/hive-metastore/**"
-  tags:
-    - "v*"
+    tags:
+      - "v*"
   workflow_dispatch:
 
 permissions:
