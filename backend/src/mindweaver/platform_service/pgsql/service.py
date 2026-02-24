@@ -194,7 +194,7 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
             msg = error["msg"]
             loc = error["loc"]
             raise FieldValidationError(field_location=list(loc), message=msg)
-        return data
+        return await super().validate_data(data)
 
     async def clear_state(self, model: PgSqlPlatform):
         """Clears the PostgreSQL platform state."""

@@ -4,15 +4,7 @@
 import fastapi
 from .config import settings
 from .service.data_source import router as ds_router
-from .service.knowledge_db import router as kdb_router
-from .service.ontology import router as ontology_router
-from .service.ai_agent import router as agent_router
-from .service.chat import router as chat_router
 from .service.s3_storage import router as s3_router
-from .service.ingestion import (
-    router as ingestion_router,
-    run_router as ingestion_run_router,
-)
 from .service.project import router as project_router
 from .service.auth import router as auth_router, verify_token
 from .platform_service.pgsql import router as pgsql_router
@@ -135,9 +127,7 @@ async def health():
 async def feature_flags():
     return {
         "experimental_data_source": settings.experimental_data_source,
-        "experimental_knowledge_db": settings.experimental_knowledge_db,
         "experimental_s3_storage": settings.experimental_s3_storage,
-        "experimental_ingestion": settings.experimental_ingestion,
     }
 
 
@@ -148,12 +138,3 @@ app.include_router(s3_router, prefix="/api/v1")
 
 if settings.experimental_data_source:
     app.include_router(ds_router, prefix="/api/v1")
-if settings.experimental_knowledge_db:
-    app.include_router(kdb_router, prefix="/api/v1")
-    app.include_router(ontology_router, prefix="/api/v1")
-    app.include_router(agent_router, prefix="/api/v1")
-    app.include_router(chat_router, prefix="/api/v1")
-
-if settings.experimental_ingestion:
-    app.include_router(ingestion_router, prefix="/api/v1")
-    app.include_router(ingestion_run_router, prefix="/api/v1")
