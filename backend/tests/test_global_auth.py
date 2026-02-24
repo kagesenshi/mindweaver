@@ -15,11 +15,14 @@ def manage_auth_setting():
     old_oidc_issuer = settings.oidc_issuer
     old_oidc_client_id = settings.oidc_client_id
     old_oidc_client_secret = settings.oidc_client_secret
+    old_jwt_secret = settings.jwt_secret
+    settings.jwt_secret = "a_very_long_secret_key_for_testing_purposes_only_32_bytes"
     yield
     settings.enable_auth = old_enable_auth
     settings.oidc_issuer = old_oidc_issuer
     settings.oidc_client_id = old_oidc_client_id
     settings.oidc_client_secret = old_oidc_client_secret
+    settings.jwt_secret = old_jwt_secret
 
 
 def test_health_accessible_without_auth(client: TestClient):
@@ -101,7 +104,9 @@ def test_auth_endpoints_exempt(client: TestClient):
     mock_token_resp.status_code = 200
     # Mock ID Token payload
     mock_id_token = jwt.encode(
-        {"email": "test@example.com", "name": "Test User"}, "secret", algorithm="HS256"
+        {"email": "test@example.com", "name": "Test User"},
+        "a_very_long_secret_key_for_testing_purposes_only_32_bytes",
+        algorithm="HS256",
     )
     mock_token_resp.json.return_value = {"id_token": mock_id_token}
 
@@ -135,7 +140,7 @@ def test_auth_callback_creates_user(client: TestClient):
     mock_token_resp.status_code = 200
     mock_id_token = jwt.encode(
         {"email": "newuser@example.com", "name": "New User"},
-        "secret",
+        "a_very_long_secret_key_for_testing_purposes_only_32_bytes",
         algorithm="HS256",
     )
     mock_token_resp.json.return_value = {"id_token": mock_id_token}
