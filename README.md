@@ -82,4 +82,3 @@ The frontend is a React application built with Vite. Currently, there is no test
 
 *   **Backend**: Python, FastAPI, SQLModel, Celery, Alembic. Located in `backend/`.
 *   **Frontend**: React, Vite, Tailwind CSS. Located in `frontend/`.
-*   **Infrastructure**: Docker Compose for local development (Postgres, Redis). Kubernetes manifests in `k8s/`.
