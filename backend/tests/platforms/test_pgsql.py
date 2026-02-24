@@ -386,6 +386,9 @@ async def test_pgsql_image_selection(client: TestClient, test_project):
     mock_session = MagicMock()
 
     svc = PgSqlPlatformService(mock_request, mock_session)
+    # Mock _resolve_namespace to avoid DB call
+    svc._resolve_namespace = AsyncMock(return_value="test-ns")
+
     model = PgSqlPlatform(
         name="test-pg",
         title="Test PG",

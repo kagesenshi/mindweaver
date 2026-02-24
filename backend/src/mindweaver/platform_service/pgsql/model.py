@@ -22,6 +22,7 @@ class PgSqlPlatform(PlatformBase, table=True):
 
     # Backup configuration (using Barman Cloud Object Store)
     enable_backup: bool = Field(default=False)
+    backup_schedule: str = Field(default="0 0 * * *")
     backup_destination: str | None = Field(default=None)
     backup_retention_policy: str = Field(default="30d")
     s3_storage_id: int | None = Field(default=None, foreign_key="mw_s3_storage.id")

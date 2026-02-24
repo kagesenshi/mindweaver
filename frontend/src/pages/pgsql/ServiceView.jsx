@@ -92,20 +92,44 @@ const ServiceView = ({
         if (platformState.active) {
             setIsDecommissionModalOpen(true);
         } else {
-            const newState = { active: true };
-            await updatePlatformState(selectedPlatformId, newState);
-            const updated = await getPlatformState(selectedPlatformId);
-            setPlatformState(updated);
+            // Optimistic update
+            setPlatformState({ ...platformState, active: true, status: 'pending', message: 'Triggering deployment...' });
+
+            try {
+                const response = await updatePlatformState(selectedPlatformId, { active: true });
+                if (response) {
+                    setPlatformState(response);
+                }
+                // Fetch latest status immediately
+                await handleRefresh();
+            } catch (err) {
+                showError(`Failed to trigger deployment: ${err.message}`);
+                // Revert state on error
+                const original = await getPlatformState(selectedPlatformId);
+                setPlatformState(original);
+            }
         }
     };
 
     const handleDecommission = async (name) => {
         if (!selectedPlatformId) return;
-        const newState = { active: false };
-        await updatePlatformState(selectedPlatformId, newState, { 'X-RESOURCE-NAME': name });
-        const updated = await getPlatformState(selectedPlatformId);
-        setPlatformState(updated);
+
+        // Optimistic update
+        setPlatformState({ ...platformState, active: false, status: 'offline', message: 'Decommissioning...' });
         setIsDecommissionModalOpen(false);
+
+        try {
+            const response = await updatePlatformState(selectedPlatformId, { active: false }, { 'X-RESOURCE-NAME': name });
+            if (response) {
+                setPlatformState(response);
+            }
+            await handleRefresh();
+        } catch (err) {
+            showError(`Failed to decommission cluster: ${err.message}`);
+            // Revert state on error
+            const original = await getPlatformState(selectedPlatformId);
+            setPlatformState(original);
+        }
     };
 
     const handleExecuteAction = async (actionName) => {
@@ -338,10 +362,10 @@ const ServiceView = ({
                                                         </div>
                                                         <div className="p-6 relative group">
                                                             <pre className="text-sm font-mono text-blue-400 leading-relaxed overflow-x-auto whitespace-pre-wrap">
-                                                                psql -h {platformState.cluster_nodes?.[0]?.ipv4 || '[NODE_IP]'} -p {sortedPorts?.[0]?.node_port || '[PORT]'} -U {platformState?.db_user || 'pending'} -d {platformState?.db_name || 'pending'}
+                                                                psql "host={platformState.cluster_nodes?.[0]?.ipv4 || '[NODE_IP]'} port={sortedPorts?.[0]?.node_port || '[PORT]'} user={platformState?.db_user || 'pending'} dbname={platformState?.db_name || 'pending'} sslmode=verify-full sslrootcert=ca.crt"
                                                             </pre>
                                                             <button
-                                                                onClick={() => navigator.clipboard.writeText(`psql -h ${platformState.cluster_nodes?.[0]?.ipv4 || '[NODE_IP]'} -p ${sortedPorts?.[0]?.node_port || '[PORT]'} -U ${platformState?.db_user || 'pending'} -d ${platformState?.db_name || 'pending'}`)}
+                                                                onClick={() => navigator.clipboard.writeText(`psql "host=${platformState.cluster_nodes?.[0]?.ipv4 || '[NODE_IP]'} port=${sortedPorts?.[0]?.node_port || '[PORT]'} user=${platformState?.db_user || 'pending'} dbname=${platformState?.db_name || 'pending'} sslmode=verify-full sslrootcert=ca.crt"`)}
                                                                 className="absolute top-4 right-4 p-2 text-slate-500 hover:text-white opacity-0 group-hover:opacity-100 transition-all"
                                                             >
                                                                 <Copy size={16} />

@@ -4,6 +4,8 @@
 from .service import ProjectService
 from .model import Project, K8sClusterType
 import mindweaver.service.project.views
+import mindweaver.service.project.actions
+
 
 router = ProjectService.router()
 

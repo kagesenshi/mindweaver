@@ -5,12 +5,28 @@ from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
-from sqlmodel import SQLModel
 from alembic import context
+from sqlmodel import SQLModel
 
-# this is the Alembic Config object, which provides
-# access to the values within the .ini file in use.
+# Import all models for autogenerate support
+from mindweaver.service.project.model import Project, ProjectStatus
+from mindweaver.service.data_source.model import DataSource
+from mindweaver.service.s3_storage.model import S3Storage
+from mindweaver.platform_service.pgsql.model import PgSqlPlatform, PgSqlPlatformState
+from mindweaver.service.auth import User
+
+# from mindweaver.auth.model import User # If exists
+
+
+from mindweaver.config import settings
+
 config = context.config
+if (
+    not config.get_main_option("sqlalchemy.url")
+    or config.get_main_option("sqlalchemy.url") == "driver://user:pass@localhost/dbname"
+):
+    config.set_main_option("sqlalchemy.url", settings.db_uri)
+
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

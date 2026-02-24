@@ -43,12 +43,23 @@ export const useProjects = () => {
         return response.data;
     }, []);
 
+    const fetchActions = useCallback(async (id) => {
+        const response = await apiClient.get(`/projects/${id}/_actions`);
+        return response.data.actions || [];
+    }, []);
+
+    const executeAction = useCallback(async (id, action, parameters = {}) => {
+        const response = await apiClient.post(`/projects/${id}/_actions`, { action, parameters });
+        return response.data;
+    }, []);
+
     useEffect(() => {
         fetchProjects();
     }, [fetchProjects]);
 
-    return { projects, loading, error, fetchProjects, createProject, updateProject, deleteProject, getProjectState };
+    return { projects, loading, error, fetchProjects, createProject, updateProject, deleteProject, getProjectState, fetchActions, executeAction };
 };
+
 
 export const useDataSources = () => {
     const [dataSources, setDataSources] = useState([]);
@@ -123,9 +134,9 @@ export const usePgSql = () => {
     }, [fetchPlatforms]);
 
     const updatePlatformState = useCallback(async (id, state, headers = {}) => {
-        await apiClient.post(`/platform/pgsql/${id}/_state`, state, { headers });
-        await new Promise(resolve => setTimeout(resolve, 500));
+        const response = await apiClient.post(`/platform/pgsql/${id}/_state`, state, { headers });
         await fetchPlatforms();
+        return response.data;
     }, [fetchPlatforms]);
 
     const deletePlatform = useCallback(async (id, confirmName) => {

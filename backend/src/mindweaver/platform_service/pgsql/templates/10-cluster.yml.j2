@@ -1,36 +1,63 @@
-apiVersion: postgresql.cnpg.io/v1
-kind: Cluster
+apiVersion: argoproj.io/v1alpha1
+kind: Application
 metadata:
   name: {{ name }}
+  namespace: argocd
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
 spec:
-  instances: {{ instances }}
-  imageName: {{ image_name }}
-  storage:
-    size: {{ storage_size }}
-  resources:
-    requests:
-      cpu: "{{ cpu_request }}"
-      memory: "{{ mem_request }}Gi"
-    limits:
-      cpu: "{{ cpu_limit }}"
-      memory: "{{ mem_limit }}Gi"
-
-{% if backup_destination %}
-  backup:
-    barmanObjectStore:
-      destinationPath: {{ backup_destination }}
-      {% if s3_endpoint_url %}
-      endpointURL: {{ s3_endpoint_url }}
-      {% endif %}
-      {% if s3_access_key and s3_secret_key %}
-      s3Credentials:
-        accessKeyId:
-          name: {{ name }}-s3-secret
-          key: ACCESS_KEY_ID
-        secretAccessKey:
-          name: {{ name }}-s3-secret
-          key: SECRET_ACCESS_KEY
-      {% endif %}
-      retentionPolicy: {{ backup_retention_policy }}
-{% endif %}
+  project: default
+  source:
+    repoURL: 'https://cloudnative-pg.github.io/charts'
+    targetRevision: 0.5.0
+    chart: cluster
+    helm:
+      values: |
+        cluster:
+          name: {{ name }}
+          instances: {{ instances }}
+          imageName: {{ image_name }}
+          storage:
+            size: {{ storage_size }}
+          resources:
+            requests:
+              cpu: "{{ cpu_request }}"
+              memory: "{{ mem_request }}Gi"
+            limits:
+              cpu: "{{ cpu_limit }}"
+              memory: "{{ mem_limit }}Gi"
+          {% if backup_destination %}
+          backup:
+            barmanObjectStore:
+              destinationPath: {{ backup_destination }}
+              {% if s3_endpoint_url %}
+              endpointURL: {{ s3_endpoint_url }}
+              {% endif %}
+              {% if s3_access_key and s3_secret_key %}
+              s3Credentials:
+                accessKeyId:
+                  name: {{ name }}-s3-secret
+                  key: ACCESS_KEY_ID
+                secretAccessKey:
+                  name: {{ name }}-s3-secret
+                  key: SECRET_ACCESS_KEY
+              {% endif %}
+              retentionPolicy: {{ backup_retention_policy }}
+          {% endif %}
+          {% if enable_backup and backup_schedule %}
+          scheduledBackups:
+            - name: {{ name }}-scheduled-backup
+              schedule: "{{ backup_schedule }}"
+              backupOwnerReference: self
+              method: barmanObjectStore
+          {% endif %}
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: {{ namespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
 

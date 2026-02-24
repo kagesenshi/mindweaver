@@ -108,13 +108,17 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
             },
             "storage_size": {"order": 15},
             "enable_backup": {"order": 16, "type": "boolean"},
-            "backup_destination": {"order": 17},
-            "backup_retention_policy": {"order": 18},
-            "s3_storage_id": {"order": 19},
+            "backup_schedule": {"order": 17, "label": "Backup Schedule (Cron)"},
+            "backup_destination": {"order": 18},
+            "backup_retention_policy": {"order": 19},
+            "s3_storage_id": {"order": 20},
         }
 
     async def template_vars(self, model: PgSqlPlatform) -> dict:
         vars = model.model_dump()
+
+        # Resolve namespace
+        vars["namespace"] = await self._resolve_namespace(model)
 
         # Parse image catalog and version from model
         image_parts = model.image.split(":")
@@ -206,9 +210,25 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
 
                 message = f"Phase: {phase}, Instances: {ready_instances}/{instances}"
             except client.exceptions.ApiException as e:
-                if e.status == 404 and not active:
-                    status = "offline"
-                    message = "Cluster is stopped"
+                if e.status == 404:
+                    if not active:
+                        status = "offline"
+                        message = "Cluster is stopped"
+                    else:
+                        # Cluster object doesn't exist yet, but maybe ArgoCD Application does
+                        try:
+                            custom_api.get_namespaced_custom_object(
+                                group="argoproj.io",
+                                version="v1alpha1",
+                                namespace="argocd",
+                                plural="applications",
+                                name=model.name,
+                            )
+                            status = "pending"
+                            message = "Provisioning resources"
+                        except Exception:
+                            status = "error"
+                            message = f"Failed to fetch cluster status: {str(e)}"
                 else:
                     status = "error"
                     message = f"Failed to fetch cluster status: {str(e)}"
@@ -312,6 +332,13 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
         if not state:
             state = self.state_model(platform_id=model.id)
             self.session.add(state)
+
+        if not state.active:
+            # If decommissioned/inactive, only update if it fully transitions to offline
+            if status == "offline":
+                state.status = "offline"
+                state.message = message
+            return
 
         state.status = status
         state.message = message

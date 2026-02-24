@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPLv3+
 
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, AsyncMock
 from fastapi import Request
 from sqlmodel import Session
 from mindweaver.platform_service.pgsql import PgSqlPlatform, PgSqlPlatformService
@@ -82,25 +82,22 @@ async def test_pgsql_template_rendering(mock_service_dependencies):
         mem_request=2.0,
         mem_limit=4.0,
         storage_size="10Gi",
+        enable_backup=True,
+        backup_schedule="0 1 * * *",
     )
+
+    # Mock _resolve_namespace
+    svc._resolve_namespace = AsyncMock(return_value="test-ns")
 
     # Get template variables
     vars = await svc.template_vars(model)
-
-    # Render template (we only test 10-cluster.yml.j2)
-    # Since we can't easily access the internal render method without setting up more mocks,
-    # we will manually verify the variables are present and check logic if needed.
-    # But better yet, we can try to render it if we have the environment set up.
-    # For unit test, checking variables might be enough if we trust the jinja template.
-
-    # However, to be thorough, let's try to verify the template content if possible.
-    # PgSqlPlatformService.render_manifests is complex to mock fully.
-    # Let's verify that the variables are correctly populated first.
 
     assert vars["cpu_request"] == 0.5
     assert vars["cpu_limit"] == 1.0
     assert vars["mem_request"] == 2.0
     assert vars["mem_limit"] == 4.0
+    assert vars["namespace"] == "test-ns"
+    assert vars["backup_schedule"] == "0 1 * * *"
 
     # Basic check against the template file content to ensure placeholders exist
     import os
@@ -109,10 +106,11 @@ async def test_pgsql_template_rendering(mock_service_dependencies):
     with open(template_path, "r") as f:
         content = f.read()
 
-    assert 'cpu: "{{ cpu_request }}"' in content
-    assert 'memory: "{{ mem_request }}Gi"' in content
-    assert 'cpu: "{{ cpu_limit }}"' in content
-    assert 'memory: "{{ mem_limit }}Gi"' in content
+    assert "kind: Application" in content
+    assert "repoURL: 'https://cloudnative-pg.github.io/charts'" in content
+    assert "chart: cluster" in content
+    assert "namespace: {{ namespace }}" in content
+    assert 'schedule: "{{ backup_schedule }}"' in content
 
 
 def test_pgsql_widgets_caching():
