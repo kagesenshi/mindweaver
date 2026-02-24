@@ -6,6 +6,11 @@ on:
       - main
     tags:
       - "v*"
+    paths:
+      - "Dockerfile"
+      - "container/**"
+      - "backend/**"
+      - "frontend/**"
   workflow_dispatch:
 
 permissions:
