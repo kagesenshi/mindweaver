@@ -148,7 +148,7 @@ the tests first before implementing the fixes.
 
 1. **Research & Plan**: Understand the requirements and existing patterns.
 2. **Backend implementation**:
-   - Write `pytest` unit tests in `backend/tests`.
+   - Write `pytest` unit tests in `backend/tests`. Remember to create negative tests alongside normal tests.
    - Implement models and service logic.
    - Run `uv run --package mindweaver pytest tests` to verify.
 3. **Frontend Implementation**:
@@ -169,3 +169,4 @@ the tests first before implementing the fixes.
 - **Communicate**: If a design decision is ambiguous, ask the user for clarification before proceeding.
 - **Advise Correction**: If user made a request based on a statement that is not true, explain what is really happening and ask for confirmation first. 
 - **Session Commit**: Session commit is already handled by the session object dependency. No explicit commit on views. Celery tasks require explicit commit because it does not use dependency injection.
+- **Remember Lessons**: Maintain a lessons learned registry in MEMORY.md of any corrections instructed by user.
