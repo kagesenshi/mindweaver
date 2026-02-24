@@ -1,17 +1,20 @@
+# SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
+# SPDX-License-Identifier: AGPLv3+
+
 import pytest
 from fastapi import APIRouter
 from mindweaver.fw.model import NamedBase
 from mindweaver.fw.service import Service
 
 
-class DummyModel(NamedBase, table=True):
-    pass
+class CustomViewDummyModel(NamedBase, table=True):
+    __tablename__ = "custom_view_dummy"
 
 
-class BaseCustomViewService(Service[DummyModel]):
+class BaseCustomViewService(Service[CustomViewDummyModel]):
     @classmethod
     def model_class(cls):
-        return DummyModel
+        return CustomViewDummyModel
 
 
 @BaseCustomViewService.service_view("POST", "/base-service")
@@ -70,22 +73,22 @@ def test_custom_views_mounts_on_router():
     router = ChildCustomViewService.router()
     routes = router.routes
 
-    # Service path is /dummy_models
-    # Model path is /dummy_models/{id}
+    # Service path is /custom_view_dummy_models
+    # Model path is /custom_view_dummy_models/{id}
     route_paths = [r.path for r in routes]
 
-    assert "/dummy_models/base-service" in route_paths
-    assert "/dummy_models/{id}/base-model" in route_paths
-    assert "/dummy_models/child-service" in route_paths
+    assert "/custom_view_dummy_models/base-service" in route_paths
+    assert "/custom_view_dummy_models/{id}/base-model" in route_paths
+    assert "/custom_view_dummy_models/child-service" in route_paths
 
     # Verify attributes of the mounted routes
     base_service_route = next(
-        r for r in routes if r.path == "/dummy_models/base-service"
+        r for r in routes if r.path == "/custom_view_dummy_models/base-service"
     )
     assert "POST" in base_service_route.methods
 
     base_model_route = next(
-        r for r in routes if r.path == "/dummy_models/{id}/base-model"
+        r for r in routes if r.path == "/custom_view_dummy_models/{id}/base-model"
     )
     assert "GET" in base_model_route.methods
     assert base_model_route.description == "test description"
