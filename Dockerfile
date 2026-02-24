@@ -52,8 +52,8 @@ FROM backend-base
 COPY --from=frontend-builder /app/dist /usr/share/nginx/html
 
 # Copy configurations
-COPY nginx.conf /etc/nginx/nginx.conf
-COPY start.sh /app/start.sh
+COPY container/nginx.conf /etc/nginx/nginx.conf
+COPY container/start.sh /app/start.sh
 RUN chmod +x /app/start.sh && \
     chown app:app /app/start.sh /usr/share/nginx/html
 
