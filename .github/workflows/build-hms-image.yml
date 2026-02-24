@@ -1,0 +1,49 @@
+name: Build Hive Metastore Image
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "images/hive-metastore/**"
+  tags:
+    - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-hms-image:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download external dependencies
+        run: |
+          chmod +x images/hive-metastore/download.sh
+          ./images/hive-metastore/download.sh
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Hive Metastore image
+        uses: docker/build-push-action@v5
+        with:
+          context: images/hive-metastore
+          file: images/hive-metastore/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/mindweaver/hive-metastore:latest
+            ghcr.io/${{ github.repository_owner }}/mindweaver/hive-metastore:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
