@@ -9,7 +9,7 @@ from unittest.mock import patch, MagicMock
 from botocore.exceptions import ClientError, NoCredentialsError
 
 
-@patch("mindweaver.service.s3_storage.boto3")
+@patch("mindweaver.service.s3_storage.views.boto3")
 def test_s3_storage_test_connection_success(
     mock_boto3, client: TestClient, test_project
 ):
@@ -92,7 +92,7 @@ def test_s3_storage_test_connection_missing_access_key(
     assert "access key" in detail_str.lower()
 
 
-@patch("mindweaver.service.s3_storage.boto3")
+@patch("mindweaver.service.s3_storage.views.boto3")
 def test_s3_storage_test_connection_with_endpoint_url(
     mock_boto3, client: TestClient, test_project
 ):
@@ -124,7 +124,7 @@ def test_s3_storage_test_connection_with_endpoint_url(
     assert call_kwargs["verify"] is True
 
 
-@patch("mindweaver.service.s3_storage.boto3")
+@patch("mindweaver.service.s3_storage.views.boto3")
 def test_s3_storage_test_connection_with_verify_ssl_false(
     mock_boto3, client: TestClient, test_project
 ):
@@ -156,7 +156,7 @@ def test_s3_storage_test_connection_with_verify_ssl_false(
     assert call_kwargs["verify"] is False
 
 
-@patch("mindweaver.service.s3_storage.boto3")
+@patch("mindweaver.service.s3_storage.views.boto3")
 def test_s3_storage_test_connection_access_denied(
     mock_boto3, client: TestClient, test_project
 ):
@@ -186,7 +186,7 @@ def test_s3_storage_test_connection_access_denied(
     assert "access denied" in detail_str.lower()
 
 
-@patch("mindweaver.service.s3_storage.boto3")
+@patch("mindweaver.service.s3_storage.views.boto3")
 def test_s3_storage_test_connection_with_stored_secret(
     mock_boto3, client: TestClient, test_project
 ):
@@ -229,7 +229,7 @@ def test_s3_storage_test_connection_with_stored_secret(
     assert data["status"] == "success"
 
 
-@patch("mindweaver.service.s3_storage.boto3")
+@patch("mindweaver.service.s3_storage.views.boto3")
 def test_s3_storage_test_connection_with_redacted_secret(
     mock_boto3, client: TestClient, test_project
 ):
