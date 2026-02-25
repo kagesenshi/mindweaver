@@ -40,10 +40,11 @@ jobs:
       - name: Package Helm chart
         run: |
           cd helm/mindweaver
-          helm package .
+          VERSION=$(grep '^version:' Chart.yaml | awk '{print $2}')
+          helm package . --version "${VERSION}-alpha+$(printf "%04d" ${{ github.run_number }})"
 
       - name: Push Helm chart to GHCR
         run: |
           cd helm/mindweaver
           CHART_PACKAGE=$(ls mindweaver-*.tgz)
-          helm push $CHART_PACKAGE oci://ghcr.io/${{ github.repository_owner }}/mindweaver/charts
+          helm push "$CHART_PACKAGE" oci://ghcr.io/${{ github.repository_owner }}/mindweaver/charts
