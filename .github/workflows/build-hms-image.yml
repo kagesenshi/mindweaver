@@ -37,6 +37,11 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Extract version and timestamp
+        run: |
+          echo "VERSION=$(cat images/hive-metastore/VERSION.txt)" >> $GITHUB_ENV
+          echo "TIMESTAMP=$(date +%Y%m%d%H%M%S)" >> $GITHUB_ENV
+
       - name: Build and push Hive Metastore image
         uses: docker/build-push-action@v5
         with:
@@ -44,7 +49,9 @@ jobs:
           file: images/hive-metastore/Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/mindweaver/hive-metastore:latest
+            ghcr.io/${{ github.repository_owner }}/mindweaver/hive-metastore:edge
             ghcr.io/${{ github.repository_owner }}/mindweaver/hive-metastore:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/mindweaver/hive-metastore:${{ env.VERSION }}-alpha.${{ env.TIMESTAMP }}
+
           cache-from: type=gha
           cache-to: type=gha,mode=max
