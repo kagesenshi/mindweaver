@@ -1,4 +1,4 @@
-FROM eclipse-temurin:8-jre
+FROM eclipse-temurin:21-jre
 
 ENV HADOOP_VERSION=3.4.1
 ENV METASTORE_VERSION=4.2.0

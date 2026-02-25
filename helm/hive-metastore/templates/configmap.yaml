@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "hive-metastore.fullname" . }}-config
+  labels:
+    {{- include "hive-metastore.labels" . | nindent 4 }}
+data:
+  hive-site.xml: |-
+    <?xml version="1.0" encoding="UTF-8" standalone="no"?>
+    <?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+    <configuration>
+        <property>
+            <name>javax.jdo.option.ConnectionURL</name>
+            <value>jdbc:postgresql://${env.DB_HOST}:${env.DB_PORT}/${env.DB_NAME}</value>
+            <description>JDBC connect string for a JDBC metastore.</description>
+        </property>
+        <property>
+            <name>javax.jdo.option.ConnectionDriverName</name>
+            <value>org.postgresql.Driver</value>
+            <description>Driver class name for a JDBC metastore</description>
+        </property>
+        <property>
+            <name>javax.jdo.option.ConnectionUserName</name>
+            <value>${env.DB_USER}</value>
+            <description>username to use against metastore database</description>
+        </property>
+        <property>
+            <name>javax.jdo.option.ConnectionPassword</name>
+            <value>${env.DB_PASSWORD}</value>
+            <description>password to use against metastore database</description>
+        </property>
+        <property>
+            <name>hive.metastore.uris</name>
+            <value>thrift://0.0.0.0:{{ .Values.service.port }}</value>
+            <description>Thrift URI for the remote metastore.</description>
+        </property>
+    </configuration>
