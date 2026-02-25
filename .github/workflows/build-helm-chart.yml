@@ -41,7 +41,7 @@ jobs:
         run: |
           cd helm/mindweaver
           VERSION=$(grep '^version:' Chart.yaml | awk '{print $2}')
-          helm package . --version "${VERSION}-alpha.$(printf "%04d" ${{ github.run_number }})"
+          helm package . --version "${VERSION}-alpha.${{ github.run_number }}"
 
       - name: Push Helm chart to GHCR
         run: |
