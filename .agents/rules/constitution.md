@@ -169,4 +169,4 @@ the tests first before implementing the fixes.
 - **Advise Correction**: If user made a request based on a statement that is not true, explain what is really happening and ask for confirmation first. 
 - **Session Commit**: Session commit is already handled by the session object dependency. No explicit commit on views. Celery tasks require explicit commit because it does not use dependency injection.
 - **Remember Lessons**: Maintain a lessons learned registry in .agents/custom/MEMORY.md of any corrections instructed by user.
-- **Architecture Decision Record**: Maintain a ADR registry in docs/adr/ of any architectural decisions. one .md file per record.
+- **Architecture Decision Record**: Maintain a ADR registry in docs/architecture-decisions/ of any architectural decisions. one .md file per record.

@@ -273,3 +273,142 @@ Tests are located in `backend/tests` and use `pytest`.
     ```bash
     uv run --package mindweaver pytest backend/tests
     ```
+
+## Project Scoping and Multi-tenancy (Advanced)
+
+For models that belong to a project, use the specialized base classes and services.
+
+1.  **Models**: Inherit from `ProjectScopedNamedBase`.
+    ```python
+    from mindweaver.service.base import ProjectScopedNamedBase
+    from sqlmodel import Field
+
+    class ProjectResource(ProjectScopedNamedBase, table=True):
+        __tablename__ = "project_resource"
+        # project_id is automatically added
+    ```
+
+2.  **Services**: Inherit from `ProjectScopedService`.
+    ```python
+    from mindweaver.service.base import ProjectScopedService
+
+    class ProjectResourceService(ProjectScopedService[ProjectResource]):
+        @classmethod
+        def model_class(cls):
+            return ProjectResource
+    ```
+
+This ensures that the `X-Project-ID` header is required and automatically handled for filtering and injection.
+
+## Dependency Injection in Custom Views
+
+Custom views support FastAPI dependency injection. Use this to access the database session or other utilities.
+
+```python
+from mindweaver.fw.model import AsyncSession
+
+@MyService.service_view("GET", "/stats")
+async def get_stats(session: AsyncSession):
+    # session is automatically injected
+    pass
+```
+
+## Background Tasks (Celery)
+
+Long-running operations should be offloaded to Celery.
+
+1.  **Define Task**: Use the `@app.task` decorator.
+    ```python
+    from mindweaver.celery_app import app
+    from .base import run_async
+
+    @app.task
+    def my_background_task(param: str):
+        # Background logic here
+        # Use run_async if calling async functions
+        pass
+    ```
+
+2.  **Trigger Task**: Use `.delay()` or `.apply_async()`.
+    ```python
+    my_background_task.delay("value")
+    ```
+
+## Safe Delete Pattern
+
+To prevent accidental deletions, the API requires a confirmation header `X-RESOURCE-NAME` containing the name of the resource being deleted.
+
+- **Backend**: Handled automatically in the base `Service.delete` method (via verification against `model.name`).
+- **Frontend**: Must include the header in the delete request.
+
+```javascript
+// Frontend example
+await apiClient.delete(`/api/v1/resources/${id}`, {
+    headers: { 'X-RESOURCE-NAME': resourceName }
+});
+```
+
+## Advanced Validation
+
+Use `is_valid_name` for standard name validation and raise `ModelValidationError` for business logic failures.
+
+```python
+from mindweaver.fw.model import is_valid_name
+from mindweaver.fw.exc import ModelValidationError
+
+class MyModel(NamedBase, table=True):
+    # ...
+    def validate_something(self):
+        if not some_condition:
+            raise ModelValidationError("Condition not met")
+```
+
+## Advanced Service Extensions
+
+The framework provides a plug-in system for actions and state management using class-level decorators.
+
+### State Management (`@with_state`)
+
+Use the `with_state` decorator to register a state class that handles dynamic status reporting (e.g., fetching real-time data from Kubernetes).
+
+1.  **Define State Class**: Inherit from `mindweaver.fw.state.BaseState`.
+2.  **Register on Service**: Use the `@Service.with_state()` decorator.
+
+```python
+from mindweaver.fw.state import BaseState
+
+@MyService.with_state()
+class MyResourceState(BaseState):
+    async def get(self) -> dict:
+        # self.model, self.svc, self.session are available
+        return {"status": "active", "load": 0.5}
+```
+
+The state is automatically exposed via the `GET /api/v1/my_models/{id}/_state` endpoint.
+
+### Plugin Decorators Summary
+
+| Decorator | Scope | Purpose |
+| :--- | :--- | :--- |
+| `@Service.register_action(name)` | Action Class | Registers a `BaseAction` subclass to the service. |
+| `@Service.with_state()` | State Class | Registers a `BaseState` subclass for the `_state` endpoint. |
+| `@Service.service_view(method, path)` | Function | Adds a custom endpoint at the collection level. |
+| `@Service.model_view(method, path)` | Function | Adds a custom endpoint at the resource level. |
+
+### Action Class Nuances
+
+When registering an action, the class is instantiated with `(model, service_instance)` on every request. This allows the action to access the current record and service methods.
+
+```python
+@MyService.register_action("reboot")
+class RebootAction(BaseAction):
+    async def available(self) -> bool:
+        # Logical check before showing action in UI
+        return self.model.status == "online"
+
+    async def __call__(self, **kwargs):
+        # Implementation of the action
+        # self.svc is the service instance
+        # self.model is the current model record
+        return {"message": "Rebooting..."}
+```
