@@ -16,7 +16,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Centralized password hashing logic into a reusable mixin.
 - **Breaking:** Alembic migration history has been reset to allow for a clean slate. Please clear the database and migrate again.
 
-
 ### Fixed
 - Fixes to the login screen and various UI components.
 
