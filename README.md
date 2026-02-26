@@ -9,10 +9,10 @@ Mindweaver is a 100% open-source data & AI orchestration platform, providing an 
     - **AI Visualization**: AI-powered dashboard and visualization creation.
     - **Advanced Modeling**: Data Vault modeling support.
 - **Roadmap Targets**:
-    - **Version 1.0**: Focus on Data Platform deployment orchestration capability.
-    - **Version 1.1**: Introduction of Data Ingestion support.
-    - **Version 1.2**: Introduction of RAG support.
-    - **Version 1.3**: Introduction of Data Vault support.
+    - **Version 0.1**: Focus on Data Platform deployment orchestration capability.
+    - **Version 0.2**: Introduction of Data Ingestion support.
+    - **Version 0.3**: Introduction of RAG support.
+    - **Version 0.4**: Introduction of Data Vault support.
 - **Current Focus**: Priority is placed on streamlining the deployment of dependency components to establish a robust foundation.
 
 ## Prerequisites
@@ -21,16 +21,24 @@ Mindweaver is a 100% open-source data & AI orchestration platform, providing an 
 *   **Node.js** (v18+ recommended) and **npm**
 *   **uv** (Python package manager): [Installation instructions](https://github.com/astral-sh/uv)
 *   **Docker** and **Docker Compose** (for running backing services)
+*   **CloudNativePG Operator** (for Kubernetes deployments): [Installation guide](https://cloudnative-pg.io/documentation/current/installation_operator/)
 
 ## Helm Installation
 
-You can install Mindweaver on Kubernetes using the Helm chart hosted on GHCR:
+You can install Mindweaver on Kubernetes using the Helm chart hosted on GHCR.
+
+> [!IMPORTANT]
+> The **CloudNativePG (CNPG) Operator** must be installed in your cluster before installing the Mindweaver chart, as it is used to manage the PostgreSQL database.
 
 ```bash
-# Login to GHCR (if not already logged in)
-# echo $GITHUB_TOKEN | helm registry login ghcr.io -u $GITHUB_USERNAME --password-stdin
+# 1. Install CNPG Operator (if not already installed)
+helm repo add cnpg https://cloudnative-pg.github.io/charts
+helm upgrade --install cnpg \
+  --namespace cnpg-system \
+  --create-namespace \
+  cnpg/cloudnative-pg
 
-# Install the chart
+# 2. Install the Mindweaver chart
 helm install mindweaver oci://ghcr.io/kagesenshi/mindweaver/charts/mindweaver --version 0.1.0
 ```
 

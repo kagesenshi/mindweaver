@@ -2,7 +2,7 @@
 
 Based on the project's roadmap and constitution, here are the features that need to be developed next, organized by expected release version:
 
-## Version 1.0: Data Platform Orchestration
+## Version 0.1: Data Platform Orchestration
 Focus on Data Platform deployment orchestration capabilities. Establish a robust foundation for deploying dependency components.
 
 - [ ] **Kubernetes Clusters**: Develop backend services (`k8s_cluster.py`) and frontend UI to manage Kubernetes clusters and their kubeconfig.
@@ -11,12 +11,12 @@ Focus on Data Platform deployment orchestration capabilities. Establish a robust
 - [ ] **Airflow Deployment**: Add backend service (`airflow.py`), Kubernetes manifest templates, and frontend UI (`AirflowPage.jsx`).
 - [ ] **Superset Deployment**: Add backend service (`superset.py`), Kubernetes manifest templates, and frontend UI (`SupersetPage.jsx`).
 
-## Version 1.1: Data Ingestion Support
+## Version 0.2: Data Ingestion Support
 Focus on providing capabilities to ingest data into the platform.
 
 - [ ] **Ingestion Jobs**: Develop the frontend UI for `ingestion.py` to manage, execute, and schedule data ingestion jobs.
 
-## Version 1.2: RAG Support
+## Version 0.3: RAG Support
 Focus on providing Retrieval-Augmented Generation capabilities.
 
 - [ ] **AI Model API Connections**: Develop frontend UI/pages for managing AI model API connections (e.g., Gemini, OpenAI).
@@ -25,7 +25,7 @@ Focus on providing Retrieval-Augmented Generation capabilities.
 - [ ] **SQL RAG**: Implement SQL RAG with Trino integration.
 - [ ] **GraphRAG Platform**: Add comprehensive support for GraphRAG and ontology management.
 
-## Version 1.3: Data Vault Support
+## Version 0.4: Data Vault Support
 Focus on advanced modeling capabilities.
 
 - [ ] **Data Vault Modeling**: Introduce Data Vault modeling capabilities and support.
