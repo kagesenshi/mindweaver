@@ -294,7 +294,7 @@ class SecretHandlerMixin:
         # Create a copy and redact
         model_dict = model.model_dump()
         for field in redacted_fields:
-            if model_dict.get(field):
+            if field in model_dict:
                 model_dict[field] = "__REDACTED__"
 
         return model.__class__.model_validate(model_dict)

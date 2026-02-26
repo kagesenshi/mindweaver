@@ -34,6 +34,8 @@ class Settings(BaseSettings):
     oidc_issuer: str | None = None
     oidc_client_id: str | None = None
     oidc_client_secret: str | None = None
+    default_admin_username: str | None = None
+    default_admin_password: str | None = None
 
     model_config = SettingsConfigDict(
         env_file=".env", env_prefix="mindweaver_", extra="allow"

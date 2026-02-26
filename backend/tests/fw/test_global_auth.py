@@ -168,6 +168,68 @@ def test_auth_callback_creates_user(client: TestClient):
     assert response.json()["email"] == "newuser@example.com"
 
 
+def test_auth_callback_handles_username_conflict(client: TestClient):
+    settings.enable_auth = True
+    settings.oidc_issuer = "http://mock-issuer"
+    settings.oidc_client_id = "mock-client-id"
+    settings.oidc_client_secret = "mock-client-secret"
+
+    # Pre-create a user that will conflict
+    # We use a mocked session or just disable auth to create it
+    settings.enable_auth = False
+    client.post(
+        "/api/v1/users",
+        json={
+            "name": "conflicted",
+            "title": "Existing User",
+            "email": "existing@example.com",
+            "password": "password123",
+        },
+    )
+    settings.enable_auth = True
+
+    # Mock OIDC responses for a NEW user with the SAME preferred_username
+    mock_discovery_resp = MagicMock()
+    mock_discovery_resp.status_code = 200
+    mock_discovery_resp.json.return_value = {
+        "authorization_endpoint": "http://mock-issuer/auth",
+        "token_endpoint": "http://mock-issuer/token",
+    }
+
+    mock_token_resp = MagicMock()
+    mock_token_resp.status_code = 200
+    mock_id_token = jwt.encode(
+        {
+            "email": "newuser@example.com",
+            "preferred_username": "conflicted",
+            "name": "New User",
+        },
+        "a_very_long_secret_key_for_testing_purposes_only_32_bytes",
+        algorithm="HS256",
+    )
+    mock_token_resp.json.return_value = {"id_token": mock_id_token}
+
+    with patch("httpx.AsyncClient.get", return_value=mock_discovery_resp), patch(
+        "httpx.AsyncClient.post", return_value=mock_token_resp
+    ):
+        response = client.post(
+            "/api/v1/auth/callback",
+            params={"code": "abc", "redirect_url": "http://localhost/callback"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+
+    # Verify user was created with a suffixed name
+    response = client.get(
+        "/api/v1/auth/me", headers={"Authorization": f"Bearer {data['access_token']}"}
+    )
+    assert response.status_code == 200
+    res_data = response.json()
+    assert res_data["email"] == "newuser@example.com"
+    assert res_data["name"].startswith("conflicted#")
+    assert len(res_data["name"]) == len("conflicted") + 1 + 4
+
+
 def test_feature_flags_exempt(client: TestClient):
     settings.enable_auth = True
     response = client.get("/feature-flags")

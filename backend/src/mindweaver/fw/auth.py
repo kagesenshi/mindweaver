@@ -1,13 +1,13 @@
 # SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
 # SPDX-License-Identifier: AGPLv3+
 
-from .model import Base
-from .service import Service
+from .model import Base, NamedBase, AsyncSession, get_session, get_engine
+from .service import Service, SecretHandlerMixin
 from sqlmodel import Field, Session, select
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
 from mindweaver.config import settings
-from mindweaver.fw.model import AsyncSession, get_session, get_engine
+from typing import Optional, Annotated, Any
 import asyncio
 import httpx
 import jwt
@@ -15,14 +15,29 @@ import time
 from urllib.parse import urlencode
 from typing import Optional
 from pydantic import BaseModel
+from passlib.context import CryptContext
+import random
 
 
-class User(Base, table=True):
+pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
+
+
+def get_password_hash(password: str) -> str:
+    return pwd_context.hash(password)
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+
+class User(NamedBase, table=True):
     __tablename__ = "mw_user"
-    email: str = Field(index=True, unique=True)
-    preferred_username: str = Field(nullable=True)
-    display_name: str = Field(nullable=True)
-    picture: str = Field(nullable=True)
+    name: Optional[str] = Field(index=True, unique=True, default=None, nullable=True)
+    title: Optional[str] = Field(default=None, nullable=True)
+    email: Optional[str] = Field(index=True, unique=True, default=None)
+    password: Optional[str] = Field(default=None, nullable=True)
+    display_name: Optional[str] = Field(default=None, nullable=True)
+    picture: Optional[str] = Field(default=None, nullable=True)
     is_active: bool = Field(default=True)
 
 
@@ -106,8 +121,34 @@ class AuthService(Service[User]):
     def router(cls) -> APIRouter:
         router = APIRouter(prefix="/auth", tags=["auth"])
 
+        @router.post("/login", response_model=Token)
+        async def login(username: str, password: str, session: AsyncSession):
+            """
+            Authenticate user with username and password.
+            """
+            statement = select(User).where(User.name == username)
+            result = await session.exec(statement)
+            user = result.first()
+            if not user or not user.password:
+                raise HTTPException(status_code=401, detail="Invalid credentials")
+
+            if not verify_password(password, user.password):
+                raise HTTPException(status_code=401, detail="Invalid credentials")
+
+            # Issue App Session Token
+            app_token_payload = {
+                "sub": user.email,
+                "user_id": user.id,
+                "exp": time.time() + 24 * 3600,  # 1 day
+            }
+            app_token = jwt.encode(
+                app_token_payload, settings.jwt_secret, algorithm="HS256"
+            )
+
+            return Token(access_token=app_token, token_type="bearer")
+
         @router.get("/login")
-        async def login(redirect_url: str):
+        async def login_oidc(redirect_url: str):
             """
             Redirects the user to the OIDC provider's authorization endpoint.
             The redirect_uri passed to the provider will point to `redirect_url`
@@ -218,11 +259,25 @@ class AuthService(Service[User]):
                 result = await session.exec(statement)
                 user = result.first()
                 if not user:
+                    user_display_name = payload.get("name") or email.split("@")[0]
+                    # Use preferred_username or email prefix as base name
+                    base_name = payload.get("preferred_username") or email.split("@")[0]
+                    user_name = base_name
+
+                    # Check for conflict
+                    while True:
+                        statement = select(User).where(User.name == user_name)
+                        result = await session.exec(statement)
+                        if not result.first():
+                            break
+                        # Conflict found, append # + 4 random digits
+                        user_name = f"{base_name}#{random.randint(1000, 9999)}"
+
                     user = User(
-                        name=payload.get("name") or email.split("@")[0],
+                        name=user_name,
+                        title=user_display_name,
                         email=email,
-                        preferred_username=payload.get("preferred_username"),
-                        display_name=payload.get("name"),
+                        display_name=user_display_name,
                         picture=payload.get("picture"),
                     )
                     session.add(user)
@@ -233,11 +288,6 @@ class AuthService(Service[User]):
                     changed = False
                     if payload.get("name") and user.display_name != payload.get("name"):
                         user.display_name = payload.get("name")
-                        changed = True
-                    if payload.get(
-                        "preferred_username"
-                    ) and user.preferred_username != payload.get("preferred_username"):
-                        user.preferred_username = payload.get("preferred_username")
                         changed = True
                     if changed:
                         session.add(user)
@@ -256,11 +306,39 @@ class AuthService(Service[User]):
 
                 return Token(access_token=app_token, token_type="bearer")
 
+        # Let's try again with clean signature
         @router.get("/me", response_model=User)
-        async def me(user: User = Depends(get_current_user)):
-            return user
+        async def me(
+            request: Request,
+            session: AsyncSession,
+            user: User = Depends(get_current_user),
+        ):
+            svc = UserService(request, session)
+            return await svc.post_process_model(user)
 
         return router
 
 
+class UserService(SecretHandlerMixin, Service[User]):
+    @classmethod
+    def model_class(cls) -> type[User]:
+        return User
+
+    @classmethod
+    def redacted_fields(cls) -> list[str]:
+        return ["password"]
+
+    @classmethod
+    def immutable_fields(cls) -> list[str]:
+        # User objects usually have mutable names in this context,
+        # but identifier fields like username and email should be fixed.
+        return ["name", "email"]
+
+    @classmethod
+    def router(cls) -> APIRouter:
+        router = super().router()
+        return router
+
+
 router = AuthService.router()
+user_router = UserService.router()

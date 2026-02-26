@@ -31,6 +31,8 @@ dependencies = [
     "kubernetes>=31.0.0",
     "celery[redis]>=5.4.0",
     "watchdog>=6.0.0",
+    "passlib>=1.7.4",
+    "bcrypt>=5.0.0",
 ]
 
 [project.scripts]

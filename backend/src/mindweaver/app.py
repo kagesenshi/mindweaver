@@ -2,12 +2,20 @@
 # SPDX-License-Identifier: AGPLv3+
 
 import fastapi
-from .config import settings
+from .config import settings, logger
 from .service.data_source import router as ds_router
 from .service.s3_storage import router as s3_router
 from .service.project import router as project_router
-from .fw.auth import router as auth_router, verify_token
+from .fw.auth import (
+    router as auth_router,
+    user_router,
+    verify_token,
+    User,
+    get_password_hash,
+)
 from .platform_service.pgsql import router as pgsql_router
+from .fw.model import get_engine, get_session
+from sqlmodel import select
 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -17,8 +25,35 @@ from fastapi.security import HTTPBearer
 from .fw.service import Error, ValidationErrorDetail
 from .fw.exc import MindWeaverError
 
+from contextlib import asynccontextmanager
+
+
+@asynccontextmanager
+async def lifespan(app: fastapi.FastAPI):
+    if settings.default_admin_username and settings.default_admin_password:
+        async for session in get_session(get_engine()):
+            statement = select(User).where(User.name == settings.default_admin_username)
+            result = await session.exec(statement)
+            user = result.first()
+            if not user:
+                user = User(
+                    name=settings.default_admin_username,
+                    title="Administrator",
+                    email=f"{settings.default_admin_username}@local",
+                    password=get_password_hash(settings.default_admin_password),
+                    display_name="Administrator",
+                )
+                session.add(user)
+                await session.commit()
+                await session.refresh(user)
+                logger.info(f"Created default admin user: {user.name}")
+            break
+    yield
+
+
 app = fastapi.FastAPI(
     title="Mindweaver",
+    lifespan=lifespan,
     dependencies=[
         Depends(verify_token),
         Depends(HTTPBearer(auto_error=False)),
@@ -128,11 +163,13 @@ async def feature_flags():
     return {
         "experimental_data_source": settings.experimental_data_source,
         "experimental_s3_storage": settings.experimental_s3_storage,
+        "oidc_enabled": settings.oidc_issuer is not None,
     }
 
 
 app.include_router(project_router, prefix="/api/v1")
 app.include_router(auth_router, prefix="/api/v1")
+app.include_router(user_router, prefix="/api/v1")
 app.include_router(pgsql_router, prefix="/api/v1")
 app.include_router(s3_router, prefix="/api/v1")
 

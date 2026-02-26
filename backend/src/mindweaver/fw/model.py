@@ -29,7 +29,7 @@ def ts_now():
 def is_valid_name(name: str) -> str:
     if not name:
         raise ValueError("Name cannot be empty")
-    if not re.match(r"^[a-z0-9\-]+$", name):
+    if not re.match(r"^[a-z0-9\-#]+$", name):
         raise ValueError("Name can only contain lowercase letters, numbers, and dash")
     if len(name) > 32:
         raise ValueError("Name cannot be longer than 32 characters")
