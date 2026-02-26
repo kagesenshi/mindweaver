@@ -22,6 +22,18 @@ Mindweaver is a 100% open-source data & AI orchestration platform, providing an 
 *   **uv** (Python package manager): [Installation instructions](https://github.com/astral-sh/uv)
 *   **Docker** and **Docker Compose** (for running backing services)
 
+## Helm Installation
+
+You can install Mindweaver on Kubernetes using the Helm chart hosted on GHCR:
+
+```bash
+# Login to GHCR (if not already logged in)
+# echo $GITHUB_TOKEN | helm registry login ghcr.io -u $GITHUB_USERNAME --password-stdin
+
+# Install the chart
+helm install mindweaver oci://ghcr.io/kagesenshi/mindweaver/charts/mindweaver --version 0.1.0
+```
+
 ## Development Environment Setup
 
 ### 1. Start Backing Services
