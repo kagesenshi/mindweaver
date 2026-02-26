@@ -6,7 +6,7 @@ from .config import settings
 from .service.data_source import router as ds_router
 from .service.s3_storage import router as s3_router
 from .service.project import router as project_router
-from .service.auth import router as auth_router, verify_token
+from .fw.auth import router as auth_router, verify_token
 from .platform_service.pgsql import router as pgsql_router
 
 from fastapi.middleware.cors import CORSMiddleware

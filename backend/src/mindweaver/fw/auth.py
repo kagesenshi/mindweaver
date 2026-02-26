@@ -1,8 +1,8 @@
 # SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
 # SPDX-License-Identifier: AGPLv3+
 
-from . import Base
-from . import Service
+from .model import Base
+from .service import Service
 from sqlmodel import Field, Session, select
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
