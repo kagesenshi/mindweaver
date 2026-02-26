@@ -34,6 +34,7 @@ class User(NamedBase, table=True):
     display_name: Optional[str] = Field(default=None, nullable=True)
     picture: Optional[str] = Field(default=None, nullable=True)
     is_active: bool = Field(default=True)
+    is_superadmin: bool = Field(default=False)
 
 
 class Token(BaseModel):
@@ -112,7 +113,7 @@ async def get_superadmin(request: Request, session: AsyncSession) -> Optional[Us
         return None
 
     user = await get_current_user(request, session)
-    if settings.default_admin_username and user.name == settings.default_admin_username:
+    if user.is_superadmin:
         return user
     raise HTTPException(status_code=403, detail="Superadmin privileges required")
 

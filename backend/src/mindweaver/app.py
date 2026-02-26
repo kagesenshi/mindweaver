@@ -42,6 +42,7 @@ async def lifespan(app: fastapi.FastAPI):
                     email=f"{settings.default_admin_username}@local",
                     password=get_password_hash(settings.default_admin_password),
                     display_name="Administrator",
+                    is_superadmin=True,
                 )
                 session.add(user)
                 await session.commit()
