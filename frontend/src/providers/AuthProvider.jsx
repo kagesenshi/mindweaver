@@ -57,13 +57,33 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    const loginLocal = async (username, password) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const response = await apiClient.post('/auth/login', {
+                username,
+                password,
+            });
+            const { access_token } = response.data;
+            localStorage.setItem('mindweaver-token', access_token);
+            await checkAuth();
+            return true;
+        } catch (err) {
+            console.error('Local login failed:', err);
+            setError(err);
+            setLoading(false);
+            return false;
+        }
+    };
+
     const logout = () => {
         localStorage.removeItem('mindweaver-token');
         setUser(null);
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, error, login, logout, handleCallback, checkAuth }}>
+        <AuthContext.Provider value={{ user, loading, error, login, loginLocal, logout, handleCallback, checkAuth }}>
             {children}
         </AuthContext.Provider>
     );

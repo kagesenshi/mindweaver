@@ -135,6 +135,11 @@ async def verify_token(request: Request):
         break
 
 
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
 class AuthService(Service[User]):
     @classmethod
     def model_class(cls) -> type[User]:
@@ -145,17 +150,17 @@ class AuthService(Service[User]):
         router = APIRouter(prefix="/auth", tags=["auth"])
 
         @router.post("/login", response_model=Token)
-        async def login(username: str, password: str, session: AsyncSession):
+        async def login(credentials: LoginRequest, session: AsyncSession):
             """
             Authenticate user with username and password.
             """
-            statement = select(User).where(User.name == username)
+            statement = select(User).where(User.name == credentials.username)
             result = await session.exec(statement)
             user = result.first()
             if not user or not user.password:
                 raise HTTPException(status_code=401, detail="Invalid credentials")
 
-            if not verify_password(password, user.password):
+            if not verify_password(credentials.password, user.password):
                 raise HTTPException(status_code=401, detail="Invalid credentials")
 
             # Issue App Session Token

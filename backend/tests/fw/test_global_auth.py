@@ -37,7 +37,7 @@ def _get_superadmin_headers(c: TestClient) -> dict:
     """Login as admin superuser and return authorization headers."""
     login_resp = c.post(
         "/api/v1/auth/login",
-        params={"username": "admin", "password": "password123"},
+        json={"username": "admin", "password": "password123"},
     )
     assert login_resp.status_code == 200
     token = login_resp.json()["access_token"]

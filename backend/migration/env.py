@@ -13,7 +13,7 @@ from mindweaver.service.project.model import Project, ProjectStatus
 from mindweaver.service.data_source.model import DataSource
 from mindweaver.service.s3_storage.model import S3Storage
 from mindweaver.platform_service.pgsql.model import PgSqlPlatform, PgSqlPlatformState
-from mindweaver.service.auth import User
+from mindweaver.fw.auth import User
 
 # from mindweaver.auth.model import User # If exists
 

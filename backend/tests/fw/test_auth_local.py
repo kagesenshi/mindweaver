@@ -26,7 +26,7 @@ def _get_superadmin_headers(c: TestClient) -> dict:
     """Login as admin superuser and return authorization headers."""
     login_resp = c.post(
         "/api/v1/auth/login",
-        params={"username": "admin", "password": "password123"},
+        json={"username": "admin", "password": "password123"},
     )
     assert login_resp.status_code == 200
     token = login_resp.json()["access_token"]
@@ -38,7 +38,7 @@ def test_local_login_success(client: TestClient):
     with client as c:
         response = c.post(
             "/api/v1/auth/login",
-            params={"username": "admin", "password": "password123"},
+            json={"username": "admin", "password": "password123"},
         )
         assert response.status_code == 200
         data = response.json()
@@ -51,7 +51,7 @@ def test_local_login_failure(client: TestClient):
     with client as c:
         response = c.post(
             "/api/v1/auth/login",
-            params={"username": "admin", "password": "wrongpassword"},
+            json={"username": "admin", "password": "wrongpassword"},
         )
         assert response.status_code == 401
         assert "Invalid credentials" in response.json()["detail"]
@@ -165,7 +165,7 @@ def test_non_superadmin_cannot_manage_users(client: TestClient):
         # Login as regular user
         login_resp = c.post(
             "/api/v1/auth/login",
-            params={"username": "regularuser", "password": "password123"},
+            json={"username": "regularuser", "password": "password123"},
         )
         assert login_resp.status_code == 200
         regular_token = login_resp.json()["access_token"]

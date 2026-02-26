@@ -1,9 +1,61 @@
-import React from 'react';
+// SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
+// SPDX-License-Identifier: AGPLv3+
+
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../providers/AuthProvider';
-import { Layers, Rocket } from 'lucide-react';
+import { Layers, Rocket, LogIn, Loader2 } from 'lucide-react';
+import apiClient from '../services/api';
 
 const LoginPage = () => {
-    const { login } = useAuth();
+    const { login, loginLocal } = useAuth();
+    const navigate = useNavigate();
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState(null);
+    const [submitting, setSubmitting] = useState(false);
+    const [oidcEnabled, setOidcEnabled] = useState(null);
+
+    useEffect(() => {
+        /**
+         * Fetch feature flags from the backend to determine
+         * whether OIDC login should be displayed.
+         */
+        const fetchFeatureFlags = async () => {
+            try {
+                const baseUrl = apiClient.defaults.baseURL;
+                const rootUrl = baseUrl.replace(/\/api\/v1\/?$/, '');
+                const response = await fetch(`${rootUrl}/feature-flags`);
+                const data = await response.json();
+                setOidcEnabled(data.oidc_enabled ?? false);
+            } catch (err) {
+                console.error('Failed to fetch feature flags:', err);
+                setOidcEnabled(false);
+            }
+        };
+        fetchFeatureFlags();
+    }, []);
+
+    const handleLocalLogin = async (e) => {
+        /**
+         * Handle local username/password login submission.
+         */
+        e.preventDefault();
+        setError(null);
+        setSubmitting(true);
+        try {
+            const success = await loginLocal(username, password);
+            if (success) {
+                navigate('/');
+            } else {
+                setError('Invalid username or password.');
+            }
+        } catch (err) {
+            setError('Login failed. Please try again.');
+        } finally {
+            setSubmitting(false);
+        }
+    };
 
     return (
         <div className="min-h-screen bg-[#08090b] flex flex-col items-center justify-center p-8 overflow-hidden relative">
@@ -22,15 +74,73 @@ const LoginPage = () => {
 
                 <div className="bg-slate-900/40 border border-slate-800/60 p-10 rounded-[40px] shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-150">
                     <h2 className="text-3xl font-bold text-white mb-2 text-center">Welcome back</h2>
-                    <p className="text-slate-500 text-base text-center mb-8 uppercase tracking-widest font-medium">Enterprise SSO Login</p>
+                    <p className="text-slate-500 text-base text-center mb-8 uppercase tracking-widest font-medium">Sign In</p>
 
-                    <button
-                        onClick={() => login()}
-                        className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-[0.98] shadow-lg shadow-blue-600/20 group"
-                    >
-                        <Rocket size={18} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
-                        CONTINUE WITH SSO
-                    </button>
+                    {/* Local login form */}
+                    <form onSubmit={handleLocalLogin} className="space-y-4 mb-6" id="local-login-form">
+                        <div>
+                            <input
+                                id="login-username"
+                                type="text"
+                                placeholder="Username"
+                                value={username}
+                                onChange={(e) => setUsername(e.target.value)}
+                                className="w-full bg-slate-800/60 border border-slate-700/60 text-white placeholder-slate-500 px-4 py-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
+                                required
+                                disabled={submitting}
+                            />
+                        </div>
+                        <div>
+                            <input
+                                id="login-password"
+                                type="password"
+                                placeholder="Password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className="w-full bg-slate-800/60 border border-slate-700/60 text-white placeholder-slate-500 px-4 py-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
+                                required
+                                disabled={submitting}
+                            />
+                        </div>
+
+                        {error && (
+                            <p id="login-error" className="text-red-400 text-sm text-center">{error}</p>
+                        )}
+
+                        <button
+                            id="login-submit"
+                            type="submit"
+                            disabled={submitting}
+                            className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-[0.98] shadow-lg shadow-blue-600/20 group disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                            {submitting ? (
+                                <Loader2 size={18} className="animate-spin" />
+                            ) : (
+                                <LogIn size={18} className="group-hover:translate-x-1 transition-transform" />
+                            )}
+                            {submitting ? 'SIGNING IN...' : 'SIGN IN'}
+                        </button>
+                    </form>
+
+                    {/* OIDC login - only shown when oidc_enabled is true */}
+                    {oidcEnabled && (
+                        <>
+                            <div className="flex items-center justify-center gap-4 mb-6">
+                                <div className="h-px flex-1 bg-slate-800" />
+                                <span className="text-sm text-slate-600 font-bold uppercase tracking-widest">Or</span>
+                                <div className="h-px flex-1 bg-slate-800" />
+                            </div>
+
+                            <button
+                                id="oidc-login-button"
+                                onClick={() => login()}
+                                className="w-full bg-slate-800/60 hover:bg-slate-700/60 border border-slate-700/60 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-[0.98] group"
+                            >
+                                <Rocket size={18} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                                CONTINUE WITH SSO
+                            </button>
+                        </>
+                    )}
 
                     <div className="mt-8 flex items-center justify-center gap-4">
                         <div className="h-px flex-1 bg-slate-800" />
