@@ -25,6 +25,24 @@ from pathlib import Path
 from .config import logger
 
 
+def _get_default_config_path() -> str:
+    """
+    Locate the default alembic.ini file.
+    """
+    # 1. Check current directory
+    local_path = Path("alembic.ini")
+    if local_path.exists():
+        return str(local_path)
+
+    # 2. Check relative to project installation
+    # backend/src/mindweaver/cli.py -> backend/alembic.ini
+    project_path = Path(__file__).parent.parent.parent / "alembic.ini"
+    if project_path.exists():
+        return str(project_path.resolve())
+
+    return "alembic.ini"
+
+
 class RunArgs(argparse.Namespace):
     port: int
     host: str
@@ -296,7 +314,10 @@ def get_parser() -> argparse.ArgumentParser:
     """
     Construct argument parser
     """
-    parser = argparse.ArgumentParser(description="Mindweaver CLI")
+    parser = argparse.ArgumentParser(
+        description="Mindweaver CLI",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
     subparsers = parser.add_subparsers(dest="command")
 
     # run
@@ -308,7 +329,12 @@ def get_parser() -> argparse.ArgumentParser:
     # db
     db_cmd = subparsers.add_parser("db", help="Database operations")
     db_cmd.add_argument(
-        "-f", "--config", dest="config", type=str, default="alembic.ini"
+        "-f",
+        "--config",
+        dest="config",
+        type=str,
+        default=_get_default_config_path(),
+        help="Path to alembic.ini configuration file",
     )
     db_cmd_subparser = db_cmd.add_subparsers(dest="db_command")
 
