@@ -59,7 +59,7 @@ Use `docker/build-push-action@v5` with GHA caching:
         with:
           context: . # or component path
           file: path/to/Dockerfile
-          push: true
+          push: ${{ github.event_name == 'workflow_dispatch' && inputs.push-image == true }}
           tags: |
             ghcr.io/${{ github.repository_owner }}/mindweaver/<image-name>:edge
             ghcr.io/${{ github.repository_owner }}/mindweaver/<image-name>:${{ github.sha }}
@@ -74,7 +74,8 @@ Use `docker/build-push-action@v5` with GHA caching:
 ### Packaging Steps
 
 1.  **Update Dependencies**: Always run `helm dependency update` before packaging.
-2.  **Explicit Versioning**: Use the version extracted from the appropriate `VERSION.txt`.
+2.  **Validation**: Run `helm lint [CHART_PATH]` to ensure the chart is valid.
+3.  **Explicit Versioning**: Use the version extracted from the appropriate `VERSION.txt`.
 3.  **Timestamp suffix**: Generate a timestamp (e.g., `date +%Y%m%d%H%M%S`) to use as a suffix for uniqueness.
 4.  **App Version alignment**: Always set `--app-version` to match the chart `--version`.
 
@@ -103,6 +104,7 @@ Helm charts are pushed to the GitHub Container Registry (GHCR) as OCI artifacts:
 
 
       - name: Push Helm chart to GHCR
+        if: github.event_name == 'workflow_dispatch' && inputs.push-package == true
         run: |
           cd helm/<chart-name>
           CHART_PACKAGE=$(ls <chart-name>-*.tgz)
@@ -114,3 +116,6 @@ Helm charts are pushed to the GitHub Container Registry (GHCR) as OCI artifacts:
 *   **Triggers**: Workflows should trigger on `push` and `pull_request` to the `main` branch.
 *   **Path Filtering**: Use the `paths` filter to ensure workflows only run when relevant files change.
     *   Example: `paths: ["helm/mindweaver/**", "VERSION.txt"]`
+*   **Manual Push Control**: To prevent accidental registry clutter, images and Helm packages are only pushed when triggered manually via `workflow_dispatch` with a specific input parameter.
+    *   **Images**: Use `push-image` (boolean).
+    *   **Helm Charts**: Use `push-package` (boolean).

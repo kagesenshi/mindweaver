@@ -12,6 +12,12 @@ on:
       - "backend/**"
       - "frontend/**"
   workflow_dispatch:
+    inputs:
+      push-image:
+        description: "Push images to registry"
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -58,7 +64,7 @@ jobs:
         with:
           context: .
           file: Dockerfile
-          push: true
+          push: ${{ github.event_name == 'workflow_dispatch' && inputs.push-image == true }}
           tags: |
             ghcr.io/${{ github.repository_owner }}/mindweaver/mindweaver:edge
             ghcr.io/${{ github.repository_owner }}/mindweaver/mindweaver:${{ github.sha }}

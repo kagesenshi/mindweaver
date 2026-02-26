@@ -12,6 +12,12 @@ on:
     paths:
       - "helm/mindweaver/**"
   workflow_dispatch:
+    inputs:
+      push-package:
+        description: "Push Helm chart to registry"
+        required: true
+        type: boolean
+        default: false
 
 jobs:
   build-and-push:
@@ -37,6 +43,9 @@ jobs:
           cd helm/mindweaver
           helm dependency update
 
+      - name: Lint Helm chart
+        run: helm lint helm/mindweaver
+
       - name: Package Helm chart
         run: |
           VERSION=$(cat VERSION.txt)
@@ -45,6 +54,7 @@ jobs:
           helm package . --version "${VERSION}-alpha.${TIMESTAMP}" --app-version "${VERSION}-alpha.${TIMESTAMP}"
 
       - name: Push Helm chart to GHCR
+        if: github.event_name == 'workflow_dispatch' && inputs.push-package == true
         run: |
           cd helm/mindweaver
           CHART_PACKAGE=$(ls mindweaver-*.tgz)
