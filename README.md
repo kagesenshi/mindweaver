@@ -39,7 +39,7 @@ helm upgrade --install cnpg \
   cnpg/cloudnative-pg
 
 # 2. Install the Mindweaver chart
-helm install mindweaver oci://ghcr.io/kagesenshi/mindweaver/charts/mindweaver --version 0.1.0
+helm install mindweaver oci://ghcr.io/kagesenshi/mindweaver/charts/mindweaver
 ```
 
 ## Development Environment Setup
