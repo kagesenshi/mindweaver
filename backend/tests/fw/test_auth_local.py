@@ -82,6 +82,15 @@ def test_feature_flags_oidc_enabled(client: TestClient):
 
 def test_user_management_crud(client: TestClient):
     with client as c:
+        # Login as admin
+        login_resp = c.post(
+            "/api/v1/auth/login",
+            params={"username": "admin", "password": "password123"},
+        )
+        assert login_resp.status_code == 200
+        token = login_resp.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
         # Create user
         response = c.post(
             "/api/v1/users",
@@ -92,6 +101,7 @@ def test_user_management_crud(client: TestClient):
                 "password": "password123",
                 "display_name": "New User",
             },
+            headers=headers,
         )
         assert response.status_code == 200
         user_data = response.json()["data"]
@@ -99,7 +109,7 @@ def test_user_management_crud(client: TestClient):
         assert user_data["password"] == "__REDACTED__"
 
         # List users
-        response = c.get("/api/v1/users")
+        response = c.get("/api/v1/users", headers=headers)
         assert response.status_code == 200
         users = response.json()["data"]
         assert any(u["name"] == "newuser" for u in users)
@@ -108,18 +118,19 @@ def test_user_management_crud(client: TestClient):
 
         # Update user
         response = c.put(
-            f"/api/v1/users/{user_id}", json={"display_name": "Updated User"}
+            f"/api/v1/users/{user_id}",
+            json={"display_name": "Updated User"},
+            headers=headers,
         )
         assert response.status_code == 200
         assert response.json()["data"]["password"] == "__REDACTED__"
 
         # Get individual user
-        response = c.get(f"/api/v1/users/{user_id}")
+        response = c.get(f"/api/v1/users/{user_id}", headers=headers)
         assert response.status_code == 200
         assert response.json()["data"]["password"] == "__REDACTED__"
 
         # Delete user
-        response = c.delete(
-            f"/api/v1/users/{user_id}", headers={"X-RESOURCE-NAME": "newuser"}
-        )
+        headers.update({"X-RESOURCE-NAME": "newuser"})
+        response = c.delete(f"/api/v1/users/{user_id}", headers=headers)
         assert response.status_code == 200

@@ -2,7 +2,14 @@
 # SPDX-License-Identifier: AGPLv3+
 
 from .model import Base, NamedBase, AsyncSession, get_session, get_engine
-from .service import Service, SecretHandlerMixin
+from .service import (
+    Service,
+    SecretHandlerMixin,
+    HashedHandlerMixin,
+    before_create,
+    before_update,
+)
+from .hash import get_password_hash, verify_password
 from sqlmodel import Field, Session, select
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
@@ -15,19 +22,7 @@ import time
 from urllib.parse import urlencode
 from typing import Optional
 from pydantic import BaseModel
-from passlib.context import CryptContext
 import random
-
-
-pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
-
-
-def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
-
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
 
 
 class User(NamedBase, table=True):
@@ -74,6 +69,23 @@ async def get_oidc_config(client: httpx.AsyncClient) -> dict:
 
 
 async def get_current_user(request: Request, session: AsyncSession) -> User:
+    if not settings.enable_auth:
+        # If auth is disabled, we try to return the first available user,
+        # preferring the default admin if it exists.
+        # This is mainly for testing purposes.
+        statement = select(User)
+        if settings.default_admin_username:
+            statement = statement.where(User.name == settings.default_admin_username)
+        result = await session.exec(statement)
+        user = result.first()
+        if not user:
+            # Try any user
+            result = await session.exec(select(User))
+            user = result.first()
+
+        if user:
+            return user
+
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -93,6 +105,16 @@ async def get_current_user(request: Request, session: AsyncSession) -> User:
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
     return user
+
+
+async def get_superadmin(request: Request, session: AsyncSession) -> Optional[User]:
+    if not settings.enable_auth:
+        return None
+
+    user = await get_current_user(request, session)
+    if settings.default_admin_username and user.name == settings.default_admin_username:
+        return user
+    raise HTTPException(status_code=403, detail="Superadmin privileges required")
 
 
 async def verify_token(request: Request):
@@ -319,13 +341,13 @@ class AuthService(Service[User]):
         return router
 
 
-class UserService(SecretHandlerMixin, Service[User]):
+class UserService(HashedHandlerMixin, Service[User]):
     @classmethod
     def model_class(cls) -> type[User]:
         return User
 
     @classmethod
-    def redacted_fields(cls) -> list[str]:
+    def hashed_fields(cls) -> list[str]:
         return ["password"]
 
     @classmethod
@@ -333,6 +355,10 @@ class UserService(SecretHandlerMixin, Service[User]):
         # User objects usually have mutable names in this context,
         # but identifier fields like username and email should be fixed.
         return ["name", "email"]
+
+    @classmethod
+    def extra_dependencies(cls):
+        return [Depends(get_superadmin)]
 
     @classmethod
     def router(cls) -> APIRouter:

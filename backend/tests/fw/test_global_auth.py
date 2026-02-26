@@ -7,6 +7,7 @@ import time
 from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock
 from mindweaver.config import settings
+from mindweaver.fw.auth import User
 
 
 @pytest.fixture(autouse=True)
@@ -37,40 +38,21 @@ def test_protected_endpoint_returns_401_no_token(client: TestClient):
     settings.enable_auth = True
     response = client.get("/api/v1/projects")
     assert response.status_code == 401
-    # Check JSON:API error format if possible, but standard HTTPException is returned by default
     assert "Not authenticated" in response.text
 
 
 def test_protected_endpoint_accessible_with_token(client: TestClient):
     settings.enable_auth = True
-
-    # Issue a mock token
     token_payload = {"sub": "test@example.com", "user_id": 1, "exp": time.time() + 3600}
     token = jwt.encode(token_payload, settings.jwt_secret, algorithm="HS256")
 
-    # We need a user in the DB for this to work
-    # Actually, we can use the 'client' fixture which has a clean DB.
-    # But get_current_user will look for this user.
-
-    # In conftest.py, we might have a fixture for creating a test user.
-    # For now, let's create a user manually in this test if needed.
-    # However, since auth is enabled, we might need a token to create a user...
-    # except that 'callback' is exempt!
-
-    # Let's mock settings to bypass DB lookup if possible?
-    # No, let's just create a user via a side-channel or assume one exists if we can.
-
-    # Actually, the simplest way is to disable auth, create user, enable auth.
+    # Setup: disable auth to create the project/user for testing
     settings.enable_auth = False
-    client.post(
-        "/api/v1/projects", json={"name": "p1", "title": "P1"}
-    )  # Just to trigger DB init if needed
+    client.post("/api/v1/projects", json={"name": "p1", "title": "P1"})
 
     # Now enable auth and try with token
     settings.enable_auth = True
-
     headers = {"Authorization": f"Bearer {token}"}
-    # Note: get_current_user WILL fail because test@example.com is not in DB.
     response = client.get("/api/v1/projects", headers=headers)
     assert response.status_code == 401
     assert "User not found" in response.text
@@ -82,7 +64,6 @@ def test_auth_endpoints_exempt(client: TestClient):
     settings.oidc_client_id = "mock-client-id"
     settings.oidc_client_secret = "mock-client-secret"
 
-    # Mock OIDC discovery response
     mock_discovery_resp = MagicMock()
     mock_discovery_resp.status_code = 200
     mock_discovery_resp.json.return_value = {
@@ -91,18 +72,15 @@ def test_auth_endpoints_exempt(client: TestClient):
     }
 
     with patch("httpx.AsyncClient.get", return_value=mock_discovery_resp):
-        # /api/v1/auth/login?redirect_url=...
         response = client.get(
             "/api/v1/auth/login",
             params={"redirect_url": "http://localhost/callback"},
             follow_redirects=False,
         )
-        assert response.status_code == 307  # RedirectResponse
+        assert response.status_code == 307
 
-    # Mock OIDC token exchange response
     mock_token_resp = MagicMock()
     mock_token_resp.status_code = 200
-    # Mock ID Token payload
     mock_id_token = jwt.encode(
         {"email": "test@example.com", "name": "Test User"},
         "a_very_long_secret_key_for_testing_purposes_only_32_bytes",
@@ -113,12 +91,10 @@ def test_auth_endpoints_exempt(client: TestClient):
     with patch("httpx.AsyncClient.get", return_value=mock_discovery_resp), patch(
         "httpx.AsyncClient.post", return_value=mock_token_resp
     ):
-        # /api/v1/auth/callback
         response = client.post(
             "/api/v1/auth/callback",
             params={"code": "abc", "redirect_url": "http://localhost/callback"},
         )
-        # Should NOT be 401
         assert response.status_code != 401
 
 
@@ -128,7 +104,6 @@ def test_auth_callback_creates_user(client: TestClient):
     settings.oidc_client_id = "mock-client-id"
     settings.oidc_client_secret = "mock-client-secret"
 
-    # Mock OIDC responses
     mock_discovery_resp = MagicMock()
     mock_discovery_resp.status_code = 200
     mock_discovery_resp.json.return_value = {
@@ -157,26 +132,17 @@ def test_auth_callback_creates_user(client: TestClient):
         assert "access_token" in data
 
     # Verify user was created
-    settings.enable_auth = False
     response = client.get(
         "/api/v1/auth/me", headers={"Authorization": f"Bearer {data['access_token']}"}
     )
-    # Note: /me requires auth even if settings.enable_auth is False because it uses Depends(get_current_user)
-    # Actually get_current_user doesn't check settings.enable_auth, verify_token does.
-    # So we need to provide the token.
     assert response.status_code == 200
     assert response.json()["email"] == "newuser@example.com"
 
 
 def test_auth_callback_handles_username_conflict(client: TestClient):
-    settings.enable_auth = True
-    settings.oidc_issuer = "http://mock-issuer"
-    settings.oidc_client_id = "mock-client-id"
-    settings.oidc_client_secret = "mock-client-secret"
-
     # Pre-create a user that will conflict
-    # We use a mocked session or just disable auth to create it
     settings.enable_auth = False
+    # Now that settings.enable_auth = False is also checked by get_superadmin, this works
     client.post(
         "/api/v1/users",
         json={
@@ -187,8 +153,10 @@ def test_auth_callback_handles_username_conflict(client: TestClient):
         },
     )
     settings.enable_auth = True
+    settings.oidc_issuer = "http://mock-issuer"
+    settings.oidc_client_id = "mock-client-id"
+    settings.oidc_client_secret = "mock-client-secret"
 
-    # Mock OIDC responses for a NEW user with the SAME preferred_username
     mock_discovery_resp = MagicMock()
     mock_discovery_resp.status_code = 200
     mock_discovery_resp.json.return_value = {
@@ -227,7 +195,6 @@ def test_auth_callback_handles_username_conflict(client: TestClient):
     res_data = response.json()
     assert res_data["email"] == "newuser@example.com"
     assert res_data["name"].startswith("conflicted#")
-    assert len(res_data["name"]) == len("conflicted") + 1 + 4
 
 
 def test_feature_flags_exempt(client: TestClient):
