@@ -32,29 +32,4 @@ else
     echo "Warning: Helm package $CHART_PACKAGE not found, skipping push."
 fi
 
-echo "Relase $VERSION pushed successfully!"
-
-# 3. Post-Release Version Bump
-# Extract major.minor.patch
-IFS='.' read -r major minor patch <<< "$VERSION"
-NEXT_PATCH=$((patch + 1))
-RECOMMENDED_NEXT_VERSION="${major}.${minor}.${NEXT_PATCH}"
-
-echo ""
-echo "Current version released: $VERSION"
-read -p "Enter next development version [$RECOMMENDED_NEXT_VERSION]: " NEXT_VERSION
-NEXT_VERSION=${NEXT_VERSION:-$RECOMMENDED_NEXT_VERSION}
-
-echo "Updating to next development version $NEXT_VERSION ..."
-
-# Update VERSION.txt
-echo "$NEXT_VERSION" > "$VERSION_FILE"
-
-# Update Chart.yaml
-if [ -f "$CHART_FILE" ]; then
-    echo "Updating $CHART_FILE to $NEXT_VERSION ..."
-    sed -i "s/^version: .*/version: $NEXT_VERSION/" "$CHART_FILE"
-    sed -i "s/^appVersion: .*/appVersion: \"$NEXT_VERSION\"/" "$CHART_FILE"
-fi
-
-echo "Successfully updated to $NEXT_VERSION"
+echo "Release $VERSION pushed successfully!"
