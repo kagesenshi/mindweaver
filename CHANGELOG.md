@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Fixes to the login screen and various UI components.
+- Fixes cluster status polling issue after switching to ArgoCD
 
 ## [0.1.0] - 2026-02-26
 

@@ -197,7 +197,7 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
                     version="v1",
                     namespace=namespace,
                     plural="clusters",
-                    name=model.name,
+                    name=f"{model.name}-cluster",
                 )
                 status_data = cluster.get("status", {})
                 phase = status_data.get("phase", "unknown")
@@ -277,7 +277,7 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
             # 4. Fetch DB Credentials from Secret
             db_credentials = {}
             try:
-                secret_name = f"{model.name}-app"
+                secret_name = f"{model.name}-cluster-app"
                 secret = core_v1.read_namespaced_secret(
                     name=secret_name, namespace=namespace
                 )
@@ -298,12 +298,12 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
                     if password_raw:
                         db_credentials["db_pass"] = encrypt_password(password_raw)
             except Exception as e:
-                logger.error(f"Failed to fetch secret {model.name}-app: {e}")
+                logger.error(f"Failed to fetch secret {model.name}-cluster-app: {e}")
 
             # Try to fetch CA cert from -ca secret if still missing
             if not db_credentials.get("db_ca_crt"):
                 try:
-                    ca_secret_name = f"{model.name}-ca"
+                    ca_secret_name = f"{model.name}-cluster-ca"
                     ca_secret = core_v1.read_namespaced_secret(
                         name=ca_secret_name, namespace=namespace
                     )
@@ -312,7 +312,7 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
                             ca_secret.data["ca.crt"]
                         ).decode("utf-8")
                 except Exception as e:
-                    logger.debug(f"Failed to fetch secret {model.name}-ca: {e}")
+                    logger.debug(f"Failed to fetch secret {model.name}-cluster-ca: {e}")
 
             return (
                 status,
