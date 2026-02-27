@@ -12,23 +12,32 @@ import sqlalchemy.exc as saexc
 from .model import AsyncSession, ts_now, NamedBase
 from .exc import ModelValidationError, AlreadyExistError
 import enum
+from .hooks import (
+    before_create,
+    after_create,
+    before_update,
+    after_update,
+    before_delete,
+    after_delete,
+    _sort_hooks,
+    S,
+    T,
+)
+from .mixins.secrethandler import SecretHandlerMixin
+from .mixins.hashinghandler import HashingHandlerMixin
+
+import enum
 import abc
 import jinja2 as j2
 from .exc import NotFoundError
 from .util import camel_to_snake
-import graphlib
-import inspect
 import re
 import asyncio
 from fastapi import HTTPException
-from mindweaver.crypto import encrypt_password, EncryptionError
-from typing import Generic, TypeVar, Any, Literal, Annotated, Union, List, Dict
+from typing import Generic, Any, Literal, Annotated, Union, List, Dict
 from mindweaver.fw.action import ActionRequest, BaseAction
 from mindweaver.fw.state import BaseState
-from .hash import get_password_hash
-
-T = TypeVar("T", bound=NamedBase)
-S = TypeVar("S", bound=SQLModel)
+from mindweaver.crypto import encrypt_password, EncryptionError
 
 
 class ErrorDetail(BaseModel):
@@ -97,267 +106,6 @@ def redefine_model(name, Model: type[BaseModel], *, exclude=None) -> type[BaseMo
 
     model = create_model(name, **fields)
     return model
-
-
-def before_create(func=None, *, before=None, after=None):
-    def decorator(f):
-        sig = inspect.signature(f)
-        if len(sig.parameters) != 2:
-            raise TypeError(
-                f"before_create hook must accept 2 arguments (self, data), got {len(sig.parameters)}"
-            )
-        f._is_before_create_hook = True
-        f._hook_before = [before] if isinstance(before, str) else (before or [])
-        f._hook_after = [after] if isinstance(after, str) else (after or [])
-        return f
-
-    if func:
-        return decorator(func)
-    return decorator
-
-
-def after_create(func=None, *, before=None, after=None):
-    def decorator(f):
-        sig = inspect.signature(f)
-        if len(sig.parameters) != 2:
-            raise TypeError(
-                f"after_create hook must accept 2 arguments (self, model), got {len(sig.parameters)}"
-            )
-        f._is_after_create_hook = True
-        f._hook_before = [before] if isinstance(before, str) else (before or [])
-        f._hook_after = [after] if isinstance(after, str) else (after or [])
-        return f
-
-    if func:
-        return decorator(func)
-    return decorator
-
-
-def before_update(func=None, *, before=None, after=None):
-    def decorator(f):
-        sig = inspect.signature(f)
-        if len(sig.parameters) != 3:
-            raise TypeError(
-                f"before_update hook must accept 3 arguments (self, model, data), got {len(sig.parameters)}"
-            )
-        f._is_before_update_hook = True
-        f._hook_before = [before] if isinstance(before, str) else (before or [])
-        f._hook_after = [after] if isinstance(after, str) else (after or [])
-        return f
-
-    if func:
-        return decorator(func)
-    return decorator
-
-
-def after_update(func=None, *, before=None, after=None):
-    def decorator(f):
-        sig = inspect.signature(f)
-        if len(sig.parameters) != 2:
-            raise TypeError(
-                f"after_update hook must accept 2 arguments (self, model), got {len(sig.parameters)}"
-            )
-        f._is_after_update_hook = True
-        f._hook_before = [before] if isinstance(before, str) else (before or [])
-        f._hook_after = [after] if isinstance(after, str) else (after or [])
-        return f
-
-    if func:
-        return decorator(func)
-    return decorator
-
-
-def before_delete(func=None, *, before=None, after=None):
-    def decorator(f):
-        sig = inspect.signature(f)
-        if len(sig.parameters) != 2:
-            raise TypeError(
-                f"before_delete hook must accept 2 arguments (self, model), got {len(sig.parameters)}"
-            )
-        f._is_before_delete_hook = True
-        f._hook_before = [before] if isinstance(before, str) else (before or [])
-        f._hook_after = [after] if isinstance(after, str) else (after or [])
-        return f
-
-    if func:
-        return decorator(func)
-    return decorator
-
-
-def after_delete(func=None, *, before=None, after=None):
-    def decorator(f):
-        sig = inspect.signature(f)
-        if len(sig.parameters) != 2:
-            raise TypeError(
-                f"after_delete hook must accept 2 arguments (self, model), got {len(sig.parameters)}"
-            )
-        f._is_after_delete_hook = True
-        f._hook_before = [before] if isinstance(before, str) else (before or [])
-        f._hook_after = [after] if isinstance(after, str) else (after or [])
-        return f
-
-    if func:
-        return decorator(func)
-    return decorator
-
-
-def _sort_hooks(hooks: list[Any]) -> list[Any]:
-    if not hooks:
-        return []
-
-    graph = {h.__name__: set() for h in hooks}
-    name_to_hook = {h.__name__: h for h in hooks}
-
-    for hook in hooks:
-        # Handle 'after' dependencies: hook depends on other (other -> hook)
-        for other_name in hook._hook_after:
-            if other_name in graph:
-                graph[hook.__name__].add(other_name)
-
-        # Handle 'before' dependencies: other depends on hook (hook -> other)
-        for other_name in hook._hook_before:
-            if other_name in graph:
-                graph[other_name].add(hook.__name__)
-
-    ts = graphlib.TopologicalSorter(graph)
-    try:
-        sorted_names = list(ts.static_order())
-    except graphlib.CycleError as e:
-        raise ValueError(f"Circular dependency detected in hooks: {e.args[1]}")
-
-    return [name_to_hook[name] for name in sorted_names]
-
-
-class SecretHandlerMixin:
-    """
-    Mixin for services that handle sensitive fields that should be redacted
-    when returned to the client and encrypted when stored in the database.
-    """
-
-    @classmethod
-    def redacted_fields(cls) -> list[str]:
-        """
-        Return a list of field names that should be redacted/encrypted.
-        """
-        return []
-
-    @before_create
-    async def _handle_redacted_create(self, model: S):
-        for field in self.redacted_fields():
-            val = getattr(model, field, None)
-            if val:
-                try:
-                    setattr(model, field, encrypt_password(val))
-                except EncryptionError as e:
-                    raise HTTPException(
-                        status_code=500, detail=f"Failed to encrypt {field}: {str(e)}"
-                    )
-
-    @before_update
-    async def _handle_redacted_update(self, model: S, data: NamedBase):
-        data_dict = data.model_dump(exclude_unset=True)
-        for field in self.redacted_fields():
-            if field in data_dict:
-                val = data_dict[field]
-                if val == "__REDACTED__":
-                    # Keep existing value (set data field to current model value)
-                    setattr(data, field, getattr(model, field))
-                elif val == "__CLEAR__":
-                    setattr(data, field, "")
-                elif val:
-                    try:
-                        setattr(data, field, encrypt_password(val))
-                    except EncryptionError as e:
-                        raise HTTPException(
-                            status_code=500,
-                            detail=f"Failed to encrypt {field}: {str(e)}",
-                        )
-
-    async def post_process_model(self, model: S) -> S:
-        """
-        Redact sensitive fields before returning to client.
-        Creates a copy to avoid modifying the session model.
-        """
-        if hasattr(super(), "post_process_model"):
-            model = await super().post_process_model(model)
-
-        redacted_fields = self.redacted_fields()
-        if not redacted_fields:
-            return model
-
-        # Check if any field needs redaction
-        has_sensitive_data = any(
-            getattr(model, field, None) for field in redacted_fields
-        )
-        if not has_sensitive_data:
-            return model
-
-        # Create a copy and redact
-        model_dict = model.model_dump()
-        for field in redacted_fields:
-            if field in model_dict:
-                model_dict[field] = "__REDACTED__"
-
-        return model.__class__.model_validate(model_dict)
-
-
-class HashedHandlerMixin:
-    """
-    Mixin for services that handle fields that should be hashed when stored
-    in the database and redacted when returned to the client.
-    """
-
-    @classmethod
-    def hashed_fields(cls) -> list[str]:
-        """
-        Return a list of field names that should be hashed.
-        """
-        return []
-
-    @before_create
-    async def _handle_hashed_create(self, model: S):
-        for field in self.hashed_fields():
-            val = getattr(model, field, None)
-            if val:
-                setattr(model, field, get_password_hash(val))
-
-    @before_update
-    async def _handle_hashed_update(self, model: S, data: NamedBase):
-        data_dict = data.model_dump(exclude_unset=True)
-        for field in self.hashed_fields():
-            if field in data_dict:
-                val = data_dict[field]
-                if val == "__REDACTED__":
-                    # Keep existing value (set data field to current model value)
-                    setattr(data, field, getattr(model, field))
-                elif val == "__CLEAR__":
-                    setattr(data, field, "")
-                elif val:
-                    setattr(data, field, get_password_hash(val))
-
-    async def post_process_model(self, model: S) -> S:
-        """
-        Redact hashed fields before returning to client.
-        """
-        if hasattr(super(), "post_process_model"):
-            model = await super().post_process_model(model)
-
-        hashed_fields = self.hashed_fields()
-        if not hashed_fields:
-            return model
-
-        # Check if any field needs redaction
-        has_sensitive_data = any(getattr(model, field, None) for field in hashed_fields)
-        if not has_sensitive_data:
-            return model
-
-        # Create a copy and redact
-        model_dict = model.model_dump()
-        for field in hashed_fields:
-            if field in model_dict:
-                model_dict[field] = "__REDACTED__"
-
-        return model.__class__.model_validate(model_dict)
 
 
 class Service(Generic[S], abc.ABC):
