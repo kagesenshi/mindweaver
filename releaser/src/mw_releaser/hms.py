@@ -134,26 +134,41 @@ class HMSReleaser(BaseReleaser):
             )
 
         if new_image_released:
-            # Calculate recommended next version
-            recommended_next = self.bump_version_patch(version)
+            # Calculate recommended next image version
+            recommended_next_image = self.bump_version_patch(version)
 
-            print(f"Current version released: {version}")
-            next_version = (
-                input(f"Enter next development version [{recommended_next}]: ").strip()
-                or recommended_next
+            print(f"Current app version released: {version}")
+            next_app_version = (
+                input(
+                    f"Enter next app development version [{recommended_next_image}]: "
+                ).strip()
+                or recommended_next_image
             )
 
-            print(f"Updating to next development version {next_version} ...")
-            self.set_version(VERSION_FILE, next_version)
-            self.update_chart(CHART_FILE, app_version=next_version)
+            print(f"Updating app version to {next_app_version} ...")
+            self.set_version(VERSION_FILE, next_app_version)
+            self.update_chart(CHART_FILE, app_version=next_app_version)
         else:
             print("Skipping image version bump as no new image was released.")
 
-        chart_version = self.get_chart_version(CHART_FILE)
+        # ALWAYS bump chart version
+        current_chart_version = self.get_chart_version(CHART_FILE)
+        recommended_next_chart = self.bump_version_patch(current_chart_version)
+
+        print(f"Current chart version released: {current_chart_version}")
+        next_chart_version = (
+            input(
+                f"Enter next chart development version [{recommended_next_chart}]: "
+            ).strip()
+            or recommended_next_chart
+        )
+        print(f"Updating chart version to {next_chart_version} ...")
+        self.update_chart(CHART_FILE, version=next_chart_version)
+
         self.git_ops(
             version_files=[VERSION_FILE, CHART_FILE],
-            tag=f"{IMAGE_NAME}-v{chart_version}",
-            message=f"released {IMAGE_NAME} {chart_version} (app: {version})",
+            tag=f"{IMAGE_NAME}-v{current_chart_version}",
+            message=f"released {IMAGE_NAME} {current_chart_version} (app: {version})",
         )
 
     def full(self):
