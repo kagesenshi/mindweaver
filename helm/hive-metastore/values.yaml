@@ -58,6 +58,8 @@ database:
 service:
   type: ClusterIP
   port: 9083
+  # nodePort: 31233
+  annotations: {}
 
 resources: {}
   # We usually recommend not to specify default resources and to leave this as a conscious
@@ -77,11 +79,28 @@ tolerations: []
 
 affinity: {}
 
-# Configuration for schema initialization
-initSchema:
+# Iceberg REST Catalog support (HMS 4.2.0+)
+icebergRest:
   enabled: true
-  # Allows setting custom annotations for the job (e.g. helm hooks)
-  annotations:
-    helm.sh/hook: post-install
-    helm.sh/hook-weight: "-5"
-    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+  port: 9001
+  service:
+    type: ClusterIP
+    port: 9001
+    # nodePort: 31201
+    annotations: {}
+  auth:
+    # Supported: none, simple, jwt, oauth2
+    type: "none"
+    jwt:
+      # Required if auth.type is jwt or oauth2 with validationMethod: jwt
+      jwksUrl: ""
+    oauth2:
+      # Required if auth.type is oauth2
+      issuer: ""
+      audience: "hive-metastore"
+      # Supported: jwt, introspection
+      validationMethod: "jwt"
+      usernameField: "email"
+      usernamePattern: "(.*)@.*"
+      clientId: ""
+      clientSecret: ""

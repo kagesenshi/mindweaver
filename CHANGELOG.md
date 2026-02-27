@@ -7,8 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.2] - Unreleased
 
+### Added
+- Iceberge REST API in HMS chart
+
 ### Changed
 - Refactored service framework to smaller mixins
+- Rebase HMS image to upstream apache/hive:standalone-metastore-4.2.0
+
+### Fixed
+- Pgsql nodeport selector not pointing to the right service
 
 ## [0.1.1] - 2026-02-27
 

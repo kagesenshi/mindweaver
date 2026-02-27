@@ -1,0 +1,24 @@
+{{- if .Values.icebergRest.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "hive-metastore.fullname" . }}-iceberg
+  labels:
+    {{- include "hive-metastore.labels" . | nindent 4 }}
+  {{- with .Values.icebergRest.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.icebergRest.service.type }}
+  ports:
+    - port: {{ .Values.icebergRest.service.port }}
+      targetPort: iceberg-rest
+      protocol: TCP
+      name: iceberg-rest
+      {{- if and (eq .Values.icebergRest.service.type "NodePort") .Values.icebergRest.service.nodePort }}
+      nodePort: {{ .Values.icebergRest.service.nodePort }}
+      {{- end }}
+  selector:
+    {{- include "hive-metastore.selectorLabels" . | nindent 4 }}
+{{- end }}

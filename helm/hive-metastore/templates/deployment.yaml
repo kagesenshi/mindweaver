@@ -35,11 +35,20 @@ spec:
             - name: http
               containerPort: {{ .Values.service.port }}
               protocol: TCP
+            {{- if .Values.icebergRest.enabled }}
+            - name: iceberg-rest
+              containerPort: {{ .Values.icebergRest.port }}
+              protocol: TCP
+            {{- end }}
           env:
             {{- include "hive-metastore.databaseEnv" . | nindent 12 }}
+            - name: DB_DRIVER
+              value: postgres
+            - name: IS_RESUME
+              value: "false"
           volumeMounts:
             - name: config
-              mountPath: /opt/conf
+              mountPath: /opt/hive-metastore/conf
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       volumes:
