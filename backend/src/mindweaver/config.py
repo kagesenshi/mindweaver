@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     enable_test_views: bool = False
     enable_auth: bool = True
     fernet_key: str | None = None
-    jwt_secret: str = "unsafe-secret-key-change-me"
+    jwt_secret: str = "unsafe-jwt-secret-key-that-is-at-least-32-bytes-long"
 
     experimental_data_source: bool = False
     experimental_knowledge_db: bool = False
