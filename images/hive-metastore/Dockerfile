@@ -45,7 +45,11 @@ VOLUME /opt/conf
 
 RUN echo '#!/bin/bash\n\n\
 if [ "$1" = "initSchema" ]; then\n\
-  bin/schematool -dbType postgres -initSchema\n\
+  if bin/schematool -dbType postgres -info > /dev/null 2>&1; then\n\
+    echo "Metastore schema already initialized."\n\
+  else\n\
+    bin/schematool -dbType postgres -initSchema\n\
+  fi\n\
 else\n\
   bin/start-metastore\n\
 fi' > /entrypoint.sh && chmod +x /entrypoint.sh
