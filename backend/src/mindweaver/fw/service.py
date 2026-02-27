@@ -25,97 +25,51 @@ from .hooks import (
 )
 from .mixins.secrethandler import SecretHandlerMixin
 from .mixins.hashinghandler import HashingHandlerMixin
+from .mixins.actionhandler import ActionHandlerMixin
+from .mixins.formhandler import FormHandlerMixin
+from .mixins.customview import CustomViewMixin
+from .mixins.servicestate import ServiceStateMixin
+from .registry import SERVICE_REGISTRY
+from .schema import (
+    ErrorDetail,
+    ValidationErrorDetail,
+    Error,
+    BaseResult,
+    Result,
+    FormSchema,
+    FormResult,
+    PaginationMeta,
+    ListResult,
+)
+from .util import camel_to_snake, redefine_model
 
 import enum
 import abc
 import jinja2 as j2
 from .exc import NotFoundError
-from .util import camel_to_snake
 import re
 import asyncio
 from fastapi import HTTPException
-from typing import Generic, Any, Literal, Annotated, Union, List, Dict
+from typing import Generic, Any, Annotated, List, Dict
 from mindweaver.fw.action import ActionRequest, BaseAction
 from mindweaver.fw.state import BaseState
 from mindweaver.crypto import encrypt_password, EncryptionError
 
 
-class ErrorDetail(BaseModel):
-    loc: list[Any] = Field(default_factory=list)
-    msg: str | None = None
-    type: str | None = None
-
-
-class ValidationErrorDetail(BaseModel):
-    msg: str
-    type: str
-    loc: list[str]
-
-
-class Error(BaseModel):
-    status: str
-    type: str
-    detail: list[ValidationErrorDetail] | ValidationErrorDetail | str
-
-
-STATUSES = Literal["success", "error"]
-
-
-class BaseResult(BaseModel):
-    detail: list[ErrorDetail] | None = None
-    status: STATUSES = "success"
-
-
-class Result(BaseResult, Generic[T]):
-    data: T
-
-
-class FormSchema(BaseModel):
-    jsonschema: dict[str, Any]
-    widgets: dict[str, Any]
-    immutable_fields: list[str]
-    internal_fields: list[str]
-
-
-class FormResult(BaseResult):
-    data: FormSchema
-
-
-class PaginationMeta(BaseModel):
-    page_num: int | None = None
-    page_size: int | None = None
-    next_page: AnyUrl | None = None
-    prev_page: AnyUrl | None = None
-
-
-class ListResult(BaseResult, Generic[T]):
-    data: list[T] | None = None
-    meta: PaginationMeta | None = None
-
-    model_config = ConfigDict(populate_by_name=True)
-
-
-def redefine_model(name, Model: type[BaseModel], *, exclude=None) -> type[BaseModel]:
-    exclude = exclude or []
-
-    fields = {
-        fname: (field.annotation, field)
-        for fname, field in Model.model_fields.items()
-        if fname not in exclude
-    }
-
-    model = create_model(name, **fields)
-    return model
-
-
-class Service(Generic[S], abc.ABC):
+class Service(
+    Generic[S],
+    ActionHandlerMixin,
+    FormHandlerMixin,
+    CustomViewMixin,
+    ServiceStateMixin,
+    abc.ABC,
+):
     _before_create_hooks: list[Any] = []
     _after_create_hooks: list[Any] = []
     _before_update_hooks: list[Any] = []
     _after_update_hooks: list[Any] = []
     _before_delete_hooks: list[Any] = []
     _after_delete_hooks: list[Any] = []
-    _registry: Dict[str, type["Service"]] = {}
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
@@ -171,7 +125,7 @@ class Service(Generic[S], abc.ABC):
             ):
                 model_class = cls.model_class()
                 if hasattr(model_class, "__tablename__"):
-                    Service._registry[model_class.__tablename__] = cls
+                    SERVICE_REGISTRY[model_class.__tablename__] = cls
 
     @classmethod
     @abc.abstractmethod
@@ -182,69 +136,12 @@ class Service(Generic[S], abc.ABC):
         raise NotImplementedError("model_class must be implemented")
 
     @classmethod
-    def createmodel_class(cls) -> type[BaseModel]:
-        """
-        This function provide a Pydantic model based on schema class,
-        with internal fields and immutable fields removed
-        for use in create view/operation
-        """
-        model_class = cls.model_class()
-        schema_class = cls.schema_class()
-        return redefine_model(
-            f"Create {model_class.__name__}",
-            schema_class,
-            exclude=cls.internal_fields(),
-        )
-
-    @classmethod
-    def updatemodel_class(cls) -> type[BaseModel]:
-        """
-        This function provide a Pydantic model based on schema class,
-        with internal fields and immutable fields removed
-        for use in update view/operation
-        """
-        model_class = cls.model_class()
-        schema_class = cls.schema_class()
-        return redefine_model(
-            f"Update {model_class.__name__}",
-            schema_class,
-            exclude=cls.internal_fields(),
-        )
-
-    @classmethod
-    def schema_class(cls) -> type[NamedBase]:
-        """
-        This function provide schema class for use in forms. By default it will use model class.
-        Override this if you need to use a different schema in forms
-        """
-        return cls.model_class()
-
-    @classmethod
     def service_path(cls) -> str:
         return f"/{cls.entity_type()}s"
 
     @classmethod
     def model_path(cls) -> str:
         return f"{cls.service_path()}/{{id}}"
-
-    @classmethod
-    def internal_fields(cls) -> list[str]:
-        # fields that are internal to the system , can be exposed to the user, but user should
-        # not be able to set or change the values of this field.
-        return ["uuid", "id", "created", "modified"]
-
-    @classmethod
-    def hidden_fields(cls) -> list[str]:
-        return ["uuid"]
-
-    @classmethod
-    def noninheritable_fields(cls) -> list[str]:
-        return ["uuid", "modified", "deleted"]
-
-    @classmethod
-    def immutable_fields(cls) -> list[str]:
-        # fields that can't be updated after object has been created
-        return ["name"]
 
     @classmethod
     def urn_namespace(cls) -> str:
@@ -255,226 +152,6 @@ class Service(Generic[S], abc.ABC):
     def entity_type(cls) -> str:
         model_class = cls.model_class()
         return camel_to_snake(model_class.__name__)
-
-    @classmethod
-    def get_state_class(cls) -> type[BaseState] | None:
-        """Returns the registered state class for this service and its bases."""
-        for base in cls.__mro__:
-            if (
-                "_state_class" in base.__dict__
-                and base.__dict__["_state_class"] is not None
-            ):
-                return base.__dict__["_state_class"]
-        return None
-
-    @classmethod
-    def with_state(cls):
-        """Decorator to register a state class on the service."""
-
-        def decorator(state_cls: type[BaseState]):
-            cls._state_class = state_cls
-            return state_cls
-
-        return decorator
-
-    @classmethod
-    def get_actions(cls) -> dict[str, type[BaseAction]]:
-        """Returns all registered actions for this class and its bases."""
-        actions = {}
-        for base in reversed(cls.__mro__):
-            if "_actions" in base.__dict__ and isinstance(
-                base.__dict__["_actions"], dict
-            ):
-                actions.update(base.__dict__["_actions"])
-        return actions
-
-    @classmethod
-    def register_action(cls, name: str):
-        """Decorator to register a new action on the service."""
-
-        def decorator(cls_func):
-            if "_actions" not in cls.__dict__:
-                cls._actions = {}
-            if name in cls._actions:
-                raise ValueError(
-                    f"Action '{name}' is already registered on {cls.__name__}"
-                )
-            cls._actions[name] = cls_func
-            return cls_func
-
-        return decorator
-
-    @classmethod
-    def get_custom_views(cls) -> list[dict]:
-        """Returns all registered custom views for this class and its bases."""
-        views = []
-        for base in reversed(cls.__mro__):
-            if "_custom_views" in base.__dict__ and isinstance(
-                base.__dict__["_custom_views"], list
-            ):
-                views.extend(base.__dict__["_custom_views"])
-        return views
-
-    @classmethod
-    def service_view(cls, method: str, path: str, **kwargs):
-        """Decorator to register a new service level custom view on the service."""
-
-        def decorator(cls_func):
-            if "_custom_views" not in cls.__dict__:
-                cls._custom_views = []
-            cls._custom_views.append(
-                {
-                    "type": "service",
-                    "method": method,
-                    "path": path,
-                    "func": cls_func,
-                    "kwargs": kwargs,
-                }
-            )
-            return cls_func
-
-        return decorator
-
-    @classmethod
-    def model_view(cls, method: str, path: str, **kwargs):
-        """Decorator to register a new model level custom view on the service."""
-
-        def decorator(cls_func):
-            if "_custom_views" not in cls.__dict__:
-                cls._custom_views = []
-            cls._custom_views.append(
-                {
-                    "type": "model",
-                    "method": method,
-                    "path": path,
-                    "func": cls_func,
-                    "kwargs": kwargs,
-                }
-            )
-            return cls_func
-
-        return decorator
-
-    @classmethod
-    def get_widgets(cls) -> Dict[str, Any]:
-        """
-        Infer widgets from model fields (relationships and enums).
-        """
-        widgets = {}
-        model_class = cls.model_class()
-
-        for name, field in model_class.model_fields.items():
-            # Default metadata
-            field_metadata = {
-                "order": 100 + list(model_class.model_fields.keys()).index(name),
-                "column_span": 2,
-            }
-
-            # Handle Relationships
-            if hasattr(field, "json_schema_extra") and field.json_schema_extra:
-                # This might not be the best way to detect relationship if not using Relationship()
-                pass
-
-            # Check for foreign keys in FieldInfo
-            if (
-                hasattr(field, "foreign_key")
-                and field.foreign_key
-                and isinstance(field.foreign_key, str)
-            ):
-                table_name = field.foreign_key.split(".")[0]
-                if table_name in Service._registry:
-                    target_svc = Service._registry[table_name]
-                    field_metadata.update(
-                        {
-                            "type": "relationship",
-                            "endpoint": f"/api/v1{target_svc.service_path()}",
-                            "field": "id",
-                        }
-                    )
-
-            # Handle Enums
-            annotation = field.annotation
-            # Handle Optional[Enum]
-            if hasattr(annotation, "__origin__") and annotation.__origin__ is Union:
-                args = annotation.__args__
-                for arg in args:
-                    if (
-                        isinstance(arg, type)
-                        and issubclass(arg, enum.Enum)
-                        and arg is not type(None)
-                    ):
-                        annotation = arg
-                        break
-
-            if isinstance(annotation, type) and issubclass(annotation, enum.Enum):
-                options = []
-                for item in annotation:
-                    label = item.value.replace("-", " ").replace("_", " ").title()
-                    options.append({"value": item.value, "label": label})
-                field_metadata.update(
-                    {
-                        "type": "select",
-                        "options": options,
-                    }
-                )
-
-            # Preferred Defaults
-            if name == "project_id":
-                field_metadata.update({"order": 0, "column_span": 1})
-            elif name == "name":
-                field_metadata.update({"order": 1, "column_span": 1})
-            elif name == "title":
-                field_metadata.update({"order": 2, "column_span": 2})
-            elif name == "description":
-                field_metadata.update({"order": 3, "column_span": 2})
-
-            # Ensure 'type' is present if we are adding it to widgets
-            if name in ["project_id", "name", "title", "description"]:
-                if "type" not in field_metadata:
-                    field_metadata["type"] = "text"
-                widgets[name] = field_metadata
-            elif "type" in field_metadata:
-                widgets[name] = field_metadata
-
-        # Merge with manual widgets
-        manual_widgets = cls.widgets()
-        for name, meta in manual_widgets.items():
-            if name in widgets:
-                widgets[name].update(meta)
-            else:
-                # If not in inferred widgets, we still need basic order/span if missing
-                if "order" not in meta:
-                    meta["order"] = 999
-                if "column_span" not in meta:
-                    meta["column_span"] = 2
-                widgets[name] = meta
-
-        # Post-process for labels, especially relationship fields ending with ID
-        for name, meta in widgets.items():
-            if meta.get("type") == "relationship" and "label" not in meta:
-                label_text = name
-                for suffix in ["_ids", "_id", "ids", "id"]:
-                    if label_text.lower().endswith(suffix):
-                        label_text = label_text[: -len(suffix)]
-                        break
-                label_text = label_text.replace("_", " ").strip()
-                label_text = label_text.title()
-                # Fix common acronyms
-                label_text = (
-                    label_text.replace("K8s", "K8S")
-                    .replace("Db", "DB")
-                    .replace("Url", "URL")
-                )
-                meta["label"] = label_text
-
-        return widgets
-
-    @classmethod
-    def widgets(cls) -> Dict[str, Any]:
-        """
-        Override this to manually define or override widgets.
-        """
-        return {}
 
     def __init__(self, request: fastapi.Request, session: AsyncSession):
         self.request = request
@@ -654,8 +331,8 @@ class Service(Generic[S], abc.ABC):
                         continue
 
                     table_name = field_info.foreign_key.split(".")[0]
-                    if table_name in Service._registry:
-                        target_svc_cls = Service._registry[table_name]
+                    if table_name in SERVICE_REGISTRY:
+                        target_svc_cls = SERVICE_REGISTRY[table_name]
                         target_model_class = target_svc_cls.model_class()
 
                         # Validate if the target model is project-scoped by checking its MRO

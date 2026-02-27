@@ -5,6 +5,7 @@ import pytest
 from sqlmodel import SQLModel, Field
 from typing import Optional
 from mindweaver.fw.service import Service
+from mindweaver.fw.registry import SERVICE_REGISTRY
 from mindweaver.fw.model import NamedBase
 from sqlalchemy_utils import JSONType
 
@@ -39,14 +40,14 @@ class MockService(Service[MockModel]):
 
 def test_relationship_label_generation():
     # Backup registry
-    original_registry = Service._registry.copy()
+    original_registry = SERVICE_REGISTRY.copy()
 
     try:
         # Register mock services to registry
-        Service._registry["mw_project"] = MockTargetService
-        Service._registry["mw_datasource"] = MockTargetService
-        Service._registry["mw_knowledge_db"] = MockTargetService
-        Service._registry["mw_s3_storage"] = MockTargetService
+        SERVICE_REGISTRY["mw_project"] = MockTargetService
+        SERVICE_REGISTRY["mw_datasource"] = MockTargetService
+        SERVICE_REGISTRY["mw_knowledge_db"] = MockTargetService
+        SERVICE_REGISTRY["mw_s3_storage"] = MockTargetService
 
         widgets = MockService.get_widgets()
 
@@ -64,4 +65,5 @@ def test_relationship_label_generation():
         assert widgets["datasource_ids"]["label"] == "Datasource"
     finally:
         # Restore registry
-        Service._registry = original_registry
+        SERVICE_REGISTRY.clear()
+        SERVICE_REGISTRY.update(original_registry)
