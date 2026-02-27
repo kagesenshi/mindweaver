@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.2] - Unreleased
 
+### Changed
+- Refactored service framework to smaller mixins
+
 ## [0.1.1] - 2026-02-27
 
 ### Added
