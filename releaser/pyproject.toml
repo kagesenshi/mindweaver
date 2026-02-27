@@ -1,0 +1,21 @@
+[project]
+name = "mw-releaser"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Izhar Firdaus", email = "kagesenshi.87@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "click>=8.3.1",
+    "pydantic>=2.12.4",
+    "pydantic-settings>=2.12.0",
+]
+
+[project.scripts]
+mw-releaser = "mw_releaser.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.9.26,<0.10.0"]
+build-backend = "uv_build"
