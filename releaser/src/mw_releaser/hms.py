@@ -11,14 +11,30 @@ IMAGE_NAME = "hive-metastore"
 
 
 class HMSReleaser(BaseReleaser):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.new_image_released = None
+
     def prep(self, version=None):
         """Prepare release: download deps, update versions, build docker, package helm."""
+        release_new_image = (
+            input("Release new image version? [y/N]: ").strip().lower() == "y"
+        )
+        self.new_image_released = release_new_image
+
         current_app_version = self.get_version(VERSION_FILE)
-        if not version:
-            version = (
-                input(f"Enter app version to release [{current_app_version}]: ").strip()
-                or current_app_version
-            )
+        if release_new_image:
+            if not version:
+                version = (
+                    input(
+                        f"Enter app version to release [{current_app_version}]: "
+                    ).strip()
+                    or current_app_version
+                )
+            self.set_version(VERSION_FILE, version)
+        else:
+            version = current_app_version
+            print(f"Using current app version {version} (no new image release).")
 
         current_chart_version = self.get_chart_version(CHART_FILE)
         recommended_chart_version = self.bump_version_patch(current_chart_version)
@@ -32,31 +48,33 @@ class HMSReleaser(BaseReleaser):
         print(
             f"Preparing Hive Metastore release {version} (Chart: {new_chart_version}) ..."
         )
-        self.set_version(VERSION_FILE, version)
         self.update_chart(CHART_FILE, version=new_chart_version, app_version=version)
 
-        # Download external dependencies
-        print("Downloading external dependencies ...")
-        self.run_command(["chmod", "+x", "images/hive-metastore/download.sh"])
-        self.run_command(["./download.sh"], cwd="images/hive-metastore")
+        if release_new_image:
+            # Download external dependencies
+            print("Downloading external dependencies ...")
+            self.run_command(["chmod", "+x", "images/hive-metastore/download.sh"])
+            self.run_command(["./download.sh"], cwd="images/hive-metastore")
 
-        # Build Container Image
-        image_tag = f"{self.registry}/{IMAGE_NAME}:{version}"
-        latest_tag = f"{self.registry}/{IMAGE_NAME}:latest"
-        print(f"Building container image {image_tag} ...")
-        self.run_command(
-            [
-                "docker",
-                "build",
-                "-t",
-                image_tag,
-                "-t",
-                latest_tag,
-                "-f",
-                "images/hive-metastore/Dockerfile",
-                "images/hive-metastore",
-            ]
-        )
+            # Build Container Image
+            image_tag = f"{self.registry}/{IMAGE_NAME}:{version}"
+            latest_tag = f"{self.registry}/{IMAGE_NAME}:latest"
+            print(f"Building container image {image_tag} ...")
+            self.run_command(
+                [
+                    "docker",
+                    "build",
+                    "-t",
+                    image_tag,
+                    "-t",
+                    latest_tag,
+                    "-f",
+                    "images/hive-metastore/Dockerfile",
+                    "images/hive-metastore",
+                ]
+            )
+        else:
+            print("Skipping image build as requested.")
 
         # Build Helm Package
         if os.path.isdir("helm/hive-metastore"):
@@ -78,9 +96,21 @@ class HMSReleaser(BaseReleaser):
         if not version:
             version = self.get_version(VERSION_FILE)
 
-        print(f"Pushing Hive Metastore container images for version {version} ...")
-        self.run_command(["docker", "push", f"{self.registry}/{IMAGE_NAME}:{version}"])
-        self.run_command(["docker", "push", f"{self.registry}/{IMAGE_NAME}:latest"])
+        new_image_released = self.new_image_released
+        if new_image_released is None:
+            new_image_released = (
+                input("Was a new image version released? [y/N]: ").strip().lower()
+                == "y"
+            )
+
+        if new_image_released:
+            print(f"Pushing Hive Metastore container images for version {version} ...")
+            self.run_command(
+                ["docker", "push", f"{self.registry}/{IMAGE_NAME}:{version}"]
+            )
+            self.run_command(["docker", "push", f"{self.registry}/{IMAGE_NAME}:latest"])
+        else:
+            print("Skipping image push as no new image was released.")
 
         chart_package = f"hive-metastore-{version}.tgz"
         if os.path.exists(chart_package):
@@ -96,23 +126,34 @@ class HMSReleaser(BaseReleaser):
         if not version:
             version = self.get_version(VERSION_FILE)
 
-        # Calculate recommended next version
-        recommended_next = self.bump_version_patch(version)
+        new_image_released = self.new_image_released
+        if new_image_released is None:
+            new_image_released = (
+                input("Was a new image version released? [y/N]: ").strip().lower()
+                == "y"
+            )
 
-        print(f"Current version released: {version}")
-        next_version = (
-            input(f"Enter next development version [{recommended_next}]: ").strip()
-            or recommended_next
-        )
+        if new_image_released:
+            # Calculate recommended next version
+            recommended_next = self.bump_version_patch(version)
 
-        print(f"Updating to next development version {next_version} ...")
-        self.set_version(VERSION_FILE, next_version)
-        self.update_chart(CHART_FILE, app_version=next_version)
+            print(f"Current version released: {version}")
+            next_version = (
+                input(f"Enter next development version [{recommended_next}]: ").strip()
+                or recommended_next
+            )
 
+            print(f"Updating to next development version {next_version} ...")
+            self.set_version(VERSION_FILE, next_version)
+            self.update_chart(CHART_FILE, app_version=next_version)
+        else:
+            print("Skipping image version bump as no new image was released.")
+
+        chart_version = self.get_chart_version(CHART_FILE)
         self.git_ops(
             version_files=[VERSION_FILE, CHART_FILE],
-            tag=f"{IMAGE_NAME}-v{version}",
-            message=f"released {IMAGE_NAME} {version}",
+            tag=f"{IMAGE_NAME}-v{chart_version}",
+            message=f"released {IMAGE_NAME} {chart_version} (app: {version})",
         )
 
     def full(self):
