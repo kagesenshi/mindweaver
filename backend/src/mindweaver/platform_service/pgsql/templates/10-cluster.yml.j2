@@ -13,6 +13,7 @@ spec:
     chart: cluster
     helm:
       values: |
+        fullnameOverride: {{ name }}
         cluster:
           name: {{ name }}
           instances: {{ instances }}
