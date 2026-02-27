@@ -76,32 +76,42 @@ class MindWeaverReleaser(BaseReleaser):
         print(f"Release {version} pushed successfully!")
 
     def post(self, version=None):
-        """Post-release: bump version, update files, git commit/tag/push."""
+        """Post-release: git commit/tag/push current state, then bump version for next cycle."""
         if not version:
             version = self.get_version(VERSION_FILE)
 
-        # Calculate recommended next version
-        recommended_next = self.bump_version_patch(version)
+        # 1. Commit and tag the release first
+        # These files should have been updated in 'prep' to the release version
+        self.git_ops(
+            version_files=[VERSION_FILE, CHART_FILE, CHANGELOG_FILE],
+            tag=f"v{version}",
+            message=f"release {version}",
+        )
 
+        # 2. Bump versions for next development cycle
+        recommended_next = self.bump_version_patch(version)
         print(f"Current version released: {version}")
         next_version = (
             input(f"Enter next development version [{recommended_next}]: ").strip()
             or recommended_next
         )
 
-        print(f"Updating to next development version {next_version} ...")
+        print(f"Starting next development cycle {next_version} ...")
         self.set_version(VERSION_FILE, next_version)
-        # In post-release, we update appVersion for next development,
-        # but chart version usually stays at released version or moves to a dev suffix
-        # Based on "update appVersion in chart.yml", we definitely update appVersion
         self.update_chart(CHART_FILE, app_version=next_version)
         self.update_changelog(CHANGELOG_FILE, next_version)
 
-        self.git_ops(
-            version_files=[VERSION_FILE, CHART_FILE, CHANGELOG_FILE],
-            tag=f"v{version}",
-            message=f"released {version}",
+        # 3. Commit the bump
+        confirm = (
+            input(f"Commit start of next development cycle {next_version}? [y/N]: ")
+            .strip()
+            .lower()
         )
+        if confirm == "y":
+            self.git_commit(
+                files=[VERSION_FILE, CHART_FILE, CHANGELOG_FILE],
+                message=f"bump version to {next_version}",
+            )
 
     def full(self):
         """Run full release cycle."""

@@ -14,6 +14,7 @@ class HMSReleaser(BaseReleaser):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.new_image_released = None
+        self.release_chart_version = None
 
     def prep(self, version=None):
         """Prepare release: download deps, update versions, build docker, package helm."""
@@ -45,6 +46,7 @@ class HMSReleaser(BaseReleaser):
             or recommended_chart_version
         )
 
+        self.release_chart_version = new_chart_version
         print(
             f"Preparing Hive Metastore release {version} (Chart: {new_chart_version}) ..."
         )
@@ -122,16 +124,30 @@ class HMSReleaser(BaseReleaser):
         print(f"Release {version} pushed successfully!")
 
     def post(self, version=None):
-        """Post-release: bump version, update files, git commit/tag/push."""
+        """Post-release: git commit/tag/push current state, then bump version for next cycle."""
         if not version:
             version = self.get_version(VERSION_FILE)
 
+        # 1. Commit and tag the release first
+        # Tag follows chart version
+        current_chart_version = self.release_chart_version or self.get_chart_version(
+            CHART_FILE
+        )
+        self.git_ops(
+            version_files=[VERSION_FILE, CHART_FILE],
+            tag=f"{IMAGE_NAME}-v{current_chart_version}",
+            message=f"release {IMAGE_NAME} {current_chart_version} (app: {version})",
+        )
+
+        # 2. Bump versions for next development cycle
         new_image_released = self.new_image_released
         if new_image_released is None:
             new_image_released = (
                 input("Was a new image version released? [y/N]: ").strip().lower()
                 == "y"
             )
+
+        updated_files = [CHART_FILE]
 
         if new_image_released:
             # Calculate recommended next image version
@@ -145,9 +161,10 @@ class HMSReleaser(BaseReleaser):
                 or recommended_next_image
             )
 
-            print(f"Updating app version to {next_app_version} ...")
+            print(f"Starting next app development cycle {next_app_version} ...")
             self.set_version(VERSION_FILE, next_app_version)
             self.update_chart(CHART_FILE, app_version=next_app_version)
+            updated_files.append(VERSION_FILE)
         else:
             print("Skipping image version bump as no new image was released.")
 
@@ -162,14 +179,20 @@ class HMSReleaser(BaseReleaser):
             ).strip()
             or recommended_next_chart
         )
-        print(f"Updating chart version to {next_chart_version} ...")
+        print(f"Starting next chart development cycle {next_chart_version} ...")
         self.update_chart(CHART_FILE, version=next_chart_version)
 
-        self.git_ops(
-            version_files=[VERSION_FILE, CHART_FILE],
-            tag=f"{IMAGE_NAME}-v{current_chart_version}",
-            message=f"released {IMAGE_NAME} {current_chart_version} (app: {version})",
+        # 3. Commit the bump
+        confirm = (
+            input("Commit start of next development cycle? [y/N]: ").strip().lower()
+            == "y"
         )
+        if confirm == "y":
+            self.git_commit(
+                files=updated_files,
+                message=f"bump version to chart={next_chart_version}"
+                + (f", app={next_app_version}" if new_image_released else ""),
+            )
 
     def full(self):
         """Run full release cycle."""

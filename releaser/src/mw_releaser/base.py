@@ -177,3 +177,13 @@ class BaseReleaser:
             print("Git operations completed successfully!")
         else:
             print("Skipping Git operations.")
+
+    def git_commit(self, files, message, push=True):
+        """Commit files and optionally push."""
+        print(f"Committing changes: {message} ...")
+        self.run_command(["git", "add"] + files)
+        self.run_command(["git", "commit", "-m", message])
+        if push:
+            print("Pushing to origin...")
+            self.run_command(["git", "push"])
+        print("Commit completed successfully!")
