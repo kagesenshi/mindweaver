@@ -4,8 +4,6 @@
 from .model import Base, NamedBase, AsyncSession, get_session, get_engine
 from .service import (
     Service,
-    SecretHandlerMixin,
-    HashingHandlerMixin,
     before_create,
     before_update,
 )
@@ -347,7 +345,7 @@ class AuthService(Service[User]):
         return router
 
 
-class UserService(HashingHandlerMixin, Service[User]):
+class UserService(Service[User]):
     @classmethod
     def model_class(cls) -> type[User]:
         return User

@@ -3,7 +3,6 @@
 
 from mindweaver.service import NamedBase
 from mindweaver.service.base import ProjectScopedNamedBase, ProjectScopedService
-from mindweaver.fw.service import SecretHandlerMixin
 from sqlalchemy import String, Text, Boolean
 from sqlalchemy_utils import JSONType
 from sqlmodel import Field
@@ -17,7 +16,7 @@ from mindweaver.ext.data_source import get_driver_options, get_driver
 from .model import DataSource
 
 
-class DataSourceService(SecretHandlerMixin, ProjectScopedService[DataSource]):
+class DataSourceService(ProjectScopedService[DataSource]):
     @classmethod
     def model_class(cls) -> type[DataSource]:
         return DataSource

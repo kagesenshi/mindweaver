@@ -58,6 +58,8 @@ from mindweaver.crypto import encrypt_password, EncryptionError
 
 class Service(
     Generic[S],
+    SecretHandlerMixin,
+    HashingHandlerMixin,
     ActionHandlerMixin,
     FormHandlerMixin,
     CustomViewMixin,
@@ -355,13 +357,6 @@ class Service(
                                     message=f"Referenced {target_model_class.__name__} (id={val}) in field '{field_name}' does not exist or belongs to another project"
                                 )
         return data
-
-    async def post_process_model(self, model: S) -> S:
-        """
-        Post-process model before returning it to the client.
-        Default is identity. Override this to redact sensitive fields.
-        """
-        return model
 
     def _handle_integrity_error(self, e: saexc.IntegrityError):
         msg = str(e.orig)

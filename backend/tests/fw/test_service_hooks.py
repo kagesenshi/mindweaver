@@ -87,20 +87,74 @@ class OrderService(Service[MockModel]):
     async def hook_b(self, model):
         pass
 
+    @before_update
+    async def up_1(self, model, data):
+        pass
+
+    @before_update(after="up_1")
+    async def up_2(self, model, data):
+        pass
+
+    @after_update
+    async def up_a(self, model):
+        pass
+
+    @after_update(before="up_a")
+    async def up_b(self, model):
+        pass
+
+    @before_delete
+    async def del_1(self, model):
+        pass
+
+    @before_delete(after="del_1")
+    async def del_2(self, model):
+        pass
+
+    @after_delete
+    async def del_a(self, model):
+        pass
+
+    @after_delete(before="del_a")
+    async def del_b(self, model):
+        pass
+
 
 @pytest.mark.asyncio
 async def test_hook_dependencies():
     # Inspect the sorted hooks directly on the class
 
-    before_hooks = [h.__name__ for h in OrderService._before_create_hooks]
-    after_hooks = [h.__name__ for h in OrderService._after_create_hooks]
+    before_create_hooks = [h.__name__ for h in OrderService._before_create_hooks]
+    after_create_hooks = [h.__name__ for h in OrderService._after_create_hooks]
+    before_update_hooks = [h.__name__ for h in OrderService._before_update_hooks]
+    after_update_hooks = [h.__name__ for h in OrderService._after_update_hooks]
+    before_delete_hooks = [h.__name__ for h in OrderService._before_delete_hooks]
+    after_delete_hooks = [h.__name__ for h in OrderService._after_delete_hooks]
 
-    # Expected order:
-    # Before: hook_0 -> hook_1 -> hook_2
-    # After: hook_b -> hook_a
+    # Expected order includes base mixin hooks first for create/update:
+    # hook_0 -> hook_1 -> hook_2
+    assert "hook_0" in before_create_hooks
+    assert "hook_1" in before_create_hooks
+    assert "hook_2" in before_create_hooks
+    idx0 = before_create_hooks.index("hook_0")
+    idx1 = before_create_hooks.index("hook_1")
+    idx2 = before_create_hooks.index("hook_2")
+    assert idx0 < idx1 < idx2
 
-    assert before_hooks == ["hook_0", "hook_1", "hook_2"]
-    assert after_hooks == ["hook_b", "hook_a"]
+    assert after_create_hooks == ["hook_b", "hook_a"]
+
+    # Update hooks: _handle_hashed_update -> _handle_redacted_update -> up_1 -> up_2
+    assert "up_1" in before_update_hooks
+    assert "up_2" in before_update_hooks
+    u_idx1 = before_update_hooks.index("up_1")
+    u_idx2 = before_update_hooks.index("up_2")
+    assert u_idx1 < u_idx2
+
+    assert after_update_hooks == ["up_b", "up_a"]
+
+    # Delete hooks (no base mixin hooks currently)
+    assert before_delete_hooks == ["del_1", "del_2"]
+    assert after_delete_hooks == ["del_b", "del_a"]
 
 
 def test_circular_dependency():
@@ -148,6 +202,8 @@ async def test_inheritance_order():
     # because we iterate MRO reversed (Base -> Sub)
 
     hooks = [h.__name__ for h in SubOrderService._before_create_hooks]
+    # Filter out base mixin hooks to focus on inheritance test
+    hooks = [h for h in hooks if not h.startswith("_handle_")]
     assert hooks == ["hook_base", "hook_sub"]
 
 

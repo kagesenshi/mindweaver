@@ -3,7 +3,6 @@
 
 from mindweaver.service import NamedBase, Base
 from mindweaver.service.base import ProjectScopedNamedBase, ProjectScopedService
-from mindweaver.fw.service import SecretHandlerMixin
 from mindweaver.config import settings
 from sqlmodel import Field
 from typing import Any, Optional
@@ -16,7 +15,7 @@ from mindweaver.fw.exc import FieldValidationError
 from .model import S3Storage, S3Config
 
 
-class S3StorageService(SecretHandlerMixin, ProjectScopedService[S3Storage]):
+class S3StorageService(ProjectScopedService[S3Storage]):
 
     @classmethod
     def model_class(cls) -> type[S3Storage]:
