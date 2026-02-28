@@ -5,6 +5,7 @@ from .service import K8sClusterService
 from .model import K8sCluster, K8sClusterType, K8sClusterStatus
 import mindweaver.service.k8s_cluster.views
 import mindweaver.service.k8s_cluster.actions
+import mindweaver.service.k8s_cluster.state
 
 router = K8sClusterService.router()
 

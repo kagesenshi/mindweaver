@@ -20,4 +20,4 @@ def test_project_form_views(client: TestClient):
 
     # Check K8s fields in project form
     assert "k8s_cluster_id" in data["data"]["widgets"]
-    assert data["data"]["widgets"]["k8s_cluster_id"]["type"] == "reference"
+    assert data["data"]["widgets"]["k8s_cluster_id"]["type"] == "relationship"

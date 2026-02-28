@@ -223,11 +223,36 @@ export const useK8sClusters = () => {
         await fetchClusters();
     }, [fetchClusters]);
 
+    const getClusterState = useCallback(async (id) => {
+        const response = await apiClient.get(`/k8s_clusters/${id}/_state`);
+        return response.data;
+    }, []);
+
+    const refreshClusterState = useCallback(async (id) => {
+        const response = await apiClient.post(`/k8s_clusters/${id}/_refresh`);
+        return response.data;
+    }, []);
+
+    const fetchActions = useCallback(async (id) => {
+        const response = await apiClient.get(`/k8s_clusters/${id}/_actions`);
+        return response.data.actions || [];
+    }, []);
+
+    const executeAction = useCallback(async (id, action, parameters = {}) => {
+        const response = await apiClient.post(`/k8s_clusters/${id}/_actions`, { action, parameters });
+        await fetchClusters();
+        return response.data;
+    }, [fetchClusters]);
+
     useEffect(() => {
         fetchClusters();
     }, [fetchClusters]);
 
-    return { clusters, loading, error, fetchClusters, createCluster, updateCluster, deleteCluster };
+    return {
+        clusters, loading, error,
+        fetchClusters, createCluster, updateCluster, deleteCluster,
+        getClusterState, refreshClusterState, fetchActions, executeAction
+    };
 };
 
 export const useS3Storages = () => {

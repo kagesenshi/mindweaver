@@ -33,8 +33,6 @@ class ProjectService(Service[Project]):
             "k8s_namespace": {"order": 6, "column_span": 2, "label": "K8S Namespace"},
             "k8s_cluster_id": {
                 "order": 10,
-                "type": "reference",
-                "reference_service": "k8s_cluster",
                 "label": "K8S Cluster",
             },
         }

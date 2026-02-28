@@ -1,53 +1,51 @@
 import React, { useState, useEffect } from 'react';
 import {
-    Briefcase,
+    Server,
     Monitor,
     Trash2,
     ChevronRight,
     Edit2,
-    Server
+    Activity
 } from 'lucide-react';
 import Modal from '../../components/Modal';
 import DynamicForm from '../../components/DynamicForm';
 import PageLayout from '../../components/PageLayout';
 import ResourceConfirmModal from '../../components/ResourceConfirmModal';
 import { useNotification } from '../../providers/NotificationProvider';
-import { useK8sClusters } from '../../hooks/useResources';
 
-const ListingView = ({ context, projectsHook, onSelectProject }) => {
-    const { darkMode, refreshProjects } = context;
-    const { projects, loading, deleteProject, fetchProjects, getProjectState } = projectsHook;
-    const { clusters } = useK8sClusters();
+const ListingView = ({ context, clustersHook, onSelectCluster }) => {
+    const { darkMode } = context;
+    const { clusters, loading, deleteCluster, fetchClusters, getClusterState, executeAction } = clustersHook;
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    const [selectedProjectForEdit, setSelectedProjectForEdit] = useState(null);
+    const [selectedClusterForEdit, setSelectedClusterForEdit] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
-    const [projectStates, setProjectStates] = useState({});
+    const [clusterStates, setClusterStates] = useState({});
     const [successfullyTriggered, setSuccessfullyTriggered] = useState({});
     const { showSuccess, showError } = useNotification();
 
-    const filteredProjects = projects.filter(p =>
-        String(p.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        String(p.description || '').toLowerCase().includes(searchTerm.toLowerCase())
+    const filteredClusters = clusters.filter(c =>
+        String(c.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        String(c.description || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     useEffect(() => {
         let timer;
         const fetchStates = async () => {
-            if (projects.length === 0) return;
+            if (clusters.length === 0 || !getClusterState) return;
             const states = {};
-            await Promise.all(projects.map(async (p) => {
+            await Promise.all(clusters.map(async (c) => {
                 try {
-                    const state = await getProjectState(p.id);
-                    states[p.id] = state;
+                    const state = await getClusterState(c.id);
+                    states[c.id] = state;
                 } catch (e) {
-                    console.error(`Failed to fetch state for project ${p.id}`, e);
+                    console.error(`Failed to fetch state for cluster ${c.id}`, e);
                 }
             }));
-            setProjectStates(states);
+            setClusterStates(states);
         };
 
-        if (projects.length > 0) {
+        if (clusters.length > 0) {
             fetchStates();
             timer = setInterval(fetchStates, 5000);
         }
@@ -55,76 +53,76 @@ const ListingView = ({ context, projectsHook, onSelectProject }) => {
         return () => {
             if (timer) clearInterval(timer);
         };
-    }, [projects, getProjectState]);
+    }, [clusters, getClusterState]);
 
     return (
         <React.Fragment>
             <PageLayout
-                title="Project Registry"
-                description="Tenant management and resource isolation."
+                title="Kubernetes Clusters"
+                description="Manage underlying infrastructure compute clusters."
                 createConfig={{
-                    title: "Create New Project",
-                    entityPath: "/projects",
-                    buttonText: "CREATE PROJECT",
+                    title: "Register New Cluster",
+                    entityPath: "/k8s_clusters",
+                    buttonText: "REGISTER CLUSTER",
                     onSuccess: () => {
-                        fetchProjects();
-                        refreshProjects?.();
+                        fetchClusters();
                     }
                 }}
                 searchQuery={searchTerm}
                 onSearchChange={(e) => setSearchTerm(e.target.value)}
-                searchPlaceholder="Search projects by title or description..."
+                searchPlaceholder="Search clusters by title or description..."
                 isLoading={loading}
-                isEmpty={filteredProjects.length === 0}
+                isEmpty={filteredClusters.length === 0}
                 emptyState={{
-                    title: "No projects found",
-                    description: "Create a new project to start managing resources.",
-                    icon: <Briefcase size={48} className="text-slate-700" />
+                    title: "No clusters registered",
+                    description: "Register a Kubernetes cluster to start deploying infrastructure.",
+                    icon: <Server size={48} className="text-slate-700" />
                 }}
             >
                 <div className="grid grid-cols-1 gap-4">
-                    {filteredProjects.map(proj => {
-                        const state = projectStates[proj.id] || {};
-                        const resourceCount = (state.pgsql || 0) + (state.trino || 0) + (state.spark || 0) + (state.airflow || 0);
-                        const cluster = state.cluster || {};
+                    {filteredClusters.map(cluster => {
+                        const state = clusterStates[cluster.id] || {};
+                        const statusColor = state.status === 'online' ? 'bg-green-500' :
+                            state.status === 'error' ? 'bg-red-500' :
+                                state.status === 'offline' ? 'bg-slate-400' :
+                                    'bg-yellow-500';
 
                         return (
                             <div
-                                key={proj.id}
+                                key={cluster.id}
                                 className="mw-card flex items-center justify-between group cursor-pointer hover:border-blue-500/50 transition-colors"
-                                onClick={() => onSelectProject(proj.id)}
+                                onClick={() => onSelectCluster(cluster.id)}
                             >
                                 <div className="flex items-center gap-6">
                                     <div className="mw-icon-box relative">
-                                        <Briefcase size={24} className="text-slate-400 group-hover:text-blue-500 transition-colors" />
+                                        <Server size={24} className="text-slate-400 group-hover:text-blue-500 transition-colors" />
+                                        <div
+                                            className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white dark:border-slate-800 ${statusColor}`}
+                                            title={`Cluster Status: ${state.status || 'unknown'}`}
+                                        />
                                     </div>
                                     <div>
                                         <div className="flex items-center gap-3">
-                                            <h4 className="text-lg font-bold text-slate-900 dark:text-white">{proj.title}</h4>
-                                            {proj.k8s_cluster_id && (
-                                                <span
-                                                    className="text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 flex items-center gap-1.5"
-                                                    title="Kubernetes Cluster"
-                                                >
-                                                    <Server size={10} />
-                                                    {clusters.find(c => c.id === proj.k8s_cluster_id)?.title || `Cluster ID: ${proj.k8s_cluster_id}`}
+                                            <h4 className="text-lg font-bold text-slate-900 dark:text-white">{cluster.title}</h4>
+                                            {state.k8s_version && (
+                                                <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-500 px-2 py-0.5 rounded font-mono">
+                                                    {state.k8s_version}
                                                 </span>
                                             )}
                                         </div>
-                                        <p className="text-base text-slate-500">{proj.description}</p>
+                                        <p className="text-base text-slate-500">{cluster.type}</p>
                                     </div>
                                 </div>
 
                                 <div className="flex items-center gap-12">
-                                    {!cluster.argocd_installed && cluster.status === 'online' && !successfullyTriggered[proj.id] && (
+                                    {!state.argocd_installed && state.status === 'online' && !successfullyTriggered[cluster.id] && executeAction && (
                                         <button
                                             onClick={async (e) => {
                                                 e.stopPropagation();
                                                 try {
-                                                    const res = await projectsHook.executeAction(proj.id, 'install_argocd');
+                                                    const res = await executeAction(cluster.id, 'install_argocd');
                                                     showSuccess(res.message || "ArgoCD installation triggered");
-                                                    setSuccessfullyTriggered(prev => ({ ...prev, [proj.id]: true }));
-                                                    refreshProjects?.();
+                                                    setSuccessfullyTriggered(prev => ({ ...prev, [cluster.id]: true }));
                                                 } catch (err) {
                                                     console.error("Failed to install ArgoCD", err);
                                                     showError("Failed to trigger ArgoCD installation");
@@ -137,36 +135,36 @@ const ListingView = ({ context, projectsHook, onSelectProject }) => {
                                     )}
 
                                     <div className="text-center">
-                                        <p className="text-base text-slate-500 uppercase font-bold mb-1">Resources</p>
-                                        <p className="text-lg font-bold text-slate-900 dark:text-white">{resourceCount}</p>
+                                        <p className="text-base text-slate-500 uppercase font-bold mb-1">Nodes</p>
+                                        <p className="text-lg font-bold text-slate-900 dark:text-white">{state.node_count || 0}</p>
                                     </div>
 
                                     <div className="flex items-center gap-2">
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                setSelectedProjectForEdit(proj);
+                                                setSelectedClusterForEdit(cluster);
                                                 setIsEditModalOpen(true);
                                             }}
                                             className="mw-btn-icon"
-                                            title="Edit Project"
+                                            title="Edit Cluster"
                                         >
                                             <Edit2 size={18} />
                                         </button>
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                setSelectedProjectForEdit(proj);
+                                                setSelectedClusterForEdit(cluster);
                                                 setIsDeleteModalOpen(true);
                                             }}
                                             className="mw-btn-icon-danger"
-                                            title="Delete Project"
+                                            title="Delete Cluster"
                                         >
                                             <Trash2 size={18} />
                                         </button>
                                         <div className="w-px h-8 bg-slate-800 mx-2" />
                                         <button
-                                            onClick={(e) => { e.stopPropagation(); onSelectProject(proj.id); }}
+                                            onClick={(e) => { e.stopPropagation(); onSelectCluster(cluster.id); }}
                                             className="p-3 text-slate-400 hover:text-white transition-all"
                                         >
                                             <ChevronRight size={20} />
@@ -176,7 +174,6 @@ const ListingView = ({ context, projectsHook, onSelectProject }) => {
                             </div>
                         );
                     })}
-
                 </div>
             </PageLayout>
 
@@ -184,48 +181,46 @@ const ListingView = ({ context, projectsHook, onSelectProject }) => {
                 isOpen={isEditModalOpen}
                 onClose={() => {
                     setIsEditModalOpen(false);
-                    setSelectedProjectForEdit(null);
+                    setSelectedClusterForEdit(null);
                 }}
-                title="Edit Project"
+                title="Edit Cluster"
                 darkMode={darkMode}
             >
-                {selectedProjectForEdit && (
+                {selectedClusterForEdit && (
                     <DynamicForm
-                        entityPath="/projects"
+                        entityPath="/k8s_clusters"
                         mode="edit"
-                        initialData={selectedProjectForEdit}
+                        initialData={selectedClusterForEdit}
                         darkMode={darkMode}
                         onSuccess={() => {
                             setIsEditModalOpen(false);
-                            setSelectedProjectForEdit(null);
-                            fetchProjects();
-                            refreshProjects?.();
+                            setSelectedClusterForEdit(null);
+                            fetchClusters();
                         }}
                         onCancel={() => {
                             setIsEditModalOpen(false);
-                            setSelectedProjectForEdit(null);
+                            setSelectedClusterForEdit(null);
                         }}
                     />
                 )}
             </Modal>
 
-            {isDeleteModalOpen && selectedProjectForEdit && (
+            {isDeleteModalOpen && selectedClusterForEdit && (
                 <ResourceConfirmModal
                     isOpen={isDeleteModalOpen}
                     onClose={() => {
                         setIsDeleteModalOpen(false);
-                        setSelectedProjectForEdit(null);
+                        setSelectedClusterForEdit(null);
                     }}
                     onConfirm={async (typedName) => {
-                        await deleteProject(selectedProjectForEdit.id, typedName);
+                        await deleteCluster(selectedClusterForEdit.id, typedName);
                         setIsDeleteModalOpen(false);
-                        setSelectedProjectForEdit(null);
-                        refreshProjects?.();
+                        setSelectedClusterForEdit(null);
                     }}
-                    resourceName={selectedProjectForEdit.title}
+                    resourceName={selectedClusterForEdit.title}
                     darkMode={darkMode}
-                    title="Delete Project"
-                    message="Are you sure you want to delete this project? All associated resources will be permanently removed."
+                    title="Delete Cluster"
+                    message="Are you sure you want to remove this cluster? Wait, ensure that no projects are actively referencing it!"
                 />
             )}
         </React.Fragment>

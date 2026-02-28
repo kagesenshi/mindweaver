@@ -3,8 +3,10 @@
 
 from sqlmodel import select, func
 from mindweaver.fw.state import BaseState
+from .service import ProjectService
 
 
+@ProjectService.with_state()
 class ProjectState(BaseState):
     """
     Project state provides an overview of project resources and cluster health.

@@ -137,6 +137,7 @@ the tests first before implementing the fixes.
 - **Naming**: Custom view paths in frontend providers must match the `_` prefix used in the backend.
 - **Identifier**: Key elements such as buttons, meaningful div, cards should have semantic identifier or class name applied to it.
 
+
 ### Backend Synchronization
 - Always fetch JSON schema and form metadata from the backend to render dynamic forms.
 - Prioritize backend labels and widget configurations; only override in frontend when absolutely necessary for UX.
@@ -165,6 +166,7 @@ the tests first before implementing the fixes.
 - **Consult the Rules**: Always check `.agent/rules/` before proposing changes.
 - **Be Concise**: When updating code, make targeted edits rather than replacing entire files.
 - **Verify**: Never assume code works; run tests and provide proof of verification in walkthroughs.
+- **Frontend Linting**: Always run `npm run lint` to lint the frontend code if there were changes made in frontend.
 - **Communicate**: If a design decision is ambiguous, ask the user for clarification before proceeding.
 - **Advise Correction**: If user made a request based on a statement that is not true, explain what is really happening and ask for confirmation first. 
 - **Session Commit**: Session commit is already handled by the session object dependency. No explicit commit on views. Celery tasks require explicit commit because it does not use dependency injection.

@@ -9,7 +9,8 @@ from alembic import context
 from sqlmodel import SQLModel
 
 # Import all models for autogenerate support
-from mindweaver.service.project.model import Project, ProjectStatus
+from mindweaver.service.project.model import Project
+from mindweaver.service.k8s_cluster.model import K8sClusterStatus
 from mindweaver.service.data_source.model import DataSource
 from mindweaver.service.s3_storage.model import S3Storage
 from mindweaver.platform_service.pgsql.model import PgSqlPlatform, PgSqlPlatformState

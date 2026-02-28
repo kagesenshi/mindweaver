@@ -9,6 +9,7 @@ const HomePage = lazy(() => import('./pages/HomePage'))
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const CallbackPage = lazy(() => import('./pages/CallbackPage'))
 const ProjectsPage = lazy(() => import('./pages/projects/Page'))
+const K8sClustersPage = lazy(() => import('./pages/k8s_clusters/Page'))
 const DataSourcesPage = lazy(() => import('./pages/data_sources/Page'))
 const PgSqlPage = lazy(() => import('./pages/pgsql/Page'))
 const S3StoragePage = lazy(() => import('./pages/s3_storage/Page'))
@@ -31,6 +32,10 @@ const router = createBrowserRouter([
       {
         path: 'projects',
         element: <ProjectsPage />,
+      },
+      {
+        path: 'k8s_clusters',
+        element: <K8sClustersPage />,
       },
 
       {
@@ -62,12 +67,10 @@ const router = createBrowserRouter([
   }
 ])
 
-const Loading = () => <div className="flex h-screen w-screen items-center justify-center p-8 text-slate-500">Loading...</div>;
-
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <AuthProvider>
-      <Suspense fallback={<Loading />}>
+      <Suspense fallback={<div className="flex h-screen w-screen items-center justify-center p-8 text-slate-500">Loading...</div>}>
         <RouterProvider router={router} />
       </Suspense>
     </AuthProvider>

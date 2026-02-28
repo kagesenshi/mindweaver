@@ -3,8 +3,7 @@
 
 from .service import ProjectService
 from .model import Project
-import mindweaver.service.project.views
-import mindweaver.service.project.actions
+import mindweaver.service.project.state
 
 
 router = ProjectService.router()

@@ -51,6 +51,7 @@ const LoginPage = () => {
                 setError('Invalid username or password.');
             }
         } catch (err) {
+            console.error(err);
             setError('Login failed. Please try again.');
         } finally {
             setSubmitting(false);
