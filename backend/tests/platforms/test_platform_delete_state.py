@@ -22,6 +22,7 @@ def test_platform_delete_state_denial_when_active(client: TestClient, test_proje
             "name": test_project["name"],
             "title": test_project["title"],
             "description": test_project["description"],
+            "k8s_cluster_id": test_project["k8s_cluster_id"],
             "k8s_cluster_type": "remote",
             "k8s_cluster_kubeconfig": 'apiVersion: v1\nkind: Config\nclusters: []\ncontexts: []\ncurrent-context: ""\nusers: []',
         }
@@ -94,6 +95,7 @@ def test_platform_delete_state_success_after_decommission(
             "name": test_project["name"],
             "title": test_project["title"],
             "description": test_project["description"],
+            "k8s_cluster_id": test_project["k8s_cluster_id"],
             "k8s_cluster_type": "remote",
             "k8s_cluster_kubeconfig": 'apiVersion: v1\nkind: Config\nclusters: []\ncontexts: []\ncurrent-context: ""\nusers: []',
         }

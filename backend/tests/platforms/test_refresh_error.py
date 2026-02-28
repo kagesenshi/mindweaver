@@ -13,7 +13,8 @@ def test_refresh_missing_greenlet_error(client: TestClient, test_project):
         "name": test_project["name"],
         "title": test_project["title"],
         "description": test_project["description"],
-        "k8s_cluster_type": "remote",
+        "k8s_cluster_id": test_project["k8s_cluster_id"],
+            "k8s_cluster_type": "remote",
         "k8s_cluster_kubeconfig": 'apiVersion: v1\nkind: Config\nclusters: []\ncontexts: []\ncurrent-context: ""\nusers: []',
     }
     resp = client.put(

@@ -68,7 +68,9 @@ def test_crud(crud_client: TestClient):
     assert resp.status_code == 404
 
 
-def test_project_scoped_crud(project_scoped_crud_client: TestClient):
+def test_project_scoped_crud(
+    project_scoped_crud_client: TestClient, test_cluster: dict
+):
     """Test CRUD operations for ProjectScopedNamedBase models."""
     client = project_scoped_crud_client
 
@@ -79,6 +81,7 @@ def test_project_scoped_crud(project_scoped_crud_client: TestClient):
             "name": "test-project",
             "title": "Test Project",
             "description": "A test project",
+            "k8s_cluster_id": test_cluster["id"],
         },
     )
     resp.raise_for_status()
@@ -91,6 +94,7 @@ def test_project_scoped_crud(project_scoped_crud_client: TestClient):
             "name": "test-project-2",
             "title": "Test Project 2",
             "description": "Second test project",
+            "k8s_cluster_id": test_cluster["id"],
         },
     )
     resp.raise_for_status()
@@ -195,21 +199,23 @@ def test_project_scoped_crud(project_scoped_crud_client: TestClient):
     assert resp.status_code == 404
 
 
-def test_project_id_immutability(project_scoped_crud_client: TestClient):
+def test_project_id_immutability(
+    project_scoped_crud_client: TestClient, test_cluster: dict
+):
     """Test that project_id is immutable after creation."""
     client = project_scoped_crud_client
 
     # Create two test projects
     resp = client.post(
         "/api/v1/projects",
-        json={"name": "p1", "title": "Project 1"},
+        json={"name": "p1", "title": "Project 1", "k8s_cluster_id": test_cluster["id"]},
     )
     resp.raise_for_status()
     p1_id = resp.json()["data"]["id"]
 
     resp = client.post(
         "/api/v1/projects",
-        json={"name": "p2", "title": "Project 2"},
+        json={"name": "p2", "title": "Project 2", "k8s_cluster_id": test_cluster["id"]},
     )
     resp.raise_for_status()
     p2_id = resp.json()["data"]["id"]

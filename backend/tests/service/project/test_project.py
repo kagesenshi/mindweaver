@@ -6,13 +6,14 @@ from fastapi.testclient import TestClient
 from unittest.mock import patch
 
 
-def test_create_project(client: TestClient):
+def test_create_project(client: TestClient, test_cluster: dict):
     response = client.post(
         "/api/v1/projects",
         json={
             "name": "test-project",
             "title": "Test Project",
             "description": "A test project",
+            "k8s_cluster_id": test_cluster["id"],
         },
     )
     assert response.status_code == 200
@@ -23,10 +24,16 @@ def test_create_project(client: TestClient):
     assert "id" in data
 
 
-def test_list_projects(client: TestClient):
+def test_list_projects(client: TestClient, test_cluster: dict):
     # Create two projects
-    client.post("/api/v1/projects", json={"name": "p1", "title": "P1"})
-    client.post("/api/v1/projects", json={"name": "p2", "title": "P2"})
+    client.post(
+        "/api/v1/projects",
+        json={"name": "p1", "title": "P1", "k8s_cluster_id": test_cluster["id"]},
+    )
+    client.post(
+        "/api/v1/projects",
+        json={"name": "p2", "title": "P2", "k8s_cluster_id": test_cluster["id"]},
+    )
 
     response = client.get("/api/v1/projects")
     assert response.status_code == 200
@@ -37,8 +44,11 @@ def test_list_projects(client: TestClient):
     assert "p2" in names
 
 
-def test_get_project(client: TestClient):
-    create_resp = client.post("/api/v1/projects", json={"name": "p1", "title": "P1"})
+def test_get_project(client: TestClient, test_cluster: dict):
+    create_resp = client.post(
+        "/api/v1/projects",
+        json={"name": "p1", "title": "P1", "k8s_cluster_id": test_cluster["id"]},
+    )
     project_id = create_resp.json()["data"]["id"]
 
     response = client.get(f"/api/v1/projects/{project_id}")
@@ -47,13 +57,20 @@ def test_get_project(client: TestClient):
     assert data["name"] == "p1"
 
 
-def test_update_project(client: TestClient):
-    create_resp = client.post("/api/v1/projects", json={"name": "p1", "title": "P1"})
+def test_update_project(client: TestClient, test_cluster: dict):
+    create_resp = client.post(
+        "/api/v1/projects",
+        json={"name": "p1", "title": "P1", "k8s_cluster_id": test_cluster["id"]},
+    )
     project_id = create_resp.json()["data"]["id"]
 
     response = client.put(
         f"/api/v1/projects/{project_id}",
-        json={"name": "p1", "title": "P1 Updated"},
+        json={
+            "name": "p1",
+            "title": "P1 Updated",
+            "k8s_cluster_id": test_cluster["id"],
+        },
     )
     assert response.status_code == 200
     data = response.json()["data"]
@@ -61,8 +78,11 @@ def test_update_project(client: TestClient):
     assert data["title"] == "P1 Updated"
 
 
-def test_delete_project(client: TestClient):
-    create_resp = client.post("/api/v1/projects", json={"name": "p1", "title": "P1"})
+def test_delete_project(client: TestClient, test_cluster: dict):
+    create_resp = client.post(
+        "/api/v1/projects",
+        json={"name": "p1", "title": "P1", "k8s_cluster_id": test_cluster["id"]},
+    )
     project_id = create_resp.json()["data"]["id"]
 
     response = client.delete(
@@ -75,14 +95,16 @@ def test_delete_project(client: TestClient):
     assert get_resp.status_code == 404
 
 
-def test_project_scoping(client: TestClient):
+def test_project_scoping(client: TestClient, test_cluster: dict):
     # Create two projects
-    p1 = client.post("/api/v1/projects", json={"name": "p1", "title": "P1"}).json()[
-        "data"
-    ]
-    p2 = client.post("/api/v1/projects", json={"name": "p2", "title": "P2"}).json()[
-        "data"
-    ]
+    p1 = client.post(
+        "/api/v1/projects",
+        json={"name": "p1", "title": "P1", "k8s_cluster_id": test_cluster["id"]},
+    ).json()["data"]
+    p2 = client.post(
+        "/api/v1/projects",
+        json={"name": "p2", "title": "P2", "k8s_cluster_id": test_cluster["id"]},
+    ).json()["data"]
 
     # Create a data source in P1
     headers_p1 = {"X-Project-ID": str(p1["id"])}

@@ -14,7 +14,8 @@ def test_pgsql_platform_crud(client: TestClient, test_project):
         "name": test_project["name"],
         "title": test_project["title"],
         "description": test_project["description"],
-        "k8s_cluster_type": "remote",
+        "k8s_cluster_id": test_project["k8s_cluster_id"],
+            "k8s_cluster_type": "remote",
         "k8s_cluster_kubeconfig": 'apiVersion: v1\nkind: Config\nclusters: []\ncontexts: []\ncurrent-context: ""\nusers: []',
     }
     resp = client.put(
@@ -134,7 +135,8 @@ def test_pgsql_backup_destination_validation(client: TestClient, test_project):
         "name": test_project["name"],
         "title": test_project["title"],
         "description": test_project["description"],
-        "k8s_cluster_type": "remote",
+        "k8s_cluster_id": test_project["k8s_cluster_id"],
+            "k8s_cluster_type": "remote",
         "k8s_cluster_kubeconfig": 'apiVersion: v1\nkind: Config\nclusters: []\ncontexts: []\ncurrent-context: ""\nusers: []',
     }
     resp = client.put(
@@ -212,7 +214,8 @@ def test_pgsql_instances_validation(client: TestClient, test_project):
         "name": test_project["name"],
         "title": test_project["title"],
         "description": test_project["description"],
-        "k8s_cluster_type": "remote",
+        "k8s_cluster_id": test_project["k8s_cluster_id"],
+            "k8s_cluster_type": "remote",
         "k8s_cluster_kubeconfig": 'apiVersion: v1\nkind: Config\nclusters: []\ncontexts: []\ncurrent-context: ""\nusers: []',
     }
     resp = client.put(
@@ -265,7 +268,8 @@ def test_pgsql_immutable_fields(client: TestClient, test_project):
         "name": test_project["name"],
         "title": test_project["title"],
         "description": test_project["description"],
-        "k8s_cluster_type": "remote",
+        "k8s_cluster_id": test_project["k8s_cluster_id"],
+            "k8s_cluster_type": "remote",
         "k8s_cluster_kubeconfig": 'apiVersion: v1\nkind: Config\nclusters: []\ncontexts: []\ncurrent-context: ""\nusers: []',
     }
     resp = client.put(

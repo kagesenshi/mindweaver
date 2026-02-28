@@ -13,6 +13,4 @@ class Project(NamedBase, table=True):
     k8s_namespace: Optional[str] = Field(
         default=None, sa_type=String(length=32), nullable=True
     )
-    k8s_cluster_id: Optional[int] = Field(
-        default=None, foreign_key="mw_k8s_cluster.id", nullable=True
-    )
+    k8s_cluster_id: int = Field(foreign_key="mw_k8s_cluster.id")

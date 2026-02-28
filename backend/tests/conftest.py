@@ -72,8 +72,8 @@ def client(postgresql_proc: PostgreSQLExecutor, postgresql: Connection):
 
 
 @pytest.fixture(scope="function")
-def test_project(client: TestClient):
-    """Create a test project for use in tests."""
+def test_cluster(client: TestClient):
+    """Create a default test cluster for use in tests."""
     cluster_resp = client.post(
         "/api/v1/k8s_clusters",
         json={
@@ -84,15 +84,19 @@ def test_project(client: TestClient):
         },
     )
     assert cluster_resp.status_code == 200, cluster_resp.json()
-    cluster_id = cluster_resp.json()["data"]["id"]
+    return cluster_resp.json()["data"]
 
+
+@pytest.fixture(scope="function")
+def test_project(client: TestClient, test_cluster: dict):
+    """Create a test project for use in tests."""
     response = client.post(
         "/api/v1/projects",
         json={
             "name": "test-project",
             "title": "Test Project",
             "description": "A test project for unit tests",
-            "k8s_cluster_id": cluster_id,
+            "k8s_cluster_id": test_cluster["id"],
         },
     )
     assert response.status_code == 200, response.json()

@@ -5,16 +5,26 @@ import pytest
 from fastapi.testclient import TestClient
 
 
-def test_cross_project_relationship_validation(client: TestClient):
+def test_cross_project_relationship_validation(client: TestClient, test_cluster: dict):
     # 1. Create two projects
     resp_p1 = client.post(
-        "/api/v1/projects", json={"name": "p-alpha", "title": "Project Alpha"}
+        "/api/v1/projects",
+        json={
+            "name": "p-alpha",
+            "title": "Project Alpha",
+            "k8s_cluster_id": test_cluster["id"],
+        },
     )
     assert resp_p1.status_code == 200, resp_p1.json()
     p1 = resp_p1.json()["data"]
 
     resp_p2 = client.post(
-        "/api/v1/projects", json={"name": "p-beta", "title": "Project Beta"}
+        "/api/v1/projects",
+        json={
+            "name": "p-beta",
+            "title": "Project Beta",
+            "k8s_cluster_id": test_cluster["id"],
+        },
     )
     assert resp_p2.status_code == 200, resp_p2.json()
     p2 = resp_p2.json()["data"]
@@ -60,10 +70,15 @@ def test_cross_project_relationship_validation(client: TestClient):
     assert "project" in str(resp.json()["detail"]).lower()
 
 
-def test_same_project_relationship_works(client: TestClient):
+def test_same_project_relationship_works(client: TestClient, test_cluster: dict):
     # 1. Create a project
     resp_p1 = client.post(
-        "/api/v1/projects", json={"name": "p-gamma", "title": "Project Gamma"}
+        "/api/v1/projects",
+        json={
+            "name": "p-gamma",
+            "title": "Project Gamma",
+            "k8s_cluster_id": test_cluster["id"],
+        },
     )
     assert resp_p1.status_code == 200, resp_p1.json()
     p1 = resp_p1.json()["data"]

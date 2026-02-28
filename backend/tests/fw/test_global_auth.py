@@ -60,14 +60,19 @@ def test_protected_endpoint_returns_401_no_token(client: TestClient):
     assert "Not authenticated" in response.text
 
 
-def test_protected_endpoint_accessible_with_token(client: TestClient):
+def test_protected_endpoint_accessible_with_token(
+    client: TestClient, test_cluster: dict
+):
     """Protected endpoints should return 401 for a valid token but non-existent user."""
     settings.enable_auth = True
     token_payload = {"sub": "test@example.com", "user_id": 1, "exp": time.time() + 3600}
     token = jwt.encode(token_payload, settings.jwt_secret, algorithm="HS256")
 
     # Create a project (auth disabled by conftest default)
-    client.post("/api/v1/projects", json={"name": "p1", "title": "P1"})
+    client.post(
+        "/api/v1/projects",
+        json={"name": "p1", "title": "P1", "k8s_cluster_id": test_cluster["id"]},
+    )
 
     # Now enable auth and try with token for non-existent user
     settings.enable_auth = True
