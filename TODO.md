@@ -6,6 +6,7 @@ Based on the project's roadmap and constitution, here are the features that need
 Focus on Data Platform deployment orchestration capabilities. Establish a robust foundation for deploying dependency components.
 
 - [ ] **Kubernetes Clusters**: Develop backend services (`k8s_cluster.py`) and frontend UI to manage Kubernetes clusters and their kubeconfig.
+- [ ] **HMS Deployment**: Add backend server (`hms.py`), Helm chart, Kubernetes manifest templates, and frontend UI (`HMSPage.jsx`)
 - [ ] **Kafka Deployment**: Add backend service (`kafka.py`), Kubernetes manifest templates, and frontend UI (`KafkaPage.jsx`).
 - [ ] **Trino Deployment**: Add backend service (`trino.py`), Kubernetes manifest templates, and frontend UI (`TrinoPage.jsx`).
 - [ ] **Airflow Deployment**: Add backend service (`airflow.py`), Kubernetes manifest templates, and frontend UI (`AirflowPage.jsx`).

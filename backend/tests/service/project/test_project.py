@@ -150,13 +150,24 @@ def test_project_scoping(client: TestClient):
 def test_project_state(
     mock_poll_status, mock_decommission, mock_deploy, client: TestClient
 ):
+    # Create cluster
+    c1 = client.post(
+        "/api/v1/k8s_clusters",
+        json={
+            "name": "state-test-cluster",
+            "title": "State Test Cluster",
+            "type": "remote",
+            "kubeconfig": "config",
+        },
+    ).json()["data"]
+
     # Create project
     p1 = client.post(
         "/api/v1/projects",
         json={
             "name": "state-test",
             "title": "State Test",
-            "k8s_cluster_type": "in-cluster",
+            "k8s_cluster_id": c1["id"],
         },
     ).json()["data"]
 

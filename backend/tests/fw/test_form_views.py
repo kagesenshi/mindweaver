@@ -19,7 +19,5 @@ def test_project_form_views(client: TestClient):
     assert "id" in data["data"]["internal_fields"]
 
     # Check K8s fields in project form
-    assert "k8s_cluster_type" in data["data"]["widgets"]
-    assert data["data"]["widgets"]["k8s_cluster_type"]["type"] == "select"
-    assert "k8s_cluster_kubeconfig" in data["data"]["widgets"]
-    assert data["data"]["widgets"]["k8s_cluster_kubeconfig"]["type"] == "textarea"
+    assert "k8s_cluster_id" in data["data"]["widgets"]
+    assert data["data"]["widgets"]["k8s_cluster_id"]["type"] == "reference"

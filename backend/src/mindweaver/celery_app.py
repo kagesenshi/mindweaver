@@ -8,7 +8,7 @@ app = Celery(
     "mindweaver",
     broker=settings.celery_broker_url,
     backend=settings.celery_result_backend,
-    include=["mindweaver.tasks.platform_status", "mindweaver.tasks.project_status"],
+    include=["mindweaver.tasks.platform_status", "mindweaver.tasks.k8s_cluster_status"],
 )
 
 app.conf.update(
@@ -22,8 +22,8 @@ app.conf.update(
             "task": "mindweaver.tasks.platform_status.poll_all_platforms",
             "schedule": 15.0,
         },
-        "poll-all-projects-15s": {
-            "task": "mindweaver.tasks.project_status.poll_all_projects",
+        "poll-all-k8s-clusters-15s": {
+            "task": "mindweaver.tasks.k8s_cluster_status.poll_all_k8s_clusters",
             "schedule": 15.0,
         },
     },

@@ -12,7 +12,8 @@ from mindweaver.platform_service.pgsql import (
     PgSqlPlatform,
     PgSqlPlatformState,
 )
-from mindweaver.service.project import K8sClusterType
+from mindweaver.service.project import Project
+from mindweaver.service.k8s_cluster import K8sCluster, K8sClusterType
 
 
 @pytest.mark.asyncio
@@ -32,10 +33,19 @@ async def test_pgsql_poll_status(postgresql_proc, test_project):
         project_id = test_project["id"]
         # In this test, test_project is a dict from fixture, but we need to update it in DB
         # However, the fixture usually handles session. Let's just update the model.
+        cluster = K8sCluster(
+            name="test-cluster-poll",
+            title="Test Cluster Poll",
+            type=K8sClusterType.REMOTE,
+            kubeconfig="apiVersion: v1\nkind: Config",
+        )
+        session.add(cluster)
+        await session.flush()
+
         from mindweaver.service.project import Project
+
         db_project = await session.get(Project, project_id)
-        db_project.k8s_cluster_type = K8sClusterType.REMOTE
-        db_project.k8s_cluster_kubeconfig = "apiVersion: v1\nkind: Config"
+        db_project.k8s_cluster_id = cluster.id
         session.add(db_project)
         await session.commit()
 

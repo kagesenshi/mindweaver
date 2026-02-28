@@ -14,7 +14,8 @@ import logging
 from mindweaver.fw.model import Base
 from mindweaver.fw.exc import ModelValidationError
 from mindweaver.service.base import ProjectScopedNamedBase, ProjectScopedService
-from mindweaver.service.project import Project, K8sClusterType
+from mindweaver.service.project import Project
+from mindweaver.service.k8s_cluster import K8sCluster, K8sClusterType
 from mindweaver.fw.service import after_update, before_delete
 from mindweaver.fw.state import BaseState
 import os
@@ -531,11 +532,21 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
     async def kubeconfig(self, model: T) -> str | None:
         """returns the kubeconfig string from the associated project"""
         project = await self.project(model)
-        if project.k8s_cluster_type == K8sClusterType.IN_CLUSTER:
+        if not project.k8s_cluster_id:
+            raise ValueError(f"Project {project.name} has no k8s cluster attached")
+
+        result = await self.session.exec(
+            select(K8sCluster).where(K8sCluster.id == project.k8s_cluster_id)
+        )
+        cluster = result.one_or_none()
+        if not cluster:
+            raise ValueError(f"K8sCluster with id {project.k8s_cluster_id} not found")
+
+        if cluster.type == K8sClusterType.IN_CLUSTER:
             return None
-        if not project.k8s_cluster_kubeconfig:
-            raise ValueError(f"Project {project.name} has no kubeconfig")
-        return project.k8s_cluster_kubeconfig
+        if not cluster.kubeconfig:
+            raise ValueError(f"Cluster {cluster.name} has no kubeconfig")
+        return cluster.kubeconfig
 
     async def _resolve_namespace(self, model: T) -> str:
         """Resolves the namespace for the platform.

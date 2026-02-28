@@ -9,7 +9,8 @@ from mindweaver.platform_service.base import (
     PlatformService,
     PlatformStateBase,
 )
-from mindweaver.service.project import Project, K8sClusterType
+from mindweaver.service.project import Project
+from mindweaver.service.k8s_cluster import K8sClusterType
 from typing import Annotated
 from fastapi import Depends
 
@@ -65,13 +66,25 @@ app.include_router(router, prefix="/api/v1")
 
 
 def test_cluster_service_api(client: TestClient, test_project):
+    # 0. Create K8sCluster
+    cluster_resp = client.post(
+        "/api/v1/k8s_clusters",
+        json={
+            "name": "my-cluster",
+            "title": "My Cluster",
+            "type": "remote",
+            "kubeconfig": "test-kubeconfig-content",
+        },
+    )
+    cluster_resp.raise_for_status()
+    cluster_id = cluster_resp.json()["data"]["id"]
+
     # 1. Update project with K8s info
     project_update = {
         "name": test_project["name"],
         "title": test_project["title"],
         "description": test_project["description"],
-        "k8s_cluster_type": "remote",
-        "k8s_cluster_kubeconfig": "test-kubeconfig-content",
+        "k8s_cluster_id": cluster_id,
     }
     resp = client.put(
         f"/api/v1/projects/{test_project['id']}",
@@ -112,13 +125,25 @@ def test_cluster_service_api(client: TestClient, test_project):
 
 
 def test_cluster_service_kubeconfig_missing_api(client: TestClient, test_project):
-    # 1. Update project with K8s info but WITHOUT kubeconfig
+    # 0. Create K8sCluster without kubeconfig
+    cluster_resp = client.post(
+        "/api/v1/k8s_clusters",
+        json={
+            "name": "my-bad-cluster",
+            "title": "My Bad Cluster",
+            "type": "remote",
+            "kubeconfig": None,
+        },
+    )
+    cluster_resp.raise_for_status()
+    cluster_id = cluster_resp.json()["data"]["id"]
+
+    # 1. Update project with K8s info
     project_update = {
         "name": test_project["name"],
         "title": test_project["title"],
         "description": test_project["description"],
-        "k8s_cluster_type": "remote",
-        "k8s_cluster_kubeconfig": None,
+        "k8s_cluster_id": cluster_id,
     }
     resp = client.put(
         f"/api/v1/projects/{test_project['id']}",

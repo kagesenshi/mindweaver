@@ -3,7 +3,6 @@
 
 from sqlmodel import select, func
 from mindweaver.fw.state import BaseState
-from .model import ProjectStatus
 
 
 class ProjectState(BaseState):
@@ -16,6 +15,7 @@ class ProjectState(BaseState):
             PgSqlPlatform,
             PgSqlPlatformState,
         )
+        from mindweaver.service.k8s_cluster import K8sClusterStatus
 
         # Get service counts (legacy from views.py)
         stmt = (
@@ -33,18 +33,19 @@ class ProjectState(BaseState):
         pgsql_count = result.one_or_none() or 0
 
         # Get cluster status
-        stmt_status = select(ProjectStatus).where(
-            ProjectStatus.project_id == self.model.id
-        )
-        result_status = await self.svc.session.exec(stmt_status)
-        status_model = result_status.one_or_none()
-
         status_data = {}
-        if status_model:
-            status_data = status_model.model_dump(
-                exclude={"id", "project_id", "last_update"}
+        if self.model.k8s_cluster_id:
+            stmt_status = select(K8sClusterStatus).where(
+                K8sClusterStatus.k8s_cluster_id == self.model.k8s_cluster_id
             )
-            status_data["last_update"] = status_model.last_update.isoformat()
+            result_status = await self.svc.session.exec(stmt_status)
+            status_model = result_status.one_or_none()
+
+            if status_model:
+                status_data = status_model.model_dump(
+                    exclude={"id", "k8s_cluster_id", "last_update"}
+                )
+                status_data["last_update"] = status_model.last_update.isoformat()
 
         return {
             "pgsql": pgsql_count,
