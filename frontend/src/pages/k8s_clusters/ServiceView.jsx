@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-    Activity, ArrowLeft, Monitor, RefreshCw
+    Activity, Monitor, RefreshCw
 } from 'lucide-react';
 import { useNotification } from '../../providers/NotificationProvider';
 
@@ -51,15 +51,20 @@ const ServiceView = ({
             <div className="space-y-8 animate-in fade-in duration-500">
                 <div className="mw-page-header">
                     <div className="flex gap-4 items-center">
-                        <button
-                            onClick={onBack}
-                            className="p-3 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all bg-slate-100 dark:bg-slate-800 rounded-xl"
-                        >
-                            <ArrowLeft size={24} />
-                        </button>
+                        <div className="mw-icon-box w-16 h-16 text-slate-400">
+                            <Monitor size={32} />
+                        </div>
                         <div>
                             <h2 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white">Loading Cluster State...</h2>
                         </div>
+                    </div>
+                    <div className="flex gap-3">
+                        <button
+                            onClick={onBack}
+                            className="mw-btn-secondary px-6 py-2.5"
+                        >
+                            BACK TO LIST
+                        </button>
                     </div>
                 </div>
             </div>
@@ -69,36 +74,35 @@ const ServiceView = ({
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
             <div className="mw-page-header">
-                <div className="flex gap-4 items-center justify-between">
-                    <div className="flex gap-4 items-center">
-                        <button
-                            onClick={onBack}
-                            className="p-3 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all bg-slate-100 dark:bg-slate-800 rounded-xl"
-                        >
-                            <ArrowLeft size={24} />
-                        </button>
-                        <div className="mw-icon-box w-16 h-16 text-indigo-400">
-                            <Monitor size={32} />
+                <div className="flex gap-4 items-center">
+                    <div className="mw-icon-box w-16 h-16 text-indigo-400">
+                        <Monitor size={32} />
+                    </div>
+                    <div>
+                        <div className="flex items-center gap-3">
+                            <h2 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white">{selectedCluster.title} Health</h2>
                         </div>
-                        <div>
-                            <div className="flex items-center gap-3">
-                                <h2 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white">{selectedCluster.title} Health</h2>
-                            </div>
-                            <div className="flex items-center gap-4 mt-2">
-                                <span className="flex items-center gap-1.5 text-sm text-slate-400">
-                                    Cluster ID: <span className="text-slate-500 font-mono font-bold uppercase tracking-tight">{selectedCluster.id}</span>
-                                </span>
-                            </div>
+                        <div className="flex items-center gap-4 mt-2">
+                            <span className="flex items-center gap-1.5 text-sm text-slate-400">
+                                Cluster ID: <span className="text-slate-500 font-mono font-bold uppercase tracking-tight">{selectedCluster.id}</span>
+                            </span>
                         </div>
                     </div>
-
+                </div>
+                <div className="flex gap-3">
                     <button
                         onClick={handleRefresh}
                         disabled={isRefreshing}
-                        className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 px-4 py-2 rounded-lg font-bold transition-all disabled:opacity-50"
+                        className="mw-btn-secondary px-6 py-2.5 flex items-center gap-2"
                     >
-                        <RefreshCw size={18} className={isRefreshing ? "animate-spin" : ""} />
-                        REFRESH
+                        <RefreshCw size={16} className={isRefreshing ? "animate-spin" : ""} />
+                        {isRefreshing ? 'REFRESHING...' : 'REFRESH'}
+                    </button>
+                    <button
+                        onClick={onBack}
+                        className="mw-btn-secondary px-6 py-2.5"
+                    >
+                        BACK TO LIST
                     </button>
                 </div>
             </div>

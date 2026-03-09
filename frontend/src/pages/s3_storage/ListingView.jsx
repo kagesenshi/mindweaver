@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { HardDrive, Server, Globe, Radio, CheckCircle2, XCircle } from 'lucide-react';
+import { Plus, Shield, Key, Search, RefreshCw, Trash2, Edit2, ExternalLink, HardDrive, Radio, CheckCircle2, XCircle, ChevronRight } from 'lucide-react';
+import ListingItem from '../../components/ListingItem';
 import PageLayout from '../../components/PageLayout';
-import ResourceCard from '../../components/ResourceCard';
 import Modal from '../../components/Modal';
 import DynamicForm from '../../components/DynamicForm';
 import { cn } from '../../utils/cn';
@@ -62,6 +62,14 @@ const ListingView = ({
         }
     };
 
+    const onEdit = (storage) => {
+        setEditItem(storage);
+    };
+
+    const onDelete = (storage) => {
+        handleDelete(storage.id, storage.name);
+    };
+
     return (
         <>
             <PageLayout
@@ -113,32 +121,48 @@ const ListingView = ({
                     icon: <HardDrive size={48} className="text-slate-700" />
                 }}
             >
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                     {filteredStorages.map(storage => (
-                        <ResourceCard
+                        <ListingItem
                             key={storage.id}
+                            icon={HardDrive}
+                            title={storage.name}
+                            badges={[{ text: storage.region, variant: "mw-badge-neutral" }]}
+                            subtitle={storage.bucket}
                             onClick={() => onSelectStorage(storage)}
-                            icon={<Server size={20} />}
-                            title={storage.title}
-                            subtitle={storage.region}
-                            onEdit={() => setEditItem(storage)}
-                            resourceName={storage.name}
-                            darkMode={darkMode}
-                            onDelete={(name) => handleDelete(storage.id, name)}
-                        >
-                            <div className="flex items-center gap-2 text-slate-500">
-                                <Globe size={12} />
-                                <span className="text-base font-bold truncate" title={storage.endpoint_url || 'AWS S3'}>
-                                    {storage.endpoint_url ? new URL(storage.endpoint_url).hostname : 'AWS Standard'}
-                                </span>
-                            </div>
-                        </ResourceCard>
+                            actions={
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onEdit(storage);
+                                        }}
+                                        className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-blue-500"
+                                        title="Edit"
+                                    >
+                                        <Edit2 className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onDelete(storage);
+                                        }}
+                                        className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-red-500"
+                                        title="Delete"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                    <div className="w-px h-8 bg-slate-200 dark:bg-slate-800 mx-2" />
+                                    <ChevronRight className="w-5 h-5 text-slate-300 dark:text-slate-600" />
+                                </div>
+                            }
+                        />
                     ))}
-                </div>
-            </PageLayout>
+                </div >
+            </PageLayout >
 
             {/* Edit Modal */}
-            <Modal
+            < Modal
                 isOpen={!!editItem}
                 onClose={() => {
                     setEditItem(null);
@@ -182,7 +206,7 @@ const ListingView = ({
                         />
                     )}
                 </div>
-            </Modal>
+            </Modal >
         </>
     );
 };

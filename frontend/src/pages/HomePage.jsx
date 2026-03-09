@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import {
-    Server,
-    Tag,
     Briefcase,
-    Database
+    Database,
+    ChevronRight,
+    Server
 } from 'lucide-react';
 import { usePgSql } from '../hooks/useResources';
-import ResourceCard from '../components/ResourceCard';
 import PageLayout from '../components/PageLayout';
+import ListingItem from '../components/ListingItem';
 
 const HomePage = () => {
     const { selectedProject } = useOutletContext();
@@ -18,9 +18,9 @@ const HomePage = () => {
 
     const filteredInstances = platforms.filter(inst => {
         const matchesProject = !selectedProject || inst.project_id === selectedProject.id;
-        const matchesSearch = inst.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            String(inst.id).toLowerCase().includes(searchTerm.toLowerCase());
-        return matchesProject && matchesSearch;
+        const nameMatch = (inst.title || inst.name || '').toLowerCase().includes(searchTerm.toLowerCase());
+        const idMatch = String(inst.id || '').toLowerCase().includes(searchTerm.toLowerCase());
+        return matchesProject && (nameMatch || idMatch);
     });
 
 
@@ -39,26 +39,25 @@ const HomePage = () => {
                 icon: <Server size={48} className="text-slate-700" />
             }}
         >
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4">
                 {filteredInstances.map(inst => (
-                    <ResourceCard
+                    <ListingItem
                         key={inst.id}
-                        icon={<Database size={20} />}
-                        title={inst.name}
+                        icon={Database}
+                        title={inst.title || inst.name}
+                        badges={[{ text: "CloudNative PG", variant: "mw-badge-neutral" }]}
                         subtitle={inst.id}
-                        status="running"
                         onClick={() => navigate('/platform/pgsql')}
-                        footer={
-                            <div className="flex items-center justify-between w-full">
-                                <div className="flex items-center gap-2 text-slate-500">
-                                    <Tag size={12} />
-                                    <span className="text-sm font-bold">CloudNative PG</span>
-                                </div>
+                        actions={
+                            <div className="flex items-center gap-12">
                                 <div className="flex items-center gap-2 text-blue-500/70">
-                                    <Briefcase size={12} />
-                                    <span className="text-sm font-bold uppercase truncate max-w-[80px]">
+                                    <Briefcase size={16} />
+                                    <span className="text-base font-bold uppercase truncate max-w-[150px]">
                                         {inst.project?.title || 'Service Component'}
                                     </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <ChevronRight className="w-5 h-5 text-slate-300 dark:text-slate-600" />
                                 </div>
                             </div>
                         }

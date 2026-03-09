@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import {
     Briefcase,
-    Monitor,
     Trash2,
     ChevronRight,
     Edit2,
     Server
 } from 'lucide-react';
+import ListingItem from '../../components/ListingItem';
 import Modal from '../../components/Modal';
 import DynamicForm from '../../components/DynamicForm';
 import PageLayout from '../../components/PageLayout';
@@ -89,91 +89,74 @@ const ListingView = ({ context, projectsHook, onSelectProject }) => {
                         const cluster = state.cluster || {};
 
                         return (
-                            <div
+                            <ListingItem
                                 key={proj.id}
-                                className="mw-card flex items-center justify-between group cursor-pointer hover:border-blue-500/50 transition-colors"
+                                icon={Briefcase}
+                                title={proj.title}
+                                badges={proj.k8s_cluster_id ? [
+                                    {
+                                        text: clusters.find(c => c.id === proj.k8s_cluster_id)?.title || `Cluster ID: ${proj.k8s_cluster_id}`,
+                                        variant: "mw-badge-neutral"
+                                    }
+                                ] : []}
+                                subtitle={proj.description}
                                 onClick={() => onSelectProject(proj.id)}
-                            >
-                                <div className="flex items-center gap-6">
-                                    <div className="mw-icon-box relative">
-                                        <Briefcase size={24} className="text-slate-400 group-hover:text-blue-500 transition-colors" />
-                                    </div>
-                                    <div>
-                                        <div className="flex items-center gap-3">
-                                            <h4 className="text-lg font-bold text-slate-900 dark:text-white">{proj.title}</h4>
-                                            {proj.k8s_cluster_id && (
-                                                <span
-                                                    className="text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 flex items-center gap-1.5"
-                                                    title="Kubernetes Cluster"
-                                                >
-                                                    <Server size={10} />
-                                                    {clusters.find(c => c.id === proj.k8s_cluster_id)?.title || `Cluster ID: ${proj.k8s_cluster_id}`}
-                                                </span>
-                                            )}
+                                actions={
+                                    <div className="flex items-center gap-12">
+                                        {!cluster.argocd_installed && cluster.status === 'online' && !successfullyTriggered[proj.id] && (
+                                            <button
+                                                onClick={async (e) => {
+                                                    e.stopPropagation();
+                                                    try {
+                                                        const res = await projectsHook.executeAction(proj.id, 'install_argocd');
+                                                        showSuccess(res.message || "ArgoCD installation triggered");
+                                                        setSuccessfullyTriggered(prev => ({ ...prev, [proj.id]: true }));
+                                                        refreshProjects?.();
+                                                    } catch (err) {
+                                                        console.error("Failed to install ArgoCD", err);
+                                                        showError("Failed to trigger ArgoCD installation");
+                                                    }
+                                                }}
+                                                className="text-[10px] font-bold bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1.5 rounded-lg transition-all"
+                                            >
+                                                INSTALL ARGOCD
+                                            </button>
+                                        )}
+
+                                        <div className="text-center">
+                                            <p className="text-base text-slate-500 uppercase font-bold mb-1">Resources</p>
+                                            <p className="text-lg font-bold text-slate-900 dark:text-white">{resourceCount}</p>
                                         </div>
-                                        <p className="text-base text-slate-500">{proj.description}</p>
-                                    </div>
-                                </div>
 
-                                <div className="flex items-center gap-12">
-                                    {!cluster.argocd_installed && cluster.status === 'online' && !successfullyTriggered[proj.id] && (
-                                        <button
-                                            onClick={async (e) => {
-                                                e.stopPropagation();
-                                                try {
-                                                    const res = await projectsHook.executeAction(proj.id, 'install_argocd');
-                                                    showSuccess(res.message || "ArgoCD installation triggered");
-                                                    setSuccessfullyTriggered(prev => ({ ...prev, [proj.id]: true }));
-                                                    refreshProjects?.();
-                                                } catch (err) {
-                                                    console.error("Failed to install ArgoCD", err);
-                                                    showError("Failed to trigger ArgoCD installation");
-                                                }
-                                            }}
-                                            className="text-[10px] font-bold bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1.5 rounded-lg transition-all"
-                                        >
-                                            INSTALL ARGOCD
-                                        </button>
-                                    )}
-
-                                    <div className="text-center">
-                                        <p className="text-base text-slate-500 uppercase font-bold mb-1">Resources</p>
-                                        <p className="text-lg font-bold text-slate-900 dark:text-white">{resourceCount}</p>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setSelectedProjectForEdit(proj);
+                                                    setIsEditModalOpen(true);
+                                                }}
+                                                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-blue-500"
+                                                title="Edit"
+                                            >
+                                                <Edit2 size={18} />
+                                            </button>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setSelectedProjectForEdit(proj);
+                                                    setIsDeleteModalOpen(true);
+                                                }}
+                                                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-red-500"
+                                                title="Delete"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
+                                            <div className="w-px h-8 bg-slate-200 dark:bg-slate-800 mx-2" />
+                                            <ChevronRight className="w-5 h-5 text-slate-300 dark:text-slate-600" />
+                                        </div>
                                     </div>
-
-                                    <div className="flex items-center gap-2">
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setSelectedProjectForEdit(proj);
-                                                setIsEditModalOpen(true);
-                                            }}
-                                            className="mw-btn-icon"
-                                            title="Edit Project"
-                                        >
-                                            <Edit2 size={18} />
-                                        </button>
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setSelectedProjectForEdit(proj);
-                                                setIsDeleteModalOpen(true);
-                                            }}
-                                            className="mw-btn-icon-danger"
-                                            title="Delete Project"
-                                        >
-                                            <Trash2 size={18} />
-                                        </button>
-                                        <div className="w-px h-8 bg-slate-800 mx-2" />
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); onSelectProject(proj.id); }}
-                                            className="p-3 text-slate-400 hover:text-white transition-all"
-                                        >
-                                            <ChevronRight size={20} />
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+                                }
+                            />
                         );
                     })}
 
