@@ -24,13 +24,14 @@ class HMSReleaser(BaseReleaser):
         self.new_image_released = release_new_image
 
         current_app_version = self.get_version(VERSION_FILE)
+        recommended_app_version = current_app_version.replace("-alpha", "")
         if release_new_image:
             if not version:
                 version = (
                     input(
-                        f"Enter app version to release [{current_app_version}]: "
+                        f"Enter app version to release [{recommended_app_version}]: "
                     ).strip()
-                    or current_app_version
+                    or recommended_app_version
                 )
             self.set_version(VERSION_FILE, version)
         else:
@@ -38,7 +39,7 @@ class HMSReleaser(BaseReleaser):
             print(f"Using current app version {version} (no new image release).")
 
         current_chart_version = self.get_chart_version(CHART_FILE)
-        recommended_chart_version = self.bump_version_patch(current_chart_version)
+        recommended_chart_version = current_chart_version.replace("-alpha", "")
         new_chart_version = (
             input(
                 f"Enter chart version to release [{recommended_chart_version}]: "
@@ -152,6 +153,8 @@ class HMSReleaser(BaseReleaser):
         if new_image_released:
             # Calculate recommended next image version
             recommended_next_image = self.bump_version_patch(version)
+            if "-alpha" not in recommended_next_image:
+                recommended_next_image = f"{recommended_next_image}-alpha"
 
             print(f"Current app version released: {version}")
             next_app_version = (
@@ -171,6 +174,8 @@ class HMSReleaser(BaseReleaser):
         # ALWAYS bump chart version
         current_chart_version = self.get_chart_version(CHART_FILE)
         recommended_next_chart = self.bump_version_patch(current_chart_version)
+        if "-alpha" not in recommended_next_chart:
+            recommended_next_chart = f"{recommended_next_chart}-alpha"
 
         print(f"Current chart version released: {current_chart_version}")
         next_chart_version = (

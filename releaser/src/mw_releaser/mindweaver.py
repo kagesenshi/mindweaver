@@ -15,10 +15,13 @@ class MindWeaverReleaser(BaseReleaser):
     def prep(self, version=None):
         """Prepare release: update versions, build docker, package helm."""
         current_app_version = self.get_version(VERSION_FILE)
+        recommended_app_version = current_app_version.replace("-alpha", "")
         if not version:
             version = (
-                input(f"Enter app version to release [{current_app_version}]: ").strip()
-                or current_app_version
+                input(
+                    f"Enter app version to release [{recommended_app_version}]: "
+                ).strip()
+                or recommended_app_version
             )
 
         current_chart_version = self.get_chart_version(CHART_FILE)
@@ -90,6 +93,9 @@ class MindWeaverReleaser(BaseReleaser):
 
         # 2. Bump versions for next development cycle
         recommended_next = self.bump_version_patch(version)
+        if "-alpha" not in recommended_next:
+            recommended_next = f"{recommended_next}-alpha"
+
         print(f"Current version released: {version}")
         next_version = (
             input(f"Enter next development version [{recommended_next}]: ").strip()
