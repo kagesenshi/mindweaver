@@ -22,7 +22,7 @@ class MindWeaverReleaser(BaseReleaser):
             )
 
         current_chart_version = self.get_chart_version(CHART_FILE)
-        recommended_chart_version = self.bump_version_patch(current_chart_version)
+        recommended_chart_version = current_chart_version
         new_chart_version = (
             input(
                 f"Enter chart version to release [{recommended_chart_version}]: "
