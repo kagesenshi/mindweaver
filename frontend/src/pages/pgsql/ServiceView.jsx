@@ -114,6 +114,48 @@ const ServiceView = ({
 
         return (
             <>
+                {platformState?.extra_data?.namespace && (
+                    <div className="mw-panel">
+                        <div className={cn("p-4 border-b flex items-center justify-between", darkMode ? 'border-slate-800 bg-slate-950/30' : 'border-slate-200 bg-slate-50')}>
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg"><Server size={18} /></div>
+                                <h4 className="text-base font-bold tracking-wider leading-none text-slate-900 dark:text-white">Internal Network Access</h4>
+                            </div>
+                        </div>
+                        <div className="p-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                                {[
+                                    { label: 'Read-Write', suffix: '-rw' },
+                                    { label: 'Read-Only', suffix: '-ro' },
+                                    { label: 'Read-Only (Any Nodes)', suffix: '-r' }
+                                ].map((eps) => {
+                                    const hostname = `${selectedPlatform.name}${eps.suffix}.${platformState.extra_data.namespace}.svc.cluster.local`;
+                                    return (
+                                        <div key={eps.suffix} className="p-5 border rounded-2xl bg-slate-50 border-slate-200 dark:bg-slate-950/50 dark:border-slate-800 flex flex-col group/item relative">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <div>
+                                                    <p className="text-xs text-slate-500 font-bold uppercase tracking-widest leading-none mb-1">Service Type</p>
+                                                    <h5 className="text-lg font-bold text-slate-900 dark:text-white leading-none">{eps.label}</h5>
+                                                </div>
+                                            </div>
+                                            <div className="mt-2 p-2 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                                                <code className="text-xs font-mono text-emerald-600 dark:text-emerald-400 truncate px-1">{hostname}:5432</code>
+                                                <button
+                                                    onClick={() => navigator.clipboard.writeText(`${hostname}:5432`)}
+                                                    className="p-1 text-slate-400 hover:text-emerald-500 transition-colors shrink-0"
+                                                    title="Copy internal endpoint"
+                                                >
+                                                    <Copy size={14} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {sortedPorts.length > 0 && (
                     <div className="mw-panel">
                         <div className={cn("p-4 border-b flex items-center justify-between", darkMode ? 'border-slate-800 bg-slate-950/30' : 'border-slate-200 bg-slate-50')}>

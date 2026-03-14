@@ -191,6 +191,9 @@ class HiveMetastorePlatformService(PlatformService[HiveMetastorePlatform]):
 
         state.status = status
         state.message = message
+        if extra_data is None:
+            extra_data = {}
+        extra_data["namespace"] = namespace
         state.extra_data = extra_data
         state.node_ports = node_ports
         state.cluster_nodes = cluster_nodes
