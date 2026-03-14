@@ -15,6 +15,7 @@ from .fw.auth import (
     get_password_hash,
 )
 from .platform_service.pgsql import router as pgsql_router
+from .platform_service.hive_metastore import router as hms_router
 from .fw.model import get_engine, get_session
 from sqlmodel import select
 
@@ -174,6 +175,7 @@ app.include_router(k8s_cluster_router, prefix="/api/v1")
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(user_router, prefix="/api/v1")
 app.include_router(pgsql_router, prefix="/api/v1")
+app.include_router(hms_router, prefix="/api/v1")
 app.include_router(s3_router, prefix="/api/v1")
 
 if settings.experimental_data_source:

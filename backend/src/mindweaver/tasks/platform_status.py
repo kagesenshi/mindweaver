@@ -6,6 +6,7 @@ from mindweaver.fw.model import get_engine
 from sqlmodel.ext.asyncio.session import AsyncSession
 from mindweaver.platform_service.base import PlatformService
 from mindweaver.platform_service.pgsql import PgSqlPlatformService
+from mindweaver.platform_service.hive_metastore import HiveMetastorePlatformService
 from mindweaver.config import logger
 from typing import Type
 from .base import run_async
@@ -19,7 +20,7 @@ def poll_all_platforms():
     # We need to discover all subclasses of PlatformService
     # and for each, find active platforms.
 
-    services = [PgSqlPlatformService]
+    services = [PgSqlPlatformService, HiveMetastorePlatformService]
 
     for svc_cls in services:
         run_async(_trigger_service_polling(svc_cls))
@@ -50,7 +51,10 @@ def poll_platform_status(service_class_name: str, platform_id: int):
 async def _poll_platform_status(service_class_name: str, platform_id: int):
     # Dynamically find the service class
 
-    mapping = {"PgSqlPlatformService": PgSqlPlatformService}
+    mapping = {
+        "PgSqlPlatformService": PgSqlPlatformService,
+        "HiveMetastorePlatformService": HiveMetastorePlatformService,
+    }
 
     svc_cls = mapping.get(service_class_name)
     if not svc_cls:

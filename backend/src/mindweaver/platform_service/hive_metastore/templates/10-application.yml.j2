@@ -1,0 +1,38 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ name }}
+  namespace: argocd
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/kagesenshi/mindweaver.git' # Root of the mono-repo
+    path: helm/hive-metastore
+    targetRevision: HEAD
+    helm:
+      values: |
+        replicaCount: {{ replica_count }}
+        image:
+          tag: "{{ image.split(':')[-1] if ':' in image else 'latest' }}"
+        database:
+          secretRef:
+            name: {{ name }}-db-secret
+            userKey: user
+            passwordKey: password
+            hostKey: host
+            portKey: port
+            dbnameKey: dbname
+        icebergRest:
+          enabled: {{ 'true' if iceberg_enabled else 'false' }}
+          port: {{ iceberg_port }}
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: {{ namespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true

@@ -17,6 +17,7 @@ import {
     HardDrive,
     ChevronLeft,
     ChevronRight,
+    Boxes,
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { useAuth } from '../providers/AuthProvider';
@@ -34,6 +35,7 @@ const NAV_ITEMS = [
 
 const INFRA_ITEMS = [
     { name: 'PostgreSQL', to: '/platform/pgsql', icon: Database },
+    { name: 'Hive Metastore', to: '/platform/hive-metastore', icon: Boxes },
     { name: 'Trino', to: '/platform/trino', icon: Wind },
     { name: 'Apache Spark', to: '/platform/spark', icon: Layers },
     { name: 'Apache Airflow', to: '/platform/airflow', icon: Activity },

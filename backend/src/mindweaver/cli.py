@@ -4,7 +4,7 @@
 import argparse
 from dataclasses import dataclass
 from alembic.config import Config as AlembicConfig
-from alembic.command import revision, upgrade
+from alembic.command import revision, upgrade, downgrade, history
 from typing import Callable
 from mindweaver.config import settings
 from mindweaver.app import app
@@ -67,6 +67,30 @@ def handle_migrate(args: MigrateArgs):
     config.set_main_option("sqlalchemy.url", settings.db_uri)
     upgrade(config, revision="heads")
     logger.info("Update completed successfully.")
+
+
+class DowngradeArgs(argparse.Namespace):
+    config: str
+    revision: str
+
+
+def handle_downgrade(args: DowngradeArgs):
+    config = AlembicConfig(args.config)
+    config.set_main_option("sqlalchemy.url", settings.db_uri)
+    downgrade(config, revision=args.revision)
+    logger.info(f"Downgrade to {args.revision} completed successfully.")
+
+
+class HistoryArgs(argparse.Namespace):
+    config: str
+    verbose: bool
+    indicate_current: bool
+
+
+def handle_history(args: HistoryArgs):
+    config = AlembicConfig(args.config)
+    config.set_main_option("sqlalchemy.url", settings.db_uri)
+    history(config, verbose=args.verbose, indicate_current=args.indicate_current)
 
 
 def handle_reset(args: argparse.Namespace):
@@ -341,6 +365,23 @@ def get_parser() -> argparse.ArgumentParser:
     # db migrate
     db_migrate_cmd = db_cmd_subparser.add_parser("migrate", help="Run DB migrations")
     db_migrate_cmd.set_defaults(handler=handle_migrate)
+
+    # db downgrade
+    db_downgrade_cmd = db_cmd_subparser.add_parser("downgrade", help="Run DB downgrades")
+    db_downgrade_cmd.add_argument(
+        "-r", "--revision", dest="revision", type=str, required=True, help="Revision to downgrade to (e.g. -1, base, or a revision ID)"
+    )
+    db_downgrade_cmd.set_defaults(handler=handle_downgrade)
+
+    # db history
+    db_history_cmd = db_cmd_subparser.add_parser("history", help="List database migrations")
+    db_history_cmd.add_argument(
+        "-v", "--verbose", action="store_true", help="Use more verbose output"
+    )
+    db_history_cmd.add_argument(
+        "-c", "--current", dest="indicate_current", action="store_true", help="Indicate current revision"
+    )
+    db_history_cmd.set_defaults(handler=handle_history)
 
     # db create migration
     db_revision_cmd = db_cmd_subparser.add_parser(

@@ -129,7 +129,7 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
             logger.warning(f"No templates found in {self.template_directory}")
             return ""
 
-        return "---\n".join(rendered_manifests)
+        return "---\n" + "\n---\n".join(rendered_manifests)
 
     async def deploy(self, model: T):
         """used to deploy/upgrade the service"""

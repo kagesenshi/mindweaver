@@ -13,6 +13,7 @@ const K8sClustersPage = lazy(() => import('./pages/k8s_clusters/Page'))
 const DataSourcesPage = lazy(() => import('./pages/data_sources/Page'))
 const PgSqlPage = lazy(() => import('./pages/pgsql/Page'))
 const S3StoragePage = lazy(() => import('./pages/s3_storage/Page'))
+const HiveMetastorePage = lazy(() => import('./pages/hive_metastore/Page'))
 
 import { ProtectedRoute } from './components/ProtectedRoute'
 
@@ -50,6 +51,10 @@ const router = createBrowserRouter([
       {
         path: 'platform/pgsql',
         element: <PgSqlPage />,
+      },
+      {
+        path: 'platform/hive-metastore',
+        element: <HiveMetastorePage />,
       },
       {
         path: 'platform/:service',
