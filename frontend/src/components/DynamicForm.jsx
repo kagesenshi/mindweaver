@@ -186,6 +186,7 @@ const DynamicForm = ({
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
     const [relationshipOptions, setRelationshipOptions] = useState({});
+    const [selectEndpointOptions, setSelectEndpointOptions] = useState({});
     const inputBg = darkMode ? "bg-slate-950 border-slate-800 text-slate-200" : "bg-slate-100 border-slate-200 text-slate-900";
     const disabledBg = darkMode ? "bg-slate-900 border-slate-800 text-slate-500" : "bg-slate-200 border-slate-300 text-slate-400";
 
@@ -247,6 +248,33 @@ const DynamicForm = ({
                         }
                     }
                     setRelationshipOptions(relOptions);
+
+                    // Fetch dynamic select options (type: 'select' with endpoint)
+                    const selOptions = {};
+                    for (const [key, widget] of Object.entries(data.widgets)) {
+                        if (widget.type === 'select' && widget.endpoint) {
+                            try {
+                                let url = widget.endpoint;
+                                if (url.startsWith('/api/v1')) {
+                                    url = url.substring(7);
+                                }
+                                const selResponse = await apiClient.get(url);
+                                let items = [];
+                                if (Array.isArray(selResponse.data)) {
+                                    items = selResponse.data;
+                                } else if (selResponse.data?.data) {
+                                    items = selResponse.data.data;
+                                }
+                                // Normalise to { label, value }
+                                selOptions[key] = items.map(item =>
+                                    typeof item === 'object' ? item : { label: item, value: item }
+                                );
+                            } catch (err) {
+                                console.error(`Failed to fetch select options for ${key}:`, err);
+                            }
+                        }
+                    }
+                    setSelectEndpointOptions(selOptions);
                 }
 
             } catch (err) {
@@ -469,8 +497,12 @@ const DynamicForm = ({
         }
 
         // -- Widget Type: Select (Enum or Explicit Options) --
-        if (prop.enum || (widget.type === 'select' && widget.options)) {
-            const options = widget.options || prop.enum.map(e => ({ label: e, value: e }));
+        if (prop.enum || (widget.type === 'select' && (widget.options || widget.endpoint))) {
+            const staticOpts = widget.options || prop.enum?.map(e => ({ label: e, value: e })) || [];
+            // Use dynamically-fetched endpoint options when available, else fall back to static
+            const options = (widget.endpoint && selectEndpointOptions[name]?.length > 0)
+                ? selectEndpointOptions[name]
+                : staticOpts;
             // Normalize options to { label, value } format
             const selectOptions = options.map(opt => {
                 if (typeof opt === 'object') {

@@ -8,14 +8,17 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: 'https://github.com/kagesenshi/mindweaver.git' # Root of the mono-repo
-    path: helm/hive-metastore
-    targetRevision: HEAD
+    repoURL: 'oci://ghcr.io/kagesenshi/mindweaver/charts/hive-metastore'
+    targetRevision: {{ chart_version }}
+    path: .
     helm:
       values: |
         replicaCount: {{ replica_count }}
+        {% if override_image %}
         image:
           tag: "{{ image.split(':')[-1] if ':' in image else 'latest' }}"
+          repository: "{{ image.rsplit(':', 1)[0] if ':' in image else image }}"
+        {% endif %}
         database:
           secretRef:
             name: {{ name }}-db-secret

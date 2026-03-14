@@ -84,6 +84,28 @@ class ServiceViewMixin:
 
         path_tags = cls.path_tags()
 
+        for view_spec in cls.get_custom_views():
+            func = view_spec["func"]
+            method = view_spec["method"]
+            path = view_spec["path"]
+            view_type = view_spec["type"]
+            kwargs = dict(view_spec["kwargs"])
+
+            # Use tags from service if not provided in kwargs
+            if "tags" not in kwargs:
+                kwargs["tags"] = path_tags
+
+            # Use dependencies from service if not provided in kwargs
+            if "dependencies" not in kwargs:
+                kwargs["dependencies"] = cls.extra_dependencies()
+
+            if view_type == "service":
+                full_path = f"{service_path}{path}"
+            else:
+                full_path = f"{model_path}{path}"
+
+            router.add_api_route(full_path, func, methods=[method], **kwargs)
+
         @router.get(
             service_path,
             operation_id=f"mw-list-{entity_type}",
@@ -269,25 +291,3 @@ class ServiceViewMixin:
                 return await action_instance(**params)
             else:
                 return action_instance(**params)
-
-        for view_spec in cls.get_custom_views():
-            func = view_spec["func"]
-            method = view_spec["method"]
-            path = view_spec["path"]
-            view_type = view_spec["type"]
-            kwargs = dict(view_spec["kwargs"])
-
-            # Use tags from service if not provided in kwargs
-            if "tags" not in kwargs:
-                kwargs["tags"] = path_tags
-
-            # Use dependencies from service if not provided in kwargs
-            if "dependencies" not in kwargs:
-                kwargs["dependencies"] = cls.extra_dependencies()
-
-            if view_type == "service":
-                full_path = f"{service_path}{path}"
-            else:
-                full_path = f"{model_path}{path}"
-
-            router.add_api_route(full_path, func, methods=[method], **kwargs)

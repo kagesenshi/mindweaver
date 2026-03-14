@@ -9,9 +9,10 @@ import base64
 from typing import Any, Optional
 from kubernetes import client, config
 from pydantic import ValidationError
+
 from mindweaver.fw.exc import FieldValidationError
 from mindweaver.platform_service.base import PlatformService
-from mindweaver.crypto import encrypt_password, decrypt_password
+from mindweaver.crypto import decrypt_password
 from mindweaver.fw.model import ts_now
 from mindweaver.platform_service.pgsql.service import PgSqlPlatformService
 from mindweaver.service.s3_storage.service import S3StorageService
@@ -37,7 +38,14 @@ class HiveMetastorePlatformService(PlatformService[HiveMetastorePlatform]):
     @classmethod
     def widgets(cls) -> dict[str, Any]:
         return {
-            "image": {"order": 5},
+            "chart_version": {
+                "order": 3,
+                "label": "Chart Version",
+                "type": "select",
+                "endpoint": "/api/v1/platform/hive-metastore/_chart-versions",
+            },
+            "override_image": {"order": 4, "type": "boolean", "label": "Override Image"},
+            "image": {"order": 5, "label": "Image"},
             "replica_count": {"order": 10, "type": "range", "min": 1, "max": 10, "step": 1},
             "cpu_request": {"order": 11, "type": "range", "min": 0.1, "max": 16, "step": 0.1},
             "cpu_limit": {"order": 12, "type": "range", "min": 0.1, "max": 16, "step": 0.1},
@@ -234,7 +242,3 @@ class HiveMetastorePlatformService(PlatformService[HiveMetastorePlatform]):
                     state.iceberg_uri = f"http://{model.name}-iceberg.{namespace}.svc.cluster.local:{model.iceberg_port}"
 
         state.last_heartbeat = ts_now()
-
-
-HiveMetastorePlatformService.with_state()(HiveMetastoreState)
-router = HiveMetastorePlatformService.router()

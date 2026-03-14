@@ -11,6 +11,12 @@ class HiveMetastorePlatform(PlatformBase, table=True):
     __tablename__ = "mw_hive_metastore_platform"
 
     replica_count: int = Field(default=1)
+
+    # Chart version selection (used with OCI chart oci://ghcr.io/kagesenshi/mindweaver/charts/hive-metastore)
+    chart_version: str = Field(default="latest")
+
+    # Image override - when True, the image field overrides the chart's default image
+    override_image: bool = Field(default=False)
     image: str = Field(default="ghcr.io/kagesenshi/mindweaver/hive-metastore:latest")
 
     # Resource configuration
@@ -31,6 +37,7 @@ class HiveMetastorePlatform(PlatformBase, table=True):
 
     @model_validator(mode="after")
     def validate_resource_limits(self) -> "HiveMetastorePlatform":
+        """Validates resource requests do not exceed limits."""
         if self.cpu_request > self.cpu_limit:
             raise ValueError("CPU request cannot be greater than CPU limit")
         if self.mem_request > self.mem_limit:
