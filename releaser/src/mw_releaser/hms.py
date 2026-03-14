@@ -192,7 +192,7 @@ class HMSReleaser(BaseReleaser):
             input("Commit start of next development cycle? [y/N]: ").strip().lower()
             == "y"
         )
-        if confirm == "y":
+        if confirm:
             self.git_commit(
                 files=updated_files,
                 message=f"bump version to chart={next_chart_version}"

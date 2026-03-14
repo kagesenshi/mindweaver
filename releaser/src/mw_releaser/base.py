@@ -164,8 +164,16 @@ class BaseReleaser:
             self.run_command(["git", "add"] + version_files)
 
             if commit:
-                print(f"Committing {message} ...")
-                self.run_command(["git", "commit", "-m", message])
+                # Check if there are staged changes before committing
+                has_staged = subprocess.run(
+                    ["git", "diff", "--cached", "--quiet"],
+                    check=False,
+                ).returncode != 0
+                if has_staged:
+                    print(f"Committing {message} ...")
+                    self.run_command(["git", "commit", "-m", message])
+                else:
+                    print("No staged changes to commit, skipping commit.")
 
             print(f"Tagging {tag} ...")
             self.run_command(["git", "tag", tag])
