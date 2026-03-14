@@ -8,6 +8,7 @@ from .base import BaseReleaser
 VERSION_FILE = "images/hive-metastore/VERSION.txt"
 CHART_FILE = "charts/hive-metastore/Chart.yaml"
 IMAGE_NAME = "hive-metastore"
+RELEASED_VERSION_FILE = "images/hive-metastore/RELEASED_VERSION.txt"
 
 
 class HMSReleaser(BaseReleaser):
@@ -35,7 +36,7 @@ class HMSReleaser(BaseReleaser):
                 )
             self.set_version(VERSION_FILE, version)
         else:
-            version = current_app_version
+            version = self.get_version(RELEASED_VERSION_FILE)
             print(f"Using current app version {version} (no new image release).")
 
         current_chart_version = self.get_chart_version(CHART_FILE)
@@ -135,8 +136,11 @@ class HMSReleaser(BaseReleaser):
         current_chart_version = self.release_chart_version or self.get_chart_version(
             CHART_FILE
         )
+        if self.new_image_released:
+            self.set_version(RELEASED_VERSION_FILE, version)
+
         self.git_ops(
-            version_files=[VERSION_FILE, CHART_FILE],
+            version_files=[VERSION_FILE, CHART_FILE, RELEASED_VERSION_FILE],
             tag=f"{IMAGE_NAME}-v{current_chart_version}",
             message=f"release {IMAGE_NAME} {current_chart_version} (app: {version})",
         )

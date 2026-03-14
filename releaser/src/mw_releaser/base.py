@@ -68,6 +68,25 @@ class BaseReleaser:
         print(f"Error: version not found in {chart_file}")
         sys.exit(1)
 
+    def get_chart_app_version(self, chart_file):
+        """Read current appVersion from Chart.yaml."""
+        if not os.path.exists(chart_file):
+            print(f"Error: {chart_file} not found!")
+            sys.exit(1)
+        with open(chart_file, "r") as f:
+            content = f.read()
+            match = re.search(r"^appVersion: (.*)", content, flags=re.MULTILINE)
+            if match:
+                # Remove quotes if present
+                version = match.group(1).strip()
+                if (version.startswith('"') and version.endswith('"')) or (
+                    version.startswith("'") and version.endswith("'")
+                ):
+                    version = version[1:-1]
+                return version
+        print(f"Error: appVersion not found in {chart_file}")
+        sys.exit(1)
+
     def bump_version_patch(self, version_str):
         """Increment the patch component or revision number of a version string."""
         # Handle x.x.x-rev.n pattern
