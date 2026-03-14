@@ -115,7 +115,8 @@ class HMSReleaser(BaseReleaser):
         else:
             print("Skipping image push as no new image was released.")
 
-        chart_package = f"hive-metastore-{version}.tgz"
+        chart_version = self.get_chart_version(CHART_FILE)
+        chart_package = f"hive-metastore-{chart_version}.tgz"
         if os.path.exists(chart_package):
             print(f"Pushing Helm package {chart_package} to {self.chart_registry} ...")
             self.run_command(["helm", "push", chart_package, self.chart_registry])
