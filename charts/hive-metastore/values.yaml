@@ -13,6 +13,7 @@ image:
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
+warehouseDir: "s3a://metastore/warehouse/"
 
 serviceAccount:
   # Specifies whether a service account should be created

@@ -81,6 +81,11 @@ data:
             <value>thrift://0.0.0.0:{{ .Values.service.port }}</value>
             <description>Thrift URI for the remote metastore.</description>
         </property>
+        <property>
+            <name>hive.metastore.warehouse.dir</name>
+            <value>{{ .Values.warehouseDir }}</value>
+            <description>location of default database for the warehouse</description>
+        </property>
         {{- if .Values.icebergRest.enabled }}
         <property>
             <name>metastore.catalog.servlet.port</name>
