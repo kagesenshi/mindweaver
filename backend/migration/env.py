@@ -14,6 +14,9 @@ from mindweaver.service.k8s_cluster.model import K8sClusterStatus
 from mindweaver.service.data_source.model import DataSource
 from mindweaver.service.s3_storage.model import S3Storage
 from mindweaver.platform_service.pgsql.model import PgSqlPlatform, PgSqlPlatformState
+from mindweaver.platform_service.hive_metastore.model import HiveMetastorePlatform, HiveMetastorePlatformState
+from mindweaver.platform_service.trino.model import TrinoPlatform, TrinoPlatformState
+from mindweaver.service.ldap_config.model import LdapConfig
 from mindweaver.fw.auth import User
 
 # from mindweaver.auth.model import User # If exists

@@ -30,6 +30,7 @@ const NAV_ITEMS = [
     { name: 'Projects', to: '/projects', icon: Briefcase },
     { name: 'Data Sources', to: '/data-sources', icon: Library },
     { name: 'S3 Storages', to: '/s3-storages', icon: HardDrive },
+    { name: 'LDAP Configs', to: '/ldap-configs', icon: ShieldCheck },
 ];
 
 

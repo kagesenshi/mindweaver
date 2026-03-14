@@ -13,6 +13,7 @@ const K8sClustersPage = lazy(() => import('./pages/k8s_clusters/Page'))
 const DataSourcesPage = lazy(() => import('./pages/data_sources/Page'))
 const PgSqlPage = lazy(() => import('./pages/pgsql/Page'))
 const S3StoragePage = lazy(() => import('./pages/s3_storage/Page'))
+const LdapConfigPage = lazy(() => import('./pages/ldap_config/Page'))
 const HiveMetastorePage = lazy(() => import('./pages/hive_metastore/Page'))
 const TrinoPage = lazy(() => import('./pages/trino/Page'))
 
@@ -47,6 +48,10 @@ const router = createBrowserRouter([
       {
         path: 's3-storages',
         element: <S3StoragePage />,
+      },
+      {
+        path: 'ldap-configs',
+        element: <LdapConfigPage />,
       },
 
       {

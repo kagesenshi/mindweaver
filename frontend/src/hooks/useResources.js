@@ -357,6 +357,55 @@ export const useS3Storages = () => {
     return { storages, loading, error, fetchStorages, createStorage, updateStorage, deleteStorage, testConnection, browseStorage, uploadFile, downloadFile, deleteFile };
 };
 
+export const useLdapConfigs = () => {
+    const [configs, setConfigs] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+
+    const fetchConfigs = useCallback(async () => {
+        setLoading(true);
+        try {
+            const response = await apiClient.get('/ldap_configs');
+            setConfigs(response.data.data || []);
+        } catch (err) {
+            setError(err);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    const createConfig = useCallback(async (data) => {
+        const response = await apiClient.post('/ldap_configs', data);
+        await fetchConfigs();
+        return response.data;
+    }, [fetchConfigs]);
+
+    const updateConfig = useCallback(async (id, data) => {
+        const response = await apiClient.put(`/ldap_configs/${id}`, data);
+        await fetchConfigs();
+        return response.data;
+    }, [fetchConfigs]);
+
+    const deleteConfig = useCallback(async (id, confirmName) => {
+        await apiClient.delete(`/ldap_configs/${id}`, {
+            headers: { 'X-RESOURCE-NAME': confirmName }
+        });
+        await new Promise(resolve => setTimeout(resolve, 500));
+        await fetchConfigs();
+    }, [fetchConfigs]);
+
+    const testConnection = useCallback(async (data) => {
+        const response = await apiClient.post('/ldap_configs/_test-connection', data);
+        return response.data;
+    }, []);
+
+    useEffect(() => {
+        fetchConfigs();
+    }, [fetchConfigs]);
+
+    return { configs, loading, error, fetchConfigs, createConfig, updateConfig, deleteConfig, testConnection };
+};
+
 export const useHiveMetastore = () => {
     const [platforms, setPlatforms] = useState([]);
     const [loading, setLoading] = useState(false);
