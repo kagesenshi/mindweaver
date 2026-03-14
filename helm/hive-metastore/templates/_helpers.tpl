@@ -92,3 +92,28 @@ Common env variables for DB connection used in Deployment and InitSchema Job
       name: {{ $secretName }}
       key: {{ .Values.database.secretRef.passwordKey | quote }}
 {{- end -}}
+
+{{/*
+Common env variables for S3 connection used in Deployment
+*/}}
+{{- define "hive-metastore.s3Env" -}}
+{{- $secretName := default (printf "%s-db-secret" (include "hive-metastore.fullname" .)) .Values.database.secretRef.name -}}
+- name: S3_ENDPOINT_URL
+  valueFrom:
+    secretKeyRef:
+      name: {{ $secretName }}
+      key: "s3_endpoint_url"
+      optional: true
+- name: AWS_ACCESS_KEY_ID
+  valueFrom:
+    secretKeyRef:
+      name: {{ $secretName }}
+      key: "aws_access_key_id"
+      optional: true
+- name: AWS_SECRET_ACCESS_KEY
+  valueFrom:
+    secretKeyRef:
+      name: {{ $secretName }}
+      key: "aws_secret_access_key"
+      optional: true
+{{- end -}}

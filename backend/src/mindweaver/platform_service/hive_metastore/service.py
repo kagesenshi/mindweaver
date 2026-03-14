@@ -14,6 +14,7 @@ from mindweaver.platform_service.base import PlatformService
 from mindweaver.crypto import encrypt_password, decrypt_password
 from mindweaver.fw.model import ts_now
 from mindweaver.platform_service.pgsql.service import PgSqlPlatformService
+from mindweaver.service.s3_storage.service import S3StorageService
 
 from .model import HiveMetastorePlatform, HiveMetastorePlatformState
 from .state import HiveMetastoreState
@@ -43,6 +44,10 @@ class HiveMetastorePlatformService(PlatformService[HiveMetastorePlatform]):
             "mem_request": {"order": 13, "type": "range", "min": 0.5, "max": 64, "step": 0.5, "label": "Memory Request (Gi)"},
             "mem_limit": {"order": 14, "type": "range", "min": 0.5, "max": 64, "step": 0.5, "label": "Memory Limit (Gi)"},
             "database_id": {"order": 20, "label": "PostgreSQL"},
+            "s3_storage_id": {
+                "order": 21,
+                "label": "S3 Storage",
+            },
             "iceberg_enabled": {"order": 30, "type": "boolean"},
             "iceberg_port": {"order": 31},
         }
@@ -68,6 +73,20 @@ class HiveMetastorePlatformService(PlatformService[HiveMetastorePlatform]):
                 vars["db_pass"] = decrypt_password(pgsql_state.db_pass)
             except Exception:
                 vars["db_pass"] = pgsql_state.db_pass
+
+        # Resolve S3 Storage Connection
+        if model.s3_storage_id:
+            s3_svc = await S3StorageService.get_service(self.request, self.session)
+            s3_model = await s3_svc.get(model.s3_storage_id)
+            vars["s3_endpoint_url"] = s3_model.endpoint_url
+            vars["aws_access_key_id"] = s3_model.access_key
+            if s3_model.secret_key:
+                try:
+                    vars["aws_secret_access_key"] = decrypt_password(s3_model.secret_key)
+                except Exception:
+                    vars["aws_secret_access_key"] = s3_model.secret_key
+            else:
+                vars["aws_secret_access_key"] = ""
 
         return vars
 

@@ -10,12 +10,14 @@ from pydantic import ValidationError
 
 from mindweaver.platform_service.trino import TrinoPlatform, TrinoPlatformService
 from mindweaver.platform_service.hive_metastore import HiveMetastorePlatformState, HiveMetastorePlatform
+from mindweaver.fw.model import AsyncSession
 
 
 @pytest.fixture
 def mock_service_dependencies():
     request = MagicMock(spec=Request)
-    session = MagicMock(spec=Session)
+    session = MagicMock(spec=AsyncSession)
+    session.exec = AsyncMock()
     return request, session
 
 
@@ -103,8 +105,17 @@ async def test_trino_template_rendering(mock_service_dependencies):
     mock_hms_model.name = "test-hms"
     mock_hms_model.iceberg_enabled = True
     mock_hms_model.iceberg_port = 9001
+    mock_hms_model.s3_storage_id = 100
     mock_hms_svc.get.return_value = mock_hms_model
     mock_hms_svc._resolve_namespace.return_value = "hms-ns"
+
+    # Mock S3StorageService
+    mock_s3_svc = AsyncMock()
+    mock_s3_model = MagicMock()
+    mock_s3_model.endpoint_url = "http://minio:9000"
+    mock_s3_model.access_key = "access"
+    mock_s3_model.secret_key = "secret"
+    mock_s3_svc.get.return_value = mock_s3_model
     
     mock_hms_state = MagicMock()
     mock_hms_state.active = True
@@ -125,8 +136,14 @@ async def test_trino_template_rendering(mock_service_dependencies):
     mock_ds_model.parameters = {"param1": "val1"}
     mock_ds_svc.get.return_value = mock_ds_model
 
+    # Mock session.exec for S3StorageService.get
+    mock_result = MagicMock()
+    mock_result.first.return_value = mock_s3_model
+    session.exec.return_value = mock_result
+
     with patch("mindweaver.platform_service.trino.service.HiveMetastorePlatformService.get_service", AsyncMock(return_value=mock_hms_svc)), \
-         patch("mindweaver.platform_service.trino.service.DataSourceService.get_service", AsyncMock(return_value=mock_ds_svc)):
+         patch("mindweaver.platform_service.trino.service.DataSourceService.get_service", AsyncMock(return_value=mock_ds_svc)), \
+         patch("mindweaver.platform_service.trino.service.S3StorageService.get_service", AsyncMock(return_value=mock_s3_svc)):
         
         vars = await svc.template_vars(model)
 
@@ -138,11 +155,19 @@ async def test_trino_template_rendering(mock_service_dependencies):
     hms_cat = next(c for c in vars["catalogs"] if c["catalog"] == "test-hms")
     assert hms_cat["properties"]["connector.name"] == "hive"
     assert hms_cat["properties"]["hive.metastore.uri"] == "thrift://hms-internal:9083"
+    assert hms_cat["properties"]["hive.s3.endpoint"] == "http://minio:9000"
+    assert hms_cat["properties"]["hive.s3.aws-access-key"] == "access"
+    assert hms_cat["properties"]["hive.s3.aws-secret-key"] == "secret"
+    assert hms_cat["properties"]["hive.s3.path-style-access"] == "true"
 
     # Check HMS Iceberg catalog
     iceberg_cat = next(c for c in vars["catalogs"] if c["catalog"] == "test-hms-iceberg")
     assert iceberg_cat["properties"]["connector.name"] == "iceberg"
     assert iceberg_cat["properties"]["hive.metastore.uri"] == "thrift://hms-internal:9083"
+    assert iceberg_cat["properties"]["iceberg.s3.endpoint"] == "http://minio:9000"
+    assert iceberg_cat["properties"]["iceberg.s3.aws-access-key"] == "access"
+    assert iceberg_cat["properties"]["iceberg.s3.aws-secret-key"] == "secret"
+    assert iceberg_cat["properties"]["iceberg.s3.path-style-access"] == "true"
 
     # Check PG catalog
     pg_cat = next(c for c in vars["catalogs"] if c["catalog"] == "mypsql")

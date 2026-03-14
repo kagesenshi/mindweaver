@@ -22,6 +22,9 @@ class HiveMetastorePlatform(PlatformBase, table=True):
     # Database configuration
     database_id: int = Field(foreign_key="mw_pgsql_platform.id")
 
+    # S3 Configuration
+    s3_storage_id: Optional[int] = Field(default=None, foreign_key="mw_s3_storage.id")
+
     # Iceberg configuration
     iceberg_enabled: bool = Field(default=True)
     iceberg_port: int = Field(default=9001)

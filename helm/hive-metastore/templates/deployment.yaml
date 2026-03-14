@@ -42,6 +42,7 @@ spec:
             {{- end }}
           env:
             {{- include "hive-metastore.databaseEnv" . | nindent 12 }}
+            {{- include "hive-metastore.s3Env" . | nindent 12 }}
             - name: DB_DRIVER
               value: postgres
             - name: IS_RESUME

@@ -16,6 +16,7 @@ from mindweaver.platform_service.hive_metastore.service import (
     HiveMetastorePlatformService,
 )
 from mindweaver.service.data_source.service import DataSourceService
+from mindweaver.service.s3_storage.service import S3StorageService
 from mindweaver.crypto import decrypt_password
 
 from .model import TrinoPlatform, TrinoPlatformState
@@ -155,6 +156,19 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
                         "hive.metastore.uri": hms_uri,
                     },
                 }
+
+                if hms_model.s3_storage_id:
+                    s3_svc = await S3StorageService.get_service(self.request, self.session)
+                    s3_model = await s3_svc.get(hms_model.s3_storage_id)
+                    catalog["properties"]["hive.s3.endpoint"] = s3_model.endpoint_url
+                    catalog["properties"]["hive.s3.aws-access-key"] = s3_model.access_key
+                    if s3_model.secret_key:
+                        try:
+                            catalog["properties"]["hive.s3.aws-secret-key"] = decrypt_password(s3_model.secret_key)
+                        except Exception:
+                            catalog["properties"]["hive.s3.aws-secret-key"] = s3_model.secret_key
+                    catalog["properties"]["hive.s3.path-style-access"] = "true"
+
                 catalogs.append(catalog)
 
         if model.hms_iceberg_ids:
@@ -183,6 +197,19 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
                         "hive.metastore.uri": hms_uri,
                     },
                 }
+
+                if hms_model.s3_storage_id:
+                    s3_svc = await S3StorageService.get_service(self.request, self.session)
+                    s3_model = await s3_svc.get(hms_model.s3_storage_id)
+                    catalog["properties"]["iceberg.s3.endpoint"] = s3_model.endpoint_url
+                    catalog["properties"]["iceberg.s3.aws-access-key"] = s3_model.access_key
+                    if s3_model.secret_key:
+                        try:
+                            catalog["properties"]["iceberg.s3.aws-secret-key"] = decrypt_password(s3_model.secret_key)
+                        except Exception:
+                            catalog["properties"]["iceberg.s3.aws-secret-key"] = s3_model.secret_key
+                    catalog["properties"]["iceberg.s3.path-style-access"] = "true"
+
                 catalogs.append(catalog)
 
         # 2. Resolve Data Sources

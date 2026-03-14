@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, AsyncMock, patch
 from fastapi import Request
 from sqlmodel import Session
 from mindweaver.platform_service.hive_metastore import HiveMetastorePlatform, HiveMetastorePlatformService
+from mindweaver.fw.model import AsyncSession
 from pydantic import ValidationError
 import yaml
 
@@ -13,7 +14,8 @@ import yaml
 @pytest.fixture
 def mock_service_dependencies():
     request = MagicMock(spec=Request)
-    session = MagicMock(spec=Session)
+    session = MagicMock(spec=AsyncSession)
+    session.exec = AsyncMock()
     return request, session
 
 
@@ -98,7 +100,33 @@ async def test_hms_template_rendering(mock_service_dependencies):
     mock_pgsql_state.db_pass = "secret"
     mock_pgsql_svc.platform_state.return_value = mock_pgsql_state
 
-    with patch("mindweaver.platform_service.hive_metastore.service.PgSqlPlatformService.get_service", AsyncMock(return_value=mock_pgsql_svc)):
+    # Mock S3StorageService
+    mock_s3_svc = AsyncMock()
+    mock_s3_model = MagicMock()
+    mock_s3_model.endpoint_url = "http://minio:9000"
+    mock_s3_model.access_key = "access"
+    mock_s3_model.secret_key = "secret"
+    mock_s3_svc.get.return_value = mock_s3_model
+
+    model.s3_storage_id = 100
+
+    # Mock S3StorageService
+    mock_s3_svc = AsyncMock()
+    mock_s3_model = MagicMock()
+    mock_s3_model.endpoint_url = "http://minio:9000"
+    mock_s3_model.access_key = "access"
+    mock_s3_model.secret_key = "secret"
+    mock_s3_svc.get.return_value = mock_s3_model
+
+    model.s3_storage_id = 100
+
+    # Mock session.exec for S3StorageService.get
+    mock_result = MagicMock()
+    mock_result.first.return_value = mock_s3_model
+    session.exec.return_value = mock_result
+
+    with patch("mindweaver.platform_service.hive_metastore.service.PgSqlPlatformService.get_service", AsyncMock(return_value=mock_pgsql_svc)), \
+         patch("mindweaver.platform_service.hive_metastore.service.S3StorageService.get_service", AsyncMock(return_value=mock_s3_svc)):
         # Get template variables
         vars = await svc.template_vars(model)
 
@@ -107,6 +135,9 @@ async def test_hms_template_rendering(mock_service_dependencies):
     assert vars["db_name"] == "metastore"
     assert vars["iceberg_enabled"] is True
     assert vars["namespace"] == "hms-ns"
+    assert vars["s3_endpoint_url"] == "http://minio:9000"
+    assert vars["aws_access_key_id"] == "access"
+    assert vars["aws_secret_access_key"] == "secret"
 
     # Check template rendering logic (basic markers)
     import os
