@@ -23,6 +23,9 @@ spec:
           autoscaling:
             enabled: false
         
+        service:
+          type: NodePort
+        
         {% if catalogs %}
         catalogs:
           {% for catalog in catalogs %}

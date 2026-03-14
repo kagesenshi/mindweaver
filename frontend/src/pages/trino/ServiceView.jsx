@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Server } from 'lucide-react';
 import { useNotification } from '../../providers/NotificationProvider';
 import PlatformServiceView from '../../components/PlatformServiceView';
-import { InternalNetworkAccessBlock } from '../../components/ServiceBlocks';
-import { useTrino } from '../../hooks/useResources';
+import { InternalNetworkAccessBlock, ExternalNetworkAccessBlock } from '../../components/ServiceBlocks';
 
 const ServiceView = ({
     darkMode,
@@ -84,6 +83,8 @@ const ServiceView = ({
             });
         }
 
+        const trinoPort = platformState?.node_ports?.find(np => np.name.includes('trino'));
+
         return (
             <div className="space-y-6">
                 {endpoints.length > 0 && (
@@ -91,6 +92,21 @@ const ServiceView = ({
                         darkMode={darkMode}
                         icon={Server}
                         endpoints={endpoints}
+                    />
+                )}
+
+                {trinoPort && (
+                    <ExternalNetworkAccessBlock
+                        darkMode={darkMode}
+                        ports={[{
+                            label: 'Trino UI / API',
+                            node_port: trinoPort.node_port
+                        }]}
+                        clusterNodes={platformState.cluster_nodes}
+                        cliInfo={{
+                            command: `trino --server http://${platformState.cluster_nodes?.[0]?.ipv4 || '[NODE_IP]'}:${trinoPort.node_port} --catalog hive --schema default`,
+                            languageButtons: []
+                        }}
                     />
                 )}
             </div>

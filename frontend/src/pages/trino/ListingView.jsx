@@ -3,7 +3,6 @@ import { Trash2, Database, Search, Edit2, ChevronRight, Activity, Server, Briefc
 import PageLayout from '../../components/PageLayout';
 import ListingItem from '../../components/ListingItem';
 import { cn } from '../../utils/cn';
-import { useTrino } from '../../hooks/useResources';
 
 const ListingView = ({ selectedProject, onSelectPlatform, trino }) => {
     const { platforms, loading, fetchPlatforms, getPlatformState, deletePlatform } = trino;

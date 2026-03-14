@@ -206,6 +206,8 @@ async def test_trino_template_rendering(mock_service_dependencies):
     assert "hive.metastore.uri=thrift://hms-internal:9083" in values["catalogs"]["test-hms-iceberg"]
 
     assert "jdbc:postgresql://postgres-host:5432/mydb" in values["catalogs"]["mypsql"]
+    
+    assert values["service"]["type"] == "NodePort"
 
 
 @pytest.mark.asyncio
