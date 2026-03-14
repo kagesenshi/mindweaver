@@ -30,7 +30,8 @@ def test_trino_resource_defaults():
     assert model.keda_min_replicas == 1
     assert model.keda_max_replicas == 10
     assert model.data_source_ids == []
-    assert model.hms_id is None
+    assert model.hms_ids == []
+    assert model.hms_iceberg_ids == []
 
 
 def test_trino_validation():
@@ -85,7 +86,8 @@ async def test_trino_template_rendering(mock_service_dependencies):
         name="trino-test",
         title="Trino Test",
         project_id=1,
-        hms_id=10,
+        hms_ids=[10],
+        hms_iceberg_ids=[10],
         data_source_ids=[20],
         keda_enabled=True,
         keda_min_replicas=2,
@@ -128,15 +130,26 @@ async def test_trino_template_rendering(mock_service_dependencies):
         
         vars = await svc.template_vars(model)
 
-    assert vars["hms_uri"] == "thrift://hms-internal:9083"
-    assert vars["iceberg_uri"] == "http://iceberg-internal:9001"
-    assert len(vars["catalogs"]) == 1
-    cat = vars["catalogs"][0]
-    assert cat["catalog"] == "mypsql"
-    assert cat["properties"]["connector.name"] == "postgresql"
-    assert "jdbc:postgresql://postgres-host:5432/mydb" in cat["properties"]["connection-url"]
-    assert cat["properties"]["connection-user"] == "usr"
-    assert cat["properties"]["connection-password"] == "pass"
+    assert "hms_uri" not in vars
+    assert "iceberg_uri" not in vars
+    assert len(vars["catalogs"]) == 3
+    
+    # Check HMS catalog
+    hms_cat = next(c for c in vars["catalogs"] if c["catalog"] == "test-hms")
+    assert hms_cat["properties"]["connector.name"] == "hive"
+    assert hms_cat["properties"]["hive.metastore.uri"] == "thrift://hms-internal:9083"
+
+    # Check HMS Iceberg catalog
+    iceberg_cat = next(c for c in vars["catalogs"] if c["catalog"] == "test-hms-iceberg")
+    assert iceberg_cat["properties"]["connector.name"] == "iceberg"
+    assert iceberg_cat["properties"]["hive.metastore.uri"] == "thrift://hms-internal:9083"
+
+    # Check PG catalog
+    pg_cat = next(c for c in vars["catalogs"] if c["catalog"] == "mypsql")
+    assert pg_cat["properties"]["connector.name"] == "postgresql"
+    assert "jdbc:postgresql://postgres-host:5432/mydb" in pg_cat["properties"]["connection-url"]
+    assert pg_cat["properties"]["connection-user"] == "usr"
+    assert pg_cat["properties"]["connection-password"] == "pass"
 
     # Render manifest
     with patch("mindweaver.platform_service.trino.service.HiveMetastorePlatformService.get_service", AsyncMock(return_value=mock_hms_svc)), \
@@ -160,13 +173,18 @@ async def test_trino_template_rendering(mock_service_dependencies):
     assert values["server"]["keda"]["minReplicas"] == 2
     assert values["server"]["keda"]["maxReplicas"] == 5
     
-    assert "hive" in values["catalogs"]
+    assert "test-hms" in values["catalogs"]
+    assert "test-hms-iceberg" in values["catalogs"]
     assert "mypsql" in values["catalogs"]
     
-    hive_props = yaml.safe_load(values["catalogs"]["hive"].replace("\n", "\n  "))
+    hive_props = yaml.safe_load(values["catalogs"]["test-hms"].replace("\n", "\n  "))
     assert hive_props is None or isinstance(hive_props, str) or isinstance(hive_props, dict) 
-    # Because it is a multiline string in values.yaml, PyYAML will just load the string containing properties of the catalog.
-    assert "connector.name=hive" in values["catalogs"]["hive"]
-    assert "hive.metastore.uri=thrift://hms-internal:9083" in values["catalogs"]["hive"]
+    assert "connector.name=hive" in values["catalogs"]["test-hms"]
+    assert "hive.metastore.uri=thrift://hms-internal:9083" in values["catalogs"]["test-hms"]
+
+    iceberg_props = yaml.safe_load(values["catalogs"]["test-hms-iceberg"].replace("\n", "\n  "))
+    assert iceberg_props is None or isinstance(iceberg_props, str) or isinstance(iceberg_props, dict) 
+    assert "connector.name=iceberg" in values["catalogs"]["test-hms-iceberg"]
+    assert "hive.metastore.uri=thrift://hms-internal:9083" in values["catalogs"]["test-hms-iceberg"]
 
     assert "jdbc:postgresql://postgres-host:5432/mydb" in values["catalogs"]["mypsql"]

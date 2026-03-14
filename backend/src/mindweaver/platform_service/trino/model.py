@@ -21,7 +21,8 @@ class TrinoPlatform(PlatformBase, table=True):
     mem_limit: float = Field(default=4.0)
 
     # HMS configuration
-    hms_id: Optional[int] = Field(default=None, foreign_key="mw_hive_metastore_platform.id")
+    hms_ids: list[int] = Field(default_factory=list, sa_type=JSONType())
+    hms_iceberg_ids: list[int] = Field(default_factory=list, sa_type=JSONType())
 
     # Data sources for Trino catalog
     data_source_ids: list[int] = Field(default_factory=list, sa_type=JSONType())

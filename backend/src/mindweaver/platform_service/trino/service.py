@@ -12,7 +12,9 @@ from pydantic import ValidationError
 from mindweaver.fw.exc import FieldValidationError
 from mindweaver.platform_service.base import PlatformService
 from mindweaver.fw.model import ts_now
-from mindweaver.platform_service.hive_metastore.service import HiveMetastorePlatformService
+from mindweaver.platform_service.hive_metastore.service import (
+    HiveMetastorePlatformService,
+)
 from mindweaver.service.data_source.service import DataSourceService
 from mindweaver.crypto import decrypt_password
 
@@ -37,9 +39,27 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
     def widgets(cls) -> dict[str, Any]:
         return {
             "image": {"order": 5},
-            "replica_count": {"order": 10, "type": "range", "min": 1, "max": 10, "step": 1},
-            "cpu_request": {"order": 11, "type": "range", "min": 0.1, "max": 16, "step": 0.1},
-            "cpu_limit": {"order": 12, "type": "range", "min": 0.1, "max": 16, "step": 0.1},
+            "replica_count": {
+                "order": 10,
+                "type": "range",
+                "min": 1,
+                "max": 10,
+                "step": 1,
+            },
+            "cpu_request": {
+                "order": 11,
+                "type": "range",
+                "min": 0.1,
+                "max": 16,
+                "step": 0.1,
+            },
+            "cpu_limit": {
+                "order": 12,
+                "type": "range",
+                "min": 0.1,
+                "max": 16,
+                "step": 0.1,
+            },
             "mem_request": {
                 "order": 13,
                 "type": "range",
@@ -56,16 +76,35 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
                 "step": 0.5,
                 "label": "Memory Limit (Gi)",
             },
-            "hms_id": {"order": 20, "label": "Hive Metastore"},
-            "data_source_ids": {
+            "hms_ids": {
+                "order": 20,
+                "label": "Hive Metastores",
+                "type": "relationship",
+                "endpoint": "/api/v1/platform/hive-metastore",
+                "field": "id",
+                "multiselect": True,
+            },
+            "hms_iceberg_ids": {
                 "order": 21,
+                "label": "Iceberg (HMS-backed) Catalogs",
+                "type": "relationship",
+                "endpoint": "/api/v1/platform/hive-metastore",
+                "field": "id",
+                "multiselect": True,
+            },
+            "data_source_ids": {
+                "order": 22,
                 "label": "Data Sources",
                 "type": "relationship",
                 "endpoint": "/api/v1/data_sources",
                 "field": "id",
                 "multiselect": True,
             },
-            "keda_enabled": {"order": 30, "type": "boolean", "label": "Enable Auto-scaling (KEDA)"},
+            "keda_enabled": {
+                "order": 30,
+                "type": "boolean",
+                "label": "Enable Auto-scaling (KEDA)",
+            },
             "keda_min_replicas": {
                 "order": 31,
                 "type": "range",
@@ -88,53 +127,90 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
         vars = model.model_dump()
         vars["namespace"] = await self._resolve_namespace(model)
 
-        # 1. Resolve HMS
-        hms_uri = None
-        iceberg_uri = None
-        if model.hms_id:
-            hms_svc = await HiveMetastorePlatformService.get_service(self.request, self.session)
-            hms_model = await hms_svc.get(model.hms_id)
-            hms_state = await hms_svc.platform_state(hms_model)
+        # 1. Resolve HMS and Data Sources Catalogs
+        catalogs = []
+        if model.hms_ids:
+            hms_svc = await HiveMetastorePlatformService.get_service(
+                self.request, self.session
+            )
+            for hms_id in model.hms_ids:
+                hms_model = await hms_svc.get(hms_id)
+                hms_state = await hms_svc.platform_state(hms_model)
 
-            if not hms_state or not hms_state.active:
-                raise ValueError(f"Managed Hive Metastore {hms_model.name} is not active")
+                if not hms_state or not hms_state.active:
+                    raise ValueError(
+                        f"Managed Hive Metastore {hms_model.name} is not active"
+                    )
 
-            # Provide the thrift URI or local cluster DNS if internal
-            # Fallback to internal DNS if we don't grab hms_uri
-            hms_namespace = await hms_svc._resolve_namespace(hms_model)
-            hms_uri = hms_state.hms_uri or f"thrift://{hms_model.name}.{hms_namespace}.svc.cluster.local:9083"
-            
-            if hms_model.iceberg_enabled:
-                iceberg_uri = hms_state.iceberg_uri or f"http://{hms_model.name}-iceberg.{hms_namespace}.svc.cluster.local:{hms_model.iceberg_port}"
-                
-        vars["hms_uri"] = hms_uri
-        vars["iceberg_uri"] = iceberg_uri
+                hms_namespace = await hms_svc._resolve_namespace(hms_model)
+                hms_uri = (
+                    hms_state.hms_uri
+                    or f"thrift://{hms_model.name}.{hms_namespace}.svc.cluster.local:9083"
+                )
+
+                catalog = {
+                    "catalog": hms_model.name,
+                    "properties": {
+                        "connector.name": "hive",
+                        "hive.metastore.uri": hms_uri,
+                    },
+                }
+                catalogs.append(catalog)
+
+        if model.hms_iceberg_ids:
+            hms_svc = await HiveMetastorePlatformService.get_service(
+                self.request, self.session
+            )
+            for hms_id in model.hms_iceberg_ids:
+                hms_model = await hms_svc.get(hms_id)
+                hms_state = await hms_svc.platform_state(hms_model)
+
+                if not hms_state or not hms_state.active:
+                    raise ValueError(
+                        f"Managed Hive Metastore {hms_model.name} is not active"
+                    )
+
+                hms_namespace = await hms_svc._resolve_namespace(hms_model)
+                hms_uri = (
+                    hms_state.hms_uri
+                    or f"thrift://{hms_model.name}.{hms_namespace}.svc.cluster.local:9083"
+                )
+
+                catalog = {
+                    "catalog": f"{hms_model.name}-iceberg",
+                    "properties": {
+                        "connector.name": "iceberg",
+                        "hive.metastore.uri": hms_uri,
+                    },
+                }
+                catalogs.append(catalog)
 
         # 2. Resolve Data Sources
-        catalogs = []
         if model.data_source_ids:
             ds_svc = await DataSourceService.get_service(self.request, self.session)
             for ds_id in model.data_source_ids:
                 ds = await ds_svc.get(ds_id)
-                
+
                 # Default mapping of drivers to trino catalog connectors
                 # Some typical ones: postgresql -> postgresql, mysql -> mysql
                 connector_name = ds.driver
-                
+
                 catalog = {
                     "catalog": ds.name,
                     "properties": {
                         "connector.name": connector_name,
-                    }
+                    },
                 }
-                
+
                 # Common properties
                 jdbc_prefix = f"jdbc:{ds.driver}://"
                 host_port = f"{ds.host}" + (f":{ds.port}" if ds.port else "")
                 resource_path = f"/{ds.resource}" if ds.resource else ""
-                
+
                 if ds.driver in ("postgresql", "mysql"):
-                    catalog["properties"]["connection-url"] = f"{jdbc_prefix}{host_port}{resource_path}"
+                    catalog["properties"][
+                        "connection-url"
+                    ] = f"{jdbc_prefix}{host_port}{resource_path}"
                     if ds.login:
                         catalog["properties"]["connection-user"] = ds.login
                     if ds.password:
@@ -143,13 +219,13 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
                             catalog["properties"]["connection-password"] = decrypted
                         except Exception:
                             catalog["properties"]["connection-password"] = ds.password
-                            
+
                 # Extend with additional driver parameters
                 for param, pval in ds.parameters.items():
                     catalog["properties"][param] = str(pval)
-                    
+
                 catalogs.append(catalog)
-                
+
         vars["catalogs"] = catalogs
 
         return vars
@@ -159,7 +235,9 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
             self.model_class().model_validate(data.model_dump(), from_attributes=True)
         except ValidationError as e:
             error = e.errors()[0]
-            raise FieldValidationError(field_location=list(error["loc"]), message=error["msg"])
+            raise FieldValidationError(
+                field_location=list(error["loc"]), message=error["msg"]
+            )
 
         return await super().validate_data(data)
 
@@ -192,8 +270,14 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
                     plural="applications",
                     name=model.name,
                 )
-                sync_status = argo_app.get("status", {}).get("sync", {}).get("status", "Unknown")
-                health_status = argo_app.get("status", {}).get("health", {}).get("status", "Unknown")
+                sync_status = (
+                    argo_app.get("status", {}).get("sync", {}).get("status", "Unknown")
+                )
+                health_status = (
+                    argo_app.get("status", {})
+                    .get("health", {})
+                    .get("status", "Unknown")
+                )
 
                 if health_status == "Healthy":
                     status = "online"
@@ -215,7 +299,8 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
             # 2. Fetch Pod Status
             try:
                 pods = core_v1.list_namespaced_pod(
-                    namespace=namespace, label_selector=f"app.kubernetes.io/instance={model.name}"
+                    namespace=namespace,
+                    label_selector=f"app.kubernetes.io/instance={model.name}",
                 )
                 ready_pods = sum(
                     1
@@ -264,9 +349,17 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
             except Exception as e:
                 logger.error(f"Failed to fetch nodes: {e}")
 
-            return status, message, argo_app.get("status", {}), node_ports, cluster_nodes
+            return (
+                status,
+                message,
+                argo_app.get("status", {}),
+                node_ports,
+                cluster_nodes,
+            )
 
-        status, message, extra_data, node_ports, cluster_nodes = await asyncio.to_thread(_poll, is_active)
+        status, message, extra_data, node_ports, cluster_nodes = (
+            await asyncio.to_thread(_poll, is_active)
+        )
 
         state = await self.platform_state(model)
         if not state:
@@ -291,10 +384,14 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
         if status == "online" and cluster_nodes:
             trino_np = next((np for np in node_ports if "trino" in np["name"]), None)
             if trino_np:
-                state.trino_uri = f"http://{cluster_nodes[0]['ipv4']}:{trino_np['node_port']}"
+                state.trino_uri = (
+                    f"http://{cluster_nodes[0]['ipv4']}:{trino_np['node_port']}"
+                )
             else:
-                state.trino_uri = f"http://{model.name}.{namespace}.svc.cluster.local:8080"
-        
+                state.trino_uri = (
+                    f"http://{model.name}.{namespace}.svc.cluster.local:8080"
+                )
+
         state.last_heartbeat = ts_now()
 
 
