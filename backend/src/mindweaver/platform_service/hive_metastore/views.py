@@ -18,6 +18,7 @@ async def get_chart_versions() -> dict:
     Static list to avoid external authentication complexity.
     """
     versions = [
+        {"label": "0.1.6", "value": "0.1.6"},
         {"label": "0.1.5", "value": "0.1.5"},
         {"label": "0.1.4", "value": "0.1.4"},
     ]

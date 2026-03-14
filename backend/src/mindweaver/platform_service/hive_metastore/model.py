@@ -35,6 +35,8 @@ class HiveMetastorePlatform(PlatformBase, table=True):
     iceberg_enabled: bool = Field(default=True)
     iceberg_port: int = Field(default=9001)
 
+    warehouse_dir: str = Field(default="s3a://metastore/warehouse/")
+
     @model_validator(mode="after")
     def validate_resource_limits(self) -> "HiveMetastorePlatform":
         """Validates resource requests do not exceed limits."""

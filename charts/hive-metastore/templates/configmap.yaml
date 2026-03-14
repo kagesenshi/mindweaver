@@ -51,6 +51,14 @@ data:
         <name>fs.s3a.secret.key</name>
         <value>${env.AWS_SECRET_ACCESS_KEY}</value>
       </property>
+      <property>
+        <name>fs.s3a.path.style.access</name>
+        <value>true</value>
+      </property>
+      <property>
+        <name>fs.s3a.endpoint.region</name>
+        <value>${env.S3_REGION}</value>
+      </property>
     </configuration>
   hive-site.xml: |-
     <?xml version="1.0" encoding="UTF-8" standalone="no"?>

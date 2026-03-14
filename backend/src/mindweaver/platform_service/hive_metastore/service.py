@@ -58,6 +58,7 @@ class HiveMetastorePlatformService(PlatformService[HiveMetastorePlatform]):
             },
             "iceberg_enabled": {"order": 30, "type": "boolean"},
             "iceberg_port": {"order": 31},
+            "warehouse_dir": {"order": 40, "label": "Warehouse Directory"},
         }
 
     async def template_vars(self, model: HiveMetastorePlatform) -> dict:
@@ -87,6 +88,7 @@ class HiveMetastorePlatformService(PlatformService[HiveMetastorePlatform]):
             s3_svc = await S3StorageService.get_service(self.request, self.session)
             s3_model = await s3_svc.get(model.s3_storage_id)
             vars["s3_endpoint_url"] = s3_model.endpoint_url
+            vars["s3_region"] = s3_model.region
             vars["aws_access_key_id"] = s3_model.access_key
             if s3_model.secret_key:
                 try:
