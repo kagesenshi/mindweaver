@@ -11,6 +11,11 @@ RUN echo '<project><modelVersion>4.0.0</modelVersion>\
             <artifactId>hadoop-yarn-common</artifactId>\
             <version>3.4.1</version>\
         </dependency>\
+        <dependency>\
+            <groupId>org.apache.hadoop</groupId>\
+            <artifactId>hadoop-aws</artifactId>\
+            <version>3.4.1</version>\
+        </dependency>\
     </dependencies></project>' > pom.xml
 
 # Download dependencies into a local folder
