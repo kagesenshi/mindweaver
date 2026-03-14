@@ -1,0 +1,61 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ name }}
+  namespace: argocd
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: 'https://trinodb.github.io/charts'
+    chart: trino
+    targetRevision: 0.23.0 # or specific version like 0.23.0
+    helm:
+      values: |
+        image:
+          tag: "{{ image.split(':')[-1] if ':' in image else 'latest' }}"
+        server:
+          workers: {{ replica_count }}
+          autoscaling:
+            enabled: false
+          keda:
+            enabled: {{ 'true' if keda_enabled else 'false' }}
+            minReplicas: {{ keda_min_replicas }}
+            maxReplicas: {{ keda_max_replicas }}
+        
+        {% if catalogs %}
+        catalogs:
+          {% if hms_uri %}
+          hive: |
+            connector.name=hive
+            hive.metastore.uri={{ hms_uri }}
+            {% if iceberg_uri %}
+            # Iceberg config could go here if needed as an additional catalog binding.
+            {% endif %}
+          {% endif %}
+          
+          {% for catalog in catalogs %}
+          {{ catalog.catalog }}: |
+            {% for key, value in catalog.properties.items() %}
+            {{ key }}={{ value }}
+            {% endfor %}
+          {% endfor %}
+        {% else %}
+          {% if hms_uri %}
+        catalogs:
+          hive: |
+            connector.name=hive
+            hive.metastore.uri={{ hms_uri }}
+          {% endif %}
+        {% endif %}
+        
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: {{ namespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true

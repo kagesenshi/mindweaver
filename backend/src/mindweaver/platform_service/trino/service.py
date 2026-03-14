@@ -1,0 +1,301 @@
+# SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
+# SPDX-License-Identifier: AGPLv3+
+
+import os
+import logging
+import asyncio
+import tempfile
+from typing import Any, Optional
+from kubernetes import client, config
+from pydantic import ValidationError
+
+from mindweaver.fw.exc import FieldValidationError
+from mindweaver.platform_service.base import PlatformService
+from mindweaver.fw.model import ts_now
+from mindweaver.platform_service.hive_metastore.service import HiveMetastorePlatformService
+from mindweaver.service.data_source.service import DataSourceService
+from mindweaver.crypto import decrypt_password
+
+from .model import TrinoPlatform, TrinoPlatformState
+
+logger = logging.getLogger(__name__)
+
+
+class TrinoPlatformService(PlatformService[TrinoPlatform]):
+    template_directory: str = os.path.join(os.path.dirname(__file__), "templates")
+    state_model: type[TrinoPlatformState] = TrinoPlatformState
+
+    @classmethod
+    def model_class(cls) -> type[TrinoPlatform]:
+        return TrinoPlatform
+
+    @classmethod
+    def service_path(cls) -> str:
+        return "/platform/trino"
+
+    @classmethod
+    def widgets(cls) -> dict[str, Any]:
+        return {
+            "image": {"order": 5},
+            "replica_count": {"order": 10, "type": "range", "min": 1, "max": 10, "step": 1},
+            "cpu_request": {"order": 11, "type": "range", "min": 0.1, "max": 16, "step": 0.1},
+            "cpu_limit": {"order": 12, "type": "range", "min": 0.1, "max": 16, "step": 0.1},
+            "mem_request": {
+                "order": 13,
+                "type": "range",
+                "min": 0.5,
+                "max": 64,
+                "step": 0.5,
+                "label": "Memory Request (Gi)",
+            },
+            "mem_limit": {
+                "order": 14,
+                "type": "range",
+                "min": 0.5,
+                "max": 64,
+                "step": 0.5,
+                "label": "Memory Limit (Gi)",
+            },
+            "hms_id": {"order": 20, "label": "Hive Metastore"},
+            "data_source_ids": {
+                "order": 21,
+                "label": "Data Sources",
+                "type": "relationship",
+                "endpoint": "/api/v1/data_sources",
+                "field": "id",
+                "multiselect": True,
+            },
+            "keda_enabled": {"order": 30, "type": "boolean", "label": "Enable Auto-scaling (KEDA)"},
+            "keda_min_replicas": {
+                "order": 31,
+                "type": "range",
+                "min": 1,
+                "max": 20,
+                "step": 1,
+                "label": "Min Replicas",
+            },
+            "keda_max_replicas": {
+                "order": 32,
+                "type": "range",
+                "min": 1,
+                "max": 20,
+                "step": 1,
+                "label": "Max Replicas",
+            },
+        }
+
+    async def template_vars(self, model: TrinoPlatform) -> dict:
+        vars = model.model_dump()
+        vars["namespace"] = await self._resolve_namespace(model)
+
+        # 1. Resolve HMS
+        hms_uri = None
+        iceberg_uri = None
+        if model.hms_id:
+            hms_svc = await HiveMetastorePlatformService.get_service(self.request, self.session)
+            hms_model = await hms_svc.get(model.hms_id)
+            hms_state = await hms_svc.platform_state(hms_model)
+
+            if not hms_state or not hms_state.active:
+                raise ValueError(f"Managed Hive Metastore {hms_model.name} is not active")
+
+            # Provide the thrift URI or local cluster DNS if internal
+            # Fallback to internal DNS if we don't grab hms_uri
+            hms_namespace = await hms_svc._resolve_namespace(hms_model)
+            hms_uri = hms_state.hms_uri or f"thrift://{hms_model.name}.{hms_namespace}.svc.cluster.local:9083"
+            
+            if hms_model.iceberg_enabled:
+                iceberg_uri = hms_state.iceberg_uri or f"http://{hms_model.name}-iceberg.{hms_namespace}.svc.cluster.local:{hms_model.iceberg_port}"
+                
+        vars["hms_uri"] = hms_uri
+        vars["iceberg_uri"] = iceberg_uri
+
+        # 2. Resolve Data Sources
+        catalogs = []
+        if model.data_source_ids:
+            ds_svc = await DataSourceService.get_service(self.request, self.session)
+            for ds_id in model.data_source_ids:
+                ds = await ds_svc.get(ds_id)
+                
+                # Default mapping of drivers to trino catalog connectors
+                # Some typical ones: postgresql -> postgresql, mysql -> mysql
+                connector_name = ds.driver
+                
+                catalog = {
+                    "catalog": ds.name,
+                    "properties": {
+                        "connector.name": connector_name,
+                    }
+                }
+                
+                # Common properties
+                jdbc_prefix = f"jdbc:{ds.driver}://"
+                host_port = f"{ds.host}" + (f":{ds.port}" if ds.port else "")
+                resource_path = f"/{ds.resource}" if ds.resource else ""
+                
+                if ds.driver in ("postgresql", "mysql"):
+                    catalog["properties"]["connection-url"] = f"{jdbc_prefix}{host_port}{resource_path}"
+                    if ds.login:
+                        catalog["properties"]["connection-user"] = ds.login
+                    if ds.password:
+                        try:
+                            decrypted = decrypt_password(ds.password)
+                            catalog["properties"]["connection-password"] = decrypted
+                        except Exception:
+                            catalog["properties"]["connection-password"] = ds.password
+                            
+                # Extend with additional driver parameters
+                for param, pval in ds.parameters.items():
+                    catalog["properties"][param] = str(pval)
+                    
+                catalogs.append(catalog)
+                
+        vars["catalogs"] = catalogs
+
+        return vars
+
+    async def validate_data(self, data: Any) -> Any:
+        try:
+            self.model_class().model_validate(data.model_dump(), from_attributes=True)
+        except ValidationError as e:
+            error = e.errors()[0]
+            raise FieldValidationError(field_location=list(error["loc"]), message=error["msg"])
+
+        return await super().validate_data(data)
+
+    async def poll_status(self, model: TrinoPlatform):
+        kubeconfig = await self.kubeconfig(model)
+        namespace = await self._resolve_namespace(model)
+        state = await self.platform_state(model)
+        is_active = state.active if state else True
+
+        def _poll(active: bool):
+            if kubeconfig is None:
+                config.load_incluster_config()
+                k8s_client = client.ApiClient()
+            else:
+                with tempfile.NamedTemporaryFile(mode="w") as kf:
+                    kf.write(kubeconfig)
+                    kf.flush()
+                    k8s_client = config.new_client_from_config(config_file=kf.name)
+
+            custom_api = client.CustomObjectsApi(k8s_client)
+            apps_v1 = client.AppsV1Api(k8s_client)
+            core_v1 = client.CoreV1Api(k8s_client)
+
+            # 1. Check ArgoCD Application Status
+            try:
+                argo_app = custom_api.get_namespaced_custom_object(
+                    group="argoproj.io",
+                    version="v1alpha1",
+                    namespace="argocd",
+                    plural="applications",
+                    name=model.name,
+                )
+                sync_status = argo_app.get("status", {}).get("sync", {}).get("status", "Unknown")
+                health_status = argo_app.get("status", {}).get("health", {}).get("status", "Unknown")
+
+                if health_status == "Healthy":
+                    status = "online"
+                elif health_status in ["Progressing", "Pending"]:
+                    status = "pending"
+                else:
+                    status = "error"
+
+                message = f"Sync: {sync_status}, Health: {health_status}"
+            except Exception as e:
+                if not active:
+                    status = "offline"
+                    message = "Decommissioned"
+                else:
+                    status = "error"
+                    message = f"Failed to fetch ArgoCD status: {str(e)}"
+                return status, message, {}, [], []
+
+            # 2. Fetch Pod Status
+            try:
+                pods = core_v1.list_namespaced_pod(
+                    namespace=namespace, label_selector=f"app.kubernetes.io/instance={model.name}"
+                )
+                ready_pods = sum(
+                    1
+                    for p in pods.items
+                    if p.status.phase == "Running"
+                    and any(c.ready for c in (p.status.container_statuses or []))
+                )
+                total_pods = len(pods.items)
+                message += f" | Pods: {ready_pods}/{total_pods}"
+            except Exception as e:
+                logger.error(f"Failed to fetch pods for {model.name}: {e}")
+
+            # 3. Fetch NodePorts
+            node_ports = []
+            try:
+                services = core_v1.list_namespaced_service(namespace=namespace)
+                for svc in services.items:
+                    if svc.metadata.name.startswith(model.name):
+                        if svc.spec.type == "NodePort":
+                            for port in svc.spec.ports:
+                                node_ports.append(
+                                    {
+                                        "name": svc.metadata.name,
+                                        "port": port.port,
+                                        "node_port": port.node_port,
+                                    }
+                                )
+            except Exception as e:
+                logger.error(f"Failed to fetch services for {model.name}: {e}")
+
+            # 4. Fetch Nodes for IP info
+            cluster_nodes = []
+            try:
+                nodes = core_v1.list_node()
+                for node in nodes.items:
+                    node_info = {"hostname": "unknown", "ipv4": None, "ipv6": None}
+                    for addr in node.status.addresses:
+                        if addr.type == "Hostname":
+                            node_info["hostname"] = addr.address
+                        elif addr.type == "InternalIP":
+                            if ":" in addr.address:
+                                node_info["ipv6"] = addr.address
+                            else:
+                                node_info["ipv4"] = addr.address
+                    cluster_nodes.append(node_info)
+            except Exception as e:
+                logger.error(f"Failed to fetch nodes: {e}")
+
+            return status, message, argo_app.get("status", {}), node_ports, cluster_nodes
+
+        status, message, extra_data, node_ports, cluster_nodes = await asyncio.to_thread(_poll, is_active)
+
+        state = await self.platform_state(model)
+        if not state:
+            state = self.state_model(platform_id=model.id)
+            self.session.add(state)
+
+        if not state.active and status == "offline":
+            state.status = "offline"
+            state.message = message
+            return
+
+        state.status = status
+        state.message = message
+        if extra_data is None:
+            extra_data = {}
+        extra_data["namespace"] = namespace
+        state.extra_data = extra_data
+        state.node_ports = node_ports
+        state.cluster_nodes = cluster_nodes
+
+        # Derive URIs
+        if status == "online" and cluster_nodes:
+            trino_np = next((np for np in node_ports if "trino" in np["name"]), None)
+            if trino_np:
+                state.trino_uri = f"http://{cluster_nodes[0]['ipv4']}:{trino_np['node_port']}"
+            else:
+                state.trino_uri = f"http://{model.name}.{namespace}.svc.cluster.local:8080"
+        
+        state.last_heartbeat = ts_now()
+
+
+router = TrinoPlatformService.router()

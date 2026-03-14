@@ -5,9 +5,10 @@ import {
     Database,
     ChevronRight,
     Server,
-    Boxes
+    Boxes,
+    Wind
 } from 'lucide-react';
-import { usePgSql, useHiveMetastore } from '../hooks/useResources';
+import { usePgSql, useHiveMetastore, useTrino } from '../hooks/useResources';
 import PageLayout from '../components/PageLayout';
 import ListingItem from '../components/ListingItem';
 
@@ -15,14 +16,16 @@ const HomePage = () => {
     const { selectedProject } = useOutletContext();
     const { platforms: pgsqlPlatforms, loading: pgsqlLoading } = usePgSql();
     const { platforms: hmsPlatforms, loading: hmsLoading } = useHiveMetastore();
+    const { platforms: trinoPlatforms, loading: trinoLoading } = useTrino();
     const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
 
-    const loading = pgsqlLoading || hmsLoading;
+    const loading = pgsqlLoading || hmsLoading || trinoLoading;
 
     const allInstances = [
         ...pgsqlPlatforms.map(p => ({ ...p, type: 'pgsql' })),
-        ...hmsPlatforms.map(p => ({ ...p, type: 'hms' }))
+        ...hmsPlatforms.map(p => ({ ...p, type: 'hms' })),
+        ...trinoPlatforms.map(p => ({ ...p, type: 'trino' }))
     ];
 
     const filteredInstances = allInstances.filter(inst => {
@@ -52,14 +55,14 @@ const HomePage = () => {
                 {filteredInstances.map(inst => (
                     <ListingItem
                         key={`${inst.type}-${inst.id}`}
-                        icon={inst.type === 'hms' ? Boxes : Database}
+                        icon={inst.type === 'hms' ? Boxes : inst.type === 'trino' ? Server : Database}
                         title={inst.title || inst.name}
                         badges={[{ 
-                            text: inst.type === 'hms' ? "Hive Metastore" : "CloudNative PG", 
+                            text: inst.type === 'hms' ? "Hive Metastore" : inst.type === 'trino' ? "Trino Cluster" : "CloudNative PG", 
                             variant: "mw-badge-neutral" 
                         }]}
                         subtitle={inst.id}
-                        onClick={() => navigate(inst.type === 'hms' ? '/platform/hive-metastore' : '/platform/pgsql')}
+                        onClick={() => navigate(inst.type === 'hms' ? '/platform/hive-metastore' : inst.type === 'trino' ? '/platform/trino' : '/platform/pgsql')}
                         actions={
                             <div className="flex items-center gap-12">
                                 <div className="flex items-center gap-2 text-blue-500/70">
