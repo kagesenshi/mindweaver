@@ -32,7 +32,7 @@ def test_hms_override_image_defaults():
     """Test that override_image and chart_version have correct defaults"""
     model = HiveMetastorePlatform(name="test-hms", title="Test HMS", project_id=1, database_id=10)
     assert model.override_image is False
-    assert model.chart_version == "latest"
+    assert model.chart_version == "0.1.5"
 
 
 def test_hms_override_image_flag():
@@ -300,4 +300,40 @@ async def test_hms_chart_versions_endpoint():
         {"label": "0.1.5", "value": "0.1.5"},
         {"label": "0.1.4", "value": "0.1.4"},
     ]
+
+
+@pytest.mark.asyncio
+async def test_hms_fullname_override(mock_service_dependencies):
+    """Test that fullnameOverride is present in the rendered manifest"""
+    request, session = mock_service_dependencies
+    svc = HiveMetastorePlatformService(request, session)
+
+    model = HiveMetastorePlatform(
+        name="my-custom-hms",
+        title="Custom HMS",
+        project_id=1,
+        database_id=10,
+    )
+
+    # Mock _resolve_namespace
+    svc._resolve_namespace = AsyncMock(return_value="hms-ns")
+
+    # Mock PgSqlPlatformService
+    mock_pgsql_svc = AsyncMock()
+    mock_pgsql_model = MagicMock()
+    mock_pgsql_model.name = "test-pgsql"
+    mock_pgsql_svc.get.return_value = mock_pgsql_model
+    
+    mock_pgsql_state = MagicMock()
+    mock_pgsql_state.active = True
+    mock_pgsql_state.db_user = "hms_user"
+    mock_pgsql_state.db_name = "metastore"
+    mock_pgsql_state.db_pass = "secret"
+    mock_pgsql_svc.platform_state.return_value = mock_pgsql_state
+
+    with patch("mindweaver.platform_service.hive_metastore.service.PgSqlPlatformService.get_service", AsyncMock(return_value=mock_pgsql_svc)):
+        # Render manifest
+        manifest = await svc.render_manifests(model)
+
+    assert "fullnameOverride: my-custom-hms" in manifest
 

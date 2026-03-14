@@ -461,10 +461,10 @@ const DynamicForm = ({
                 });
             }
 
-            const selectOptions = options.map(opt => ({
+            const selectOptions = Array.isArray(options) ? options.map(opt => ({
                 label: opt.title || opt.name || opt[idField],
                 value: opt[idField]
-            }));
+            })) : [];
 
             // Find current value object(s)
             let currentValue = null;
@@ -504,12 +504,12 @@ const DynamicForm = ({
                 ? selectEndpointOptions[name]
                 : staticOpts;
             // Normalize options to { label, value } format
-            const selectOptions = options.map(opt => {
+            const selectOptions = Array.isArray(options) ? options.map(opt => {
                 if (typeof opt === 'object') {
                     return { label: opt.label, value: opt.value };
                 }
                 return { label: opt, value: opt };
-            });
+            }) : [];
 
             const currentVal = formData[name];
             const currentValue = selectOptions.find(opt => opt.value === currentVal) || null;

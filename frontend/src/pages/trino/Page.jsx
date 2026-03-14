@@ -25,6 +25,7 @@ const TrinoPage = () => {
                 selectedPlatform={selectedPlatform}
                 onBack={() => setSelectedPlatformId(null)}
                 initialTab={initialTab}
+                trino={trino}
             />
         );
     }
@@ -33,6 +34,7 @@ const TrinoPage = () => {
         <ListingView
             darkMode={darkMode}
             selectedProject={selectedProject}
+            trino={trino}
             onSelectPlatform={handleSelectPlatform}
         />
     );

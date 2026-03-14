@@ -11,8 +11,9 @@ const ServiceView = ({
     selectedPlatform,
     onBack,
     initialTab = 'connect',
+    trino
 }) => {
-    const { getPlatformState, refreshPlatformState, updatePlatformState, fetchPlatforms } = useTrino();
+    const { getPlatformState, refreshPlatformState, updatePlatformState, fetchPlatforms } = trino;
     const [platformState, setPlatformState] = useState(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
 

@@ -5,8 +5,8 @@ import ListingItem from '../../components/ListingItem';
 import { cn } from '../../utils/cn';
 import { useTrino } from '../../hooks/useResources';
 
-const ListingView = ({ selectedProject, onSelectPlatform }) => {
-    const { platforms, loading, fetchPlatforms, getPlatformState, deletePlatform } = useTrino();
+const ListingView = ({ selectedProject, onSelectPlatform, trino }) => {
+    const { platforms, loading, fetchPlatforms, getPlatformState, deletePlatform } = trino;
     const [searchTerm, setSearchTerm] = useState('');
     const [allPlatformStates, setAllPlatformStates] = useState({});
 

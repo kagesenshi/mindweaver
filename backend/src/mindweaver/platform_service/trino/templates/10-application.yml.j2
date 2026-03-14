@@ -10,19 +10,18 @@ spec:
   source:
     repoURL: 'https://trinodb.github.io/charts'
     chart: trino
-    targetRevision: 0.23.0 # or specific version like 0.23.0
+    targetRevision: {{ chart_version }}
     helm:
       values: |
+        {% if override_image %}
         image:
           tag: "{{ image.split(':')[-1] if ':' in image else 'latest' }}"
+          repository: "{{ image.rsplit(':', 1)[0] if ':' in image else image }}"
+        {% endif %}
         server:
           workers: {{ replica_count }}
           autoscaling:
             enabled: false
-          keda:
-            enabled: {{ 'true' if keda_enabled else 'false' }}
-            minReplicas: {{ keda_min_replicas }}
-            maxReplicas: {{ keda_max_replicas }}
         
         {% if catalogs %}
         catalogs:

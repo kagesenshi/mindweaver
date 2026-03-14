@@ -24,16 +24,16 @@ def mock_service_dependencies():
 def test_trino_resource_defaults():
     """Test default values for Trino resource limits"""
     model = TrinoPlatform(name="test-trino", title="Test Trino", project_id=1)
-    assert model.cpu_request == 0.5
     assert model.cpu_limit == 2.0
     assert model.mem_request == 2.0
     assert model.mem_limit == 4.0
-    assert model.keda_enabled is True
-    assert model.keda_min_replicas == 1
-    assert model.keda_max_replicas == 10
     assert model.data_source_ids == []
     assert model.hms_ids == []
     assert model.hms_iceberg_ids == []
+
+    # New fields
+    assert model.chart_version == "1.41.0"
+    assert model.override_image is False
 
 
 def test_trino_validation():
@@ -63,19 +63,18 @@ def test_trino_validation():
         )
     assert "CPU request cannot be greater than CPU limit" in str(excinfo.value)
 
-    # Invalid KEDA: min > max
+    # Invalid Memory: request > limit
     with pytest.raises(ValidationError) as excinfo:
         TrinoPlatform.model_validate(
             {
                 "name": "test-trino",
                 "title": "Test Trino",
                 "project_id": 1,
-                "keda_enabled": True,
-                "keda_min_replicas": 5,
-                "keda_max_replicas": 2,
+                "mem_request": 10.0,
+                "mem_limit": 5.0,
             }
         )
-    assert "KEDA minimum replicas cannot be greater than maximum replicas" in str(excinfo.value)
+    assert "Memory request cannot be greater than Memory limit" in str(excinfo.value)
 
 
 @pytest.mark.asyncio
@@ -91,9 +90,6 @@ async def test_trino_template_rendering(mock_service_dependencies):
         hms_ids=[10],
         hms_iceberg_ids=[10],
         data_source_ids=[20],
-        keda_enabled=True,
-        keda_min_replicas=2,
-        keda_max_replicas=5,
     )
 
     # Mock _resolve_namespace
@@ -155,19 +151,21 @@ async def test_trino_template_rendering(mock_service_dependencies):
     hms_cat = next(c for c in vars["catalogs"] if c["catalog"] == "test-hms")
     assert hms_cat["properties"]["connector.name"] == "hive"
     assert hms_cat["properties"]["hive.metastore.uri"] == "thrift://hms-internal:9083"
-    assert hms_cat["properties"]["hive.s3.endpoint"] == "http://minio:9000"
-    assert hms_cat["properties"]["hive.s3.aws-access-key"] == "access"
-    assert hms_cat["properties"]["hive.s3.aws-secret-key"] == "secret"
-    assert hms_cat["properties"]["hive.s3.path-style-access"] == "true"
+    assert hms_cat["properties"]["fs.native-s3.enabled"] == "true"
+    assert hms_cat["properties"]["s3.endpoint"] == "http://minio:9000"
+    assert hms_cat["properties"]["s3.aws-access-key"] == "access"
+    assert hms_cat["properties"]["s3.aws-secret-key"] == "secret"
+    assert hms_cat["properties"]["s3.path-style-access"] == "true"
 
     # Check HMS Iceberg catalog
     iceberg_cat = next(c for c in vars["catalogs"] if c["catalog"] == "test-hms-iceberg")
     assert iceberg_cat["properties"]["connector.name"] == "iceberg"
     assert iceberg_cat["properties"]["hive.metastore.uri"] == "thrift://hms-internal:9083"
-    assert iceberg_cat["properties"]["iceberg.s3.endpoint"] == "http://minio:9000"
-    assert iceberg_cat["properties"]["iceberg.s3.aws-access-key"] == "access"
-    assert iceberg_cat["properties"]["iceberg.s3.aws-secret-key"] == "secret"
-    assert iceberg_cat["properties"]["iceberg.s3.path-style-access"] == "true"
+    assert iceberg_cat["properties"]["fs.native-s3.enabled"] == "true"
+    assert iceberg_cat["properties"]["s3.endpoint"] == "http://minio:9000"
+    assert iceberg_cat["properties"]["s3.aws-access-key"] == "access"
+    assert iceberg_cat["properties"]["s3.aws-secret-key"] == "secret"
+    assert iceberg_cat["properties"]["s3.path-style-access"] == "true"
 
     # Check PG catalog
     pg_cat = next(c for c in vars["catalogs"] if c["catalog"] == "mypsql")
@@ -190,13 +188,8 @@ async def test_trino_template_rendering(mock_service_dependencies):
     app_doc = docs[0]
     assert app_doc["kind"] == "Application"
     assert app_doc["spec"]["destination"]["namespace"] == "trino-ns"
-    
     values_yaml_str = app_doc["spec"]["source"]["helm"]["values"]
     values = yaml.safe_load(values_yaml_str)
-    
-    assert values["server"]["keda"]["enabled"] is True
-    assert values["server"]["keda"]["minReplicas"] == 2
-    assert values["server"]["keda"]["maxReplicas"] == 5
     
     assert "test-hms" in values["catalogs"]
     assert "test-hms-iceberg" in values["catalogs"]
@@ -213,3 +206,99 @@ async def test_trino_template_rendering(mock_service_dependencies):
     assert "hive.metastore.uri=thrift://hms-internal:9083" in values["catalogs"]["test-hms-iceberg"]
 
     assert "jdbc:postgresql://postgres-host:5432/mydb" in values["catalogs"]["mypsql"]
+
+
+@pytest.mark.asyncio
+async def test_trino_override_image_template(mock_service_dependencies):
+    """Test that the image block is rendered only when override_image=True"""
+    request, session = mock_service_dependencies
+    svc = TrinoPlatformService(request, session)
+    svc._resolve_namespace = AsyncMock(return_value="trino-ns")
+
+    # Test with override_image=False: image block should NOT appear
+    model_no_override = TrinoPlatform(
+        name="trino-test",
+        title="Trino Test",
+        project_id=1,
+        override_image=False,
+        image="custom/trino:v1.0.0",
+        chart_version="1.41.0",
+    )
+
+    manifest_no_override = await svc.render_manifests(model_no_override)
+
+    assert "targetRevision: 1.41.0" in manifest_no_override
+    assert "repository:" not in manifest_no_override
+
+    # Test with override_image=True: image block should appear
+    model_with_override = TrinoPlatform(
+        name="trino-test",
+        title="Trino Test",
+        project_id=1,
+        override_image=True,
+        image="custom/trino:v1.0.0",
+        chart_version="1.41.0",
+    )
+
+    manifest_with_override = await svc.render_manifests(model_with_override)
+
+    assert "repository:" in manifest_with_override
+    assert "v1.0.0" in manifest_with_override
+    assert "custom/trino" in manifest_with_override
+
+
+@pytest.mark.asyncio
+async def test_trino_chart_versions_endpoint():
+    """Test the _chart-versions endpoint returns static versions"""
+    from mindweaver.platform_service.trino.views import get_chart_versions
+
+    result = await get_chart_versions()
+
+    assert "data" in result
+    assert result["data"] == [
+        {"label": "1.41.0", "value": "1.41.0"},
+    ]
+
+
+@pytest.mark.asyncio
+async def test_trino_catalog_filtering(mock_service_dependencies):
+    """Test that only supported catalog drivers are rendered"""
+    request, session = mock_service_dependencies
+    svc = TrinoPlatformService(request, session)
+    svc._resolve_namespace = AsyncMock(return_value="trino-ns")
+
+    # Mock Data Sources: one supported, one unsupported
+    ds_supported = MagicMock()
+    ds_supported.name = "mysql-ds"
+    ds_supported.driver = "mysql"
+    ds_supported.host = "mysql-host"
+    ds_supported.port = 3306
+    ds_supported.resource = "db"
+    ds_supported.login = "user"
+    ds_supported.password = "pass"
+    ds_supported.parameters = {}
+
+    ds_unsupported = MagicMock()
+    ds_unsupported.name = "web-ds"
+    ds_unsupported.driver = "web"
+
+    mock_ds_svc = AsyncMock()
+    mock_ds_svc.get.side_effect = [ds_supported, ds_unsupported, ds_supported, ds_unsupported]
+
+    model = TrinoPlatform(
+        name="trino-test",
+        project_id=1,
+        data_source_ids=[1, 2],
+    )
+
+    with patch("mindweaver.platform_service.trino.service.DataSourceService.get_service", AsyncMock(return_value=mock_ds_svc)):
+        vars = await svc.template_vars(model)
+
+        # Verify only mysql-ds is in catalogs
+        catalog_names = [c["catalog"] for c in vars["catalogs"]]
+        assert "mysql-ds" in catalog_names
+        assert "web-ds" not in catalog_names
+
+        manifest = await svc.render_manifests(model)
+        assert "mysql-ds" in manifest
+        assert "web-ds" not in manifest

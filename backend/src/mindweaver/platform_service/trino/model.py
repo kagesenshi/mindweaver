@@ -12,6 +12,12 @@ class TrinoPlatform(PlatformBase, table=True):
     __tablename__ = "mw_trino_platform"
 
     replica_count: int = Field(default=1)
+    
+    # Chart version selection (targetRevision in Application manifest)
+    chart_version: str = Field(default="1.41.0")
+
+    # Image override - when True, the image field overrides the chart's default image
+    override_image: bool = Field(default=False)
     image: str = Field(default="trinodb/trino:latest")
 
     # Resource configuration
@@ -27,19 +33,12 @@ class TrinoPlatform(PlatformBase, table=True):
     # Data sources for Trino catalog
     data_source_ids: list[int] = Field(default_factory=list, sa_type=JSONType())
 
-    # Auto-scaling (KEDA)
-    keda_enabled: bool = Field(default=True)
-    keda_min_replicas: int = Field(default=1)
-    keda_max_replicas: int = Field(default=10)
-
     @model_validator(mode="after")
     def validate_resource_limits(self) -> "TrinoPlatform":
         if self.cpu_request > self.cpu_limit:
             raise ValueError("CPU request cannot be greater than CPU limit")
         if self.mem_request > self.mem_limit:
             raise ValueError("Memory request cannot be greater than Memory limit")
-        if self.keda_min_replicas > self.keda_max_replicas:
-            raise ValueError("KEDA minimum replicas cannot be greater than maximum replicas")
         return self
 
 

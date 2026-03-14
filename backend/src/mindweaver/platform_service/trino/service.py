@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 class TrinoPlatformService(PlatformService[TrinoPlatform]):
     template_directory: str = os.path.join(os.path.dirname(__file__), "templates")
     state_model: type[TrinoPlatformState] = TrinoPlatformState
+    SUPPORTED_CATALOG_DRIVERS = ["postgresql", "mysql", "trino"]
 
     @classmethod
     def model_class(cls) -> type[TrinoPlatform]:
@@ -39,7 +40,18 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
     @classmethod
     def widgets(cls) -> dict[str, Any]:
         return {
-            "image": {"order": 5},
+            "chart_version": {
+                "order": 6,
+                "label": "Chart Version",
+                "type": "select",
+                "endpoint": f"{cls.service_path()}/_chart-versions",
+            },
+            "override_image": {
+                "order": 7,
+                "label": "Override Image",
+                "type": "boolean",
+            },
+            "image": {"order": 8},
             "replica_count": {
                 "order": 10,
                 "type": "range",
@@ -101,27 +113,6 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
                 "field": "id",
                 "multiselect": True,
             },
-            "keda_enabled": {
-                "order": 30,
-                "type": "boolean",
-                "label": "Enable Auto-scaling (KEDA)",
-            },
-            "keda_min_replicas": {
-                "order": 31,
-                "type": "range",
-                "min": 1,
-                "max": 20,
-                "step": 1,
-                "label": "Min Replicas",
-            },
-            "keda_max_replicas": {
-                "order": 32,
-                "type": "range",
-                "min": 1,
-                "max": 20,
-                "step": 1,
-                "label": "Max Replicas",
-            },
         }
 
     async def template_vars(self, model: TrinoPlatform) -> dict:
@@ -158,16 +149,30 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
                 }
 
                 if hms_model.s3_storage_id:
-                    s3_svc = await S3StorageService.get_service(self.request, self.session)
+                    s3_svc = await S3StorageService.get_service(
+                        self.request, self.session
+                    )
                     s3_model = await s3_svc.get(hms_model.s3_storage_id)
-                    catalog["properties"]["hive.s3.endpoint"] = s3_model.endpoint_url
-                    catalog["properties"]["hive.s3.aws-access-key"] = s3_model.access_key
+                    catalog["properties"]["fs.native-s3.enabled"] = "true"
+                    catalog["properties"]["s3.endpoint"] = s3_model.endpoint_url
+                    
+                    # Default region to us-east-1 if empty or if endpoint_url is set (local)
+                    s3_region = s3_model.region
+                    if not s3_region or not s3_region.strip() or s3_model.endpoint_url:
+                        s3_region = "us-east-1"
+                    catalog["properties"]["s3.region"] = s3_region
+
+                    catalog["properties"]["s3.aws-access-key"] = s3_model.access_key
                     if s3_model.secret_key:
                         try:
-                            catalog["properties"]["hive.s3.aws-secret-key"] = decrypt_password(s3_model.secret_key)
+                            catalog["properties"]["s3.aws-secret-key"] = (
+                                decrypt_password(s3_model.secret_key)
+                            )
                         except Exception:
-                            catalog["properties"]["hive.s3.aws-secret-key"] = s3_model.secret_key
-                    catalog["properties"]["hive.s3.path-style-access"] = "true"
+                            catalog["properties"]["s3.aws-secret-key"] = (
+                                s3_model.secret_key
+                            )
+                    catalog["properties"]["s3.path-style-access"] = "true"
 
                 catalogs.append(catalog)
 
@@ -199,16 +204,30 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
                 }
 
                 if hms_model.s3_storage_id:
-                    s3_svc = await S3StorageService.get_service(self.request, self.session)
+                    s3_svc = await S3StorageService.get_service(
+                        self.request, self.session
+                    )
                     s3_model = await s3_svc.get(hms_model.s3_storage_id)
-                    catalog["properties"]["iceberg.s3.endpoint"] = s3_model.endpoint_url
-                    catalog["properties"]["iceberg.s3.aws-access-key"] = s3_model.access_key
+                    catalog["properties"]["fs.native-s3.enabled"] = "true"
+                    catalog["properties"]["s3.endpoint"] = s3_model.endpoint_url
+
+                    # Default region to us-east-1 if empty or if endpoint_url is set (local)
+                    s3_region = s3_model.region
+                    if not s3_region or not s3_region.strip() or s3_model.endpoint_url:
+                        s3_region = "us-east-1"
+                    catalog["properties"]["s3.region"] = s3_region
+
+                    catalog["properties"]["s3.aws-access-key"] = s3_model.access_key
                     if s3_model.secret_key:
                         try:
-                            catalog["properties"]["iceberg.s3.aws-secret-key"] = decrypt_password(s3_model.secret_key)
+                            catalog["properties"]["s3.aws-secret-key"] = (
+                                decrypt_password(s3_model.secret_key)
+                            )
                         except Exception:
-                            catalog["properties"]["iceberg.s3.aws-secret-key"] = s3_model.secret_key
-                    catalog["properties"]["iceberg.s3.path-style-access"] = "true"
+                            catalog["properties"]["s3.aws-secret-key"] = (
+                                s3_model.secret_key
+                            )
+                    catalog["properties"]["s3.path-style-access"] = "true"
 
                 catalogs.append(catalog)
 
@@ -217,6 +236,12 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
             ds_svc = await DataSourceService.get_service(self.request, self.session)
             for ds_id in model.data_source_ids:
                 ds = await ds_svc.get(ds_id)
+
+                if ds.driver not in self.SUPPORTED_CATALOG_DRIVERS:
+                    logger.warning(
+                        f"Skipping data source {ds.name} with unsupported driver {ds.driver} for Trino catalog"
+                    )
+                    continue
 
                 # Default mapping of drivers to trino catalog connectors
                 # Some typical ones: postgresql -> postgresql, mysql -> mysql
@@ -420,6 +445,3 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
                 )
 
         state.last_heartbeat = ts_now()
-
-
-router = TrinoPlatformService.router()

@@ -13,7 +13,7 @@ class HiveMetastorePlatform(PlatformBase, table=True):
     replica_count: int = Field(default=1)
 
     # Chart version selection (used with OCI chart oci://ghcr.io/kagesenshi/mindweaver/charts/hive-metastore)
-    chart_version: str = Field(default="latest")
+    chart_version: str = Field(default="0.1.5")
 
     # Image override - when True, the image field overrides the chart's default image
     override_image: bool = Field(default=False)
