@@ -6,7 +6,7 @@ from .base import BaseReleaser
 
 # Configuration
 VERSION_FILE = "images/hive-metastore/VERSION.txt"
-CHART_FILE = "helm/hive-metastore/Chart.yaml"
+CHART_FILE = "charts/hive-metastore/Chart.yaml"
 IMAGE_NAME = "hive-metastore"
 
 
@@ -80,15 +80,15 @@ class HMSReleaser(BaseReleaser):
             print("Skipping image build as requested.")
 
         # Build Helm Package
-        if os.path.isdir("helm/hive-metastore"):
+        if os.path.isdir("charts/hive-metastore"):
             print("Updating Helm dependencies ...")
-            self.run_command(["helm", "dependency", "update", "helm/hive-metastore"])
+            self.run_command(["helm", "dependency", "update", "charts/hive-metastore"])
 
             print("Packaging Helm chart ...")
-            self.run_command(["helm", "package", "helm/hive-metastore"])
+            self.run_command(["helm", "package", "charts/hive-metastore"])
         else:
             print(
-                "Warning: helm/hive-metastore directory not found, skipping helm packaging."
+                "Warning: charts/hive-metastore directory not found, skipping helm packaging."
             )
 
         print(f"Successfully prepared release {version}")

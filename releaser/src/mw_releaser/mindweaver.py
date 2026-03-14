@@ -6,7 +6,7 @@ from .base import BaseReleaser
 
 # Configuration
 VERSION_FILE = "VERSION.txt"
-CHART_FILE = "helm/mindweaver/Chart.yaml"
+CHART_FILE = "charts/mindweaver/Chart.yaml"
 IMAGE_NAME = "mindweaver"
 CHANGELOG_FILE = "CHANGELOG.md"
 
@@ -46,15 +46,15 @@ class MindWeaverReleaser(BaseReleaser):
         self.run_command(["docker", "build", "-t", image_tag, "-t", latest_tag, "."])
 
         # Build Helm Package
-        if os.path.isdir("helm/mindweaver"):
+        if os.path.isdir("charts/mindweaver"):
             print("Updating Helm dependencies ...")
-            self.run_command(["helm", "dependency", "update", "helm/mindweaver"])
+            self.run_command(["helm", "dependency", "update", "charts/mindweaver"])
 
             print("Packaging Helm chart ...")
-            self.run_command(["helm", "package", "helm/mindweaver"])
+            self.run_command(["helm", "package", "charts/mindweaver"])
         else:
             print(
-                "Warning: helm/mindweaver directory not found, skipping helm packaging."
+                "Warning: charts/mindweaver directory not found, skipping helm packaging."
             )
 
         print(f"Successfully prepared release {version}")

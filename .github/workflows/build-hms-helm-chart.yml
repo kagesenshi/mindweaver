@@ -5,12 +5,12 @@ on:
     branches:
       - main
     paths:
-      - "helm/hive-metastore/**"
+      - "charts/hive-metastore/**"
   pull_request:
     branches:
       - main
     paths:
-      - "helm/hive-metastore/**"
+      - "charts/hive-metastore/**"
   workflow_dispatch:
     inputs:
       push-package:
@@ -40,22 +40,22 @@ jobs:
 
       - name: Update Helm dependencies
         run: |
-          cd helm/hive-metastore
+          cd charts/hive-metastore
           helm dependency update
 
       - name: Lint Helm chart
-        run: helm lint helm/hive-metastore
+        run: helm lint charts/hive-metastore
 
       - name: Package Helm chart
         run: |
           VERSION=$(cat images/hive-metastore/VERSION.txt)
           TIMESTAMP=$(date +%Y%m%d%H%M%S)
-          cd helm/hive-metastore
+          cd charts/hive-metastore
           helm package . --version "${VERSION}-alpha.${TIMESTAMP}" --app-version "${VERSION}-alpha.${TIMESTAMP}"
 
       - name: Push Helm chart to GHCR
         if: github.event_name == 'workflow_dispatch' && inputs.push-package == true
         run: |
-          cd helm/hive-metastore
+          cd charts/hive-metastore
           CHART_PACKAGE=$(ls hive-metastore-*.tgz)
           helm push "$CHART_PACKAGE" oci://ghcr.io/${{ github.repository_owner }}/mindweaver/charts

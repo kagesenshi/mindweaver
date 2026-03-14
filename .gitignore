@@ -13,4 +13,4 @@ celerybeat-*
 values*.yml
 *.swp
 # Helm
-helm/mindweaver/charts/*.tgz
+charts/mindweaver/charts/*.tgz
