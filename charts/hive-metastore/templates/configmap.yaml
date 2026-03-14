@@ -59,6 +59,22 @@ data:
         <name>fs.s3a.endpoint.region</name>
         <value>${env.S3_REGION}</value>
       </property>
+      <property>
+        <name>fs.s3a.connection.ssl.enabled</name>
+        <value>${env.S3_USE_SSL}</value>
+      </property>
+      <property>
+        <name>fs.s3a.checksum.enabled</name>
+        <value>true</value>
+      </property>
+      <property>
+        <name>fs.s3a.fast.upload</name>
+        <value>false</value>
+      </property>
+      <property>
+        <name>fs.s3a.directory.marker.retention</name>
+        <value>keep</value>
+      </property>
     </configuration>
   hive-site.xml: |-
     <?xml version="1.0" encoding="UTF-8" standalone="no"?>

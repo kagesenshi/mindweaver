@@ -110,6 +110,12 @@ Common env variables for S3 connection used in Deployment
       name: {{ $secretName }}
       key: "s3_region"
       optional: true
+- name: S3_USE_SSL
+  valueFrom:
+    secretKeyRef:
+      name: {{ $secretName }}
+      key: "s3_use_ssl"
+      optional: true
 - name: AWS_ACCESS_KEY_ID
   valueFrom:
     secretKeyRef:
