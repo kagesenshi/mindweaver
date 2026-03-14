@@ -112,6 +112,24 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
             "backup_destination": {"order": 18},
             "backup_retention_policy": {"order": 19},
             "s3_storage_id": {"order": 20},
+            "pgbouncer_pool_mode": {
+                "order": 25,
+                "label": "PgBouncer Pool Mode",
+                "type": "select",
+                "options": [
+                    {"label": "Transaction (recommended)", "value": "transaction"},
+                    {"label": "Session", "value": "session"},
+                    {"label": "Statement", "value": "statement"},
+                ],
+            },
+            "pgbouncer_pool_size": {
+                "order": 26,
+                "label": "PgBouncer Pool Size",
+                "type": "range",
+                "min": 10,
+                "max": 500,
+                "step": 10,
+            },
         }
 
     async def template_vars(self, model: PgSqlPlatform) -> dict:
@@ -240,19 +258,21 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
 
             # 2. Fetch NodePort status if any
             node_ports = []
+            pgbouncer_port = None
             try:
                 services = core_v1.list_namespaced_service(namespace=namespace)
                 for svc in services.items:
                     if svc.metadata.name.startswith(model.name):
                         if svc.spec.type == "NodePort":
                             for port in svc.spec.ports:
-                                node_ports.append(
-                                    {
-                                        "name": svc.metadata.name,
-                                        "port": port.port,
-                                        "node_port": port.node_port,
-                                    }
-                                )
+                                entry = {
+                                    "name": svc.metadata.name,
+                                    "port": port.port,
+                                    "node_port": port.node_port,
+                                }
+                                node_ports.append(entry)
+                                if svc.metadata.name == f"{model.name}-pgbouncer-nodeport":
+                                    pgbouncer_port = port.node_port
             except Exception as e:
                 logger.error(f"Failed to fetch services: {e}")
 
@@ -321,9 +341,10 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
                 node_ports,
                 cluster_nodes,
                 db_credentials,
+                pgbouncer_port,
             )
 
-        status, message, extra_data, node_ports, cluster_nodes, db_credentials = (
+        status, message, extra_data, node_ports, cluster_nodes, db_credentials, pgbouncer_port = (
             await asyncio.to_thread(_poll, is_active)
         )
 
@@ -345,6 +366,8 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
         if extra_data is None:
             extra_data = {}
         extra_data["namespace"] = namespace
+        if pgbouncer_port:
+            extra_data["pgbouncer_host"] = f"{model.name}-pgbouncer.{namespace}.svc.cluster.local"
         state.extra_data = extra_data
         state.node_ports = node_ports
         state.cluster_nodes = cluster_nodes

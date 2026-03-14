@@ -64,7 +64,7 @@ class HiveMetastorePlatformService(PlatformService[HiveMetastorePlatform]):
         if not pgsql_state or not pgsql_state.active:
             raise ValueError(f"Managed PostgreSQL cluster {pgsql_model.name} is not active")
 
-        vars["db_host"] = f"{pgsql_model.name}-rw.{vars['namespace']}.svc.cluster.local"
+        vars["db_host"] = f"{pgsql_model.name}-pgbouncer.{vars['namespace']}.svc.cluster.local"
         vars["db_port"] = 5432
         vars["db_user"] = pgsql_state.db_user
         vars["db_name"] = pgsql_state.db_name

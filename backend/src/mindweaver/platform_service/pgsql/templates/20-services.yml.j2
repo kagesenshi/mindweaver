@@ -1,44 +1,14 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ name }}-rw-nodeport
+  name: {{ name }}-pgbouncer-nodeport
+  namespace: {{ namespace }}
 spec:
   type: NodePort
   ports:
   - port: 5432
     targetPort: 5432
     protocol: TCP
-    name: postgres
+    name: pgbouncer
   selector:
-    cnpg.io/cluster: {{ name }}
-    cnpg.io/instanceRole: primary
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: {{ name }}-ro-nodeport
-spec:
-  type: NodePort
-  ports:
-  - port: 5432
-    targetPort: 5432
-    protocol: TCP
-    name: postgres
-  selector:
-    cnpg.io/cluster: {{ name }}
-    cnpg.io/instanceRole: replica
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: {{ name }}-r-nodeport
-spec:
-  type: NodePort
-  ports:
-  - port: 5432
-    targetPort: 5432
-    protocol: TCP
-    name: postgres
-  selector:
-    cnpg.io/cluster: {{ name }}
-    cnpg.io/podRole: instance
+    cnpg.io/poolerName: {{ name }}-pgbouncer

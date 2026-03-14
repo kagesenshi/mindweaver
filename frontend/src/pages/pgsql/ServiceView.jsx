@@ -101,15 +101,7 @@ const ServiceView = ({
     };
 
     const renderConnectTab = () => {
-        const sortedPorts = platformState?.node_ports ? [...platformState.node_ports].sort((a, b) => {
-            const getOrder = (name) => {
-                if (name.endsWith('-rw-nodeport')) return 1;
-                if (name.endsWith('-ro-nodeport')) return 2;
-                if (name.endsWith('-r-nodeport')) return 3;
-                return 4;
-            };
-            return getOrder(a.name) - getOrder(b.name);
-        }) : [];
+        const pgbouncerPort = platformState?.node_ports?.find(np => np.name.endsWith('-pgbouncer-nodeport'));
 
         return (
             <div className="space-y-6">
@@ -117,25 +109,27 @@ const ServiceView = ({
                     <InternalNetworkAccessBlock 
                         darkMode={darkMode}
                         endpoints={[
-                            { title: 'Read-Write', subtitle: 'Service Type', code: `${selectedPlatform.name}-rw.${platformState.extra_data.namespace}.svc.cluster.local:5432` },
-                            { title: 'Read-Only', subtitle: 'Service Type', code: `${selectedPlatform.name}-ro.${platformState.extra_data.namespace}.svc.cluster.local:5432` },
-                            { title: 'Read-Only (Any Nodes)', subtitle: 'Service Type', code: `${selectedPlatform.name}-r.${platformState.extra_data.namespace}.svc.cluster.local:5432` }
+                            ...(platformState.extra_data.pgbouncer_host ? [{
+                                title: 'PgBouncer (Read-Write)',
+                                subtitle: 'Connection Pooler',
+                                code: `${platformState.extra_data.pgbouncer_host}:5432`
+                            }] : []),
+                            { title: 'Read-Write (Direct)', subtitle: 'Internal Only', code: `${selectedPlatform.name}-rw.${platformState.extra_data.namespace}.svc.cluster.local:5432` },
+                            { title: 'Read-Only (Direct)', subtitle: 'Internal Only', code: `${selectedPlatform.name}-ro.${platformState.extra_data.namespace}.svc.cluster.local:5432` },
                         ]}
                     />
                 )}
 
-                {sortedPorts.length > 0 && (
+                {pgbouncerPort && (
                     <ExternalNetworkAccessBlock
                         darkMode={darkMode}
-                        ports={sortedPorts.map(np => ({
-                            label: np.name.endsWith('-rw-nodeport') ? 'Read-Write' :
-                                   np.name.endsWith('-ro-nodeport') ? 'Read-Only' :
-                                   np.name.endsWith('-r-nodeport') ? 'Read-Only (Any Nodes)' : 'PostgreSQL',
-                            node_port: np.node_port
-                        }))}
+                        ports={[{
+                            label: 'PgBouncer',
+                            node_port: pgbouncerPort.node_port
+                        }]}
                         clusterNodes={platformState.cluster_nodes}
                         cliInfo={{
-                            command: `psql "host=${platformState.cluster_nodes?.[0]?.ipv4 || '[NODE_IP]'} port=${sortedPorts?.[0]?.node_port || '[PORT]'} user=${platformState?.db_user || 'pending'} dbname=${platformState?.db_name || 'pending'} sslmode=verify-full sslrootcert=ca.crt"`,
+                            command: `psql "host=${platformState.cluster_nodes?.[0]?.ipv4 || '[NODE_IP]'} port=${pgbouncerPort.node_port} user=${platformState?.db_user || 'pending'} dbname=${platformState?.db_name || 'pending'} sslmode=verify-full sslrootcert=ca.crt"`,
                             languageButtons: ['python']
                         }}
                     />

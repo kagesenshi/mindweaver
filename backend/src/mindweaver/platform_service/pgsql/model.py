@@ -1,10 +1,12 @@
 # SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
 # SPDX-License-Identifier: AGPLv3+
 
-from sqlmodel import Field
-from mindweaver.platform_service.base import PlatformBase, PlatformStateBase
+from typing import Literal, Optional
+
 from pydantic import field_validator, model_validator
-from typing import Optional
+from sqlmodel import Field
+
+from mindweaver.platform_service.base import PlatformBase, PlatformStateBase
 
 
 class PgSqlPlatform(PlatformBase, table=True):
@@ -27,9 +29,25 @@ class PgSqlPlatform(PlatformBase, table=True):
     backup_retention_policy: str = Field(default="30d")
     s3_storage_id: int | None = Field(default=None, foreign_key="mw_s3_storage.id")
 
+    # PgBouncer configuration (always enabled)
+    pgbouncer_pool_mode: str = Field(default="transaction")
+    pgbouncer_pool_size: int = Field(default=50)
+
+    @field_validator("pgbouncer_pool_mode")
+    @classmethod
+    def validate_pgbouncer_pool_mode(cls, v: str) -> str:
+        """Validates that pgbouncer_pool_mode is one of the allowed PgBouncer pool modes."""
+        allowed = {"session", "transaction", "statement"}
+        if v not in allowed:
+            raise ValueError(
+                f"pgbouncer_pool_mode must be one of: {', '.join(sorted(allowed))}"
+            )
+        return v
+
     @field_validator("backup_destination")
     @classmethod
     def validate_backup_destination(cls, v: str | None) -> str | None:
+        """Validates that backup_destination is a valid S3 URI when provided."""
         if v:
             if not v.startswith("s3://"):
                 raise ValueError(
@@ -42,12 +60,14 @@ class PgSqlPlatform(PlatformBase, table=True):
     @field_validator("instances")
     @classmethod
     def validate_instances(cls, v: int) -> int:
+        """Validates that instances count is a positive odd number."""
         if v < 1 or v % 2 == 0:
             raise ValueError("Instances must be an odd number (1, 3, 5, ...)")
         return v
 
     @model_validator(mode="after")
     def validate_resource_limits(self) -> "PgSqlPlatform":
+        """Validates that resource requests do not exceed their respective limits."""
         if self.cpu_request > self.cpu_limit:
             raise ValueError("CPU request cannot be greater than CPU limit")
         if self.mem_request > self.mem_limit:

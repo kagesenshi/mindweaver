@@ -61,4 +61,20 @@ spec:
       selfHeal: true
     syncOptions:
     - CreateNamespace=true
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Pooler
+metadata:
+  name: {{ name }}-pgbouncer
+  namespace: {{ namespace }}
+spec:
+  cluster:
+    name: {{ name }}
+  instances: 1
+  type: rw
+  pgbouncer:
+    poolMode: {{ pgbouncer_pool_mode }}
+    parameters:
+      max_client_conn: "1000"
+      default_pool_size: "{{ pgbouncer_pool_size }}"
 

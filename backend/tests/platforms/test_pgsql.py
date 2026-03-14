@@ -355,8 +355,68 @@ def test_pgsql_immutable_fields(client: TestClient, test_project):
             assert f"Field '{field}' is immutable" in resp.json()["detail"][0]["msg"]
 
 
+def test_pgsql_pgbouncer_fields(client: TestClient, test_project):
+    """Tests that pgbouncer_pool_mode and pgbouncer_pool_size fields are correctly
+    stored and validated on the PgSqlPlatform model."""
+    # 1. Update Project with K8s info
+    project_update = {
+        "name": test_project["name"],
+        "title": test_project["title"],
+        "description": test_project["description"],
+        "k8s_cluster_id": test_project["k8s_cluster_id"],
+        "k8s_cluster_type": "remote",
+        "k8s_cluster_kubeconfig": 'apiVersion: v1\nkind: Config\nclusters: []\ncontexts: []\ncurrent-context: ""\nusers: []',
+    }
+    resp = client.put(
+        f"/api/v1/projects/{test_project['id']}",
+        json=project_update,
+        headers={"X-Project-Id": str(test_project["id"])},
+    )
+    resp.raise_for_status()
+
+    headers = {"X-Project-Id": str(test_project["id"])}
+
+    # 2. Create with defaults — should use transaction mode and pool size 50
+    data = {
+        "name": "pgb-defaults",
+        "title": "PgBouncer Defaults",
+        "project_id": test_project["id"],
+    }
+    resp = client.post("/api/v1/platform/pgsql", json=data, headers=headers)
+    assert resp.status_code == 200, resp.text
+    result = resp.json()["data"]
+    assert result["pgbouncer_pool_mode"] == "transaction"
+    assert result["pgbouncer_pool_size"] == 50
+
+    # 3. Create with explicit valid pool mode
+    data = {
+        "name": "pgb-session",
+        "title": "PgBouncer Session",
+        "project_id": test_project["id"],
+        "pgbouncer_pool_mode": "session",
+        "pgbouncer_pool_size": 100,
+    }
+    resp = client.post("/api/v1/platform/pgsql", json=data, headers=headers)
+    assert resp.status_code == 200, resp.text
+    result = resp.json()["data"]
+    assert result["pgbouncer_pool_mode"] == "session"
+    assert result["pgbouncer_pool_size"] == 100
+
+    # 4. Negative: invalid pool mode
+    data = {
+        "name": "pgb-invalid",
+        "title": "PgBouncer Invalid",
+        "project_id": test_project["id"],
+        "pgbouncer_pool_mode": "turbo",
+    }
+    resp = client.post("/api/v1/platform/pgsql", json=data, headers=headers)
+    assert resp.status_code == 422, resp.text
+    assert "pgbouncer_pool_mode must be one of" in resp.json()["detail"][0]["msg"]
+
+
 @pytest.mark.asyncio
 async def test_pgsql_image_selection(client: TestClient, test_project):
+
     from mindweaver.platform_service.pgsql import PgSqlPlatformService, PgSqlPlatform
     from unittest.mock import MagicMock
 
