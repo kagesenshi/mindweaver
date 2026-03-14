@@ -28,3 +28,44 @@ def redefine_model(name, Model: type[BaseModel], *, exclude=None) -> type[BaseMo
 
     model = create_model(name, **fields)
     return model
+
+
+def format_k8s_resource(value: float, unit: str = "") -> str:
+    """
+    Converts a float value to a Kubernetes-style resource number.
+    - If value is an integer (e.g., 1.0), returns "1" + unit.
+    - If unit is empty (CPU):
+        - If float, returns milli-units (e.g., 0.5 -> "500m").
+    - If unit is binary (Ki, Mi, Gi, Ti, Pi, Ei):
+        - If float, multiplies by 1024 and moves to next smaller unit.
+    - If unit is SI (k, M, G, T, P, E):
+        - If float, multiplies by 1000 and moves to next smaller unit.
+    """
+    if value.is_integer():
+        return f"{int(value)}{unit}"
+
+    # Binary units mapping
+    binary_units = ["Ki", "Mi", "Gi", "Ti", "Pi", "Ei"]
+    # SI units mapping
+    si_units = ["k", "M", "G", "T", "P", "E"]
+
+    if unit in binary_units:
+        idx = binary_units.index(unit)
+        new_value = int(value * 1024)
+        if idx == 0:
+            return str(new_value)
+        return f"{new_value}{binary_units[idx-1]}"
+
+    if unit in si_units:
+        idx = si_units.index(unit)
+        new_value = int(value * 1000)
+        if idx == 0:
+            return str(new_value)
+        return f"{new_value}{si_units[idx-1]}"
+
+    if not unit:
+        # Assume CPU milli-units
+        return f"{int(value * 1000)}m"
+
+    # Fallback to string representation if unit is unknown but it's a float
+    return str(value) + unit

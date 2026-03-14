@@ -11,6 +11,7 @@ import jinja2 as j2
 import kubernetes
 from kubernetes import client, config, utils, dynamic
 import logging
+from mindweaver.fw.util import format_k8s_resource
 from mindweaver.fw.model import Base
 from mindweaver.fw.exc import ModelValidationError
 from mindweaver.service.base import ProjectScopedNamedBase, ProjectScopedService
@@ -52,7 +53,9 @@ class PlatformStateBase(Base):
 
 @functools.lru_cache(maxsize=32)
 def _get_jinja_env(template_directory: str) -> j2.Environment:
-    return j2.Environment(loader=j2.FileSystemLoader(template_directory))
+    env = j2.Environment(loader=j2.FileSystemLoader(template_directory))
+    env.filters["k8s_resource"] = format_k8s_resource
+    return env
 
 
 class PlatformStateUpdate(pydantic.BaseModel):
