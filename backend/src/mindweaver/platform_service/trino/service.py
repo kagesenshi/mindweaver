@@ -115,6 +115,32 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
             },
         }
 
+    async def get_preferred_catalog(self, model: TrinoPlatform) -> Optional[str]:
+        """
+        Determines the preferred catalog for CLI examples.
+        Priority: Iceberg > Hive > Data Source
+        """
+        if model.hms_iceberg_ids:
+            hms_svc = await HiveMetastorePlatformService.get_service(
+                self.request, self.session
+            )
+            hms_model = await hms_svc.get(model.hms_iceberg_ids[0])
+            return hms_model.name
+
+        if model.hms_ids:
+            hms_svc = await HiveMetastorePlatformService.get_service(
+                self.request, self.session
+            )
+            hms_model = await hms_svc.get(model.hms_ids[0])
+            return hms_model.name
+
+        if model.data_source_ids:
+            ds_svc = await DataSourceService.get_service(self.request, self.session)
+            ds_model = await ds_svc.get(model.data_source_ids[0])
+            return ds_model.name
+
+        return None
+
     async def template_vars(self, model: TrinoPlatform) -> dict:
         vars = model.model_dump()
         vars["namespace"] = await self._resolve_namespace(model)
@@ -196,7 +222,7 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
                 )
 
                 catalog = {
-                    "catalog": f"{hms_model.name}-iceberg",
+                    "catalog": hms_model.name,
                     "properties": {
                         "connector.name": "iceberg",
                         "hive.metastore.uri": hms_uri,
@@ -279,6 +305,7 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
                 catalogs.append(catalog)
 
         vars["catalogs"] = catalogs
+        vars["preferred_catalog"] = await self.get_preferred_catalog(model)
 
         return vars
 
@@ -428,6 +455,7 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
         if extra_data is None:
             extra_data = {}
         extra_data["namespace"] = namespace
+        extra_data["preferred_catalog"] = await self.get_preferred_catalog(model)
         state.extra_data = extra_data
         state.node_ports = node_ports
         state.cluster_nodes = cluster_nodes

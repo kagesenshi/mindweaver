@@ -89,6 +89,7 @@ class HiveMetastorePlatformService(PlatformService[HiveMetastorePlatform]):
             s3_model = await s3_svc.get(model.s3_storage_id)
             vars["s3_endpoint_url"] = s3_model.endpoint_url
             vars["s3_region"] = s3_model.region
+            vars["s3_use_ssl"] = "true" if s3_model.endpoint_url.startswith("https://") else "false"
             vars["aws_access_key_id"] = s3_model.access_key
             if s3_model.secret_key:
                 try:

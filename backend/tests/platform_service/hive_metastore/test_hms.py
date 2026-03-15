@@ -32,7 +32,7 @@ def test_hms_override_image_defaults():
     """Test that override_image and chart_version have correct defaults"""
     model = HiveMetastorePlatform(name="test-hms", title="Test HMS", project_id=1, database_id=10)
     assert model.override_image is False
-    assert model.chart_version == "0.1.5"
+    assert model.chart_version == "0.1.8"
 
 
 def test_hms_override_image_flag():
@@ -297,6 +297,9 @@ async def test_hms_chart_versions_endpoint():
         
     assert "data" in result
     assert result["data"] == [
+        {"label": "0.1.8", "value": "0.1.8"},
+        {"label": "0.1.7", "value": "0.1.7"},
+        {"label": "0.1.6", "value": "0.1.6"},
         {"label": "0.1.5", "value": "0.1.5"},
         {"label": "0.1.4", "value": "0.1.4"},
     ]

@@ -41,6 +41,29 @@ class TrinoPlatform(PlatformBase, table=True):
             raise ValueError("Memory request cannot be greater than Memory limit")
         return self
 
+    @model_validator(mode="after")
+    def validate_catalogs(self) -> "TrinoPlatform":
+        """
+        Ensure that the same Hive Metastore is not used for both Hive and Iceberg catalogs,
+        and that at least one catalog is defined.
+        """
+        # 1. Unique catalogs check
+        hms_set = set(self.hms_ids or [])
+        iceberg_set = set(self.hms_iceberg_ids or [])
+        intersection = hms_set.intersection(iceberg_set)
+        if intersection:
+            raise ValueError(
+                f"Hive Metastore IDs {intersection} cannot be used for both Hive and Iceberg catalogs simultaneously"
+            )
+
+        # 2. At least one catalog check
+        if not (self.hms_ids or self.hms_iceberg_ids or self.data_source_ids):
+            raise ValueError(
+                "At least one catalog (Hive Metastore, Iceberg, or Data Source) must be defined"
+            )
+
+        return self
+
 
 class TrinoPlatformState(PlatformStateBase, table=True):
     __tablename__ = "mw_trino_platform_state"

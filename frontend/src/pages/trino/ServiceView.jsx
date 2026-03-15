@@ -104,7 +104,7 @@ const ServiceView = ({
                         }]}
                         clusterNodes={platformState.cluster_nodes}
                         cliInfo={{
-                            command: `trino --server http://${platformState.cluster_nodes?.[0]?.ipv4 || '[NODE_IP]'}:${trinoPort.node_port} --catalog hive --schema default`,
+                            command: `trino --server http://${platformState.cluster_nodes?.[0]?.ipv4 || '[NODE_IP]'}:${trinoPort.node_port} --catalog ${platformState?.extra_data?.preferred_catalog || 'hive'} --schema default`,
                             languageButtons: []
                         }}
                     />

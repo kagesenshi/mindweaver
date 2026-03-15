@@ -46,6 +46,7 @@ def test_trino_validation():
             "project_id": 1,
             "cpu_request": 1.0,
             "cpu_limit": 2.0,
+            "data_source_ids": [1],
         }
     )
     assert model.cpu_request == 1.0
@@ -59,6 +60,7 @@ def test_trino_validation():
                 "project_id": 1,
                 "cpu_request": 3.0,
                 "cpu_limit": 2.0,
+                "hms_ids": [1],
             }
         )
     assert "CPU request cannot be greater than CPU limit" in str(excinfo.value)
@@ -72,9 +74,37 @@ def test_trino_validation():
                 "project_id": 1,
                 "mem_request": 10.0,
                 "mem_limit": 5.0,
+                "hms_ids": [1],
             }
         )
     assert "Memory request cannot be greater than Memory limit" in str(excinfo.value)
+
+    # Invalid Catalogs: Same HMS for both Hive and Iceberg
+    with pytest.raises(ValidationError) as excinfo:
+        TrinoPlatform.model_validate(
+            {
+                "name": "test-trino",
+                "title": "Test Trino",
+                "project_id": 1,
+                "hms_ids": [1],
+                "hms_iceberg_ids": [1],
+            }
+        )
+    assert "cannot be used for both Hive and Iceberg catalogs simultaneously" in str(excinfo.value)
+
+    # Invalid Catalogs: No catalogs defined
+    with pytest.raises(ValidationError) as excinfo:
+        TrinoPlatform.model_validate(
+            {
+                "name": "test-trino",
+                "title": "Test Trino",
+                "project_id": 1,
+                "hms_ids": [],
+                "hms_iceberg_ids": [],
+                "data_source_ids": [],
+            }
+        )
+    assert "At least one catalog" in str(excinfo.value)
 
 
 @pytest.mark.asyncio
@@ -88,7 +118,7 @@ async def test_trino_template_rendering(mock_service_dependencies):
         title="Trino Test",
         project_id=1,
         hms_ids=[10],
-        hms_iceberg_ids=[10],
+        hms_iceberg_ids=[11],
         data_source_ids=[20],
     )
 
@@ -97,12 +127,16 @@ async def test_trino_template_rendering(mock_service_dependencies):
 
     # Mock HiveMetastorePlatformService
     mock_hms_svc = AsyncMock()
-    mock_hms_model = MagicMock()
-    mock_hms_model.name = "test-hms"
-    mock_hms_model.iceberg_enabled = True
-    mock_hms_model.iceberg_port = 9001
-    mock_hms_model.s3_storage_id = 100
-    mock_hms_svc.get.return_value = mock_hms_model
+    
+    mock_hms_model_10 = MagicMock()
+    mock_hms_model_10.name = "test-hms-hive"
+    mock_hms_model_10.s3_storage_id = 100
+    
+    mock_hms_model_11 = MagicMock()
+    mock_hms_model_11.name = "test-hms-iceberg-cat"
+    mock_hms_model_11.s3_storage_id = 100
+    
+    mock_hms_svc.get.side_effect = lambda id: mock_hms_model_10 if id == 10 else mock_hms_model_11
     mock_hms_svc._resolve_namespace.return_value = "hms-ns"
 
     # Mock S3StorageService
@@ -111,12 +145,12 @@ async def test_trino_template_rendering(mock_service_dependencies):
     mock_s3_model.endpoint_url = "http://minio:9000"
     mock_s3_model.access_key = "access"
     mock_s3_model.secret_key = "secret"
+    mock_s3_model.region = "us-east-1"
     mock_s3_svc.get.return_value = mock_s3_model
     
     mock_hms_state = MagicMock()
     mock_hms_state.active = True
     mock_hms_state.hms_uri = "thrift://hms-internal:9083"
-    mock_hms_state.iceberg_uri = "http://iceberg-internal:9001"
     mock_hms_svc.platform_state.return_value = mock_hms_state
 
     # Mock DataSourceService
@@ -146,9 +180,10 @@ async def test_trino_template_rendering(mock_service_dependencies):
     assert "hms_uri" not in vars
     assert "iceberg_uri" not in vars
     assert len(vars["catalogs"]) == 3
+    assert vars["preferred_catalog"] == "test-hms-iceberg-cat" # Iceberg has priority
     
     # Check HMS catalog
-    hms_cat = next(c for c in vars["catalogs"] if c["catalog"] == "test-hms")
+    hms_cat = next(c for c in vars["catalogs"] if c["catalog"] == "test-hms-hive")
     assert hms_cat["properties"]["connector.name"] == "hive"
     assert hms_cat["properties"]["hive.metastore.uri"] == "thrift://hms-internal:9083"
     assert hms_cat["properties"]["fs.native-s3.enabled"] == "true"
@@ -158,7 +193,7 @@ async def test_trino_template_rendering(mock_service_dependencies):
     assert hms_cat["properties"]["s3.path-style-access"] == "true"
 
     # Check HMS Iceberg catalog
-    iceberg_cat = next(c for c in vars["catalogs"] if c["catalog"] == "test-hms-iceberg")
+    iceberg_cat = next(c for c in vars["catalogs"] if c["catalog"] == "test-hms-iceberg-cat")
     assert iceberg_cat["properties"]["connector.name"] == "iceberg"
     assert iceberg_cat["properties"]["hive.metastore.uri"] == "thrift://hms-internal:9083"
     assert iceberg_cat["properties"]["fs.native-s3.enabled"] == "true"
@@ -191,19 +226,17 @@ async def test_trino_template_rendering(mock_service_dependencies):
     values_yaml_str = app_doc["spec"]["source"]["helm"]["values"]
     values = yaml.safe_load(values_yaml_str)
     
-    assert "test-hms" in values["catalogs"]
-    assert "test-hms-iceberg" in values["catalogs"]
+    assert "test-hms-hive" in values["catalogs"]
+    assert "test-hms-iceberg-cat" in values["catalogs"]
     assert "mypsql" in values["catalogs"]
     
-    hive_props = yaml.safe_load(values["catalogs"]["test-hms"].replace("\n", "\n  "))
-    assert hive_props is None or isinstance(hive_props, str) or isinstance(hive_props, dict) 
-    assert "connector.name=hive" in values["catalogs"]["test-hms"]
-    assert "hive.metastore.uri=thrift://hms-internal:9083" in values["catalogs"]["test-hms"]
+    hive_props = values["catalogs"]["test-hms-hive"]
+    assert "connector.name=hive" in hive_props
+    assert "hive.metastore.uri=thrift://hms-internal:9083" in hive_props
 
-    iceberg_props = yaml.safe_load(values["catalogs"]["test-hms-iceberg"].replace("\n", "\n  "))
-    assert iceberg_props is None or isinstance(iceberg_props, str) or isinstance(iceberg_props, dict) 
-    assert "connector.name=iceberg" in values["catalogs"]["test-hms-iceberg"]
-    assert "hive.metastore.uri=thrift://hms-internal:9083" in values["catalogs"]["test-hms-iceberg"]
+    iceberg_props = values["catalogs"]["test-hms-iceberg-cat"]
+    assert "connector.name=iceberg" in iceberg_props
+    assert "hive.metastore.uri=thrift://hms-internal:9083" in iceberg_props
 
     assert "jdbc:postgresql://postgres-host:5432/mydb" in values["catalogs"]["mypsql"]
     
@@ -285,7 +318,7 @@ async def test_trino_catalog_filtering(mock_service_dependencies):
     ds_unsupported.driver = "web"
 
     mock_ds_svc = AsyncMock()
-    mock_ds_svc.get.side_effect = [ds_supported, ds_unsupported, ds_supported, ds_unsupported]
+    mock_ds_svc.get.side_effect = lambda id: ds_supported if id == 1 else ds_unsupported
 
     model = TrinoPlatform(
         name="trino-test",
