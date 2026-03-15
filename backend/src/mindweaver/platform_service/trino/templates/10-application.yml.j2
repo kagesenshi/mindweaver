@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
+# SPDX-License-Identifier: AGPLv3+
+
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -18,13 +21,87 @@ spec:
           tag: "{{ image.split(':')[-1] if ':' in image else 'latest' }}"
           repository: "{{ image.rsplit(':', 1)[0] if ':' in image else image }}"
         {% endif %}
+        additionalConfigProperties:
+          {% if internal_shared_secret %}
+          - internal-communication.shared-secret={{ internal_shared_secret }}
+          {% endif %}
+          - http-server.https.enabled=true
+          - http-server.https.port=8443
+          - http-server.https.keystore.path=/etc/trino/tls/tls.pem
         server:
           workers: {{ replica_count }}
           autoscaling:
             enabled: false
+          {% if ldap %}
+          config:
+            authenticationType: PASSWORD
+          {% endif %}
         
-        service:
-          type: NodePort
+        initContainers:
+          coordinator:
+            - name: prepare-tls
+              image: busybox
+              command:
+                - sh
+                - -c
+                - cat /tls-secret/tls.key /tls-secret/tls.crt > /tls/tls.pem
+              volumeMounts:
+                - name: tls-secret
+                  mountPath: /tls-secret
+                  readOnly: true
+                - name: certs
+                  mountPath: /tls
+          worker:
+            - name: prepare-tls
+              image: busybox
+              command:
+                - sh
+                - -c
+                - cat /tls-secret/tls.key /tls-secret/tls.crt > /tls/tls.pem
+              volumeMounts:
+                - name: tls-secret
+                  mountPath: /tls-secret
+                  readOnly: true
+                - name: certs
+                  mountPath: /tls
+
+        coordinator:
+          additionalExposedPorts:
+            https:
+              servicePort: 8443
+              port: 8443
+              name: https
+              protocol: TCP
+          additionalConfigFiles:
+            {% if ldap %}
+            password-authenticator.properties: |
+              password-authenticator.name=ldap
+              {% for key, value in ldap.items() %}
+              {{ key }}={{ value }}
+              {% endfor %}
+            {% endif %}
+          additionalVolumes:
+            - name: tls-secret
+              secret:
+                secretName: {{ name }}-tls
+            - name: certs
+              emptyDir: {}
+          additionalVolumeMounts:
+            - name: certs
+              mountPath: /etc/trino/tls
+              readOnly: false
+
+        worker:
+          additionalVolumes:
+            - name: tls-secret
+              secret:
+                secretName: {{ name }}-tls
+            - name: certs
+              emptyDir: {}
+          additionalVolumeMounts:
+            - name: certs
+              mountPath: /etc/trino/tls
+              readOnly: false
         
         {% if catalogs %}
         catalogs:

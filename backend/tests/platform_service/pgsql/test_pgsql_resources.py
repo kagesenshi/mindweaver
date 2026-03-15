@@ -111,6 +111,8 @@ async def test_pgsql_template_rendering(mock_service_dependencies):
     assert "chart: cluster" in content
     assert "namespace: {{ namespace }}" in content
     assert 'schedule: "{{ backup_schedule }}"' in content
+    assert "poolers:" in content
+    assert "type: rw" in content
 
 
 def test_pgsql_widgets_caching():

@@ -1,0 +1,19 @@
+# SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
+# SPDX-License-Identifier: AGPLv3+
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ name }}-https-nodeport
+  namespace: {{ namespace }}
+spec:
+  type: NodePort
+  ports:
+    - port: 8443
+      targetPort: 8443
+      protocol: TCP
+      name: https
+  selector:
+    app.kubernetes.io/name: trino
+    app.kubernetes.io/instance: {{ name }}
+    app.kubernetes.io/component: coordinator

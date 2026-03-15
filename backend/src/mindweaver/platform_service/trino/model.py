@@ -5,6 +5,7 @@ from sqlmodel import Field
 from sqlalchemy_utils import JSONType
 from mindweaver.platform_service.base import PlatformBase, PlatformStateBase
 from pydantic import model_validator
+import secrets
 from typing import Optional, Any
 
 
@@ -32,6 +33,12 @@ class TrinoPlatform(PlatformBase, table=True):
 
     # Data sources for Trino catalog
     data_source_ids: list[int] = Field(default_factory=list, sa_type=JSONType())
+
+    # LDAP configuration
+    ldap_config_id: Optional[int] = Field(default=None, foreign_key="mw_ldap_config.id")
+
+    # Internal communication secret (required when auth is enabled)
+    internal_shared_secret: str = Field(default_factory=lambda: secrets.token_hex(32))
 
     @model_validator(mode="after")
     def validate_resource_limits(self) -> "TrinoPlatform":

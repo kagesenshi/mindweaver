@@ -56,6 +56,14 @@ class K8sClusterStatus(Base, table=True):
     argocd_installed: bool = Field(default=False)
     argocd_version: Optional[str] = Field(default=None)
 
+    cert_manager_installed: bool = Field(default=False)
+    cert_manager_version: Optional[str] = Field(default=None)
+
+    cnpg_installed: bool = Field(default=False)
+    cnpg_version: Optional[str] = Field(default=None)
+
+    cluster_issuer_installed: bool = Field(default=False)
+
     last_update: datetime = Field(
         default_factory=ts_now, sa_type=DateTime(timezone=True)
     )

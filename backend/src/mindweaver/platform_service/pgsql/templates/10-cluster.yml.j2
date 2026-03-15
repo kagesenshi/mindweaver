@@ -43,7 +43,7 @@ spec:
                   name: {{ name }}-s3-secret
                   key: SECRET_ACCESS_KEY
               {% endif %}
-              retentionPolicy: {{ backup_retention_policy }}
+            retentionPolicy: {{ backup_retention_policy }}
           {% endif %}
           {% if enable_backup and backup_schedule %}
           scheduledBackups:
@@ -52,6 +52,14 @@ spec:
               backupOwnerReference: self
               method: barmanObjectStore
           {% endif %}
+        poolers:
+          - name: rw
+            type: rw
+            poolMode: {{ pgbouncer_pool_mode }}
+            instances: 1
+            parameters:
+              max_client_conn: "1000"
+              default_pool_size: "{{ pgbouncer_pool_size }}"
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: {{ namespace }}
@@ -61,20 +69,4 @@ spec:
       selfHeal: true
     syncOptions:
     - CreateNamespace=true
----
-apiVersion: postgresql.cnpg.io/v1
-kind: Pooler
-metadata:
-  name: {{ name }}-pgbouncer
-  namespace: {{ namespace }}
-spec:
-  cluster:
-    name: {{ name }}
-  instances: 1
-  type: rw
-  pgbouncer:
-    poolMode: {{ pgbouncer_pool_mode }}
-    parameters:
-      max_client_conn: "1000"
-      default_pool_size: "{{ pgbouncer_pool_size }}"
 

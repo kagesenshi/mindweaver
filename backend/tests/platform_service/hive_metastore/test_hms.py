@@ -163,7 +163,7 @@ async def test_hms_template_rendering(mock_service_dependencies):
         # Get template variables
         vars = await svc.template_vars(model)
 
-    assert vars["db_host"] == "test-pgsql-pgbouncer.hms-ns.svc.cluster.local"
+    assert vars["db_host"] == "test-pgsql-pooler-rw.hms-ns.svc.cluster.local"
     assert vars["db_user"] == "hms_user"
     assert vars["db_name"] == "metastore"
     assert vars["iceberg_enabled"] is True

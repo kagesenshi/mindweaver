@@ -77,13 +77,14 @@ const ServiceView = ({
         const endpoints = [];
         if (selectedPlatform && platformState?.extra_data?.namespace) {
             endpoints.push({
-                title: 'Trino HTTP Endpoint',
-                code: `http://${selectedPlatform.name}.${platformState.extra_data.namespace}.svc.cluster.local:8080`,
-                description: 'Internal URI for connecting any Trino client.'
+                title: 'Trino HTTPS Endpoint',
+                code: `https://${selectedPlatform.name}.${platformState.extra_data.namespace}.svc.cluster.local:8443`,
+                description: 'Internal HTTPS URI for connecting any Trino client.'
             });
         }
 
-        const trinoPort = platformState?.node_ports?.find(np => np.name.includes('trino'));
+        const httpsPort = platformState?.node_ports?.find(np => np.name.endsWith('https-nodeport'));
+        const externalUri = platformState?.trino_uri || (httpsPort && platformState.cluster_nodes?.[0]?.ipv4 ? `https://${platformState.cluster_nodes[0].ipv4}:${httpsPort.node_port}` : null);
 
         return (
             <div className="space-y-6">
@@ -95,16 +96,16 @@ const ServiceView = ({
                     />
                 )}
 
-                {trinoPort && (
+                {httpsPort && (
                     <ExternalNetworkAccessBlock
                         darkMode={darkMode}
                         ports={[{
-                            label: 'Trino UI / API',
-                            node_port: trinoPort.node_port
+                            label: 'Trino UI / API (HTTPS)',
+                            node_port: httpsPort.node_port
                         }]}
                         clusterNodes={platformState.cluster_nodes}
                         cliInfo={{
-                            command: `trino --server http://${platformState.cluster_nodes?.[0]?.ipv4 || '[NODE_IP]'}:${trinoPort.node_port} --catalog ${platformState?.extra_data?.preferred_catalog || 'hive'} --schema default`,
+                            command: `trino --server ${externalUri || 'https://[NODE_IP]:[NODE_PORT]'} --catalog ${platformState?.extra_data?.preferred_catalog || 'hive'} --schema default`,
                             languageButtons: []
                         }}
                     />

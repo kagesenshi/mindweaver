@@ -23,6 +23,14 @@ class K8sClusterService(Service[K8sCluster]):
         logger.info(f"Polling status for k8s_cluster {model.name}")
 
         try:
+            def _get_version(pod):
+                version = pod.metadata.labels.get("app.kubernetes.io/version")
+                if not version and pod.spec.containers:
+                    # Try to extract from image tag
+                    image = pod.spec.containers[0].image
+                    if ":" in image:
+                        version = image.split(":")[-1]
+                return version
 
             def _get_k8s_info():
                 if model.type == K8sClusterType.IN_CLUSTER:
@@ -101,11 +109,75 @@ class K8sClusterService(Service[K8sCluster]):
                             label_selector="app.kubernetes.io/name=argocd-server"
                         )
                         if pods.items:
-                            argocd_version = pods.items[0].metadata.labels.get(
-                                "app.kubernetes.io/version"
-                            )
+                            argocd_version = _get_version(pods.items[0])
                 except Exception as e:
                     logger.warning(f"Failed to check ArgoCD presence: {e}")
+
+                # Check Cert Manager
+                cert_manager_installed = False
+                cert_manager_version = None
+                try:
+                    for secret in secrets.items:
+                        if secret.metadata.name.startswith(
+                            "sh.helm.release.v1.cert-manager"
+                        ):
+                            cert_manager_installed = True
+                            break
+                    if not cert_manager_installed:
+                        svcs = core_v1.list_service_for_all_namespaces(
+                            label_selector="app.kubernetes.io/name=cert-manager"
+                        )
+                        if svcs.items:
+                            cert_manager_installed = True
+
+                    if cert_manager_installed:
+                        pods = core_v1.list_pod_for_all_namespaces(
+                            label_selector="app.kubernetes.io/name=cert-manager"
+                        )
+                        if pods.items:
+                            cert_manager_version = _get_version(pods.items[0])
+                except Exception as e:
+                    logger.warning(f"Failed to check Cert Manager presence: {e}")
+
+                # Check CNPG
+                cnpg_installed = False
+                cnpg_version = None
+                try:
+                    for secret in secrets.items:
+                        if secret.metadata.name.startswith("sh.helm.release.v1.cnpg"):
+                            cnpg_installed = True
+                            break
+                    if not cnpg_installed:
+                        svcs = core_v1.list_service_for_all_namespaces(
+                            label_selector="app.kubernetes.io/name=cloudnative-pg"
+                        )
+                        if svcs.items:
+                            cnpg_installed = True
+
+                    if cnpg_installed:
+                        pods = core_v1.list_pod_for_all_namespaces(
+                            label_selector="app.kubernetes.io/name=cloudnative-pg"
+                        )
+                        if pods.items:
+                            cnpg_version = _get_version(pods.items[0])
+                except Exception as e:
+                    logger.warning(f"Failed to check CNPG presence: {e}")
+
+                # Check Mindweaver Cluster Issuer
+                cluster_issuer_installed = False
+                try:
+                    custom_api = client.CustomObjectsApi()
+                    issuers = custom_api.list_cluster_custom_object(
+                        group="cert-manager.io",
+                        version="v1",
+                        plural="clusterissuers",
+                    )
+                    for issuer in issuers.get("items", []):
+                        if issuer.get("metadata", {}).get("name") == "mindweaver-selfsigned-issuer":
+                            cluster_issuer_installed = True
+                            break
+                except Exception as e:
+                    logger.warning(f"Failed to check Mindweaver Cluster Issuer presence: {e}")
 
                 return {
                     "k8s_version": k8s_version,
@@ -115,6 +187,11 @@ class K8sClusterService(Service[K8sCluster]):
                     "ram_total": ram_total,
                     "argocd_installed": argocd_installed,
                     "argocd_version": argocd_version,
+                    "cert_manager_installed": cert_manager_installed,
+                    "cert_manager_version": cert_manager_version,
+                    "cnpg_installed": cnpg_installed,
+                    "cnpg_version": cnpg_version,
+                    "cluster_issuer_installed": cluster_issuer_installed,
                 }
 
             info = await asyncio.to_thread(_get_k8s_info)
@@ -138,6 +215,11 @@ class K8sClusterService(Service[K8sCluster]):
             status_model.ram_total = info["ram_total"]
             status_model.argocd_installed = info["argocd_installed"]
             status_model.argocd_version = info["argocd_version"]
+            status_model.cert_manager_installed = info["cert_manager_installed"]
+            status_model.cert_manager_version = info["cert_manager_version"]
+            status_model.cnpg_installed = info["cnpg_installed"]
+            status_model.cnpg_version = info["cnpg_version"]
+            status_model.cluster_issuer_installed = info["cluster_issuer_installed"]
             status_model.last_update = ts_now()
             status_model.message = None
 

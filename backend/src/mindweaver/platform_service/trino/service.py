@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: AGPLv3+
 
 import os
+import secrets
 import logging
 import asyncio
 import tempfile
@@ -10,6 +11,7 @@ from kubernetes import client, config
 from pydantic import ValidationError
 
 from mindweaver.fw.exc import FieldValidationError
+from mindweaver.fw.service import before_create
 from mindweaver.platform_service.base import PlatformService
 from mindweaver.fw.model import ts_now
 from mindweaver.platform_service.hive_metastore.service import (
@@ -17,6 +19,7 @@ from mindweaver.platform_service.hive_metastore.service import (
 )
 from mindweaver.service.data_source.service import DataSourceService
 from mindweaver.service.s3_storage.service import S3StorageService
+from mindweaver.service.ldap_config.service import LdapConfigService
 from mindweaver.crypto import decrypt_password
 
 from .model import TrinoPlatform, TrinoPlatformState
@@ -36,6 +39,10 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
     @classmethod
     def service_path(cls) -> str:
         return "/platform/trino"
+
+    @classmethod
+    def redacted_fields(cls) -> list[str]:
+        return ["internal_shared_secret"]
 
     @classmethod
     def widgets(cls) -> dict[str, Any]:
@@ -113,6 +120,13 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
                 "field": "id",
                 "multiselect": True,
             },
+            "ldap_config_id": {
+                "order": 30,
+                "label": "LDAP Configuration",
+                "type": "relationship",
+                "endpoint": "/api/v1/ldap_configs",
+                "field": "id",
+            },
         }
 
     async def get_preferred_catalog(self, model: TrinoPlatform) -> Optional[str]:
@@ -142,8 +156,19 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
         return None
 
     async def template_vars(self, model: TrinoPlatform) -> dict:
-        vars = model.model_dump()
+        vars = model.model_dump(exclude=self.redacted_fields())
         vars["namespace"] = await self._resolve_namespace(model)
+
+        # HTTPS is mandatory
+        vars["enable_https"] = True
+
+        if model.internal_shared_secret:
+            try:
+                vars["internal_shared_secret"] = decrypt_password(
+                    model.internal_shared_secret
+                )
+            except Exception:
+                vars["internal_shared_secret"] = model.internal_shared_secret
 
         # 1. Resolve HMS and Data Sources Catalogs
         catalogs = []
@@ -181,7 +206,7 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
                     s3_model = await s3_svc.get(hms_model.s3_storage_id)
                     catalog["properties"]["fs.native-s3.enabled"] = "true"
                     catalog["properties"]["s3.endpoint"] = s3_model.endpoint_url
-                    
+
                     # Default region to us-east-1 if empty or if endpoint_url is set (local)
                     s3_region = s3_model.region
                     if not s3_region or not s3_region.strip() or s3_model.endpoint_url:
@@ -195,9 +220,9 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
                                 decrypt_password(s3_model.secret_key)
                             )
                         except Exception:
-                            catalog["properties"]["s3.aws-secret-key"] = (
-                                s3_model.secret_key
-                            )
+                            catalog["properties"][
+                                "s3.aws-secret-key"
+                            ] = s3_model.secret_key
                     catalog["properties"]["s3.path-style-access"] = "true"
 
                 catalogs.append(catalog)
@@ -250,9 +275,9 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
                                 decrypt_password(s3_model.secret_key)
                             )
                         except Exception:
-                            catalog["properties"]["s3.aws-secret-key"] = (
-                                s3_model.secret_key
-                            )
+                            catalog["properties"][
+                                "s3.aws-secret-key"
+                            ] = s3_model.secret_key
                     catalog["properties"]["s3.path-style-access"] = "true"
 
                 catalogs.append(catalog)
@@ -305,6 +330,43 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
                 catalogs.append(catalog)
 
         vars["catalogs"] = catalogs
+
+        # 3. Resolve LDAP Configuration
+        if model.ldap_config_id:
+            ldap_svc = await LdapConfigService.get_service(self.request, self.session)
+            ldap_config = await ldap_svc.get(model.ldap_config_id)
+
+            ldap_props = {
+                "ldap.url": ldap_config.server_url,
+                "ldap.allow-insecure": (
+                    "true" if not ldap_config.verify_ssl else "false"
+                ),
+            }
+
+            if ldap_config.bind_dn:
+                ldap_props["ldap.bind-dn"] = ldap_config.bind_dn
+                if ldap_config.bind_password:
+                    try:
+                        ldap_props["ldap.bind-password"] = decrypt_password(
+                            ldap_config.bind_password
+                        )
+                    except Exception:
+                        ldap_props["ldap.bind-password"] = ldap_config.bind_password
+
+                ldap_props["ldap.user-base-dn"] = ldap_config.user_search_base
+                ldap_props["ldap.group-auth-pattern"] = (
+                    ldap_config.user_search_filter.replace("{0}", "${USER}")
+                )
+            else:
+                # Direct bind fallback
+                # Trino direct bind usually expects a pattern that evaluates to the full DN
+                # If we only have base and filter, we can try to guess or use a pattern if provided
+                # For now we use the filter as the basis but Trino direct bind name is user-bind-pattern
+                dn_pattern = f"{ldap_config.username_attr}=${{USER}},{ldap_config.user_search_base}"
+                ldap_props["ldap.user-bind-pattern"] = dn_pattern
+
+            vars["ldap"] = ldap_props
+
         vars["preferred_catalog"] = await self.get_preferred_catalog(model)
 
         return vars
@@ -462,14 +524,23 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
 
         # Derive URIs
         if status == "online" and cluster_nodes:
-            trino_np = next((np for np in node_ports if "trino" in np["name"]), None)
+            trino_np = next(
+                (
+                    np
+                    for np in node_ports
+                    if np["name"] == f"{model.name}-https-nodeport"
+                ),
+                None,
+            )
+            scheme = "https"
             if trino_np:
                 state.trino_uri = (
-                    f"http://{cluster_nodes[0]['ipv4']}:{trino_np['node_port']}"
+                    f"{scheme}://{cluster_nodes[0]['ipv4']}:{trino_np['node_port']}"
                 )
             else:
+                port = 8443
                 state.trino_uri = (
-                    f"http://{model.name}.{namespace}.svc.cluster.local:8080"
+                    f"{scheme}://{model.name}.{namespace}.svc.cluster.local:{port}"
                 )
 
         state.last_heartbeat = ts_now()

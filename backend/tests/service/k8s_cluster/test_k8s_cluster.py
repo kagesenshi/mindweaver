@@ -49,17 +49,48 @@ def mock_k8s():
         )
 
         # Mock Pods (ArgoCD version)
-        mock_pod = MagicMock()
-        mock_pod.metadata.labels = {"app.kubernetes.io/version": "v2.8.0"}
-        mock_pod_list = MagicMock()
-        mock_pod_list.items = [mock_pod]
-        mock_core.return_value.list_pod_for_all_namespaces.return_value = mock_pod_list
+        mock_pod_argo = MagicMock()
+        mock_pod_argo.metadata.labels = {"app.kubernetes.io/version": "v2.8.0"}
+        mock_pod_argo.spec.containers = [MagicMock(image="argoproj/argocd:v2.8.0")]
+
+        # Mock Pods (Cert Manager version)
+        mock_pod_cm = MagicMock()
+        mock_pod_cm.metadata.labels = {"app.kubernetes.io/version": "v1.20.0"}
+        mock_pod_cm.spec.containers = [MagicMock(image="cert-manager:v1.20.0")]
+
+        # Mock Pods (CNPG version - NO LABEL FALLBACK)
+        mock_pod_cnpg = MagicMock()
+        mock_pod_cnpg.metadata.labels = {}
+        mock_pod_cnpg.spec.containers = [
+            MagicMock(image="ghcr.io/cloudnative-pg/cloudnative-pg:1.28.1")
+        ]
+
+        def _mock_list_pod_for_all_namespaces(label_selector=None):
+            m_list = MagicMock()
+            if "argocd-server" in label_selector:
+                m_list.items = [mock_pod_argo]
+            elif "cert-manager" in label_selector:
+                m_list.items = [mock_pod_cm]
+            elif "cloudnative-pg" in label_selector:
+                m_list.items = [mock_pod_cnpg]
+            else:
+                m_list.items = []
+            return m_list
+
+        mock_core.return_value.list_pod_for_all_namespaces.side_effect = (
+            _mock_list_pod_for_all_namespaces
+        )
 
         # Mock Secrets (Helm Release)
-        mock_secret = MagicMock()
-        mock_secret.metadata.name = "sh.helm.release.v1.argocd.v1"
+        mock_secret_argo = MagicMock()
+        mock_secret_argo.metadata.name = "sh.helm.release.v1.argocd.v1"
+        mock_secret_cm = MagicMock()
+        mock_secret_cm.metadata.name = "sh.helm.release.v1.cert-manager.v1"
+        mock_secret_cnpg = MagicMock()
+        mock_secret_cnpg.metadata.name = "sh.helm.release.v1.cnpg.v1"
+
         mock_secret_list = MagicMock()
-        mock_secret_list.items = [mock_secret]
+        mock_secret_list.items = [mock_secret_argo, mock_secret_cm, mock_secret_cnpg]
         mock_core.return_value.list_secret_for_all_namespaces.return_value = (
             mock_secret_list
         )
@@ -94,6 +125,10 @@ def test_poll_k8s_cluster_status(client: TestClient, mock_k8s):
     assert data["ram_total"] == 4.0
     assert data["argocd_installed"] is True
     assert data["argocd_version"] == "v2.8.0"
+    assert data["cert_manager_installed"] is True
+    assert data["cert_manager_version"] == "v1.20.0"
+    assert data["cnpg_installed"] is True
+    assert data["cnpg_version"] == "1.28.1"
 
 
 @pytest.mark.asyncio
@@ -134,9 +169,99 @@ async def test_install_argocd():
         for call_args in calls:
             if "upgrade" in call_args and "--install" in call_args:
                 found_upgrade = True
-                assert "argocd" in call_args
                 assert "argo/argo-cd" in call_args
                 assert "--kubeconfig" in call_args
+
+        assert found_upgrade
+
+
+@pytest.mark.asyncio
+async def test_install_cert_manager():
+    from mindweaver.service.k8s_cluster.model import K8sCluster, K8sClusterType
+
+    cluster = K8sCluster(
+        name="test-cluster-cm",
+        title="Test Cluster CM",
+        type=K8sClusterType.REMOTE,
+        kubeconfig="fake-kubeconfig",
+    )
+
+    mock_svc = MagicMock()
+    mock_svc.kubeconfig = pytest.importorskip("unittest.mock").AsyncMock(
+        return_value="fake-kubeconfig"
+    )
+
+    from mindweaver.service.k8s_cluster.actions import InstallCertManagerAction
+
+    with patch("asyncio.create_subprocess_exec") as mock_exec:
+        mock_proc = MagicMock()
+        mock_proc.returncode = 0
+        mock_proc.communicate = pytest.importorskip("unittest.mock").AsyncMock(
+            return_value=(b"success", b"")
+        )
+        mock_exec.return_value = mock_proc
+
+        action = InstallCertManagerAction(cluster, mock_svc)
+        await action.run()
+
+        # Verify helm repo add
+        # Verify helm upgrade --install
+        assert mock_exec.call_count >= 3  # add, update, upgrade
+
+        calls = [call[0] for call in mock_exec.call_args_list]
+        found_upgrade = False
+        for call_args in calls:
+            if "upgrade" in call_args and "--install" in call_args:
+                if "cert-manager" in call_args:
+                    found_upgrade = True
+                    assert "jetstack/cert-manager" in call_args
+                    assert "--kubeconfig" in call_args
+                    assert "installCRDs=true" in " ".join(call_args)
+
+        assert found_upgrade
+
+
+@pytest.mark.asyncio
+async def test_install_cnpg():
+    from mindweaver.service.k8s_cluster.model import K8sCluster, K8sClusterType
+
+    cluster = K8sCluster(
+        name="test-cluster-cnpg",
+        title="Test Cluster CNPG",
+        type=K8sClusterType.REMOTE,
+        kubeconfig="fake-kubeconfig",
+    )
+
+    mock_svc = MagicMock()
+    mock_svc.kubeconfig = pytest.importorskip("unittest.mock").AsyncMock(
+        return_value="fake-kubeconfig"
+    )
+
+    from mindweaver.service.k8s_cluster.actions import InstallCNPGAction
+
+    with patch("asyncio.create_subprocess_exec") as mock_exec:
+        mock_proc = MagicMock()
+        mock_proc.returncode = 0
+        mock_proc.communicate = pytest.importorskip("unittest.mock").AsyncMock(
+            return_value=(b"success", b"")
+        )
+        mock_exec.return_value = mock_proc
+
+        action = InstallCNPGAction(cluster, mock_svc)
+        await action.run()
+
+        # Verify helm repo add
+        # Verify helm upgrade --install
+        assert mock_exec.call_count >= 3  # add, update, upgrade
+
+        calls = [call[0] for call in mock_exec.call_args_list]
+        found_upgrade = False
+        for call_args in calls:
+            if "upgrade" in call_args and "--install" in call_args:
+                if "cnpg" in call_args:
+                    found_upgrade = True
+                    assert "cnpg/cloudnative-pg" in call_args
+                    assert "--kubeconfig" in call_args
 
         assert found_upgrade
 

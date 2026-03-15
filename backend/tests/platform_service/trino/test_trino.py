@@ -34,6 +34,7 @@ def test_trino_resource_defaults():
     # New fields
     assert model.chart_version == "1.41.0"
     assert model.override_image is False
+    assert len(model.internal_shared_secret) == 64 # hex of 32 bytes
 
 
 def test_trino_validation():
@@ -220,8 +221,7 @@ async def test_trino_template_rendering(mock_service_dependencies):
     except yaml.parser.ParserError as e:
         pytest.fail(f"YAML parsing failed: {e}")
         
-    app_doc = docs[0]
-    assert app_doc["kind"] == "Application"
+    app_doc = next(d for d in docs if d["kind"] == "Application")
     assert app_doc["spec"]["destination"]["namespace"] == "trino-ns"
     values_yaml_str = app_doc["spec"]["source"]["helm"]["values"]
     values = yaml.safe_load(values_yaml_str)
@@ -239,8 +239,10 @@ async def test_trino_template_rendering(mock_service_dependencies):
     assert "hive.metastore.uri=thrift://hms-internal:9083" in iceberg_props
 
     assert "jdbc:postgresql://postgres-host:5432/mydb" in values["catalogs"]["mypsql"]
-    
-    assert values["service"]["type"] == "NodePort"
+    # Verify the additional HTTPS NodePort service is present in the docs
+    https_svc = next(d for d in docs if d["kind"] == "Service" and d["metadata"]["name"] == "trino-test-https-nodeport")
+    assert https_svc["spec"]["type"] == "NodePort"
+    assert https_svc["spec"]["ports"][0]["port"] == 8443
 
 
 @pytest.mark.asyncio
@@ -337,3 +339,197 @@ async def test_trino_catalog_filtering(mock_service_dependencies):
         manifest = await svc.render_manifests(model)
         assert "mysql-ds" in manifest
         assert "web-ds" not in manifest
+from mindweaver.service.data_source.service import DataSourceService
+from mindweaver.service.ldap_config.model import LdapConfig
+
+
+@pytest.mark.asyncio
+async def test_trino_ldap_rendering(mock_service_dependencies):
+    """Test that LDAP configuration is correctly rendered"""
+    request, session = mock_service_dependencies
+    svc = TrinoPlatformService(request, session)
+    svc._resolve_namespace = AsyncMock(return_value="trino-ns")
+
+    model = TrinoPlatform(
+        name="trino-ldap-test",
+        title="Trino LDAP Test",
+        project_id=1,
+        hms_ids=[10], # Needs at least one catalog
+        ldap_config_id=5,
+    )
+
+    # Mock LDAP configuration
+    mock_ldap_config = LdapConfig(
+        id=5,
+        name="test-ldap",
+        server_url="ldap://ldap.example.com:389",
+        user_search_base="ou=users,dc=example,dc=com",
+        user_search_filter="(uid={0})",
+        username_attr="uid",
+        bind_dn="cn=admin,dc=example,dc=com",
+        bind_password="encrypted_pass",
+    )
+
+    mock_ldap_svc = AsyncMock()
+    mock_ldap_svc.get.return_value = mock_ldap_config
+
+    # Mock HMS service to avoid failure in template_vars
+    mock_hms_svc = AsyncMock()
+    mock_hms_model = MagicMock()
+    mock_hms_model.name = "test-hms"
+    mock_hms_model.s3_storage_id = None
+    mock_hms_svc.get.return_value = mock_hms_model
+    mock_hms_state = MagicMock()
+    mock_hms_state.active = True
+    mock_hms_state.hms_uri = "thrift://hms:9083"
+    mock_hms_svc.platform_state.return_value = mock_hms_state
+    mock_hms_svc._resolve_namespace.return_value = "hms-ns"
+
+    model.ldap_config_id = 5
+    model.internal_shared_secret = "test-shared-secret"
+
+    with patch("mindweaver.platform_service.trino.service.LdapConfigService.get_service", AsyncMock(return_value=mock_ldap_svc)), \
+         patch("mindweaver.platform_service.trino.service.HiveMetastorePlatformService.get_service", AsyncMock(return_value=mock_hms_svc)), \
+         patch("mindweaver.platform_service.trino.service.decrypt_password", side_effect=lambda x: x):
+        
+        vars = await svc.template_vars(model)
+        manifest = await svc.render_manifests(model)
+
+    assert "ldap" in vars
+    assert vars.get("internal_shared_secret") == "test-shared-secret"
+    assert vars["ldap"]["ldap.url"] == "ldap://ldap.example.com:389"
+    assert vars["ldap"]["ldap.bind-password"] == "encrypted_pass"
+    assert vars["ldap"]["ldap.user-base-dn"] == "ou=users,dc=example,dc=com"
+    assert vars["ldap"]["ldap.group-auth-pattern"] == "(uid=${USER})"
+
+    assert "internal-communication.shared-secret=test-shared-secret" in manifest
+    assert "authenticationType: PASSWORD" in manifest
+    assert "additionalConfigFiles:" in manifest
+    assert "password-authenticator.name=ldap" in manifest
+    assert "ldap.url=ldap://ldap.example.com:389" in manifest
+    assert "ldap.bind-dn=cn=admin,dc=example,dc=com" in manifest
+    assert "ldap.bind-password=encrypted_pass" in manifest
+    assert "ldap.user-base-dn=ou=users,dc=example,dc=com" in manifest
+    assert "ldap.group-auth-pattern=(uid=${USER})" in manifest
+
+
+@pytest.mark.asyncio
+async def test_trino_https_rendering(mock_service_dependencies):
+    """Test that HTTPS configuration is correctly rendered"""
+    request, session = mock_service_dependencies
+    svc = TrinoPlatformService(request, session)
+    svc._resolve_namespace = AsyncMock(return_value="trino-ns")
+
+    model = TrinoPlatform(
+        name="trino-https-test",
+        title="Trino HTTPS Test",
+        project_id=1,
+        hms_ids=[10], # Needs at least one catalog
+    )
+    model.internal_shared_secret = "test-shared-secret"
+
+    # Mock HMS service to avoid failure in template_vars
+    mock_hms_svc = AsyncMock()
+    mock_hms_model = MagicMock()
+    mock_hms_model.name = "test-hms"
+    mock_hms_model.s3_storage_id = None
+    mock_hms_svc.get.return_value = mock_hms_model
+    mock_hms_state = MagicMock()
+    mock_hms_state.active = True
+    mock_hms_state.hms_uri = "thrift://hms:9083"
+    mock_hms_svc.platform_state.return_value = mock_hms_state
+    mock_hms_svc._resolve_namespace.return_value = "hms-ns"
+
+    with patch("mindweaver.platform_service.trino.service.HiveMetastorePlatformService.get_service", AsyncMock(return_value=mock_hms_svc)), \
+         patch("mindweaver.platform_service.trino.service.decrypt_password", lambda x: x):
+        
+        manifest = await svc.render_manifests(model)
+
+    docs = list(yaml.safe_load_all(manifest))
+    assert len(docs) >= 3  # Application + Certificate + NodePort Service
+
+    # Ensure no local Issuer is created (it's cluster-wide now)
+    issuer_kinds = [d["kind"] for d in docs]
+    assert "Issuer" not in issuer_kinds
+    assert "Secret" not in issuer_kinds  # no keystore-password secret anymore
+    
+    cert = next(d for d in docs if d["kind"] == "Certificate")
+    assert cert["metadata"]["name"] == "trino-https-test-tls"
+    assert cert["spec"]["issuerRef"]["name"] == "mindweaver-selfsigned-issuer"
+    assert cert["spec"]["issuerRef"]["kind"] == "ClusterIssuer"
+    assert "keystores" not in cert["spec"]  # PEM format - no JKS keystore
+
+    # Check additional NodePort service
+    service = next(d for d in docs if d["kind"] == "Service" and d["metadata"]["name"] == "trino-https-test-https-nodeport")
+    assert service["spec"]["type"] == "NodePort"
+    assert service["spec"]["ports"][0]["port"] == 8443
+    assert service["spec"]["selector"]["app.kubernetes.io/component"] == "coordinator"
+
+    # Check Application Helm values
+    app = next(d for d in docs if d["kind"] == "Application")
+    values = yaml.safe_load(app["spec"]["source"]["helm"]["values"])
+    
+    props = values["additionalConfigProperties"]
+    assert "http-server.https.enabled=true" in props
+    assert "http-server.https.port=8443" in props
+    assert "http-server.https.keystore.path=/etc/trino/tls/tls.pem" in props
+    # No keystore.password needed for PEM format
+    assert not any("keystore.password" in p for p in props)
+
+    # Verify additionalExposedPorts
+    assert "https" in values["coordinator"]["additionalExposedPorts"]
+    assert values["coordinator"]["additionalExposedPorts"]["https"]["port"] == 8443
+
+    # Verify initContainer on coordinator and worker combine tls.key + tls.crt
+    for role in ["coordinator", "worker"]:
+        init_containers = values["initContainers"][role]
+        assert len(init_containers) == 1
+        assert "tls.pem" in init_containers[0]["command"][2]
+
+        # tls-secret volume (from cert-manager) and certs emptyDir
+        volume_names = [v["name"] for v in values[role]["additionalVolumes"]]
+        assert "tls-secret" in volume_names
+        assert "certs" in volume_names
+
+        # mount the combined certs dir
+        assert values[role]["additionalVolumeMounts"][0]["mountPath"] == "/etc/trino/tls"
+
+
+@pytest.mark.asyncio
+async def test_trino_poll_status_with_https_nodeport(mock_service_dependencies):
+    """Test that poll_status picks the correct NodePort for the HTTPS service"""
+    request, session = mock_service_dependencies
+    svc = TrinoPlatformService(request, session)
+
+    # Mock base methods to avoid hitting real logic or requiring complex mocks
+    svc._resolve_namespace = AsyncMock(return_value="trino-ns")
+    svc.kubeconfig = AsyncMock(return_value="dummy-kubeconfig")
+    svc.platform_state = AsyncMock(return_value=MagicMock(active=True))
+
+    model = TrinoPlatform(
+        id=1,
+        name="trino",
+        title="Trino",
+        project_id=1,
+        hms_ids=[10],
+    )
+
+    # Mock environment
+    node_ports = [
+        {"name": "trino", "port": 8080, "node_port": 30080}, # Default HTTP NodePort
+        {"name": "trino-https-nodeport", "port": 8443, "node_port": 30443}, # The one we want
+    ]
+    cluster_nodes = [{"hostname": "node1", "ipv4": "1.2.3.4"}]
+
+    # Mock template_vars and get_preferred_catalog to avoid heavy lifting
+    svc.get_preferred_catalog = AsyncMock(return_value="hive")
+
+    # Call poll_status
+    with patch("mindweaver.platform_service.trino.service.asyncio.to_thread") as mock_to_thread:
+        mock_to_thread.return_value = ("online", "Healthy", {"argo": "ok"}, node_ports, cluster_nodes)
+
+        await svc.poll_status(model)
+
+        # Verify the state was updated with the correct URI from the https-nodeport service
+        state = await svc.platform_state(model)
+        assert state.trino_uri == "https://1.2.3.4:30443"

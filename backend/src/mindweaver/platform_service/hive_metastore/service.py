@@ -115,7 +115,7 @@ class HiveMetastorePlatformService(PlatformService[HiveMetastorePlatform]):
             )
 
         vars["db_host"] = (
-            f"{pgsql_model.name}-pgbouncer.{vars['namespace']}.svc.cluster.local"
+            f"{pgsql_model.name}-pooler-rw.{vars['namespace']}.svc.cluster.local"
         )
         vars["db_port"] = 5432
         vars["db_user"] = pgsql_state.db_user

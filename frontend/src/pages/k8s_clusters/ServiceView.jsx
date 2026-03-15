@@ -13,6 +13,7 @@ const ServiceView = ({
     const { getClusterState, refreshClusterState } = clustersHook;
     const [clusterState, setClusterState] = useState(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [installingActions, setInstallingActions] = useState({});
     const { showSuccess, showError } = useNotification();
 
     useEffect(() => {
@@ -43,6 +44,24 @@ const ServiceView = ({
             showError("Failed to refresh cluster state");
         } finally {
             setIsRefreshing(false);
+        }
+    };
+
+    const handleInstallAction = async (actionId) => {
+        setInstallingActions(prev => ({ ...prev, [actionId]: true }));
+        try {
+            await clustersHook.executeAction(selectedClusterId, actionId);
+            showSuccess("Installation triggered");
+        } catch (e) {
+            console.error(e);
+            showError("Failed to trigger installation");
+        } finally {
+            // We don't necessarily clear it immediately because the poller will 
+            // update the 'installed' status in a few seconds, which will remove the button.
+            // But we clear it just in case of error or if it takes long.
+            setTimeout(() => {
+                setInstallingActions(prev => ({ ...prev, [actionId]: false }));
+            }, 5000);
         }
     };
 
@@ -182,6 +201,8 @@ const ServiceView = ({
                     {/* Integration Services */}
                     <div className="space-y-4 bg-slate-50/50 dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-200/50 dark:border-slate-800/50">
                         <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">Core Integrations</p>
+                        
+                        {/* ArgoCD */}
                         <div className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
                             <div className="flex items-center gap-3">
                                 <div className={`p-2 rounded-lg ${clusterState.argocd_installed ? 'bg-indigo-500 text-white' : 'bg-slate-200 text-slate-400'}`}>
@@ -190,11 +211,97 @@ const ServiceView = ({
                                 <span className="text-sm font-bold text-slate-700 dark:text-white">ArgoCD</span>
                             </div>
                             {clusterState.argocd_installed ? (
-                                <span className="text-[10px] font-bold bg-green-500/10 text-green-500 px-2 py-0.5 rounded uppercase">
+                                <span className="text-[10px] font-bold bg-green-500/10 text-green-500 px-2 py-0.5 rounded">
                                     {clusterState.argocd_version || "ACTIVE"}
                                 </span>
                             ) : (
-                                <span className="text-[10px] font-bold bg-slate-500/10 text-slate-400 px-2 py-0.5 rounded uppercase">MISSING</span>
+                                <button 
+                                    onClick={() => handleInstallAction('install_argocd')}
+                                    disabled={installingActions['install_argocd']}
+                                    className="mw-btn-primary py-1 px-3 text-[10px] flex items-center gap-2"
+                                >
+                                    {installingActions['install_argocd'] && <RefreshCw size={10} className="animate-spin" />}
+                                    {installingActions['install_argocd'] ? 'INSTALLING' : 'INSTALL'}
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Cert Manager */}
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                            <div className="flex items-center gap-3">
+                                <div className={`p-2 rounded-lg ${clusterState.cert_manager_installed ? 'bg-indigo-500 text-white' : 'bg-slate-200 text-slate-400'}`}>
+                                    <Activity size={16} />
+                                </div>
+                                <span className="text-sm font-bold text-slate-700 dark:text-white">Cert Manager</span>
+                            </div>
+                            {clusterState.cert_manager_installed ? (
+                                <span className="text-[10px] font-bold bg-green-500/10 text-green-500 px-2 py-0.5 rounded">
+                                    {clusterState.cert_manager_version || "ACTIVE"}
+                                </span>
+                            ) : (
+                                <button 
+                                    onClick={() => handleInstallAction('install_cert_manager')}
+                                    disabled={installingActions['install_cert_manager']}
+                                    className="mw-btn-primary py-1 px-3 text-[10px] flex items-center gap-2"
+                                >
+                                    {installingActions['install_cert_manager'] && <RefreshCw size={10} className="animate-spin" />}
+                                    {installingActions['install_cert_manager'] ? 'INSTALLING' : 'INSTALL'}
+                                </button>
+                            )}
+                        </div>
+
+                        {/* CNPG Operator */}
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                            <div className="flex items-center gap-3">
+                                <div className={`p-2 rounded-lg ${clusterState.cnpg_installed ? 'bg-indigo-500 text-white' : 'bg-slate-200 text-slate-400'}`}>
+                                    <Activity size={16} />
+                                </div>
+                                <span className="text-sm font-bold text-slate-700 dark:text-white">CNPG Operator</span>
+                            </div>
+                            {clusterState.cnpg_installed ? (
+                                <span className="text-[10px] font-bold bg-green-500/10 text-green-500 px-2 py-0.5 rounded">
+                                    {clusterState.cnpg_version || "ACTIVE"}
+                                </span>
+                            ) : (
+                                <button 
+                                    id="install-cnpg-operator-btn"
+                                    onClick={() => handleInstallAction('install_cnpg_operator')}
+                                    disabled={installingActions['install_cnpg_operator']}
+                                    className="mw-btn-primary py-1 px-3 text-[10px] flex items-center gap-2"
+                                >
+                                    {installingActions['install_cnpg_operator'] && <RefreshCw size={10} className="animate-spin" />}
+                                    {installingActions['install_cnpg_operator'] ? 'INSTALLING' : 'INSTALL'}
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Self-Signed ClusterIssuer */}
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                            <div className="flex items-center gap-3">
+                                <div className={`p-2 rounded-lg ${clusterState.cluster_issuer_installed ? 'bg-indigo-500 text-white' : 'bg-slate-200 text-slate-400'}`}>
+                                    <Activity size={16} />
+                                </div>
+                                <div>
+                                    <span className="text-sm font-bold text-slate-700 dark:text-white">Self-Signed Issuer</span>
+                                    {!clusterState.cert_manager_installed && (
+                                        <p className="text-[10px] text-slate-400">Requires Cert Manager</p>
+                                    )}
+                                </div>
+                            </div>
+                            {clusterState.cluster_issuer_installed ? (
+                                <span className="text-[10px] font-bold bg-green-500/10 text-green-500 px-2 py-0.5 rounded">
+                                    ACTIVE
+                                </span>
+                            ) : (
+                                <button
+                                    id="install-self-signed-issuer-btn"
+                                    onClick={() => handleInstallAction('install_self_signed_issuer')}
+                                    disabled={!clusterState.cert_manager_installed || installingActions['install_self_signed_issuer']}
+                                    className="mw-btn-primary py-1 px-3 text-[10px] flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                                >
+                                    {installingActions['install_self_signed_issuer'] && <RefreshCw size={10} className="animate-spin" />}
+                                    {installingActions['install_self_signed_issuer'] ? 'INSTALLING' : 'INSTALL'}
+                                </button>
                             )}
                         </div>
                     </div>

@@ -367,7 +367,7 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
             extra_data = {}
         extra_data["namespace"] = namespace
         if pgbouncer_port:
-            extra_data["pgbouncer_host"] = f"{model.name}-pgbouncer.{namespace}.svc.cluster.local"
+            extra_data["pgbouncer_host"] = f"{model.name}-pooler-rw.{namespace}.svc.cluster.local"
         state.extra_data = extra_data
         state.node_ports = node_ports
         state.cluster_nodes = cluster_nodes
