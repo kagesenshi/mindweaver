@@ -100,8 +100,8 @@ const ResourceConfirmModal = ({
                             className={cn(
                                 "w-full px-4 py-3 rounded-xl border text-center font-mono text-lg transition-all focus:outline-none focus:ring-2",
                                 darkMode
-                                    ? cn("bg-slate-900 border-slate-800 text-white", style.inputRing)
-                                    : cn("bg-slate-50 border-slate-200 text-slate-900", style.inputRing)
+                                    ? cn("bg-slate-950 border-slate-800 text-slate-200", style.inputRing)
+                                    : cn("bg-slate-100 border-slate-200 text-slate-900", style.inputRing)
                             )}
                             autoFocus
                         />

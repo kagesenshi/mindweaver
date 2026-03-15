@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { BookA, Edit2, Trash2, ChevronRight, Radio, CheckCircle2, XCircle } from 'lucide-react';
-import ListingItem from '../../components/ListingItem';
-import PageLayout from '../../components/PageLayout';
+import { BookA, Radio, CheckCircle2, XCircle } from 'lucide-react';
 import Modal from '../../components/Modal';
 import DynamicForm from '../../components/DynamicForm';
+import GenericListingView from '../../components/GenericListingView';
 import { cn } from '../../utils/cn';
 import { useNotification } from '../../providers/NotificationProvider';
 
@@ -15,31 +14,9 @@ const ListingView = ({
     const { configs, loading, deleteConfig, fetchConfigs, testConnection } = ldapConfigsHook;
     const { showSuccess } = useNotification();
 
-    const [searchTerm, setSearchTerm] = useState('');
     const [editItem, setEditItem] = useState(null);
     const [testResult, setTestResult] = useState(null);
     const [testingConnection, setTestingConnection] = useState(false);
-
-    const filteredConfigs = configs.filter(c => {
-        const matchesProject = !selectedProject || c.project_id === selectedProject.id;
-        const matchesSearch = (c.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (c.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (c.server_url || '').toLowerCase().includes(searchTerm.toLowerCase());
-        return matchesProject && matchesSearch;
-    });
-
-    const handleCreate = () => {
-        fetchConfigs();
-    };
-
-    const handleUpdate = () => {
-        fetchConfigs();
-        setEditItem(null);
-    };
-
-    const handleDelete = async (id, confirmName) => {
-        await deleteConfig(id, confirmName);
-    };
 
     const runTestConnection = async (formData) => {
         setTestingConnection(true);
@@ -60,34 +37,38 @@ const ListingView = ({
                 success: false,
                 message: err.response?.data?.detail?.msg || err.message || 'Connection failed'
             });
-            // Error is handled by NotificationProvider interceptor if it's 422
         } finally {
             setTestingConnection(false);
         }
     };
 
-    const onEdit = (config) => {
-        setEditItem(config);
-    };
+    const renderSubtitle = (config) => (
+        <span>{config.server_url}</span>
+    );
 
-    const onDelete = (config) => {
-        handleDelete(config.id, config.name);
-    };
+    const renderBadges = (config) => ([
+        { text: config.server_url?.startsWith('ldaps') ? 'LDAPS' : 'LDAP', variant: "mw-badge-neutral" },
+    ]);
 
     return (
         <>
-            <PageLayout
+            <GenericListingView
                 title="LDAP Configuration"
                 description="Manage LDAP directory connections for user authentication and authorization across platforms."
+                items={configs}
+                loading={loading}
+                fetchItems={fetchConfigs}
+                deleteItem={deleteConfig}
+                onSelectItem={(config) => setEditItem(config)}
+                onEditItem={(config) => setEditItem(config)}
+                icon={BookA}
+                entityPath="/ldap_configs"
                 createConfig={{
                     title: "New LDAP Config",
-                    entityPath: "/ldap_configs",
                     buttonText: "NEW CONFIG",
                     initialData: {
-                        project_id: selectedProject?.id,
                         verify_ssl: true
                     },
-                    onSuccess: handleCreate,
                     onClose: () => setTestResult(null),
                     renderExtraActions: (formData) => (
                         <button
@@ -112,11 +93,7 @@ const ListingView = ({
                         </div>
                     )
                 }}
-                searchQuery={searchTerm}
-                onSearchChange={(e) => setSearchTerm(e.target.value)}
                 searchPlaceholder="Search LDAP configs..."
-                isLoading={loading}
-                isEmpty={filteredConfigs.length === 0}
                 emptyState={{
                     title: "No LDAP configurations found",
                     description: selectedProject
@@ -124,50 +101,17 @@ const ListingView = ({
                         : 'Create your first LDAP configuration to get started.',
                     icon: <BookA size={48} className="text-slate-700" />
                 }}
-            >
-                <div className="grid grid-cols-1 gap-4">
-                    {filteredConfigs.map(config => (
-                        <ListingItem
-                            key={config.id}
-                            icon={BookA}
-                            title={config.name}
-                            badges={[
-                                { text: config.server_url?.startsWith('ldaps') ? 'LDAPS' : 'LDAP', variant: "mw-badge-neutral" },
-                            ]}
-                            subtitle={config.server_url}
-                            onClick={() => onEdit(config)}
-                            actions={
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            onEdit(config);
-                                        }}
-                                        className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-blue-500"
-                                        title="Edit"
-                                    >
-                                        <Edit2 className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            onDelete(config);
-                                        }}
-                                        className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-red-500"
-                                        title="Delete"
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </button>
-                                    <div className="w-px h-8 bg-slate-200 dark:bg-slate-800 mx-2" />
-                                    <ChevronRight className="w-5 h-5 text-slate-300 dark:text-slate-600" />
-                                </div>
-                            }
-                        />
-                    ))}
-                </div >
-            </PageLayout >
+                renderSubtitle={renderSubtitle}
+                renderBadges={renderBadges}
+                deleteModalConfig={{
+                    title: "Delete LDAP Configuration",
+                    message: "Are you sure you want to delete this LDAP configuration? This may affect authentication for projects using it."
+                }}
+                darkMode={darkMode}
+                selectedProject={selectedProject}
+                searchFields={["name", "title", "server_url"]}
+            />
 
-            {/* Edit Modal */}
             <Modal
                 isOpen={!!editItem}
                 onClose={() => {
@@ -196,7 +140,10 @@ const ListingView = ({
                             mode="edit"
                             darkMode={darkMode}
                             initialData={editItem}
-                            onSuccess={handleUpdate}
+                            onSuccess={() => {
+                                fetchConfigs();
+                                setEditItem(null);
+                            }}
                             onCancel={() => setEditItem(null)}
                             renderExtraActions={(formData) => (
                                 <button

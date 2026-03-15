@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { Plus, Shield, Key, Search, RefreshCw, Trash2, Edit2, ExternalLink, HardDrive, Radio, CheckCircle2, XCircle, ChevronRight } from 'lucide-react';
-import ListingItem from '../../components/ListingItem';
-import PageLayout from '../../components/PageLayout';
+import { HardDrive, Radio, CheckCircle2, XCircle } from 'lucide-react';
 import Modal from '../../components/Modal';
 import DynamicForm from '../../components/DynamicForm';
+import GenericListingView from '../../components/GenericListingView';
 import { cn } from '../../utils/cn';
 
 const ListingView = ({
@@ -14,31 +13,9 @@ const ListingView = ({
 }) => {
     const { storages, loading, deleteStorage, fetchStorages, testConnection } = s3Storages;
 
-    const [searchTerm, setSearchTerm] = useState('');
     const [editItem, setEditItem] = useState(null);
     const [testResult, setTestResult] = useState(null);
     const [testingConnection, setTestingConnection] = useState(false);
-
-    const filteredStorages = storages.filter(s => {
-        const matchesProject = !selectedProject || s.project_id === selectedProject.id;
-        const matchesSearch = (s.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (s.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (s.region || '').toLowerCase().includes(searchTerm.toLowerCase());
-        return matchesProject && matchesSearch;
-    });
-
-    const handleCreate = () => {
-        fetchStorages();
-    };
-
-    const handleUpdate = () => {
-        fetchStorages();
-        setEditItem(null);
-    };
-
-    const handleDelete = async (id, confirmName) => {
-        await deleteStorage(id, confirmName);
-    };
 
     const runTestConnection = async (formData) => {
         setTestingConnection(true);
@@ -62,28 +39,33 @@ const ListingView = ({
         }
     };
 
-    const onEdit = (storage) => {
-        setEditItem(storage);
-    };
+    const renderSubtitle = (storage) => (
+        <span>{storage.bucket}</span>
+    );
 
-    const onDelete = (storage) => {
-        handleDelete(storage.id, storage.name);
-    };
+    const renderBadges = (storage) => ([
+        { text: storage.region, variant: "mw-badge-neutral" }
+    ]);
 
     return (
         <>
-            <PageLayout
+            <GenericListingView
                 title="S3 Object Storage"
                 description="Manage S3-compatible object storage connections for your data platform."
+                items={storages}
+                loading={loading}
+                fetchItems={fetchStorages}
+                deleteItem={deleteStorage}
+                onSelectItem={(storage) => onSelectStorage(storage)}
+                onEditItem={(storage) => setEditItem(storage)}
+                icon={HardDrive}
+                entityPath="/s3_storages"
                 createConfig={{
                     title: "New S3 Storage",
-                    entityPath: "/s3_storages",
                     buttonText: "NEW STORAGE",
                     initialData: {
-                        project_id: selectedProject?.id,
                         region: 'us-east-1'
                     },
-                    onSuccess: handleCreate,
                     onClose: () => setTestResult(null),
                     renderExtraActions: (formData) => (
                         <button
@@ -108,11 +90,7 @@ const ListingView = ({
                         </div>
                     )
                 }}
-                searchQuery={searchTerm}
-                onSearchChange={(e) => setSearchTerm(e.target.value)}
                 searchPlaceholder="Search storages..."
-                isLoading={loading}
-                isEmpty={filteredStorages.length === 0}
                 emptyState={{
                     title: "No storage buckets found",
                     description: selectedProject
@@ -120,49 +98,18 @@ const ListingView = ({
                         : 'Create your first S3 storage connection to get started.',
                     icon: <HardDrive size={48} className="text-slate-700" />
                 }}
-            >
-                <div className="grid grid-cols-1 gap-4">
-                    {filteredStorages.map(storage => (
-                        <ListingItem
-                            key={storage.id}
-                            icon={HardDrive}
-                            title={storage.name}
-                            badges={[{ text: storage.region, variant: "mw-badge-neutral" }]}
-                            subtitle={storage.bucket}
-                            onClick={() => onSelectStorage(storage)}
-                            actions={
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            onEdit(storage);
-                                        }}
-                                        className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-blue-500"
-                                        title="Edit"
-                                    >
-                                        <Edit2 className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            onDelete(storage);
-                                        }}
-                                        className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-red-500"
-                                        title="Delete"
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </button>
-                                    <div className="w-px h-8 bg-slate-200 dark:bg-slate-800 mx-2" />
-                                    <ChevronRight className="w-5 h-5 text-slate-300 dark:text-slate-600" />
-                                </div>
-                            }
-                        />
-                    ))}
-                </div >
-            </PageLayout >
+                renderSubtitle={renderSubtitle}
+                renderBadges={renderBadges}
+                deleteModalConfig={{
+                    title: "Delete S3 Storage",
+                    message: "Are you sure you want to delete this S3 storage connection? Any projects using it will lose access to the associated bucket."
+                }}
+                darkMode={darkMode}
+                selectedProject={selectedProject}
+                searchFields={["name", "title", "region"]}
+            />
 
-            {/* Edit Modal */}
-            < Modal
+            <Modal
                 isOpen={!!editItem}
                 onClose={() => {
                     setEditItem(null);
@@ -190,7 +137,10 @@ const ListingView = ({
                             mode="edit"
                             darkMode={darkMode}
                             initialData={editItem}
-                            onSuccess={handleUpdate}
+                            onSuccess={() => {
+                                fetchStorages();
+                                setEditItem(null);
+                            }}
                             onCancel={() => setEditItem(null)}
                             renderExtraActions={(formData) => (
                                 <button
