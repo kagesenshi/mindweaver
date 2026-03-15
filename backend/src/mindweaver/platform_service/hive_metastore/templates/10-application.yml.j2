@@ -30,7 +30,7 @@ spec:
             dbnameKey: dbname
         icebergRest:
           enabled: {{ 'true' if iceberg_enabled else 'false' }}
-          port: {{ iceberg_port }}
+          port: 9001
         warehouseDir: {{ warehouse_dir }}
   destination:
     server: 'https://kubernetes.default.svc'

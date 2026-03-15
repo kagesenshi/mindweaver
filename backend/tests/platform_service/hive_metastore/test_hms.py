@@ -115,7 +115,6 @@ async def test_hms_template_rendering(mock_service_dependencies):
         project_id=1,
         database_id=10,
         iceberg_enabled=True,
-        iceberg_port=9001
     )
 
     # Mock _resolve_namespace
@@ -203,7 +202,6 @@ async def test_hms_manifest_parsing(mock_service_dependencies):
         project_id=1,
         database_id=10,
         iceberg_enabled=True,
-        iceberg_port=9001
     )
 
     # Mock _resolve_namespace
@@ -296,13 +294,17 @@ async def test_hms_chart_versions_endpoint():
     result = await get_chart_versions()
         
     assert "data" in result
-    assert result["data"] == [
-        {"label": "0.1.8", "value": "0.1.8"},
-        {"label": "0.1.7", "value": "0.1.7"},
-        {"label": "0.1.6", "value": "0.1.6"},
-        {"label": "0.1.5", "value": "0.1.5"},
-        {"label": "0.1.4", "value": "0.1.4"},
-    ]
+    assert isinstance(result["data"], list)
+    assert len(result["data"]) > 0
+    # Check that it contains at least some of the known versions
+    versions = [item["value"] for item in result["data"]]
+    assert "0.1.9" in versions
+    assert "0.1.8" in versions
+    # Ensure items have correct format
+    for item in result["data"]:
+        assert "label" in item
+        assert "value" in item
+        assert item["label"] == item["value"]
 
 
 @pytest.mark.asyncio

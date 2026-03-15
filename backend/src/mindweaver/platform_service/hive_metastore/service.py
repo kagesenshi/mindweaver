@@ -44,20 +44,59 @@ class HiveMetastorePlatformService(PlatformService[HiveMetastorePlatform]):
                 "type": "select",
                 "endpoint": "/api/v1/platform/hive-metastore/_chart-versions",
             },
-            "override_image": {"order": 4, "type": "boolean", "label": "Override Image"},
+            "override_image": {
+                "order": 4,
+                "type": "boolean",
+                "label": "Override Image",
+            },
             "image": {"order": 5, "label": "Image"},
-            "replica_count": {"order": 10, "type": "range", "min": 1, "max": 10, "step": 1},
-            "cpu_request": {"order": 11, "type": "range", "min": 0.1, "max": 16, "step": 0.1},
-            "cpu_limit": {"order": 12, "type": "range", "min": 0.1, "max": 16, "step": 0.1},
-            "mem_request": {"order": 13, "type": "range", "min": 0.5, "max": 64, "step": 0.5, "label": "Memory Request (Gi)"},
-            "mem_limit": {"order": 14, "type": "range", "min": 0.5, "max": 64, "step": 0.5, "label": "Memory Limit (Gi)"},
+            "replica_count": {
+                "order": 10,
+                "type": "range",
+                "min": 1,
+                "max": 10,
+                "step": 1,
+            },
+            "cpu_request": {
+                "order": 11,
+                "type": "range",
+                "min": 0.1,
+                "max": 16,
+                "step": 0.1,
+            },
+            "cpu_limit": {
+                "order": 12,
+                "type": "range",
+                "min": 0.1,
+                "max": 16,
+                "step": 0.1,
+            },
+            "mem_request": {
+                "order": 13,
+                "type": "range",
+                "min": 0.5,
+                "max": 64,
+                "step": 0.5,
+                "label": "Memory Request (Gi)",
+            },
+            "mem_limit": {
+                "order": 14,
+                "type": "range",
+                "min": 0.5,
+                "max": 64,
+                "step": 0.5,
+                "label": "Memory Limit (Gi)",
+            },
             "database_id": {"order": 20, "label": "PostgreSQL"},
             "s3_storage_id": {
                 "order": 21,
                 "label": "S3 Storage",
             },
-            "iceberg_enabled": {"order": 30, "type": "boolean"},
-            "iceberg_port": {"order": 31},
+            "iceberg_enabled": {
+                "order": 30,
+                "type": "boolean",
+                "label": "Enable IcebergREST Endpoint",
+            },
             "warehouse_dir": {"order": 40, "label": "Warehouse Directory"},
         }
 
@@ -71,9 +110,13 @@ class HiveMetastorePlatformService(PlatformService[HiveMetastorePlatform]):
         pgsql_state = await pgsql_svc.platform_state(pgsql_model)
 
         if not pgsql_state or not pgsql_state.active:
-            raise ValueError(f"Managed PostgreSQL cluster {pgsql_model.name} is not active")
+            raise ValueError(
+                f"Managed PostgreSQL cluster {pgsql_model.name} is not active"
+            )
 
-        vars["db_host"] = f"{pgsql_model.name}-pgbouncer.{vars['namespace']}.svc.cluster.local"
+        vars["db_host"] = (
+            f"{pgsql_model.name}-pgbouncer.{vars['namespace']}.svc.cluster.local"
+        )
         vars["db_port"] = 5432
         vars["db_user"] = pgsql_state.db_user
         vars["db_name"] = pgsql_state.db_name
@@ -89,11 +132,15 @@ class HiveMetastorePlatformService(PlatformService[HiveMetastorePlatform]):
             s3_model = await s3_svc.get(model.s3_storage_id)
             vars["s3_endpoint_url"] = s3_model.endpoint_url
             vars["s3_region"] = s3_model.region
-            vars["s3_use_ssl"] = "true" if s3_model.endpoint_url.startswith("https://") else "false"
+            vars["s3_use_ssl"] = (
+                "true" if s3_model.endpoint_url.startswith("https://") else "false"
+            )
             vars["aws_access_key_id"] = s3_model.access_key
             if s3_model.secret_key:
                 try:
-                    vars["aws_secret_access_key"] = decrypt_password(s3_model.secret_key)
+                    vars["aws_secret_access_key"] = decrypt_password(
+                        s3_model.secret_key
+                    )
                 except Exception:
                     vars["aws_secret_access_key"] = s3_model.secret_key
             else:
@@ -106,7 +153,9 @@ class HiveMetastorePlatformService(PlatformService[HiveMetastorePlatform]):
             self.model_class().model_validate(data.model_dump(), from_attributes=True)
         except ValidationError as e:
             error = e.errors()[0]
-            raise FieldValidationError(field_location=list(error["loc"]), message=error["msg"])
+            raise FieldValidationError(
+                field_location=list(error["loc"]), message=error["msg"]
+            )
 
         return await super().validate_data(data)
 
@@ -139,16 +188,22 @@ class HiveMetastorePlatformService(PlatformService[HiveMetastorePlatform]):
                     plural="applications",
                     name=model.name,
                 )
-                sync_status = argo_app.get("status", {}).get("sync", {}).get("status", "Unknown")
-                health_status = argo_app.get("status", {}).get("health", {}).get("status", "Unknown")
-                
+                sync_status = (
+                    argo_app.get("status", {}).get("sync", {}).get("status", "Unknown")
+                )
+                health_status = (
+                    argo_app.get("status", {})
+                    .get("health", {})
+                    .get("status", "Unknown")
+                )
+
                 if health_status == "Healthy":
                     status = "online"
                 elif health_status in ["Progressing", "Pending"]:
                     status = "pending"
                 else:
                     status = "error"
-                
+
                 message = f"Sync: {sync_status}, Health: {health_status}"
             except Exception as e:
                 if not active:
@@ -163,9 +218,14 @@ class HiveMetastorePlatformService(PlatformService[HiveMetastorePlatform]):
             try:
                 pods = core_v1.list_namespaced_pod(
                     namespace=namespace,
-                    label_selector=f"app.kubernetes.io/instance={model.name}"
+                    label_selector=f"app.kubernetes.io/instance={model.name}",
                 )
-                ready_pods = sum(1 for p in pods.items if p.status.phase == "Running" and any(c.ready for c in (p.status.container_statuses or [])))
+                ready_pods = sum(
+                    1
+                    for p in pods.items
+                    if p.status.phase == "Running"
+                    and any(c.ready for c in (p.status.container_statuses or []))
+                )
                 total_pods = len(pods.items)
                 message += f" | Pods: {ready_pods}/{total_pods}"
             except Exception as e:
@@ -179,11 +239,13 @@ class HiveMetastorePlatformService(PlatformService[HiveMetastorePlatform]):
                     if svc.metadata.name.startswith(model.name):
                         if svc.spec.type == "NodePort":
                             for port in svc.spec.ports:
-                                node_ports.append({
-                                    "name": svc.metadata.name,
-                                    "port": port.port,
-                                    "node_port": port.node_port,
-                                })
+                                node_ports.append(
+                                    {
+                                        "name": svc.metadata.name,
+                                        "port": port.port,
+                                        "node_port": port.node_port,
+                                    }
+                                )
             except Exception as e:
                 logger.error(f"Failed to fetch services for {model.name}: {e}")
 
@@ -205,9 +267,17 @@ class HiveMetastorePlatformService(PlatformService[HiveMetastorePlatform]):
             except Exception as e:
                 logger.error(f"Failed to fetch nodes: {e}")
 
-            return status, message, argo_app.get("status", {}), node_ports, cluster_nodes
+            return (
+                status,
+                message,
+                argo_app.get("status", {}),
+                node_ports,
+                cluster_nodes,
+            )
 
-        status, message, extra_data, node_ports, cluster_nodes = await asyncio.to_thread(_poll, is_active)
+        status, message, extra_data, node_ports, cluster_nodes = (
+            await asyncio.to_thread(_poll, is_active)
+        )
 
         state = await self.platform_state(model)
         if not state:
@@ -233,15 +303,23 @@ class HiveMetastorePlatformService(PlatformService[HiveMetastorePlatform]):
             # HMS Port (9083) usually ClusterIP, but if NodePort exists we can show it
             hms_np = next((np for np in node_ports if "hms" in np["name"]), None)
             if hms_np:
-                state.hms_uri = f"thrift://{cluster_nodes[0]['ipv4']}:{hms_np['node_port']}"
+                state.hms_uri = (
+                    f"thrift://{cluster_nodes[0]['ipv4']}:{hms_np['node_port']}"
+                )
             else:
-                state.hms_uri = f"thrift://{model.name}.{namespace}.svc.cluster.local:9083"
+                state.hms_uri = (
+                    f"thrift://{model.name}.{namespace}.svc.cluster.local:9083"
+                )
 
             if model.iceberg_enabled:
-                ice_np = next((np for np in node_ports if "iceberg" in np["name"]), None)
+                ice_np = next(
+                    (np for np in node_ports if "iceberg" in np["name"]), None
+                )
                 if ice_np:
-                    state.iceberg_uri = f"http://{cluster_nodes[0]['ipv4']}:{ice_np['node_port']}"
+                    state.iceberg_uri = (
+                        f"http://{cluster_nodes[0]['ipv4']}:{ice_np['node_port']}"
+                    )
                 else:
-                    state.iceberg_uri = f"http://{model.name}-iceberg.{namespace}.svc.cluster.local:{model.iceberg_port}"
+                    state.iceberg_uri = f"http://{model.name}-iceberg.{namespace}.svc.cluster.local:9001"
 
         state.last_heartbeat = ts_now()

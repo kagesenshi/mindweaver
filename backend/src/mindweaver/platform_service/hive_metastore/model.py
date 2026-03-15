@@ -33,7 +33,6 @@ class HiveMetastorePlatform(PlatformBase, table=True):
 
     # Iceberg configuration
     iceberg_enabled: bool = Field(default=True)
-    iceberg_port: int = Field(default=9001)
 
     warehouse_dir: str = Field(default="s3a://metastore/warehouse/")
 
