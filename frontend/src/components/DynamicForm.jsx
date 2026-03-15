@@ -490,7 +490,7 @@ const DynamicForm = ({
                     }}
                     isDisabled={isImmutable}
                     styles={customStyles}
-                    placeholder={`Select ${label.toLowerCase()}...`}
+                    placeholder={widget.placeholder || `Select ${label.toLowerCase()}...`}
                     classNamePrefix="react-select"
                 />
             );
@@ -521,7 +521,7 @@ const DynamicForm = ({
                     onChange={(selected) => handleChange(name, selected ? selected.value : null)}
                     isDisabled={isImmutable}
                     styles={customStyles}
-                    placeholder={`Select ${label.toLowerCase()}...`}
+                    placeholder={widget.placeholder || `Select ${label.toLowerCase()}...`}
                     classNamePrefix="react-select"
                 />
             );
@@ -633,7 +633,7 @@ const DynamicForm = ({
                     value={formData[name] ?? ''}
                     disabled={isImmutable}
                     onChange={(e) => handleChange(name, e.target.value)}
-                    placeholder={`Enter ${label.toLowerCase()}...`}
+                    placeholder={widget.placeholder || `Enter ${label.toLowerCase()}...`}
                     className={cn(
                         "w-full px-4 h-[50px] rounded-xl border text-base outline-none focus:ring-2 focus:ring-blue-500/20 transition-all",
                         isImmutable ? disabledBg : inputBg,
@@ -658,7 +658,7 @@ const DynamicForm = ({
                     value={formData[name] ?? ''}
                     disabled={isImmutable}
                     onChange={(e) => handleChange(name, e.target.value)}
-                    placeholder={`Enter ${label.toLowerCase()}...`}
+                    placeholder={widget.placeholder || `Enter ${label.toLowerCase()}...`}
                     rows={rows}
                     className={cn(
                         "w-full px-4 py-3 rounded-xl border text-base outline-none focus:ring-2 focus:ring-blue-500/20 transition-all",
@@ -695,7 +695,7 @@ const DynamicForm = ({
                     // Don't convert immediately to allow typing decimals/negatives, convert on submit
                     handleChange(name, val);
                 }}
-                placeholder={`Enter ${label.toLowerCase()}...`}
+                placeholder={widget.placeholder || `Enter ${label.toLowerCase()}...`}
                 className={cn(
                     "w-full px-4 h-[50px] rounded-xl border text-base outline-none focus:ring-2 focus:ring-blue-500/20 transition-all",
                     isImmutable ? disabledBg : inputBg,

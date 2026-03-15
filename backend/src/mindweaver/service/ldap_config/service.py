@@ -99,13 +99,13 @@ class LdapConfigService(ProjectScopedService[LdapConfig]):
         return {
             "server_url": {"order": 3, "placeholder": "ldap://example.com:389"},
             "verify_ssl": {"order": 4, "type": "boolean"},
-            "bind_dn": {"order": 5, "placeholder": "cn=admin,dc=example,dc=com"},
+            "bind_dn": {"order": 5, "placeholder": "uid=admin,ou=system,dc=example,dc=com"},
             "bind_password": {"order": 6, "type": "password"},
             "user_search_base": {"order": 7, "placeholder": "ou=users,dc=example,dc=com"},
-            "user_search_filter": {"order": 8, "placeholder": "(uid={0})"},
+            "user_search_filter": {"order": 8, "placeholder": "(&(objectClass=inetOrgPerson)(uid={0}))"},
             "username_attr": {"order": 9, "placeholder": "uid"},
             "group_search_base": {"order": 10, "placeholder": "ou=groups,dc=example,dc=com"},
-            "group_search_filter": {"order": 11, "placeholder": "(objectClass=groupOfNames)"},
+            "group_search_filter": {"order": 11, "placeholder": "(&(objectClass=groupOfNames)(cn={0}))"},
             "group_member_attr": {"order": 12, "placeholder": "member"},
         }
 
