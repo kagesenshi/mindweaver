@@ -19,7 +19,15 @@ Inherit from `PlatformService`.
 - Specify `template_directory` and `state_model`.
 - Implement `poll_status` to track health (usually via ArgoCD Application and Pod status).
 - Implement `template_vars` to resolve secrets and connection strings.
-- Define `widgets` for the `DynamicForm`.
+- Define `widgets` for the `DynamicForm`. Always use the `type` key for widget types.
+    ```python
+    @classmethod
+    def widgets(cls) -> dict[str, Any]:
+        return {
+            "password": {"type": "password"},
+            "parameters": {"type": "key-value"},
+        }
+    ```
 
 ### Create Templates (`templates/`)
 - `10-application.yml.j2`: ArgoCD Application manifest.

@@ -19,7 +19,7 @@ Widgets control how fields are rendered in the dynamic form. The backend infers 
 -   **Textarea**: Default for fields named `description`, `config`, `prompt`, `sql`.
 
 ### Manual Configuration
-Override the `widgets()` class method in your Service to customize widgets.
+Override the `widgets()` class method in your Service to customize widgets. Use the `type` key to specify the widget.
 
 ```python
 @classmethod
@@ -32,7 +32,7 @@ def widgets(cls) -> Dict[str, Any]:
 
 ### Available Widgets
 
-| Widget Type | Description | Configuration Options |
+| Widget Type (use as `type`) | Description | Configuration Options |
 | :--- | :--- | :--- |
 | `text` | Single line text input | `label`, `default_value` |
 | `textarea` | Multi-line text area | `label`, `rows` (implicit) |

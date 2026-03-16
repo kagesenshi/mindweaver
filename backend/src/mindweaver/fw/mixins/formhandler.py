@@ -49,7 +49,8 @@ class FormHandlerMixin:
         return redefine_model(
             f"Update {model_class.__name__}",
             schema_class,
-            exclude=cls.internal_fields(),
+            exclude=cls.internal_fields() + cls.immutable_fields(),
+            optional=["__ALL__"],
         )
 
     @classmethod

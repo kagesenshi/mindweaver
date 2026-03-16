@@ -10,8 +10,12 @@ from mindweaver.config import settings
 from mindweaver.app import app
 from sqlmodel import SQLModel, Session, select
 import mindweaver.fw.model
-import mindweaver.service.data_source
-from mindweaver.service.data_source import DataSource
+from mindweaver.datasource_service import (
+    DatabaseSource,
+    WebSource,
+    APISource,
+    StreamingSource,
+)
 from mindweaver.crypto import generate_fernet_key, rotate_key, EncryptionError
 import asyncio
 import time
@@ -154,48 +158,54 @@ def handle_crypto_rotate_key(args: CryptoRotateKeyArgs):
 
     try:
         with Session(engine) as session:
-            # Fetch all data sources
-            statement = select(DataSource).where(DataSource.type == "Database")
-            data_sources = session.exec(statement).all()
-
-            if not data_sources:
-                logger.info("No database data sources found.")
-                return
-
-            logger.info(f"Found {len(data_sources)} database data source(s) to rotate.")
-
+            source_models = [DatabaseSource, WebSource, APISource, StreamingSource]
             rotated_count = 0
-            for ds in data_sources:
-                try:
-                    # Check if parameters contain a password
-                    if ds.parameters and "password" in ds.parameters:
-                        encrypted_password = ds.parameters["password"]
-                        if encrypted_password:
-                            # Rotate the password
-                            new_encrypted_password = rotate_key(
-                                args.old_key, args.new_key, encrypted_password
+            total_count = 0
+
+            for model_cls in source_models:
+                statement = select(model_cls)
+                sources = session.exec(statement).all()
+                total_count += len(sources)
+
+                for ds in sources:
+                    try:
+                        # 1. Rotate the main password field if it exists
+                        if ds.password:
+                            ds.password = rotate_key(
+                                args.old_key, args.new_key, ds.password
                             )
-                            # Update the data source
-                            ds.parameters["password"] = new_encrypted_password
                             session.add(ds)
                             rotated_count += 1
                             logger.info(
-                                f"Rotated key for data source: {ds.name} (ID: {ds.id})"
+                                f"Rotated password for {model_cls.__name__}: {ds.name} (ID: {ds.id})"
                             )
-                except EncryptionError as e:
-                    logger.error(
-                        f"Failed to rotate key for data source {ds.name} (ID: {ds.id}): {str(e)}"
-                    )
-                except Exception as e:
-                    logger.error(
-                        f"Unexpected error rotating key for data source {ds.name} (ID: {ds.id}): {str(e)}"
-                    )
+
+                        # 2. Rotate passwords in parameters if they exist (legacy support)
+                        if ds.parameters and "password" in ds.parameters:
+                            encrypted_password = ds.parameters["password"]
+                            if encrypted_password:
+                                ds.parameters["password"] = rotate_key(
+                                    args.old_key, args.new_key, encrypted_password
+                                )
+                                session.add(ds)
+                                rotated_count += 1
+                                logger.info(
+                                    f"Rotated parameter password for {model_cls.__name__}: {ds.name} (ID: {ds.id})"
+                                )
+                    except EncryptionError as e:
+                        logger.error(
+                            f"Failed to rotate key for {model_cls.__name__} {ds.name} (ID: {ds.id}): {str(e)}"
+                        )
+                    except Exception as e:
+                        logger.error(
+                            f"Unexpected error rotating key for {model_cls.__name__} {ds.name} (ID: {ds.id}): {str(e)}"
+                        )
 
             # Commit all changes
             session.commit()
             logger.info(f"\nKey rotation completed successfully!")
             logger.info(
-                f"Rotated {rotated_count} out of {len(data_sources)} data source(s)."
+                f"Rotated {rotated_count} operations out of {total_count} source(s)."
             )
             logger.info(f"\nIMPORTANT: Update MINDWEAVER_FERNET_KEY to the new key.")
 

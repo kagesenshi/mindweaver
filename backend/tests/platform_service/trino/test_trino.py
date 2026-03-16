@@ -27,7 +27,7 @@ def test_trino_resource_defaults():
     assert model.cpu_limit == 2.0
     assert model.mem_request == 2.0
     assert model.mem_limit == 4.0
-    assert model.data_source_ids == []
+    assert model.database_source_ids == []
     assert model.hms_ids == []
     assert model.hms_iceberg_ids == []
 
@@ -47,7 +47,7 @@ def test_trino_validation():
             "project_id": 1,
             "cpu_request": 1.0,
             "cpu_limit": 2.0,
-            "data_source_ids": [1],
+            "database_source_ids": [1],
         }
     )
     assert model.cpu_request == 1.0
@@ -102,7 +102,7 @@ def test_trino_validation():
                 "project_id": 1,
                 "hms_ids": [],
                 "hms_iceberg_ids": [],
-                "data_source_ids": [],
+                "database_source_ids": [],
             }
         )
     assert "At least one catalog" in str(excinfo.value)
@@ -120,7 +120,7 @@ async def test_trino_template_rendering(mock_service_dependencies):
         project_id=1,
         hms_ids=[10],
         hms_iceberg_ids=[11],
-        data_source_ids=[20],
+        database_source_ids=[20],
     )
 
     # Mock _resolve_namespace
@@ -154,14 +154,14 @@ async def test_trino_template_rendering(mock_service_dependencies):
     mock_hms_state.hms_uri = "thrift://hms-internal:9083"
     mock_hms_svc.platform_state.return_value = mock_hms_state
 
-    # Mock DataSourceService
+    # Mock DatabaseSourceService
     mock_ds_svc = AsyncMock()
     mock_ds_model = MagicMock()
     mock_ds_model.name = "mypsql"
-    mock_ds_model.driver = "postgresql"
+    mock_ds_model.engine = "postgresql"
     mock_ds_model.host = "postgres-host"
     mock_ds_model.port = 5432
-    mock_ds_model.resource = "mydb"
+    mock_ds_model.database = "mydb"
     mock_ds_model.login = "usr"
     mock_ds_model.password = "pass"
     mock_ds_model.parameters = {"param1": "val1"}
@@ -173,7 +173,7 @@ async def test_trino_template_rendering(mock_service_dependencies):
     session.exec.return_value = mock_result
 
     with patch("mindweaver.platform_service.trino.service.HiveMetastorePlatformService.get_service", AsyncMock(return_value=mock_hms_svc)), \
-         patch("mindweaver.platform_service.trino.service.DataSourceService.get_service", AsyncMock(return_value=mock_ds_svc)), \
+         patch("mindweaver.platform_service.trino.service.DatabaseSourceService.get_service", AsyncMock(return_value=mock_ds_svc)), \
          patch("mindweaver.platform_service.trino.service.S3StorageService.get_service", AsyncMock(return_value=mock_s3_svc)):
         
         vars = await svc.template_vars(model)
@@ -212,7 +212,7 @@ async def test_trino_template_rendering(mock_service_dependencies):
 
     # Render manifest
     with patch("mindweaver.platform_service.trino.service.HiveMetastorePlatformService.get_service", AsyncMock(return_value=mock_hms_svc)), \
-         patch("mindweaver.platform_service.trino.service.DataSourceService.get_service", AsyncMock(return_value=mock_ds_svc)):
+         patch("mindweaver.platform_service.trino.service.DatabaseSourceService.get_service", AsyncMock(return_value=mock_ds_svc)):
         full_manifest = await svc.render_manifests(model)
         
     try:
@@ -325,21 +325,20 @@ async def test_trino_catalog_filtering(mock_service_dependencies):
     model = TrinoPlatform(
         name="trino-test",
         project_id=1,
-        data_source_ids=[1, 2],
+        database_source_ids=[1],
     )
 
-    with patch("mindweaver.platform_service.trino.service.DataSourceService.get_service", AsyncMock(return_value=mock_ds_svc)):
+    with patch("mindweaver.platform_service.trino.service.DatabaseSourceService.get_service", AsyncMock(return_value=mock_ds_svc)):
         vars = await svc.template_vars(model)
 
         # Verify only mysql-ds is in catalogs
         catalog_names = [c["catalog"] for c in vars["catalogs"]]
         assert "mysql-ds" in catalog_names
-        assert "web-ds" not in catalog_names
 
         manifest = await svc.render_manifests(model)
         assert "mysql-ds" in manifest
         assert "web-ds" not in manifest
-from mindweaver.service.data_source.service import DataSourceService
+from mindweaver.datasource_service.database_source import DatabaseSourceService
 from mindweaver.service.ldap_config.model import LdapConfig
 
 

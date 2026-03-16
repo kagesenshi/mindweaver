@@ -13,18 +13,59 @@ def camel_to_snake(name):
     return re.sub("([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
 
 
-def redefine_model(name, Model: type[BaseModel], *, exclude=None) -> type[BaseModel]:
+from typing import Any, Optional, Union
+
+
+def redefine_model(
+    name,
+    Model: type[BaseModel],
+    *,
+    exclude: Optional[list[str]] = None,
+    optional: Optional[list[str]] = None,
+) -> type[BaseModel]:
     """
-    This function provide a Pydantic model based on schema class,
-    with specified fields removed.
+    Creates a new Pydantic model by redefining an existing one.
+
+    Args:
+        name: The name of the new model class.
+        Model: The source Pydantic model to base the new one on.
+        exclude: A list of field names to remove from the new model.
+        optional: A list of field names to make optional in the new model.
+            If the list contains the string "__ALL__", all fields in the 
+            redefined model will be made optional and default to None.
+
+    Returns:
+        A new Pydantic model class with the requested modifications.
     """
     exclude = exclude or []
+    optional = optional or []
 
-    fields = {
-        fname: (field.annotation, field)
-        for fname, field in Model.model_fields.items()
-        if fname not in exclude
-    }
+    make_all_optional = "__ALL__" in optional
+    optional_fields = optional if not make_all_optional else []
+
+    fields = {}
+    for fname, field in Model.model_fields.items():
+        if fname in exclude:
+            continue
+
+        annotation = field.annotation
+        default = field.default
+
+        if make_all_optional or fname in optional_fields:
+            # Check if it's already optional
+            is_already_optional = (
+                hasattr(annotation, "__origin__")
+                and annotation.__origin__ is Union
+                and type(None) in annotation.__args__
+            )
+            if not is_already_optional:
+                annotation = Optional[annotation]
+
+            # Use None as default for all fields in update model
+            default = None
+
+        # In pydantic v2, we can just pass the new annotation and default
+        fields[fname] = (annotation, default)
 
     model = create_model(name, **fields)
     return model

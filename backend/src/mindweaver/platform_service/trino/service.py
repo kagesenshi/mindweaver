@@ -17,7 +17,7 @@ from mindweaver.fw.model import ts_now
 from mindweaver.platform_service.hive_metastore.service import (
     HiveMetastorePlatformService,
 )
-from mindweaver.service.data_source.service import DataSourceService
+from mindweaver.datasource_service import DatabaseSourceService
 from mindweaver.service.s3_storage.service import S3StorageService
 from mindweaver.service.ldap_config.service import LdapConfigService
 from mindweaver.crypto import decrypt_password
@@ -112,11 +112,11 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
                 "field": "id",
                 "multiselect": True,
             },
-            "data_source_ids": {
+            "database_source_ids": {
                 "order": 22,
-                "label": "Data Sources",
+                "label": "Database Sources",
                 "type": "relationship",
-                "endpoint": "/api/v1/data_sources",
+                "endpoint": "/api/v1/database-sources",
                 "field": "id",
                 "multiselect": True,
             },
@@ -148,9 +148,9 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
             hms_model = await hms_svc.get(model.hms_ids[0])
             return hms_model.name
 
-        if model.data_source_ids:
-            ds_svc = await DataSourceService.get_service(self.request, self.session)
-            ds_model = await ds_svc.get(model.data_source_ids[0])
+        if model.database_source_ids:
+            ds_svc = await DatabaseSourceService.get_service(self.request, self.session)
+            ds_model = await ds_svc.get(model.database_source_ids[0])
             return ds_model.name
 
         return None
@@ -282,21 +282,15 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
 
                 catalogs.append(catalog)
 
-        # 2. Resolve Data Sources
-        if model.data_source_ids:
-            ds_svc = await DataSourceService.get_service(self.request, self.session)
-            for ds_id in model.data_source_ids:
+        # 2. Resolve Database Sources
+        if model.database_source_ids:
+            ds_svc = await DatabaseSourceService.get_service(self.request, self.session)
+            for ds_id in model.database_source_ids:
                 ds = await ds_svc.get(ds_id)
 
-                if ds.driver not in self.SUPPORTED_CATALOG_DRIVERS:
-                    logger.warning(
-                        f"Skipping data source {ds.name} with unsupported driver {ds.driver} for Trino catalog"
-                    )
-                    continue
-
-                # Default mapping of drivers to trino catalog connectors
+                # Default mapping of engines to trino catalog connectors
                 # Some typical ones: postgresql -> postgresql, mysql -> mysql
-                connector_name = ds.driver
+                connector_name = ds.engine
 
                 catalog = {
                     "catalog": ds.name,
@@ -306,11 +300,11 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
                 }
 
                 # Common properties
-                jdbc_prefix = f"jdbc:{ds.driver}://"
+                jdbc_prefix = f"jdbc:{ds.engine}://"
                 host_port = f"{ds.host}" + (f":{ds.port}" if ds.port else "")
-                resource_path = f"/{ds.resource}" if ds.resource else ""
+                resource_path = f"/{ds.database}" if ds.database else ""
 
-                if ds.driver in ("postgresql", "mysql"):
+                if ds.engine in ("postgresql", "mysql"):
                     catalog["properties"][
                         "connection-url"
                     ] = f"{jdbc_prefix}{host_port}{resource_path}"

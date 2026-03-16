@@ -145,7 +145,7 @@ body {
     @apply uppercase tracking-[0.2em] text-slate-500 font-bold;
     padding-left: 1rem !important;
     padding-right: 1rem !important;
-    margin-top: 3rem !important;
+    margin-top: 1.5rem !important;
     margin-bottom: 0.5rem !important;
     font-size: var(--font-size-base);
   }

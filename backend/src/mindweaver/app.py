@@ -3,11 +3,16 @@
 
 import fastapi
 from .config import settings, logger
-from .service.data_source import router as ds_router
 from .service.s3_storage import router as s3_router
 from .service.ldap_config import router as ldap_config_router
 from .service.project import router as project_router
 from .service.k8s_cluster import router as k8s_cluster_router
+from .datasource_service import (
+    db_router,
+    web_router,
+    api_router,
+    streaming_router,
+)
 from .fw.auth import (
     router as auth_router,
     user_router,
@@ -183,4 +188,7 @@ app.include_router(s3_router, prefix="/api/v1")
 app.include_router(ldap_config_router, prefix="/api/v1")
 
 if settings.experimental_data_source:
-    app.include_router(ds_router, prefix="/api/v1")
+    app.include_router(db_router, prefix="/api/v1/database-sources")
+    app.include_router(web_router, prefix="/api/v1/web-sources")
+    app.include_router(api_router, prefix="/api/v1/api-sources")
+    app.include_router(streaming_router, prefix="/api/v1/streaming-sources")

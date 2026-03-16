@@ -61,54 +61,61 @@ export const useProjects = () => {
 };
 
 
-export const useDataSources = () => {
-    const [dataSources, setDataSources] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
+const createGenericSourceHook = (endpoint) => {
+    return () => {
+        const [items, setItems] = useState([]);
+        const [loading, setLoading] = useState(false);
+        const [error, setError] = useState(null);
 
-    const fetchDataSources = useCallback(async () => {
-        setLoading(true);
-        try {
-            const response = await apiClient.get('/data_sources');
-            setDataSources(response.data.data || []);
-        } catch (err) {
-            setError(err);
-        } finally {
-            setLoading(false);
-        }
-    }, []);
+        const fetchItems = useCallback(async () => {
+            setLoading(true);
+            try {
+                const response = await apiClient.get(endpoint);
+                setItems(response.data.data || []);
+            } catch (err) {
+                setError(err);
+            } finally {
+                setLoading(false);
+            }
+        }, []);
 
-    const createDataSource = useCallback(async (data) => {
-        const response = await apiClient.post('/data_sources', data);
-        await fetchDataSources();
-        return response.data;
-    }, [fetchDataSources]);
+        const createItem = useCallback(async (data) => {
+            const response = await apiClient.post(endpoint, data);
+            await fetchItems();
+            return response.data;
+        }, [fetchItems]);
 
-    const updateDataSource = useCallback(async (id, data) => {
-        const response = await apiClient.put(`/data_sources/${id}`, data);
-        await fetchDataSources();
-        return response.data;
-    }, [fetchDataSources]);
+        const updateItem = useCallback(async (id, data) => {
+            const response = await apiClient.put(`${endpoint}/${id}`, data);
+            await fetchItems();
+            return response.data;
+        }, [fetchItems]);
 
-    const deleteDataSource = useCallback(async (id, confirmName) => {
-        await apiClient.delete(`/data_sources/${id}`, {
-            headers: { 'X-RESOURCE-NAME': confirmName }
-        });
-        await new Promise(resolve => setTimeout(resolve, 500));
-        await fetchDataSources();
-    }, [fetchDataSources]);
+        const deleteItem = useCallback(async (id, confirmName) => {
+            await apiClient.delete(`${endpoint}/${id}`, {
+                headers: { 'X-RESOURCE-NAME': confirmName }
+            });
+            await new Promise(resolve => setTimeout(resolve, 500));
+            await fetchItems();
+        }, [fetchItems]);
 
-    const testConnection = useCallback(async (id) => {
-        const response = await apiClient.post(`/data_sources/${id}/_test-connection`);
-        return response.data;
-    }, []);
+        const testConnection = useCallback(async (id) => {
+            const response = await apiClient.post(`${endpoint}/${id}/_test-connection`);
+            return response.data;
+        }, []);
 
-    useEffect(() => {
-        fetchDataSources();
-    }, [fetchDataSources]);
+        useEffect(() => {
+            fetchItems();
+        }, [fetchItems]);
 
-    return { dataSources, loading, error, fetchDataSources, createDataSource, updateDataSource, deleteDataSource, testConnection };
+        return { items, loading, error, fetchItems, createItem, updateItem, deleteItem, testConnection };
+    };
 };
+
+export const useDatabaseSources = createGenericSourceHook('/database-sources');
+export const useWebSources = createGenericSourceHook('/web-sources');
+export const useApiSources = createGenericSourceHook('/api-sources');
+export const useStreamingSources = createGenericSourceHook('/streaming-sources');
 
 export const usePgSql = () => {
     const [platforms, setPlatforms] = useState([]);

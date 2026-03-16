@@ -11,7 +11,7 @@ from sqlmodel import SQLModel
 # Import all models for autogenerate support
 from mindweaver.service.project.model import Project
 from mindweaver.service.k8s_cluster.model import K8sClusterStatus
-from mindweaver.service.data_source.model import DataSource
+from mindweaver.datasource_service import DatabaseSource, WebSource, APISource, StreamingSource
 from mindweaver.service.s3_storage.model import S3Storage
 from mindweaver.platform_service.pgsql.model import PgSqlPlatform, PgSqlPlatformState
 from mindweaver.platform_service.hive_metastore.model import HiveMetastorePlatform, HiveMetastorePlatformState

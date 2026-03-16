@@ -31,8 +31,8 @@ class TrinoPlatform(PlatformBase, table=True):
     hms_ids: list[int] = Field(default_factory=list, sa_type=JSONType())
     hms_iceberg_ids: list[int] = Field(default_factory=list, sa_type=JSONType())
 
-    # Data sources for Trino catalog
-    data_source_ids: list[int] = Field(default_factory=list, sa_type=JSONType())
+    # Database sources for Trino catalog
+    database_source_ids: list[int] = Field(default_factory=list, sa_type=JSONType())
 
     # LDAP configuration
     ldap_config_id: Optional[int] = Field(default=None, foreign_key="mw_ldap_config.id")
@@ -64,9 +64,9 @@ class TrinoPlatform(PlatformBase, table=True):
             )
 
         # 2. At least one catalog check
-        if not (self.hms_ids or self.hms_iceberg_ids or self.data_source_ids):
+        if not (self.hms_ids or self.hms_iceberg_ids or self.database_source_ids):
             raise ValueError(
-                "At least one catalog (Hive Metastore, Iceberg, or Data Source) must be defined"
+                "At least one catalog (Hive Metastore, Iceberg, or Database Source) must be defined"
             )
 
         return self
