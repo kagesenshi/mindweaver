@@ -166,7 +166,10 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
 
     async def validate_data(self, data: Any) -> Any:
         try:
-            self.model_class().model_validate(data.model_dump(), from_attributes=True)
+            # Only perform full model validation if this looks like a full model creation.
+            # We check if the class name starts with "Update" which is how redefine_model names update models.
+            if not data.__class__.__name__.startswith("Update"):
+                self.model_class().model_validate(data.model_dump(), from_attributes=True)
         except ValidationError as e:
             error = e.errors()[0]
             msg = error["msg"]

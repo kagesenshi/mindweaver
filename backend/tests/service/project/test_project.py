@@ -109,13 +109,12 @@ def test_project_scoping(client: TestClient, test_cluster: dict):
     # Create a data source in P1
     headers_p1 = {"X-Project-ID": str(p1["id"])}
     resp1 = client.post(
-        "/api/v1/data_sources",
+        "/api/v1/web-sources",
         json={
             "project_id": p1["id"],
             "name": "ds1",
             "title": "DS1",
-            "driver": "web",
-            "parameters": {"base_url": "http://example.com", "api_key": "key"},
+            "url": "http://example.com",
         },
         headers=headers_p1,
     )
@@ -124,33 +123,33 @@ def test_project_scoping(client: TestClient, test_cluster: dict):
     # Create a data source in P2
     headers_p2 = {"X-Project-ID": str(p2["id"])}
     resp2 = client.post(
-        "/api/v1/data_sources",
+        "/api/v1/web-sources",
         json={
             "project_id": p2["id"],
             "name": "ds2",
             "title": "DS2",
-            "driver": "web",
-            "parameters": {"base_url": "http://example.com", "api_key": "key"},
+            "url": "http://example.com",
         },
         headers=headers_p2,
     )
     assert resp2.status_code == 200, resp2.json()
 
     # List data sources in P1
-    resp_p1 = client.get("/api/v1/data_sources", headers=headers_p1)
+    resp_p1 = client.get("/api/v1/web-sources", headers=headers_p1)
     assert resp_p1.status_code == 200
     recs_p1 = resp_p1.json()["data"]
     assert len(recs_p1) == 1
     assert recs_p1[0]["name"] == "ds1"
+    assert recs_p1[0]["url"] == "http://example.com"
 
     # List data sources in P2
-    resp_p2 = client.get("/api/v1/data_sources", headers=headers_p2)
+    resp_p2 = client.get("/api/v1/web-sources", headers=headers_p2)
     assert resp_p2.status_code == 200
     recs_p2 = resp_p2.json()["data"]
     assert len(recs_p2) == 1
     assert recs_p2[0]["name"] == "ds2"
 
-    resp_all = client.get("/api/v1/data_sources")
+    resp_all = client.get("/api/v1/web-sources")
     assert resp_all.status_code == 200
     recs_all = resp_all.json()["data"]
 

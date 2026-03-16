@@ -41,15 +41,15 @@ class FormHandlerMixin:
     def updatemodel_class(cls) -> Type[BaseModel]:
         """
         This function provide a Pydantic model based on schema class,
-        with internal fields and immutable fields removed
-        for use in update view/operation
+        with internal fields removed for use in update view/operation.
+        Immutable fields are included so they can be validated and checked for changes.
         """
         model_class = cls.model_class()
         schema_class = cls.schema_class()
         return redefine_model(
             f"Update {model_class.__name__}",
             schema_class,
-            exclude=cls.internal_fields() + cls.immutable_fields(),
+            exclude=cls.internal_fields(),
             optional=["__ALL__"],
         )
 
