@@ -20,6 +20,7 @@ class LdapConfigSchema(BaseModel):
     group_search_base: Optional[str] = None
     group_search_filter: Optional[str] = None
     group_member_attr: Optional[str] = None
+    user_group_attr: Optional[str] = None
     verify_ssl: bool = True
 
     @field_validator("server_url")
@@ -52,4 +53,5 @@ class LdapConfig(ProjectScopedNamedBase, table=True):
     group_search_base: Optional[str] = Field(default=None)
     group_search_filter: Optional[str] = Field(default=None)
     group_member_attr: Optional[str] = Field(default=None)
+    user_group_attr: Optional[str] = Field(default=None)
     verify_ssl: bool = Field(default=True)

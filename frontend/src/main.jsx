@@ -19,6 +19,7 @@ const S3StoragePage = lazy(() => import('./pages/s3_storage/Page'))
 const LdapConfigPage = lazy(() => import('./pages/ldap_config/Page'))
 const HiveMetastorePage = lazy(() => import('./pages/hive_metastore/Page'))
 const TrinoPage = lazy(() => import('./pages/trino/Page'))
+const SupersetPage = lazy(() => import('./pages/superset/Page'))
 
 import { ProtectedRoute } from './components/ProtectedRoute'
 
@@ -80,6 +81,10 @@ const router = createBrowserRouter([
       {
         path: 'platform/trino',
         element: <TrinoPage />,
+      },
+      {
+        path: 'platform/superset',
+        element: <SupersetPage />,
       },
       {
         path: 'platform/:service',

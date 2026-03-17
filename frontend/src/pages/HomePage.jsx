@@ -6,9 +6,10 @@ import {
     ChevronRight,
     Server,
     Boxes,
-    Wind
+    Wind,
+    LayoutDashboard
 } from 'lucide-react';
-import { usePgSql, useHiveMetastore, useTrino } from '../hooks/useResources';
+import { usePgSql, useHiveMetastore, useTrino, useSuperset } from '../hooks/useResources';
 import PageLayout from '../components/PageLayout';
 import ListingItem from '../components/ListingItem';
 
@@ -17,15 +18,17 @@ const HomePage = () => {
     const { platforms: pgsqlPlatforms, loading: pgsqlLoading } = usePgSql();
     const { platforms: hmsPlatforms, loading: hmsLoading } = useHiveMetastore();
     const { platforms: trinoPlatforms, loading: trinoLoading } = useTrino();
+    const { platforms: supersetPlatforms, loading: supersetLoading } = useSuperset();
     const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
 
-    const loading = pgsqlLoading || hmsLoading || trinoLoading;
+    const loading = pgsqlLoading || hmsLoading || trinoLoading || supersetLoading;
 
     const allInstances = [
         ...pgsqlPlatforms.map(p => ({ ...p, type: 'pgsql' })),
         ...hmsPlatforms.map(p => ({ ...p, type: 'hms' })),
-        ...trinoPlatforms.map(p => ({ ...p, type: 'trino' }))
+        ...trinoPlatforms.map(p => ({ ...p, type: 'trino' })),
+        ...supersetPlatforms.map(p => ({ ...p, type: 'superset' }))
     ];
 
     const filteredInstances = allInstances.filter(inst => {
@@ -55,14 +58,19 @@ const HomePage = () => {
                 {filteredInstances.map(inst => (
                     <ListingItem
                         key={`${inst.type}-${inst.id}`}
-                        icon={inst.type === 'hms' ? Boxes : inst.type === 'trino' ? Server : Database}
+                        icon={inst.type === 'hms' ? Boxes : inst.type === 'trino' ? Wind : inst.type === 'superset' ? LayoutDashboard : Database}
                         title={inst.title || inst.name}
                         badges={[{ 
-                            text: inst.type === 'hms' ? "Hive Metastore" : inst.type === 'trino' ? "Trino Cluster" : "CloudNative PG", 
+                            text: inst.type === 'hms' ? "Hive Metastore" : inst.type === 'trino' ? "Trino Cluster" : inst.type === 'superset' ? "Apache Superset" : "CloudNative PG", 
                             variant: "mw-badge-neutral" 
                         }]}
                         subtitle={inst.id}
-                        onClick={() => navigate(inst.type === 'hms' ? '/platform/hive-metastore' : inst.type === 'trino' ? '/platform/trino' : '/platform/pgsql')}
+                        onClick={() => {
+                            if (inst.type === 'hms') navigate('/platform/hive-metastore');
+                            else if (inst.type === 'trino') navigate('/platform/trino');
+                            else if (inst.type === 'superset') navigate('/platform/superset');
+                            else navigate('/platform/pgsql');
+                        }}
                         actions={
                             <div className="flex items-center gap-12">
                                 <div className="flex items-center gap-2 text-blue-500/70">

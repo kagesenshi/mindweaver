@@ -6,6 +6,9 @@ from .mindweaver import MindWeaverReleaser
 from .hms import HMSReleaser
 
 
+from .superset import SupersetReleaser
+
+
 @click.group()
 @click.option("--dry-run", is_flag=True, help="Show commands without executing them")
 @click.option("--registry", help="Alternative image registry URL")
@@ -30,6 +33,12 @@ def mindweaver():
 @cli.group()
 def hms():
     """Hive Metastore release commands"""
+    pass
+
+
+@cli.group()
+def superset():
+    """Superset release commands"""
     pass
 
 
@@ -84,6 +93,7 @@ def create_command(group, releaser_class):
 
 create_command(mindweaver, MindWeaverReleaser)
 create_command(hms, HMSReleaser)
+create_command(superset, SupersetReleaser)
 
 
 def main():

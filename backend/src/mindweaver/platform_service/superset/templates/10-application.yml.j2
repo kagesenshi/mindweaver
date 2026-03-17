@@ -1,0 +1,128 @@
+# SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
+# SPDX-License-Identifier: AGPLv3+
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ name }}
+  namespace: argocd
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: 'https://apache.github.io/superset'
+    chart: superset
+    targetRevision: {{ chart_version }}
+    helm:
+      values: |
+        postgresql:
+          enabled: false
+        
+        image:
+          {% if override_image %}
+          repository: "{{ image.rsplit(':', 1)[0] if ':' in image else image }}"
+          tag: "{{ image.split(':')[-1] if ':' in image else 'latest' }}"
+          {% else %}
+          repository: ghcr.io/kagesenshi/mindweaver/superset
+          tag: 5.0.0-rev.3
+          {% endif %}
+          pullPolicy: IfNotPresent
+        
+        service:
+          type: NodePort
+          port: 8088
+          nodePort: 
+            http: ~
+        
+        redis:
+          enabled: true # Internal redis for caching/celery is fine for now
+          image:
+            repository: bitnamilegacy/redis
+        
+        supersetNode:
+          connections:
+            db_type: "postgresql+asyncpg"
+            db_host: "{{ db_host }}"
+            db_port: "{{ db_port }}"
+            db_user: "{{ db_user }}"
+            db_pass: "{{ db_pass }}"
+            db_name: "{{ db_name }}"
+          resources:
+            requests:
+              cpu: {{ cpu_request }}
+              memory: {{ mem_request }}Gi
+            limits:
+              cpu: {{ cpu_limit }}
+              memory: {{ mem_limit }}Gi
+
+        supersetWorker:
+          resources:
+            requests:
+              cpu: {{ cpu_request }}
+              memory: {{ mem_request }}Gi
+            limits:
+              cpu: {{ cpu_limit }}
+              memory: {{ mem_limit }}Gi
+
+        init:
+          adminUser:
+            username: admin
+            password: {{ admin_password }}
+          {% if datasources %}
+          loadExamples: false
+          {% endif %}
+
+        configOverrides:
+          secret_key: |
+            SECRET_KEY = '{{ superset_secret_key }}'
+          {% if ldap %}
+          ldap: |
+            from flask_appbuilder.security.manager import AUTH_LDAP
+            AUTH_TYPE = AUTH_LDAP
+            AUTH_LDAP_SERVER = "{{ ldap.server_url }}"
+            AUTH_LDAP_BIND_USER = "{{ ldap.bind_dn }}"
+            AUTH_LDAP_BIND_PASSWORD = "{{ ldap.bind_password }}"
+            AUTH_LDAP_SEARCH = "{{ ldap.user_search_base }}"
+            AUTH_LDAP_UID_FIELD = "{{ ldap.username_attr }}"
+            {% if ldap.user_group_attr %}
+            AUTH_LDAP_GROUP_FIELD = "{{ ldap.user_group_attr }}"
+            {% endif %}
+            # Allow users who are authenticated via LDAP to be registered in Superset
+            AUTH_USER_REGISTRATION = True
+            AUTH_USER_REGISTRATION_ROLE = "Public"
+            AUTH_LDAP_ALLOW_LOCAL_DB = True
+            PERMANENT_SESSION_LIFETIME = 1800
+          {% endif %}
+          {% if auth_role_mapping %}
+          role_mapping: |
+            AUTH_ROLES_MAPPING = {
+              {% for entity, roles in auth_role_mapping.items() %}
+              "{{ entity }}": {{ roles | tojson }},
+              {% endfor %}
+            }
+
+            AUTH_ROLES_SYNC_AT_LOGIN = True
+          {% endif %}
+
+        {% if datasources %}
+        extraConfigs:
+          import_datasources.yaml: |
+            databases:
+            {% for ds in datasources %}
+            - database_name: "{{ ds.database_name }}"
+              sqlalchemy_uri: "{{ ds.sqlalchemy_uri }}"
+              expose_in_sqllab: true
+            {% endfor %}
+        {% endif %}
+
+
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: {{ namespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true

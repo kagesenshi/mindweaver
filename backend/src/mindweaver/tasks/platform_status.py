@@ -8,6 +8,7 @@ from mindweaver.platform_service.base import PlatformService
 from mindweaver.platform_service.pgsql import PgSqlPlatformService
 from mindweaver.platform_service.hive_metastore import HiveMetastorePlatformService
 from mindweaver.platform_service.trino import TrinoPlatformService
+from mindweaver.platform_service.superset import SupersetPlatformService
 from mindweaver.config import logger
 from typing import Type
 from .base import run_async
@@ -21,7 +22,12 @@ def poll_all_platforms():
     # We need to discover all subclasses of PlatformService
     # and for each, find active platforms.
 
-    services = [PgSqlPlatformService, HiveMetastorePlatformService, TrinoPlatformService]
+    services = [
+        PgSqlPlatformService,
+        HiveMetastorePlatformService,
+        TrinoPlatformService,
+        SupersetPlatformService,
+    ]
 
     for svc_cls in services:
         run_async(_trigger_service_polling(svc_cls))
@@ -56,6 +62,7 @@ async def _poll_platform_status(service_class_name: str, platform_id: int):
         "PgSqlPlatformService": PgSqlPlatformService,
         "HiveMetastorePlatformService": HiveMetastorePlatformService,
         "TrinoPlatformService": TrinoPlatformService,
+        "SupersetPlatformService": SupersetPlatformService,
     }
 
     svc_cls = mapping.get(service_class_name)

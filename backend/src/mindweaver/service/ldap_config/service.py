@@ -107,5 +107,6 @@ class LdapConfigService(ProjectScopedService[LdapConfig]):
             "group_search_base": {"order": 10, "placeholder": "ou=groups,dc=example,dc=com"},
             "group_search_filter": {"order": 11, "placeholder": "(&(objectClass=groupOfNames)(cn={0}))"},
             "group_member_attr": {"order": 12, "placeholder": "member"},
+            "user_group_attr": {"order": 13, "placeholder": "memberOf"},
         }
 

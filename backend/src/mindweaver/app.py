@@ -23,6 +23,7 @@ from .fw.auth import (
 from .platform_service.pgsql import router as pgsql_router
 from .platform_service.hive_metastore import router as hms_router
 from .platform_service.trino import router as trino_router
+from .platform_service.superset import router as superset_router
 from .fw.model import get_engine, get_session
 from sqlmodel import select
 
@@ -184,6 +185,7 @@ app.include_router(user_router, prefix="/api/v1")
 app.include_router(pgsql_router, prefix="/api/v1")
 app.include_router(hms_router, prefix="/api/v1")
 app.include_router(trino_router, prefix="/api/v1")
+app.include_router(superset_router, prefix="/api/v1")
 app.include_router(s3_router, prefix="/api/v1")
 app.include_router(ldap_config_router, prefix="/api/v1")
 
