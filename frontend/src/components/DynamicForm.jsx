@@ -263,6 +263,7 @@ const DynamicForm = ({
                     darkMode={darkMode}
                     isImmutable={isImmutable}
                     hasError={hasError}
+                    required={!!prop.required}
                 />
             );
         }
@@ -281,6 +282,7 @@ const DynamicForm = ({
                     darkMode={darkMode}
                     isImmutable={isImmutable}
                     hasError={hasError}
+                    required={!!prop.required}
                 />
             );
         }

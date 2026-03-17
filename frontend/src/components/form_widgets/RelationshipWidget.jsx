@@ -19,7 +19,8 @@ const RelationshipWidget = ({
     onChange, 
     darkMode, 
     isImmutable, 
-    hasError 
+    hasError,
+    required
 }) => {
     let options = relationshipOptions[name] || [];
     const isMultiselect = widget.multiselect || false;
@@ -63,6 +64,7 @@ const RelationshipWidget = ({
                 }
             }}
             isDisabled={isImmutable}
+            isClearable={!required}
             styles={getSelectStyles(darkMode, hasError)}
             placeholder={widget.placeholder || `Select ${label.toLowerCase()}...`}
             classNamePrefix="react-select"

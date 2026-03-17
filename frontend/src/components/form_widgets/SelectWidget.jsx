@@ -20,7 +20,8 @@ const SelectWidget = ({
     onChange,
     darkMode,
     isImmutable,
-    hasError
+    hasError,
+    required
 }) => {
     const staticOpts = widget.options || prop.enum?.map(e => ({ label: e, value: e })) || [];
     // Use dynamically-fetched endpoint options when available, else fall back to static
@@ -45,6 +46,7 @@ const SelectWidget = ({
             options={selectOptions}
             onChange={(selected) => onChange(name, selected ? selected.value : null)}
             isDisabled={isImmutable}
+            isClearable={!required}
             styles={getSelectStyles(darkMode, hasError)}
             placeholder={widget.placeholder || `Select ${label.toLowerCase()}...`}
             classNamePrefix="react-select"
