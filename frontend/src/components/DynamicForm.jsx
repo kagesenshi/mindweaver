@@ -1,269 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import apiClient from '../services/api';
 import { cn } from '../utils/cn';
-import { Save, X, RefreshCcw, AlertCircle, Plus, Trash2 } from 'lucide-react';
-import Select from 'react-select';
+import { Save, X, RefreshCcw, AlertCircle } from 'lucide-react';
+import KeyValueWidget from './form_widgets/KeyValueWidget';
+import AuthRoleMappingWidget from './form_widgets/AuthRoleMappingWidget';
+import RelationshipWidget from './form_widgets/RelationshipWidget';
+import SelectWidget from './form_widgets/SelectWidget';
+import RangeWidget from './form_widgets/RangeWidget';
+import BooleanWidget from './form_widgets/BooleanWidget';
+import PasswordWidget from './form_widgets/PasswordWidget';
+import TextAreaWidget from './form_widgets/TextAreaWidget';
+import InputWidget from './form_widgets/InputWidget';
 
-// Helper sub-component for Key-Value JSON fields
-const KeyValueWidget = ({ name, value, onChange, darkMode, isImmutable }) => {
-    // Initial load: convert object to array of items
-    const [items, setItems] = useState(() => {
-        if (value && typeof value === 'object' && !Array.isArray(value)) {
-            return Object.entries(value).map(([k, v]) => {
-                let type = 'string';
-                if (typeof v === 'number') {
-                    type = Number.isInteger(v) ? 'integer' : 'float';
-                } else if (typeof v === 'boolean') {
-                    type = 'boolean';
-                }
-                return { key: k, value: v, type };
-            });
-        }
-        return [];
-    });
-
-    const inputBg = darkMode ? "bg-slate-950 border-slate-800 text-slate-200" : "bg-slate-100 border-slate-200 text-slate-900";
-    const disabledBg = darkMode ? "bg-slate-900 border-slate-800 text-slate-500" : "bg-slate-200 border-slate-300 text-slate-400";
-
-    const handleItemChange = (index, field, val) => {
-        const newItems = [...items];
-        newItems[index][field] = val;
-
-        // If type changes, try to convert value
-        if (field === 'type') {
-            const currentVal = newItems[index].value;
-            if (val === 'integer') newItems[index].value = parseInt(currentVal) || 0;
-            else if (val === 'float') newItems[index].value = parseFloat(currentVal) || 0;
-            else if (val === 'boolean') newItems[index].value = (currentVal === 'true' || currentVal === true);
-            else newItems[index].value = String(currentVal);
-        }
-
-        setItems(newItems);
-        syncChanges(newItems);
-    };
-
-    const addItem = () => {
-        const newItems = [...items, { key: '', value: '', type: 'string' }];
-        setItems(newItems);
-    };
-
-    const removeItem = (index) => {
-        const newItems = items.filter((_, i) => i !== index);
-        setItems(newItems);
-        syncChanges(newItems);
-    };
-
-    const syncChanges = (currentItems) => {
-        const obj = {};
-        currentItems.forEach(item => {
-            if (item.key.trim()) {
-                let val = item.value;
-                if (item.type === 'integer') val = parseInt(val) || 0;
-                else if (item.type === 'float') val = parseFloat(val) || 0;
-                else if (item.type === 'boolean') val = (val === 'true' || val === true);
-                obj[item.key.trim()] = val;
-            }
-        });
-        onChange(name, obj);
-    };
-
-    const typeOptions = [
-        { label: 'String', value: 'string' },
-        { label: 'Integer', value: 'integer' },
-        { label: 'Float', value: 'float' },
-        { label: 'Boolean', value: 'boolean' },
-    ];
-
-    return (
-        <div className={cn(
-            "p-4 rounded-2xl border space-y-4",
-            darkMode ? "bg-slate-900/50 border-slate-800" : "bg-slate-50 border-slate-200"
-        )}>
-            {items.length === 0 && (
-                <p className="text-base text-slate-500 text-center py-2">No parameters defined</p>
-            )}
-
-            {items.map((item, index) => (
-                <div key={index} className="flex gap-2 items-start">
-                    <input
-                        type="text"
-                        placeholder="Key"
-                        value={item.key}
-                        disabled={isImmutable}
-                        onChange={(e) => handleItemChange(index, 'key', e.target.value)}
-                        className={cn(
-                            "flex-1 px-3 h-10 rounded-lg border text-base outline-none transition-all",
-                            isImmutable ? disabledBg : inputBg,
-                            isImmutable && "cursor-not-allowed opacity-80"
-                        )}
-                    />
-
-                    <select
-                        value={item.type}
-                        disabled={isImmutable}
-                        onChange={(e) => handleItemChange(index, 'type', e.target.value)}
-                        className={cn(
-                            "w-28 px-2 h-10 rounded-lg border text-base outline-none transition-all",
-                            isImmutable ? disabledBg : inputBg,
-                            isImmutable && "cursor-not-allowed opacity-80"
-                        )}
-                    >
-                        {typeOptions.map(opt => (
-                            <option key={opt.value} value={opt.value}>{opt.label}</option>
-                        ))}
-                    </select>
-
-                    {item.type === 'boolean' ? (
-                        <select
-                            value={item.value ? 'true' : 'false'}
-                            disabled={isImmutable}
-                            onChange={(e) => handleItemChange(index, 'value', e.target.value === 'true')}
-                            className={cn(
-                                "flex-1 px-3 h-10 rounded-lg border text-base outline-none transition-all",
-                                isImmutable ? disabledBg : inputBg,
-                                isImmutable && "cursor-not-allowed opacity-80"
-                            )}
-                        >
-                            <option value="true">True</option>
-                            <option value="false">False</option>
-                        </select>
-                    ) : (
-                        <input
-                            type={item.type === 'integer' || item.type === 'float' ? 'number' : 'text'}
-                            step={item.type === 'float' ? 'any' : undefined}
-                            placeholder="Value"
-                            value={item.value}
-                            disabled={isImmutable}
-                            onChange={(e) => handleItemChange(index, 'value', e.target.value)}
-                            className={cn(
-                                "flex-1 px-3 h-10 rounded-lg border text-base outline-none transition-all",
-                                isImmutable ? disabledBg : inputBg,
-                                isImmutable && "cursor-not-allowed opacity-80"
-                            )}
-                        />
-                    )}
-
-                    {!isImmutable && (
-                        <button
-                            type="button"
-                            onClick={() => removeItem(index)}
-                            className="p-2.5 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"
-                        >
-                            <Trash2 size={18} />
-                        </button>
-                    )}
-                </div>
-            ))}
-
-            {!isImmutable && (
-                <button
-                    type="button"
-                    onClick={addItem}
-                    className="flex items-center gap-2 text-base font-medium text-blue-500 hover:text-blue-600 transition-colors px-1"
-                >
-                    <Plus size={16} /> ADD PARAMETER
-                </button>
-            )}
-        </div>
-    );
-};
-
-// Helper sub-component for Auth-Role Mapping fields
-const AuthRoleMappingWidget = ({ name, value, roles = [], onChange, darkMode, isImmutable }) => {
-    // Initial load: convert array of objects to internal state
-    const [items, setItems] = useState(() => {
-        if (Array.isArray(value)) {
-            return value.map(item => ({
-                entity: item.entity || '',
-                role: item.role || (roles.length > 0 ? roles[0] : '')
-            }));
-        }
-        return [];
-    });
-
-    const inputBg = darkMode ? "bg-slate-950 border-slate-800 text-slate-200" : "bg-slate-100 border-slate-200 text-slate-900";
-    const disabledBg = darkMode ? "bg-slate-900 border-slate-800 text-slate-500" : "bg-slate-200 border-slate-300 text-slate-400";
-
-    const handleItemChange = (index, field, val) => {
-        const newItems = [...items];
-        newItems[index][field] = val;
-        setItems(newItems);
-        onChange(name, newItems);
-    };
-
-    const addItem = () => {
-        const newItems = [...items, { entity: '', role: roles.length > 0 ? roles[0] : '' }];
-        setItems(newItems);
-        onChange(name, newItems);
-    };
-
-    const removeItem = (index) => {
-        const newItems = items.filter((_, i) => i !== index);
-        setItems(newItems);
-        onChange(name, newItems);
-    };
-
-    return (
-        <div className={cn(
-            "p-4 rounded-2xl border space-y-4",
-            darkMode ? "bg-slate-900/50 border-slate-800" : "bg-slate-50 border-slate-200"
-        )}>
-            {items.length === 0 && (
-                <p className="text-base text-slate-500 text-center py-2">No mappings defined</p>
-            )}
-
-            {items.map((item, index) => (
-                <div key={index} className="flex gap-2 items-start">
-                    <input
-                        type="text"
-                        placeholder="Entity"
-                        value={item.entity}
-                        disabled={isImmutable}
-                        onChange={(e) => handleItemChange(index, 'entity', e.target.value)}
-                        className={cn(
-                            "flex-1 px-3 h-10 rounded-lg border text-base outline-none transition-all",
-                            isImmutable ? disabledBg : inputBg,
-                        )}
-                    />
-
-                    <select
-                        value={item.role}
-                        disabled={isImmutable}
-                        onChange={(e) => handleItemChange(index, 'role', e.target.value)}
-                        className={cn(
-                            "w-48 px-2 h-10 rounded-lg border text-base outline-none transition-all",
-                            isImmutable ? disabledBg : inputBg,
-                        )}
-                    >
-                        {roles.map(role => (
-                            <option key={role} value={role}>{role}</option>
-                        ))}
-                    </select>
-
-                    {!isImmutable && (
-                        <button
-                            type="button"
-                            onClick={() => removeItem(index)}
-                            className="p-2.5 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"
-                        >
-                            <Trash2 size={18} />
-                        </button>
-                    )}
-                </div>
-            ))}
-
-            {!isImmutable && (
-                <button
-                    type="button"
-                    onClick={addItem}
-                    className="flex items-center gap-2 text-base font-medium text-blue-500 hover:text-blue-600 transition-colors px-1"
-                >
-                    <Plus size={16} /> ADD MAPPING
-                </button>
-            )}
-        </div>
-    );
-};
 
 
 const DynamicForm = ({
@@ -491,205 +239,63 @@ const DynamicForm = ({
         // If editing and field is immutable, disable it
         const isImmutable = mode === 'edit' && (schema.immutable_fields || []).includes(name);
 
-        const customStyles = {
-            control: (base, state) => ({
-                ...base,
-                background: state.isDisabled
-                    ? (darkMode ? '#0f172a' : '#e2e8f0') // slate-900 : slate-200
-                    : (darkMode ? '#020617' : '#f1f5f9'), // slate-950 : slate-100
-                borderColor: state.isDisabled
-                    ? (darkMode ? '#1e293b' : '#cbd5e1') // slate-800 : slate-300
-                    : (hasError ? '#f43f5e' : (darkMode ? '#1e293b' : '#e2e8f0')), // rose-500 : slate-800 : slate-200
-                color: state.isDisabled
-                    ? (darkMode ? '#64748b' : '#94a3b8') // slate-500 : slate-400
-                    : (darkMode ? '#e2e8f0' : '#0f172a'),
-                minHeight: '50px',
-                borderRadius: '0.75rem',
-                boxShadow: state.isFocused ? '0 0 0 1px rgba(59, 130, 246, 0.5)' : 'none',
-                opacity: state.isDisabled ? 0.8 : 1,
-                cursor: state.isDisabled ? 'not-allowed' : 'default',
-                '&:hover': {
-                    borderColor: state.isDisabled
-                        ? (darkMode ? '#1e293b' : '#cbd5e1')
-                        : (darkMode ? '#334155' : '#cbd5e1')
-                }
-            }),
-            menu: (base) => ({
-                ...base,
-                background: darkMode ? '#020617' : '#ffffff',
-                border: `1px solid ${darkMode ? '#1e293b' : '#e2e8f0'}`,
-                zIndex: 100
-            }),
-            option: (base, state) => ({
-                ...base,
-                backgroundColor: state.isFocused
-                    ? (darkMode ? '#1e293b' : '#e2e8f0')
-                    : (state.isSelected ? (darkMode ? '#3b82f6' : '#bfdbfe') : 'transparent'),
-                color: state.isSelected && darkMode ? '#ffffff' : (darkMode ? '#e2e8f0' : '#0f172a'),
-                cursor: 'pointer'
-            }),
-            singleValue: (base, state) => ({
-                ...base,
-                color: state.isDisabled
-                    ? (darkMode ? '#64748b' : '#94a3b8')
-                    : (darkMode ? '#e2e8f0' : '#0f172a'),
-            }),
-            multiValue: (base) => ({
-                ...base,
-                backgroundColor: darkMode ? '#1e293b' : '#e2e8f0',
-            }),
-            multiValueLabel: (base) => ({
-                ...base,
-                color: darkMode ? '#e2e8f0' : '#0f172a',
-            }),
-            input: (base) => ({
-                ...base,
-                color: darkMode ? '#e2e8f0' : '#0f172a',
-            })
+        const getEffectiveType = (p) => {
+            if (p.type) return p.type;
+            if (p.anyOf) {
+                const types = p.anyOf.map(a => a.type).filter(t => t && t !== 'null');
+                if (types.length === 1) return types[0];
+            }
+            return null;
         };
+
+        const effectiveType = getEffectiveType(prop);
 
         // -- Widget Type: Relationship --
         if (widget.type === 'relationship') {
-            let options = relationshipOptions[name] || [];
-            const isMultiselect = widget.multiselect || false;
-            const idField = widget.field || 'id';
-
-            // Filter options based on project_id if applicable
-            if (name !== 'project_id' && formData.project_id) {
-                options = options.filter(opt => {
-                    // If the option doesn't have a project_id, show it (global resource?)
-                    // Or strict filtering? "available option must be filtered by the current selected project_id"
-                    // Usually implies: if option has project_id, it must match. If it doesn't, maybe it's global?
-                    // Let's assume strict matching if option has project_id.
-                    if (opt.project_id !== undefined && opt.project_id !== null) {
-                        // Loose comparison for string/int mismatch
-                        return opt.project_id == formData.project_id;
-                    }
-                    return true;
-                });
-            }
-
-            const selectOptions = Array.isArray(options) ? options.map(opt => ({
-                label: opt.title || opt.name || opt[idField],
-                value: opt[idField]
-            })) : [];
-
-            // Find current value object(s)
-            let currentValue = null;
-            if (isMultiselect) {
-                const currentVals = formData[name] || [];
-                currentValue = selectOptions.filter(opt => currentVals.includes(opt.value));
-            } else {
-                const currentVal = formData[name];
-                currentValue = selectOptions.find(opt => opt.value === currentVal) || null;
-            }
-
             return (
-                <Select
-                    isMulti={isMultiselect}
-                    value={currentValue}
-                    options={selectOptions}
-                    onChange={(selected) => {
-                        if (isMultiselect) {
-                            handleChange(name, selected ? selected.map(opt => opt.value) : []);
-                        } else {
-                            handleChange(name, selected ? selected.value : null);
-                        }
-                    }}
-                    isDisabled={isImmutable}
-                    styles={customStyles}
-                    placeholder={widget.placeholder || `Select ${label.toLowerCase()}...`}
-                    classNamePrefix="react-select"
+                <RelationshipWidget
+                    name={name}
+                    label={label}
+                    widget={widget}
+                    formData={formData}
+                    relationshipOptions={relationshipOptions}
+                    onChange={handleChange}
+                    darkMode={darkMode}
+                    isImmutable={isImmutable}
+                    hasError={hasError}
                 />
             );
         }
 
         // -- Widget Type: Select (Enum or Explicit Options) --
         if (prop.enum || (widget.type === 'select' && (widget.options || widget.endpoint))) {
-            const staticOpts = widget.options || prop.enum?.map(e => ({ label: e, value: e })) || [];
-            // Use dynamically-fetched endpoint options when available, else fall back to static
-            const options = (widget.endpoint && selectEndpointOptions[name]?.length > 0)
-                ? selectEndpointOptions[name]
-                : staticOpts;
-            // Normalize options to { label, value } format
-            const selectOptions = Array.isArray(options) ? options.map(opt => {
-                if (typeof opt === 'object') {
-                    return { label: opt.label, value: opt.value };
-                }
-                return { label: opt, value: opt };
-            }) : [];
-
-            const currentVal = formData[name];
-            const currentValue = selectOptions.find(opt => opt.value === currentVal) || null;
-
             return (
-                <Select
-                    value={currentValue}
-                    options={selectOptions}
-                    onChange={(selected) => handleChange(name, selected ? selected.value : null)}
-                    isDisabled={isImmutable}
-                    styles={customStyles}
-                    placeholder={widget.placeholder || `Select ${label.toLowerCase()}...`}
-                    classNamePrefix="react-select"
+                <SelectWidget
+                    name={name}
+                    label={label}
+                    prop={prop}
+                    widget={widget}
+                    formData={formData}
+                    selectEndpointOptions={selectEndpointOptions}
+                    onChange={handleChange}
+                    darkMode={darkMode}
+                    isImmutable={isImmutable}
+                    hasError={hasError}
                 />
             );
         }
 
         // -- Widget Type: Range --
         if (widget.type === 'range') {
-            const min = widget.min ?? 0;
-            const max = widget.max ?? 100;
-            const step = widget.step ?? 1;
-            const val = formData[name] ?? min;
-            const percentage = ((val - min) / (max - min)) * 100;
-
-            // Generate step markers if number of steps is reasonable
-            const numSteps = Math.floor((max - min) / step);
-            const showSteps = numSteps > 0 && numSteps <= 15;
-            const steps = showSteps ? Array.from({ length: numSteps + 1 }, (_, i) => min + (i * step)) : [];
-
             return (
-                <div className="space-y-2">
-                    <div className="mw-range-container">
-                        <div
-                            className="mw-range-badge"
-                            style={{ left: `${percentage}%` }}
-                        >
-                            {val}
-                        </div>
-                        <input
-                            type="range"
-                            min={min}
-                            max={max}
-                            step={step}
-                            value={val}
-                            disabled={isImmutable}
-                            onChange={(e) => handleChange(name, parseFloat(e.target.value))}
-                            className={cn(
-                                "mw-range",
-                                isImmutable && "cursor-not-allowed opacity-60 grayscale-[0.5]"
-                            )}
-                            style={{
-                                background: isImmutable
-                                    ? (darkMode ? '#1e293b' : '#e2e8f0')
-                                    : `linear-gradient(to right, #2563eb 0%, #2563eb ${percentage}%, ${darkMode ? '#1e293b' : '#e2e8f0'} ${percentage}%, ${darkMode ? '#1e293b' : '#e2e8f0'} 100%)`
-                            }}
-                        />
-                        {showSteps && (
-                            <div className="mw-range-steps">
-                                {steps.map((s, i) => (
-                                    <div
-                                        key={i}
-                                        className={cn(
-                                            "mw-range-step",
-                                            val >= s ? "mw-range-step-active" : ""
-                                        )}
-                                    />
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </div>
+                <RangeWidget
+                    name={name}
+                    widget={widget}
+                    formData={formData}
+                    onChange={handleChange}
+                    darkMode={darkMode}
+                    isImmutable={isImmutable}
+                />
             );
         }
 
@@ -720,59 +326,34 @@ const DynamicForm = ({
             );
         }
 
-        const getEffectiveType = (p) => {
-            if (p.type) return p.type;
-            if (p.anyOf) {
-                const types = p.anyOf.map(a => a.type).filter(t => t && t !== 'null');
-                if (types.length === 1) return types[0];
-            }
-            return null;
-        };
-
-        const effectiveType = getEffectiveType(prop);
-
         // -- Widget Type: Boolean --
         if (effectiveType === 'boolean') {
             return (
-                <div className={cn(
-                    "flex items-center gap-3 px-4 h-[50px] rounded-xl border cursor-pointer select-none transition-all",
-                    isImmutable ? (darkMode ? "bg-slate-900 border-slate-800" : "bg-slate-200 border-slate-300") : (formData[name] ? "border-blue-500/50 bg-blue-500/5" : inputBg),
-                    hasError && "border-rose-500 ring-1 ring-rose-500/50",
-                    isImmutable && "cursor-not-allowed opacity-80"
-                )} onClick={() => !isImmutable && handleChange(name, !formData[name])}>
-                    <div className={cn(
-                        "w-10 h-6 rounded-full relative transition-colors p-1",
-                        formData[name] ? (isImmutable ? "bg-blue-600/50" : "bg-blue-600") : (isImmutable ? "bg-slate-800" : "bg-slate-700")
-                    )}>
-                        <div className={cn(
-                            "w-4 h-4 bg-white rounded-full transition-transform",
-                            formData[name] ? "translate-x-4" : "translate-x-0",
-                            isImmutable && "opacity-60"
-                        )} />
-                    </div>
-                    <span className={cn(
-                        "text-base font-medium",
-                        isImmutable ? "text-slate-500" : ""
-                    )}>{formData[name] ? 'Enabled' : 'Disabled'}</span>
-                </div>
+                <BooleanWidget
+                    name={name}
+                    formData={formData}
+                    onChange={handleChange}
+                    darkMode={darkMode}
+                    isImmutable={isImmutable}
+                    hasError={hasError}
+                    inputBg={inputBg}
+                />
             );
         }
 
         // -- Widget Type: Password --
         if (widget.type === 'password' || prop.format === 'password') {
             return (
-                <input
-                    type="password"
-                    value={formData[name] ?? ''}
-                    disabled={isImmutable}
-                    onChange={(e) => handleChange(name, e.target.value)}
-                    placeholder={widget.placeholder || `Enter ${label.toLowerCase()}...`}
-                    className={cn(
-                        "w-full px-4 h-[50px] rounded-xl border text-base outline-none focus:ring-2 focus:ring-blue-500/20 transition-all",
-                        isImmutable ? disabledBg : inputBg,
-                        isImmutable && "cursor-not-allowed opacity-80",
-                        hasError && "border-rose-500 ring-1 ring-rose-500/50"
-                    )}
+                <PasswordWidget
+                    name={name}
+                    label={label}
+                    widget={widget}
+                    formData={formData}
+                    onChange={handleChange}
+                    isImmutable={isImmutable}
+                    disabledBg={disabledBg}
+                    inputBg={inputBg}
+                    hasError={hasError}
                 />
             );
         }
@@ -785,53 +366,34 @@ const DynamicForm = ({
             name.includes('sql');
 
         if (isTextArea) {
-            const rows = name.includes('description') ? 3 : 5;
             return (
-                <textarea
-                    value={formData[name] ?? ''}
-                    disabled={isImmutable}
-                    onChange={(e) => handleChange(name, e.target.value)}
-                    placeholder={widget.placeholder || `Enter ${label.toLowerCase()}...`}
-                    rows={rows}
-                    className={cn(
-                        "w-full px-4 py-3 rounded-xl border text-base outline-none focus:ring-2 focus:ring-blue-500/20 transition-all",
-                        isImmutable ? disabledBg : inputBg,
-                        isImmutable && "cursor-not-allowed opacity-80",
-                        hasError && "border-rose-500 ring-1 ring-rose-500/50"
-                    )}
+                <TextAreaWidget
+                    name={name}
+                    label={label}
+                    widget={widget}
+                    formData={formData}
+                    onChange={handleChange}
+                    isImmutable={isImmutable}
+                    disabledBg={disabledBg}
+                    inputBg={inputBg}
+                    hasError={hasError}
                 />
             );
         }
 
         // -- Default Text/Number Input --
-        const isNumeric =
-            effectiveType === 'integer' ||
-            effectiveType === 'number' ||
-            widget.type === 'integer' ||
-            widget.type === 'number';
-
-        const isFloat =
-            effectiveType === 'number' ||
-            widget.type === 'number';
-
         return (
-            <input
-                type={isNumeric ? 'number' : 'text'}
-                step={isFloat ? 'any' : undefined}
-                value={formData[name] ?? ''}
-                disabled={isImmutable}
-                onChange={(e) => {
-                    let val = e.target.value;
-                    // Don't convert immediately to allow typing decimals/negatives, convert on submit
-                    handleChange(name, val);
-                }}
-                placeholder={widget.placeholder || `Enter ${label.toLowerCase()}...`}
-                className={cn(
-                    "w-full px-4 h-[50px] rounded-xl border text-base outline-none focus:ring-2 focus:ring-blue-500/20 transition-all",
-                    isImmutable ? disabledBg : inputBg,
-                    isImmutable && "cursor-not-allowed opacity-80",
-                    hasError && "border-rose-500 ring-1 ring-rose-500/50"
-                )}
+            <InputWidget
+                name={name}
+                label={label}
+                widget={widget}
+                formData={formData}
+                onChange={handleChange}
+                isImmutable={isImmutable}
+                disabledBg={disabledBg}
+                inputBg={inputBg}
+                hasError={hasError}
+                effectiveType={effectiveType}
             />
         );
     };
