@@ -297,11 +297,21 @@ const DynamicForm = ({
         // Clean up data before sending (e.g. converting string numbers back to numbers if needed)
         const cleanData = { ...formData };
         if (schema) {
+            const getEffectiveType = (p) => {
+                if (p.type) return p.type;
+                if (p.anyOf) {
+                    const types = p.anyOf.map(a => a.type).filter(t => t && t !== 'null');
+                    if (types.length === 1) return types[0];
+                }
+                return null;
+            };
+
             Object.entries(schema.jsonschema.properties || {}).forEach(([key, prop]) => {
-                if (prop.type === 'integer' && cleanData[key] !== undefined && cleanData[key] !== null) {
+                const effectiveType = getEffectiveType(prop);
+                if (effectiveType === 'integer' && cleanData[key] !== undefined && cleanData[key] !== null) {
                     cleanData[key] = parseInt(cleanData[key], 10);
                 }
-                if (prop.type === 'number' && cleanData[key] !== undefined && cleanData[key] !== null) {
+                if (effectiveType === 'number' && cleanData[key] !== undefined && cleanData[key] !== null) {
                     cleanData[key] = parseFloat(cleanData[key]);
                 }
             });
@@ -598,8 +608,19 @@ const DynamicForm = ({
             );
         }
 
+        const getEffectiveType = (p) => {
+            if (p.type) return p.type;
+            if (p.anyOf) {
+                const types = p.anyOf.map(a => a.type).filter(t => t && t !== 'null');
+                if (types.length === 1) return types[0];
+            }
+            return null;
+        };
+
+        const effectiveType = getEffectiveType(prop);
+
         // -- Widget Type: Boolean --
-        if (prop.type === 'boolean') {
+        if (effectiveType === 'boolean') {
             return (
                 <div className={cn(
                     "flex items-center gap-3 px-4 h-[50px] rounded-xl border cursor-pointer select-none transition-all",
@@ -672,17 +693,14 @@ const DynamicForm = ({
 
         // -- Default Text/Number Input --
         const isNumeric =
-            prop.type === 'integer' ||
-            prop.type === 'number' ||
+            effectiveType === 'integer' ||
+            effectiveType === 'number' ||
             widget.type === 'integer' ||
-            widget.type === 'number' ||
-            // Handle anyOf for optional integers in JSON schema
-            (prop.anyOf && prop.anyOf.some(a => a.type === 'integer' || a.type === 'number'));
+            widget.type === 'number';
 
         const isFloat =
-            prop.type === 'number' ||
-            widget.type === 'number' ||
-            (prop.anyOf && prop.anyOf.some(a => a.type === 'number'));
+            effectiveType === 'number' ||
+            widget.type === 'number';
 
         return (
             <input
