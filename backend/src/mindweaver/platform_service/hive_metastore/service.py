@@ -6,11 +6,12 @@ import logging
 import asyncio
 import tempfile
 import base64
-from typing import Any, Optional
+from typing import Any, Optional, Literal
 from kubernetes import client, config
 from pydantic import ValidationError
 
 from mindweaver.fw.exc import FieldValidationError
+from mindweaver.fw.service import VALIDATION_MODE
 from mindweaver.platform_service.base import PlatformService
 from mindweaver.crypto import decrypt_password
 from mindweaver.fw.model import ts_now
@@ -148,16 +149,6 @@ class HiveMetastorePlatformService(PlatformService[HiveMetastorePlatform]):
 
         return vars
 
-    async def validate_data(self, data: Any) -> Any:
-        try:
-            self.model_class().model_validate(data.model_dump(), from_attributes=True)
-        except ValidationError as e:
-            error = e.errors()[0]
-            raise FieldValidationError(
-                field_location=list(error["loc"]), message=error["msg"]
-            )
-
-        return await super().validate_data(data)
 
     async def poll_status(self, model: HiveMetastorePlatform):
         kubeconfig = await self.kubeconfig(model)

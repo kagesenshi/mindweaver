@@ -6,12 +6,12 @@ import secrets
 import logging
 import asyncio
 import tempfile
-from typing import Any, Optional
+from typing import Any, Optional, Literal
 from kubernetes import client, config
 from pydantic import ValidationError
 
 from mindweaver.fw.exc import FieldValidationError
-from mindweaver.fw.service import before_create
+from mindweaver.fw.service import before_create, VALIDATION_MODE
 from mindweaver.platform_service.base import PlatformService
 from mindweaver.fw.model import ts_now
 from mindweaver.platform_service.hive_metastore.service import (
@@ -365,16 +365,6 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
 
         return vars
 
-    async def validate_data(self, data: Any) -> Any:
-        try:
-            self.model_class().model_validate(data.model_dump(), from_attributes=True)
-        except ValidationError as e:
-            error = e.errors()[0]
-            raise FieldValidationError(
-                field_location=list(error["loc"]), message=error["msg"]
-            )
-
-        return await super().validate_data(data)
 
     async def poll_status(self, model: TrinoPlatform):
         kubeconfig = await self.kubeconfig(model)

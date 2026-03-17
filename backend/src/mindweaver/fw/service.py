@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: Copyright © 2025 Mohd Izhar Firdaus Bin Ismail
 # SPDX-License-Identifier: AGPLv3+
 
-from pydantic import BaseModel, Field, create_model, AnyUrl, ConfigDict
+from pydantic import BaseModel, Field, create_model, AnyUrl, ConfigDict, ValidationError
 import fastapi
 from fastapi import Depends, Header
 import sqlalchemy as sa
@@ -10,7 +10,7 @@ from sqlmodel import SQLModel, Session, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 import sqlalchemy.exc as saexc
 from .model import AsyncSession, ts_now, NamedBase
-from .exc import ModelValidationError, AlreadyExistError
+from .exc import ModelValidationError, AlreadyExistError, FieldValidationError
 import enum
 from .hooks import (
     before_create,
@@ -50,10 +50,12 @@ from .exc import NotFoundError
 import re
 import asyncio
 from fastapi import HTTPException
-from typing import Generic, Any, Annotated, List, Dict
+from typing import Generic, Any, Annotated, List, Dict, Optional, Literal
 from mindweaver.fw.action import ActionRequest, BaseAction
 from mindweaver.fw.state import BaseState
 from mindweaver.crypto import encrypt_password, EncryptionError
+
+VALIDATION_MODE = Literal["create", "update"]
 
 
 class Service(
@@ -177,7 +179,7 @@ class Service(
 
     async def create(self, data: NamedBase) -> S:
         model_class = self.__class__.model_class()
-        data = await self.validate_data(data)
+        data = await self.validate_data(data, mode="create")
         parsed_data = data.model_dump(exclude=self.internal_fields())
         if not parsed_data:
             raise ValueError("No data provided")
@@ -187,7 +189,11 @@ class Service(
         if project_id and hasattr(model_class, "project_id"):
             parsed_data["project_id"] = project_id
 
-        model = model_class(**parsed_data)
+        try:
+            model_class.model_validate(parsed_data)
+            model = model_class(**parsed_data)
+        except ValidationError as e:
+            self._handle_validation_error(e)
 
         # Execute before_create hooks
         for hook in self._before_create_hooks:
@@ -235,7 +241,7 @@ class Service(
 
     async def update(self, model_id: int, data: NamedBase) -> S:
 
-        data = await self.validate_data(data)
+        data = await self.validate_data(data, mode="update")
         model = await self.get(model_id)  # get() already filters by project_id
 
         # Execute before_update hooks
@@ -259,6 +265,12 @@ class Service(
         newdata = model.model_dump(exclude=self.noninheritable_fields())
         newdata.update(data.model_dump(exclude_unset=True))
         newdata["modified"] = ts_now()
+
+        try:
+            model_class.model_validate(newdata)
+        except ValidationError as e:
+            self._handle_validation_error(e)
+
         model.sqlmodel_update(newdata)
         try:
             await self.session.flush()
@@ -310,7 +322,9 @@ class Service(
         )
         return models
 
-    async def validate_data(self, data: NamedBase) -> NamedBase:
+    async def validate_data(
+        self, data: NamedBase, mode: Optional[VALIDATION_MODE] = None
+    ) -> NamedBase:
         """
         Validate incoming data before create or update.
         Specifically, check if relationship fields point to records in the same project.
@@ -413,6 +427,12 @@ class Service(
         # Fallback to a cleaner version of the raw message
         clean_msg = msg.split(":", 1)[-1].strip() if ":" in msg else msg
         raise ModelValidationError(message=clean_msg)
+
+    def _handle_validation_error(self, e: ValidationError):
+        error = e.errors()[0]
+        msg = error["msg"]
+        loc = [str(x) for x in error["loc"]]
+        raise FieldValidationError(field_location=loc, message=msg)
 
     @classmethod
     async def get_model(cls, request: fastapi.Request, db: AsyncSession, id: int) -> S:

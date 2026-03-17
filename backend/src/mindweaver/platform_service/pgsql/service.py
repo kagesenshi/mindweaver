@@ -5,8 +5,9 @@ from mindweaver.platform_service.base import (
     PlatformBase,
     PlatformService,
 )
+from mindweaver.fw.service import VALIDATION_MODE
 from sqlmodel import Field
-from typing import Any
+from typing import Any, Optional, Literal
 from pydantic import field_validator, ValidationError, model_validator
 from mindweaver.fw.exc import FieldValidationError
 import base64
@@ -164,18 +165,6 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
                     vars["s3_secret_key"] = s3_storage.secret_key
         return vars
 
-    async def validate_data(self, data: Any) -> Any:
-        try:
-            # Only perform full model validation if this looks like a full model creation.
-            # We check if the class name starts with "Update" which is how redefine_model names update models.
-            if not data.__class__.__name__.startswith("Update"):
-                self.model_class().model_validate(data.model_dump(), from_attributes=True)
-        except ValidationError as e:
-            error = e.errors()[0]
-            msg = error["msg"]
-            loc = error["loc"]
-            raise FieldValidationError(field_location=list(loc), message=msg)
-        return await super().validate_data(data)
 
     async def clear_state(self, model: PgSqlPlatform):
         """Clears the PostgreSQL platform state."""
