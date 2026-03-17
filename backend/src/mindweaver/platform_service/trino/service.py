@@ -41,6 +41,10 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
         return "/platform/trino"
 
     @classmethod
+    def internal_fields(cls) -> list[str]:
+        return super().internal_fields() + ["internal_shared_secret"]
+
+    @classmethod
     def redacted_fields(cls) -> list[str]:
         return ["internal_shared_secret"]
 

@@ -532,3 +532,26 @@ async def test_trino_poll_status_with_https_nodeport(mock_service_dependencies):
         # Verify the state was updated with the correct URI from the https-nodeport service
         state = await svc.platform_state(model)
         assert state.trino_uri == "https://1.2.3.4:30443"
+
+@pytest.mark.asyncio
+async def test_trino_internal_shared_secret_visibility(mock_service_dependencies):
+    """Test that internal_shared_secret is hidden from form and has a random default"""
+    request, session = mock_service_dependencies
+    svc = TrinoPlatformService(request, session)
+    
+    # Check internal_fields
+    assert "internal_shared_secret" in svc.internal_fields()
+    
+    # Check createmodel_class schema - internal_shared_secret should be excluded
+    create_model = svc.createmodel_class()
+    assert "internal_shared_secret" not in create_model.model_fields
+    
+    # Check updatemodel_class schema - internal_shared_secret should be excluded
+    update_model = svc.updatemodel_class()
+    assert "internal_shared_secret" not in update_model.model_fields
+    
+    # Check random default on model
+    model1 = TrinoPlatform(name="t1", project_id=1)
+    model2 = TrinoPlatform(name="t2", project_id=1)
+    assert model1.internal_shared_secret != model2.internal_shared_secret
+    assert len(model1.internal_shared_secret) == 64
