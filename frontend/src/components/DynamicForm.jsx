@@ -11,6 +11,7 @@ import BooleanWidget from './form_widgets/BooleanWidget';
 import PasswordWidget from './form_widgets/PasswordWidget';
 import TextAreaWidget from './form_widgets/TextAreaWidget';
 import InputWidget from './form_widgets/InputWidget';
+import S3PathWidget from './form_widgets/S3PathWidget';
 
 
 
@@ -324,6 +325,23 @@ const DynamicForm = ({
                     onChange={handleChange}
                     darkMode={darkMode}
                     isImmutable={isImmutable}
+                />
+            );
+        }
+
+        // -- Widget Type: S3-Path --
+        if (widget.type === 's3-path') {
+            return (
+                <S3PathWidget
+                    name={name}
+                    label={label}
+                    widget={widget}
+                    formData={formData}
+                    onChange={handleChange}
+                    darkMode={darkMode}
+                    isImmutable={isImmutable}
+                    hasError={hasError}
+                    required={!!prop.required}
                 />
             );
         }

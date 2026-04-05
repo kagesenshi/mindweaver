@@ -1,0 +1,59 @@
+{{- if .Values.zookeeper.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ranger.fullname" . }}-zookeeper
+  labels:
+    {{- include "ranger.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "ranger.name" . }}-zookeeper
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "ranger.name" . }}-zookeeper
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: zookeeper
+          image: "{{ .Values.zookeeper.image.repository }}:{{ .Values.zookeeper.image.tag }}"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: {{ .Values.zookeeper.service.port }}
+              name: zookeeper
+          env:
+            - name: ZOO_MY_ID
+              value: "1"
+            - name: ZOO_SERVERS
+              value: "server.1=localhost:2888:3888;2181"
+            - name: ALLOW_ANONYMOUS_LOGIN
+              value: "yes"
+          # Minimal resources for local testing
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ranger.fullname" . }}-zookeeper
+  labels:
+    {{- include "ranger.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.zookeeper.service.port }}
+      targetPort: zookeeper
+      protocol: TCP
+      name: zookeeper
+  selector:
+    app.kubernetes.io/name: {{ include "ranger.name" . }}-zookeeper
+    app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}

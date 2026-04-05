@@ -1,0 +1,61 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ranger.fullname" . }}-config
+  labels:
+    {{- include "ranger.labels" . | nindent 4 }}
+data:
+  install.properties: |
+    PYTHON_COMMAND_INVOKER=python3
+    RANGER_ADMIN_LOG_DIR=/var/log/ranger
+    RANGER_PID_DIR_PATH=/var/run/ranger
+    DB_FLAVOR={{ .Values.db.type | upper }}
+    SQL_CONNECTOR_JAR=/usr/share/java/{{ if eq .Values.db.type "postgres" }}postgresql.jar{{ else if eq .Values.db.type "mysql" }}mysql-connector-java.jar{{ end }}
+    
+    db_root_user={{ .Values.db.rootUser }}
+    db_root_password={{ .Values.db.rootPassword }}
+    db_host={{ if .Values.db.host }}{{ .Values.db.host }}{{ else if .Values.postgresql.enabled }}{{ include "ranger.fullname" . }}-postgresql{{ else }}localhost{{ end }}
+    db_port={{ .Values.db.port }}
+    db_name={{ .Values.db.name }}
+    db_user={{ .Values.db.user }}
+    db_password={{ .Values.db.password }}
+    
+    rangerAdmin_password={{ .Values.admin.password }}
+    rangerTagsync_password={{ .Values.admin.tagsyncPassword }}
+    rangerUsersync_password={{ .Values.admin.usersyncPassword }}
+    keyadmin_password={{ .Values.admin.keyadminPassword }}
+    
+    audit_store={{ .Values.admin.auditStore | default "solr" }}
+    {{- if eq .Values.admin.auditStore "solr" }}
+    audit_solr_urls=http://{{ include "ranger.fullname" . }}-solr:{{ .Values.solr.service.port }}/solr/{{ .Values.solr.collection }}
+    audit_solr_collection_name={{ .Values.solr.collection }}
+    {{- else if eq .Values.admin.auditStore "hdfs" }}
+    audit_hdfs_dest_dir={{ .Values.admin.auditHdfsDestDir | default "s3a://ranger/audit" }}
+    {{- end }}
+
+    
+    policymgr_external_url={{ .Values.admin.externalUrl }}
+    policymgr_http_enabled=true
+    
+    unix_user=ranger
+    unix_user_pwd=ranger
+    unix_group=ranger
+    
+    JAVA_BIN='java'
+    JAVA_VERSION_REQUIRED='1.8'
+    ranger_admin_max_heap_size=1g
+    PATCH_RETRY_INTERVAL=120
+    STALE_PATCH_ENTRY_HOLD_TIME=10
+    
+    authentication_method=UNIX
+    
+    {{- if .Values.kerberos.enabled }}
+    #------------ Kerberos Config -----------------
+    spnego_principal=HTTP/{{ include "ranger.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local@{{ .Values.kerberos.realm }}
+    spnego_keytab=/etc/keytabs/HTTP.keytab
+    token_valid=30
+    admin_principal=rangeradmin/{{ include "ranger.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local@{{ .Values.kerberos.realm }}
+    admin_keytab=/etc/keytabs/rangeradmin.keytab
+    lookup_principal=rangerlookup/{{ include "ranger.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local@{{ .Values.kerberos.realm }}
+    lookup_keytab=/etc/keytabs/rangerlookup.keytab
+    {{- end }}

@@ -54,6 +54,7 @@ const INFRA_ITEMS = [
     { name: 'Apache Spark', to: '/platform/spark', icon: Layers },
     { name: 'Apache Airflow', to: '/platform/airflow', icon: Activity },
     { name: 'Apache Superset', to: '/platform/superset', icon: BarChart3 },
+    { name: 'Apache Ranger', to: '/platform/ranger', icon: ShieldCheck },
     { name: 'Apache Kafka', to: '/platform/kafka', icon: RefreshCcw },
 ];
 

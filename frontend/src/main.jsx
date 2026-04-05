@@ -20,6 +20,7 @@ const LdapConfigPage = lazy(() => import('./pages/ldap_config/Page'))
 const HiveMetastorePage = lazy(() => import('./pages/hive_metastore/Page'))
 const TrinoPage = lazy(() => import('./pages/trino/Page'))
 const SupersetPage = lazy(() => import('./pages/superset/Page'))
+const RangerPage = lazy(() => import('./pages/ranger/Page'))
 
 import { ProtectedRoute } from './components/ProtectedRoute'
 
@@ -85,6 +86,10 @@ const router = createBrowserRouter([
       {
         path: 'platform/superset',
         element: <SupersetPage />,
+      },
+      {
+        path: 'platform/ranger',
+        element: <RangerPage />,
       },
       {
         path: 'platform/:service',

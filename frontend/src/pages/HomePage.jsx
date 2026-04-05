@@ -7,9 +7,10 @@ import {
     Server,
     Boxes,
     Wind,
-    LayoutDashboard
+    LayoutDashboard,
+    ShieldCheck
 } from 'lucide-react';
-import { usePgSql, useHiveMetastore, useTrino, useSuperset } from '../hooks/useResources';
+import { usePgSql, useHiveMetastore, useTrino, useSuperset, useRanger } from '../hooks/useResources';
 import PageLayout from '../components/PageLayout';
 import ListingItem from '../components/ListingItem';
 
@@ -19,16 +20,18 @@ const HomePage = () => {
     const { platforms: hmsPlatforms, loading: hmsLoading } = useHiveMetastore();
     const { platforms: trinoPlatforms, loading: trinoLoading } = useTrino();
     const { platforms: supersetPlatforms, loading: supersetLoading } = useSuperset();
+    const { platforms: rangerPlatforms, loading: rangerLoading } = useRanger();
     const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
 
-    const loading = pgsqlLoading || hmsLoading || trinoLoading || supersetLoading;
+    const loading = pgsqlLoading || hmsLoading || trinoLoading || supersetLoading || rangerLoading;
 
     const allInstances = [
         ...pgsqlPlatforms.map(p => ({ ...p, type: 'pgsql' })),
         ...hmsPlatforms.map(p => ({ ...p, type: 'hms' })),
         ...trinoPlatforms.map(p => ({ ...p, type: 'trino' })),
-        ...supersetPlatforms.map(p => ({ ...p, type: 'superset' }))
+        ...supersetPlatforms.map(p => ({ ...p, type: 'superset' })),
+        ...rangerPlatforms.map(p => ({ ...p, type: 'ranger' }))
     ];
 
     const filteredInstances = allInstances.filter(inst => {
@@ -58,10 +61,10 @@ const HomePage = () => {
                 {filteredInstances.map(inst => (
                     <ListingItem
                         key={`${inst.type}-${inst.id}`}
-                        icon={inst.type === 'hms' ? Boxes : inst.type === 'trino' ? Wind : inst.type === 'superset' ? LayoutDashboard : Database}
+                        icon={inst.type === 'hms' ? Boxes : inst.type === 'trino' ? Wind : inst.type === 'superset' ? LayoutDashboard : inst.type === 'ranger' ? ShieldCheck : Database}
                         title={inst.title || inst.name}
                         badges={[{ 
-                            text: inst.type === 'hms' ? "Hive Metastore" : inst.type === 'trino' ? "Trino Cluster" : inst.type === 'superset' ? "Apache Superset" : "CloudNative PG", 
+                            text: inst.type === 'hms' ? "Hive Metastore" : inst.type === 'trino' ? "Trino Cluster" : inst.type === 'superset' ? "Apache Superset" : inst.type === 'ranger' ? "Apache Ranger" : "CloudNative PG", 
                             variant: "mw-badge-neutral" 
                         }]}
                         subtitle={inst.id}
@@ -69,6 +72,7 @@ const HomePage = () => {
                             if (inst.type === 'hms') navigate('/platform/hive-metastore');
                             else if (inst.type === 'trino') navigate('/platform/trino');
                             else if (inst.type === 'superset') navigate('/platform/superset');
+                            else if (inst.type === 'ranger') navigate('/platform/ranger');
                             else navigate('/platform/pgsql');
                         }}
                         actions={
