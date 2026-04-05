@@ -12,9 +12,9 @@ class RangerPlatform(PlatformBase, table=True):
 
     replica_count: int = Field(default=1)
 
-    # Chart version selection
-    chart_version: str = Field(default="0.1.0")
-
+    # Chart version selection (targetRevision in Application manifest)
+    chart_version: str = Field(default="main")
+    
     # Image override
     override_image: bool = Field(default=False)
     image: str = Field(default="docker.io/apache/ranger:2.8.0")

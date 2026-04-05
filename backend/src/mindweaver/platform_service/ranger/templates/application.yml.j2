@@ -11,13 +11,15 @@ spec:
   source:
     repoURL: https://github.com/kagesenshi/mindweaver.git
     path: charts/ranger
-    targetRevision: main
+    targetRevision: {{ chart_version }}
     helm:
       values: |
         replicaCount: {{ replica_count }}
+        {% if override_image %}
         image:
-          repository: {{ image }}
-          tag: {{ chart_version }}
+          repository: "{{ image.rsplit(':', 1)[0] if ':' in image else image }}"
+          tag: "{{ image.split(':')[-1] if ':' in image else 'latest' }}"
+        {% endif %}
         
         # External Database Configuration
         postgresql:
