@@ -34,8 +34,6 @@ class TrinoPlatform(PlatformBase, table=True):
     # Database sources for Trino catalog
     database_source_ids: list[int] = Field(default_factory=list, sa_type=JSONType())
 
-    # LDAP configuration
-    ldap_config_id: Optional[int] = Field(default=None, foreign_key="mw_ldap_config.id")
 
     # Internal communication secret (required when auth is enabled)
     internal_shared_secret: str = Field(default_factory=lambda: secrets.token_hex(32))

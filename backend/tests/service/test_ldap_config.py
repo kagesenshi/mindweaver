@@ -15,7 +15,6 @@ def ldap_config_data(test_project):
     return {
         "name": "test-ldap",
         "title": "Test LDAP",
-        "project_id": test_project["id"],
         "server_url": "ldap://ldap.example.com",
         "bind_dn": "cn=admin,dc=example,dc=com",
         "bind_password": "supersecretpassword",

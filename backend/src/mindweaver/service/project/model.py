@@ -14,3 +14,6 @@ class Project(NamedBase, table=True):
         default=None, sa_type=String(length=32), nullable=True
     )
     k8s_cluster_id: int = Field(foreign_key="mw_k8s_cluster.id")
+    ldap_config_id: Optional[int] = Field(
+        default=None, foreign_key="mw_ldap_config.id"
+    )

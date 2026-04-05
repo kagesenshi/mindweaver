@@ -73,13 +73,6 @@ class SupersetPlatformService(PlatformService[SupersetPlatform]):
                 "endpoint": "/api/v1/platform/pgsql",
                 "field": "id",
             },
-            "ldap_config_id": {
-                "order": 11,
-                "label": "LDAP Configuration",
-                "type": "relationship",
-                "endpoint": "/api/v1/ldap_configs",
-                "field": "id",
-            },
             "database_source_ids": {
                 "order": 20,
                 "label": "Database Sources",
@@ -179,10 +172,11 @@ class SupersetPlatformService(PlatformService[SupersetPlatform]):
         else:
             vars["db_pass"] = ""
 
-        # 2. Resolve LDAP
-        if model.ldap_config_id:
+        # 2. Resolve LDAP from Project
+        project = await self.project(model)
+        if project.ldap_config_id:
             ldap_svc = await LdapConfigService.get_service(self.request, self.session)
-            ldap_config = await ldap_svc.get(model.ldap_config_id)
+            ldap_config = await ldap_svc.get(project.ldap_config_id)
             vars["ldap"] = ldap_config.model_dump()
             if ldap_config.bind_password:
                 try:

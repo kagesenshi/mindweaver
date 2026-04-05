@@ -31,6 +31,7 @@ const NAV_ITEMS = [
 
 const ENVIRONMENT_ITEMS = [
     { name: 'K8s Clusters', to: '/k8s_clusters', icon: Server },
+    { name: 'LDAP Configs', to: '/ldap-configs', icon: ShieldCheck },
     { name: 'Projects', to: '/projects', icon: Briefcase },
 ];
 
@@ -43,7 +44,6 @@ const DATA_SOURCE_ITEMS = [
 
 const CONNECTIVITY_ITEMS = [
     { name: 'S3 Storages', to: '/s3-storages', icon: HardDrive },
-    { name: 'LDAP Configs', to: '/ldap-configs', icon: ShieldCheck },
 ];
 
 

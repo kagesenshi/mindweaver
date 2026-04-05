@@ -124,13 +124,6 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
                 "field": "id",
                 "multiselect": True,
             },
-            "ldap_config_id": {
-                "order": 30,
-                "label": "LDAP Configuration",
-                "type": "relationship",
-                "endpoint": "/api/v1/ldap_configs",
-                "field": "id",
-            },
         }
 
     async def get_preferred_catalog(self, model: TrinoPlatform) -> Optional[str]:
@@ -329,10 +322,11 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
 
         vars["catalogs"] = catalogs
 
-        # 3. Resolve LDAP Configuration
-        if model.ldap_config_id:
+        # 3. Resolve LDAP Configuration from Project
+        project = await self.project(model)
+        if project.ldap_config_id:
             ldap_svc = await LdapConfigService.get_service(self.request, self.session)
-            ldap_config = await ldap_svc.get(model.ldap_config_id)
+            ldap_config = await ldap_svc.get(project.ldap_config_id)
 
             ldap_props = {
                 "ldap.url": ldap_config.server_url,

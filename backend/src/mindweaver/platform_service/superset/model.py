@@ -47,8 +47,6 @@ class SupersetPlatform(PlatformBase, table=True):
     # PostgreSQL dependency (mandatory for Superset metadata)
     platform_pgsql_id: int = Field(foreign_key="mw_pgsql_platform.id")
     
-    # LDAP configuration (optional)
-    ldap_config_id: Optional[int] = Field(default=None, foreign_key="mw_ldap_config.id")
 
     # Data Source selection (to be automatically created in Superset)
     database_source_ids: list[int] = Field(default_factory=list, sa_type=JSONType())

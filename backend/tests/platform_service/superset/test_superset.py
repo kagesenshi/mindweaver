@@ -119,7 +119,6 @@ async def test_superset_template_rendering(mock_service_dependencies):
         title="Superset Test",
         project_id=1,
         platform_pgsql_id=10,
-        ldap_config_id=5,
         database_source_ids=[20],
         trino_ids=[30],
         auth_role_mapping=[
@@ -198,6 +197,11 @@ async def test_superset_template_rendering(mock_service_dependencies):
         mock_ds_class.get_service = AsyncMock(return_value=mock_ds_svc)
         mock_trino_class.get_service = AsyncMock(return_value=mock_trino_svc)
         
+        # Mock project relationship
+        mock_project = MagicMock()
+        mock_project.ldap_config_id = 5
+        svc.project = AsyncMock(return_value=mock_project)
+
         vars = await svc.template_vars(model)
         manifest = await svc.render_manifests(model)
 

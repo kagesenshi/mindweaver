@@ -35,4 +35,11 @@ class ProjectService(Service[Project]):
                 "order": 10,
                 "label": "K8S Cluster",
             },
+            "ldap_config_id": {
+                "order": 11,
+                "label": "LDAP Configuration",
+                "type": "relationship",
+                "endpoint": "/api/v1/ldap_configs",
+                "field": "id",
+            },
         }

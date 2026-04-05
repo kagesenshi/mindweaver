@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
 # SPDX-License-Identifier: AGPLv3+
 
-from mindweaver.service.base import ProjectScopedNamedBase
+from mindweaver.service.base import NamedBase
 from sqlmodel import Field
 from typing import Optional
 from pydantic import BaseModel, field_validator
@@ -42,7 +42,7 @@ class LdapConfigSchema(BaseModel):
 
 
 # Database model
-class LdapConfig(ProjectScopedNamedBase, table=True):
+class LdapConfig(NamedBase, table=True):
     __tablename__ = "mw_ldap_config"
     server_url: str
     bind_dn: Optional[str] = Field(default=None)

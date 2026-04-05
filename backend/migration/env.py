@@ -16,6 +16,7 @@ from mindweaver.service.s3_storage.model import S3Storage
 from mindweaver.platform_service.pgsql.model import PgSqlPlatform, PgSqlPlatformState
 from mindweaver.platform_service.hive_metastore.model import HiveMetastorePlatform, HiveMetastorePlatformState
 from mindweaver.platform_service.trino.model import TrinoPlatform, TrinoPlatformState
+from mindweaver.platform_service.superset.model import SupersetPlatform, SupersetPlatformState
 from mindweaver.service.ldap_config.model import LdapConfig
 from mindweaver.fw.auth import User
 

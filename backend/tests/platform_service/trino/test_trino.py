@@ -251,6 +251,7 @@ async def test_trino_override_image_template(mock_service_dependencies):
     request, session = mock_service_dependencies
     svc = TrinoPlatformService(request, session)
     svc._resolve_namespace = AsyncMock(return_value="trino-ns")
+    svc.project = AsyncMock(return_value=MagicMock(ldap_config_id=None))
 
     # Test with override_image=False: image block should NOT appear
     model_no_override = TrinoPlatform(
@@ -321,6 +322,8 @@ async def test_trino_catalog_filtering(mock_service_dependencies):
 
     mock_ds_svc = AsyncMock()
     mock_ds_svc.get.side_effect = lambda id: ds_supported if id == 1 else ds_unsupported
+    svc.project = AsyncMock(return_value=MagicMock(ldap_config_id=None))
+    svc.project = AsyncMock(return_value=MagicMock(ldap_config_id=None))
 
     model = TrinoPlatform(
         name="trino-test",
@@ -354,7 +357,6 @@ async def test_trino_ldap_rendering(mock_service_dependencies):
         title="Trino LDAP Test",
         project_id=1,
         hms_ids=[10], # Needs at least one catalog
-        ldap_config_id=5,
     )
 
     # Mock LDAP configuration
@@ -384,8 +386,12 @@ async def test_trino_ldap_rendering(mock_service_dependencies):
     mock_hms_svc.platform_state.return_value = mock_hms_state
     mock_hms_svc._resolve_namespace.return_value = "hms-ns"
 
-    model.ldap_config_id = 5
     model.internal_shared_secret = "test-shared-secret"
+    
+    # Mock project relationship
+    mock_project = MagicMock()
+    mock_project.ldap_config_id = 5
+    svc.project = AsyncMock(return_value=mock_project)
 
     with patch("mindweaver.platform_service.trino.service.LdapConfigService.get_service", AsyncMock(return_value=mock_ldap_svc)), \
          patch("mindweaver.platform_service.trino.service.HiveMetastorePlatformService.get_service", AsyncMock(return_value=mock_hms_svc)), \
@@ -438,6 +444,7 @@ async def test_trino_https_rendering(mock_service_dependencies):
     mock_hms_state.hms_uri = "thrift://hms:9083"
     mock_hms_svc.platform_state.return_value = mock_hms_state
     mock_hms_svc._resolve_namespace.return_value = "hms-ns"
+    svc.project = AsyncMock(return_value=MagicMock(ldap_config_id=None))
 
     with patch("mindweaver.platform_service.trino.service.HiveMetastorePlatformService.get_service", AsyncMock(return_value=mock_hms_svc)), \
          patch("mindweaver.platform_service.trino.service.decrypt_password", lambda x: x):

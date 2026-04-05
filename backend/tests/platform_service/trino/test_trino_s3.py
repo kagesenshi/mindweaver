@@ -28,8 +28,9 @@ async def test_trino_s3_region_defaults(mock_service_dependencies):
         hms_ids=[10],
     )
 
-    # Mock _resolve_namespace
+    # Mock _resolve_namespace and project
     svc._resolve_namespace = AsyncMock(return_value="trino-ns")
+    svc.project = AsyncMock(return_value=MagicMock(ldap_config_id=None))
 
     # Mock HiveMetastorePlatformService
     mock_hms_svc = AsyncMock()

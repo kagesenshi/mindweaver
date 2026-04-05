@@ -236,3 +236,37 @@ def test_project_state(
     # Check project state, should be 0 again
     resp = client.get(f"/api/v1/projects/{p1['id']}/_state")
     assert resp.json()["pgsql"] == 0
+
+def test_project_with_ldap(client: TestClient, test_cluster: dict):
+    # 1. Create global LDAP config
+    ldap_resp = client.post(
+        "/api/v1/ldap_configs",
+        json={
+            "name": "global-ldap",
+            "title": "Global LDAP",
+            "server_url": "ldap://ldap.example.com",
+            "user_search_base": "dc=example,dc=com",
+            "user_search_filter": "(uid={0})",
+            "username_attr": "uid",
+        }
+    )
+    assert ldap_resp.status_code == 200
+    ldap_id = ldap_resp.json()["data"]["id"]
+
+    # 2. Create project with LDAP config
+    proj_resp = client.post(
+        "/api/v1/projects",
+        json={
+            "name": "proj-with-ldap",
+            "title": "Project with LDAP",
+            "k8s_cluster_id": test_cluster["id"],
+            "ldap_config_id": ldap_id,
+        }
+    )
+    assert proj_resp.status_code == 200
+    data = proj_resp.json()["data"]
+    assert data["ldap_config_id"] == ldap_id
+
+    # 3. Verify retrieval
+    get_resp = client.get(f"/api/v1/projects/{data['id']}")
+    assert get_resp.json()["data"]["ldap_config_id"] == ldap_id
