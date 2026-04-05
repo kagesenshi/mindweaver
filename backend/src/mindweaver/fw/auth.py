@@ -20,7 +20,10 @@ import time
 from urllib.parse import urlencode
 from typing import Optional
 from pydantic import BaseModel
+import logging
 import random
+
+logger = logging.getLogger(__name__)
 
 
 class User(NamedBase, table=True):

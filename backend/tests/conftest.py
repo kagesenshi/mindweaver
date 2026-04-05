@@ -18,7 +18,7 @@ from pytest_postgresql.executor import PostgreSQLExecutor
 from psycopg.connection import Connection
 from fastapi.testclient import TestClient
 from mindweaver.fw.service import Service
-from mindweaver.fw.model import NamedBase
+from mindweaver.fw.model import NamedBase, clear_engine
 from mindweaver.service.base import ProjectScopedNamedBase, ProjectScopedService
 from sqlmodel import SQLModel, create_engine, Field
 from mindweaver.config import settings
@@ -58,6 +58,7 @@ app.include_router(ProjectScopedModelService.router(), prefix="/api/v1")
 
 @pytest.fixture(scope="function")
 def client(postgresql_proc: PostgreSQLExecutor, postgresql: Connection):
+    clear_engine()
     settings.db_host = postgresql_proc.host
     settings.db_port = postgresql_proc.port
     settings.db_name = postgresql_proc.dbname
@@ -105,6 +106,7 @@ def test_project(client: TestClient, test_cluster: dict):
 
 @pytest.fixture(scope="function")
 def crud_client(postgresql_proc: PostgreSQLExecutor, postgresql: Connection):
+    clear_engine()
     settings.db_host = postgresql_proc.host
     settings.db_port = postgresql_proc.port
     settings.db_name = postgresql_proc.dbname
@@ -121,6 +123,7 @@ def crud_client(postgresql_proc: PostgreSQLExecutor, postgresql: Connection):
 def project_scoped_crud_client(
     postgresql_proc: PostgreSQLExecutor, postgresql: Connection
 ):
+    clear_engine()
     """Create a test client with a ProjectScopedNamedBase model for CRUD testing."""
     from mindweaver.service.project import ProjectService
 

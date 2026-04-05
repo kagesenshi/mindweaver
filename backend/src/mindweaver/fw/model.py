@@ -4,7 +4,7 @@
 from sqlmodel import SQLModel, Field, Column
 from sqlalchemy.orm import declared_attr
 from sqlalchemy import UniqueConstraint
-from typing import Optional, Annotated, AsyncGenerator
+from typing import Optional, Annotated, AsyncIterator
 from pydantic import AfterValidator
 from uuid import UUID
 from uuid_extensions import uuid7
@@ -16,6 +16,8 @@ from sqlalchemy.ext.asyncio import AsyncEngine as SAAsyncEngine
 from sqlalchemy.ext.asyncio import AsyncConnection as SAAsyncConnection
 from sqlmodel.ext.asyncio.session import AsyncSession as SQLModelAsyncSession
 from fastapi import Depends
+import asyncio
+import sys
 import pendulum
 import re
 from ..config import settings
@@ -54,14 +56,29 @@ class NamedBase(Base):
         return (UniqueConstraint("name"),)
 
 
+_engine: Optional[SAAsyncEngine] = None
+
+
 def get_engine() -> SAAsyncEngine:
-    return create_async_engine(settings.db_async_uri)
+    global _engine
+    if "pytest" in sys.modules:
+        return create_async_engine(settings.db_async_uri)
+    if _engine is None:
+        _engine = create_async_engine(settings.db_async_uri)
+    return _engine
+
+
+def clear_engine():
+    global _engine
+    _engine = None
 
 
 AsyncEngine = Annotated[SAAsyncEngine, Depends(get_engine)]
 
 
-async def get_connection(engine: AsyncEngine) -> AsyncGenerator[SAAsyncConnection]:
+async def get_connection(
+    engine: SAAsyncEngine = Depends(get_engine),
+) -> AsyncIterator[SAAsyncConnection]:
     async with engine.connect() as conn:
         yield conn
 
@@ -69,7 +86,9 @@ async def get_connection(engine: AsyncEngine) -> AsyncGenerator[SAAsyncConnectio
 AsyncConnection = Annotated[SAAsyncConnection, Depends(get_connection)]
 
 
-async def get_session(engine: AsyncEngine) -> AsyncGenerator[SQLModelAsyncSession]:
+async def get_session(
+    engine: SAAsyncEngine = Depends(get_engine),
+) -> AsyncIterator[SQLModelAsyncSession]:
     async with SQLModelAsyncSession(engine) as session:
         yield session
         await session.commit()
