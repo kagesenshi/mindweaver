@@ -341,6 +341,93 @@ async def test_trino_catalog_filtering(mock_service_dependencies):
         manifest = await svc.render_manifests(model)
         assert "mysql-ds" in manifest
         assert "web-ds" not in manifest
+
+
+@pytest.mark.asyncio
+async def test_trino_mssql_catalog_rendering(mock_service_dependencies):
+    """Test that MSSQL engine is correctly mapped to sqlserver connector and URL"""
+    request, session = mock_service_dependencies
+    svc = TrinoPlatformService(request, session)
+    svc._resolve_namespace = AsyncMock(return_value="trino-ns")
+    svc.project = AsyncMock(return_value=MagicMock(ldap_config_id=None))
+
+    # Mock MSSQL Data Source
+    ds_mssql = MagicMock()
+    ds_mssql.name = "mymssql"
+    ds_mssql.engine = "mssql"
+    ds_mssql.host = "mssql-host"
+    ds_mssql.port = 1433
+    ds_mssql.database = "mydb"
+    ds_mssql.login = "sa"
+    ds_mssql.password = "pass"
+    ds_mssql.enable_ssl = False
+    ds_mssql.verify_ssl = False
+    ds_mssql.parameters = {}
+
+    mock_ds_svc = AsyncMock()
+    mock_ds_svc.get.return_value = ds_mssql
+
+    model = TrinoPlatform(
+        name="trino-test",
+        project_id=1,
+        database_source_ids=[1],
+    )
+
+    with patch("mindweaver.platform_service.trino.service.DatabaseSourceService.get_service", AsyncMock(return_value=mock_ds_svc)), \
+         patch("mindweaver.platform_service.trino.service.decrypt_password", lambda x: x):
+        vars = await svc.template_vars(model)
+
+    # Verify mssql-ds is mapped correctly
+    mssql_cat = next(c for c in vars["catalogs"] if c["catalog"] == "mymssql")
+    assert mssql_cat["properties"]["connector.name"] == "sqlserver"
+    # Defaults: enable_ssl=False, verify_ssl=False -> encrypt=false, trustServerCertificate=true
+    assert "encrypt=false" in mssql_cat["properties"]["connection-url"]
+    assert "trustServerCertificate=true" in mssql_cat["properties"]["connection-url"]
+    assert mssql_cat["properties"]["connection-url"] == "jdbc:sqlserver://mssql-host:1433;databaseName=mydb;encrypt=false;trustServerCertificate=true"
+    assert mssql_cat["properties"]["connection-user"] == "sa"
+    assert mssql_cat["properties"]["connection-password"] == "pass"
+
+
+@pytest.mark.asyncio
+async def test_trino_mssql_ssl_rendering(mock_service_dependencies):
+    """Test that MSSQL SSL parameters are correctly mapped"""
+    request, session = mock_service_dependencies
+    svc = TrinoPlatformService(request, session)
+    svc._resolve_namespace = AsyncMock(return_value="trino-ns")
+    svc.project = AsyncMock(return_value=MagicMock(ldap_config_id=None))
+
+    # Mock MSSQL Data Source with SSL enabled and verification enabled
+    ds_mssql = MagicMock()
+    ds_mssql.name = "ssl-mssql"
+    ds_mssql.engine = "mssql"
+    ds_mssql.host = "mssql-ssl-host"
+    ds_mssql.port = 1433
+    ds_mssql.database = "mydb"
+    ds_mssql.login = "sa"
+    ds_mssql.password = "pass"
+    ds_mssql.enable_ssl = True
+    ds_mssql.verify_ssl = True
+    ds_mssql.parameters = {}
+
+    mock_ds_svc = AsyncMock()
+    mock_ds_svc.get.return_value = ds_mssql
+
+    model = TrinoPlatform(
+        name="trino-test",
+        project_id=1,
+        database_source_ids=[1],
+    )
+
+    with patch("mindweaver.platform_service.trino.service.DatabaseSourceService.get_service", AsyncMock(return_value=mock_ds_svc)), \
+         patch("mindweaver.platform_service.trino.service.decrypt_password", lambda x: x):
+        vars = await svc.template_vars(model)
+
+    mssql_cat = next(c for c in vars["catalogs"] if c["catalog"] == "ssl-mssql")
+    # enable_ssl=True, verify_ssl=True -> encrypt=true, trustServerCertificate=false
+    assert "encrypt=true" in mssql_cat["properties"]["connection-url"]
+    assert "trustServerCertificate=false" in mssql_cat["properties"]["connection-url"]
+
+
 from mindweaver.datasource_service.database_source import DatabaseSourceService
 from mindweaver.service.ldap_config.model import LdapConfig
 

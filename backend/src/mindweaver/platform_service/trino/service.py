@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 class TrinoPlatformService(PlatformService[TrinoPlatform]):
     template_directory: str = os.path.join(os.path.dirname(__file__), "templates")
     state_model: type[TrinoPlatformState] = TrinoPlatformState
-    SUPPORTED_CATALOG_DRIVERS = ["postgresql", "mysql", "trino"]
+    SUPPORTED_CATALOG_DRIVERS = ["postgresql", "mysql", "trino", "mssql"]
 
     @classmethod
     def model_class(cls) -> type[TrinoPlatform]:
@@ -287,7 +287,7 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
 
                 # Default mapping of engines to trino catalog connectors
                 # Some typical ones: postgresql -> postgresql, mysql -> mysql
-                connector_name = ds.engine
+                connector_name = "sqlserver" if ds.engine == "mssql" else ds.engine
 
                 catalog = {
                     "catalog": ds.name,
@@ -297,11 +297,19 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
                 }
 
                 # Common properties
-                jdbc_prefix = f"jdbc:{ds.engine}://"
-                host_port = f"{ds.host}" + (f":{ds.port}" if ds.port else "")
-                resource_path = f"/{ds.database}" if ds.database else ""
+                if ds.engine == "mssql":
+                    jdbc_prefix = "jdbc:sqlserver://"
+                    resource_path = f";databaseName={ds.database}" if ds.database else ""
+                    encrypt = "true" if ds.enable_ssl else "false"
+                    trust_cert = "false" if ds.verify_ssl else "true"
+                    resource_path += f";encrypt={encrypt};trustServerCertificate={trust_cert}"
+                else:
+                    jdbc_prefix = f"jdbc:{ds.engine}://"
+                    resource_path = f"/{ds.database}" if ds.database else ""
 
-                if ds.engine in ("postgresql", "mysql"):
+                host_port = f"{ds.host}" + (f":{ds.port}" if ds.port else "")
+
+                if ds.engine in ("postgresql", "mysql", "mssql"):
                     catalog["properties"][
                         "connection-url"
                     ] = f"{jdbc_prefix}{host_port}{resource_path}"
