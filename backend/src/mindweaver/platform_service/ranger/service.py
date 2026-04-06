@@ -140,15 +140,19 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
             else:
                 vars["aws_secret_access_key"] = ""
             
-            # Parse audit_s3_uri to construct s3a:// URI for Ranger
-            # Format: s3://bucket/path -> s3a://bucket/path
-            uri = model.audit_s3_uri or "s3://ranger/audit"
-            if uri.startswith("s3://"):
-                s3a_uri = "s3a://" + uri[5:]
-            else:
-                s3a_uri = uri
-            
-            vars["audit_hdfs_dest_dir"] = f"{s3a_uri}/{model.name}"
+        # Set DB root user/pass to be the same as db_user/pass for managed DBs
+        vars["db_root_user"] = vars.get("db_user")
+        vars["db_root_pass"] = vars.get("db_pass")
+
+        # Parse audit_s3_uri to construct s3a:// URI for Ranger
+        # Format: s3://bucket/path -> s3a://bucket/path
+        uri = model.audit_s3_uri or "s3://ranger/audit"
+        if uri.startswith("s3://"):
+            s3a_uri = "s3a://" + uri[5:]
+        else:
+            s3a_uri = uri
+        
+        vars["audit_hdfs_dest_dir"] = f"{s3a_uri}/{model.name}"
 
         # Decrypt passwords
         for pwd_field in ["admin_password", "keyadmin_password", "tagsync_password", "usersync_password"]:

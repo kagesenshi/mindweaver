@@ -38,14 +38,56 @@ spec:
           env:
             - name: RANGER_DB_TYPE
               value: {{ .Values.db.type | lower }}
+            - name: RANGER_DB_HOST
+              value: {{ .Values.db.host | default (printf "%s-postgresql" (include "ranger.fullname" .)) | quote }}
+            - name: RANGER_DB_PORT
+              value: {{ .Values.db.port | quote }}
+            - name: RANGER_DB_NAME
+              value: {{ .Values.db.name | quote }}
+            - name: RANGER_DB_USER
+              value: {{ .Values.db.user | quote }}
+            - name: RANGER_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ranger.fullname" . }}-passwords
+                  key: db-password
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ranger.fullname" . }}-passwords
+                  key: db-root-password
+            - name: RANGER_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ranger.fullname" . }}-passwords
+                  key: admin-password
+            - name: RANGER_KEYADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ranger.fullname" . }}-passwords
+                  key: keyadmin-password
+            - name: RANGER_TAGSYNC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ranger.fullname" . }}-passwords
+                  key: tagsync-password
+            - name: RANGER_USERSYNC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ranger.fullname" . }}-passwords
+                  key: usersync-password
+            - name: RANGER_AUDIT_STORE
+              value: {{ .Values.admin.auditStore | default "solr" | quote }}
+            - name: RANGER_AUDIT_HDFS_DEST_DIR
+              value: {{ .Values.admin.auditHdfsDestDir | default "" | quote }}
+            - name: RANGER_EXTERNAL_URL
+              value: {{ .Values.admin.externalUrl | quote }}
             - name: SETUP_RANGER
               value: "true"
             - name: DEBUG_ADMIN
               value: "false"
-          volumeMounts:
-            - name: config
-              mountPath: /opt/ranger/admin/install.properties
-              subPath: install.properties
+            - name: JAVA_HOME
+              value: /opt/java/openjdk
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           livenessProbe:
@@ -60,10 +102,7 @@ spec:
               port: http
             initialDelaySeconds: 60
             periodSeconds: 10
-      volumes:
-        - name: config
-          configMap:
-            name: {{ include "ranger.fullname" . }}-config
+      volumes: []
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
