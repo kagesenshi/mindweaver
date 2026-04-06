@@ -108,14 +108,6 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
                 "field": "id",
                 "multiselect": True,
             },
-            "hms_iceberg_ids": {
-                "order": 21,
-                "label": "Iceberg (HMS-backed) Catalogs",
-                "type": "relationship",
-                "endpoint": "/api/v1/platform/hive-metastore",
-                "field": "id",
-                "multiselect": True,
-            },
             "database_source_ids": {
                 "order": 22,
                 "label": "Database Sources",
@@ -129,15 +121,8 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
     async def get_preferred_catalog(self, model: TrinoPlatform) -> Optional[str]:
         """
         Determines the preferred catalog for CLI examples.
-        Priority: Iceberg > Hive > Data Source
+        Priority: Hive/Iceberg (Lakehouse) > Data Source
         """
-        if model.hms_iceberg_ids:
-            hms_svc = await HiveMetastorePlatformService.get_service(
-                self.request, self.session
-            )
-            hms_model = await hms_svc.get(model.hms_iceberg_ids[0])
-            return hms_model.name
-
         if model.hms_ids:
             hms_svc = await HiveMetastorePlatformService.get_service(
                 self.request, self.session
@@ -191,62 +176,7 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
                 catalog = {
                     "catalog": hms_model.name,
                     "properties": {
-                        "connector.name": "hive",
-                        "hive.metastore.uri": hms_uri,
-                    },
-                }
-
-                if hms_model.s3_storage_id:
-                    s3_svc = await S3StorageService.get_service(
-                        self.request, self.session
-                    )
-                    s3_model = await s3_svc.get(hms_model.s3_storage_id)
-                    catalog["properties"]["fs.native-s3.enabled"] = "true"
-                    catalog["properties"]["s3.endpoint"] = s3_model.endpoint_url
-
-                    # Default region to us-east-1 if empty or if endpoint_url is set (local)
-                    s3_region = s3_model.region
-                    if not s3_region or not s3_region.strip() or s3_model.endpoint_url:
-                        s3_region = "us-east-1"
-                    catalog["properties"]["s3.region"] = s3_region
-
-                    catalog["properties"]["s3.aws-access-key"] = s3_model.access_key
-                    if s3_model.secret_key:
-                        try:
-                            catalog["properties"]["s3.aws-secret-key"] = (
-                                decrypt_password(s3_model.secret_key)
-                            )
-                        except Exception:
-                            catalog["properties"][
-                                "s3.aws-secret-key"
-                            ] = s3_model.secret_key
-                    catalog["properties"]["s3.path-style-access"] = "true"
-
-                catalogs.append(catalog)
-
-        if model.hms_iceberg_ids:
-            hms_svc = await HiveMetastorePlatformService.get_service(
-                self.request, self.session
-            )
-            for hms_id in model.hms_iceberg_ids:
-                hms_model = await hms_svc.get(hms_id)
-                hms_state = await hms_svc.platform_state(hms_model)
-
-                if not hms_state or not hms_state.active:
-                    raise ValueError(
-                        f"Managed Hive Metastore {hms_model.name} is not active"
-                    )
-
-                hms_namespace = await hms_svc._resolve_namespace(hms_model)
-                hms_uri = (
-                    hms_state.hms_uri
-                    or f"thrift://{hms_model.name}.{hms_namespace}.svc.cluster.local:9083"
-                )
-
-                catalog = {
-                    "catalog": hms_model.name,
-                    "properties": {
-                        "connector.name": "iceberg",
+                        "connector.name": "lakehouse",
                         "hive.metastore.uri": hms_uri,
                     },
                 }
@@ -324,7 +254,12 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
 
                 # Extend with additional driver parameters
                 for param, pval in ds.parameters.items():
-                    catalog["properties"][param] = str(pval)
+                    if param.startswith("trino."):
+                        catalog["properties"][param.replace("trino.", "", 1)] = str(
+                            pval
+                        )
+                    else:
+                        catalog["properties"][param] = str(pval)
 
                 catalogs.append(catalog)
 

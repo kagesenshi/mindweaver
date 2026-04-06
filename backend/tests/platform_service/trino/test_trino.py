@@ -29,7 +29,6 @@ def test_trino_resource_defaults():
     assert model.mem_limit == 4.0
     assert model.database_source_ids == []
     assert model.hms_ids == []
-    assert model.hms_iceberg_ids == []
 
     # New fields
     assert model.chart_version == "1.41.0"
@@ -80,19 +79,6 @@ def test_trino_validation():
         )
     assert "Memory request cannot be greater than Memory limit" in str(excinfo.value)
 
-    # Invalid Catalogs: Same HMS for both Hive and Iceberg
-    with pytest.raises(ValidationError) as excinfo:
-        TrinoPlatform.model_validate(
-            {
-                "name": "test-trino",
-                "title": "Test Trino",
-                "project_id": 1,
-                "hms_ids": [1],
-                "hms_iceberg_ids": [1],
-            }
-        )
-    assert "cannot be used for both Hive and Iceberg catalogs simultaneously" in str(excinfo.value)
-
     # Invalid Catalogs: No catalogs defined
     with pytest.raises(ValidationError) as excinfo:
         TrinoPlatform.model_validate(
@@ -101,7 +87,6 @@ def test_trino_validation():
                 "title": "Test Trino",
                 "project_id": 1,
                 "hms_ids": [],
-                "hms_iceberg_ids": [],
                 "database_source_ids": [],
             }
         )
@@ -119,7 +104,6 @@ async def test_trino_template_rendering(mock_service_dependencies):
         title="Trino Test",
         project_id=1,
         hms_ids=[10],
-        hms_iceberg_ids=[11],
         database_source_ids=[20],
     )
 
@@ -130,14 +114,10 @@ async def test_trino_template_rendering(mock_service_dependencies):
     mock_hms_svc = AsyncMock()
     
     mock_hms_model_10 = MagicMock()
-    mock_hms_model_10.name = "test-hms-hive"
+    mock_hms_model_10.name = "test-hms-lakehouse"
     mock_hms_model_10.s3_storage_id = 100
     
-    mock_hms_model_11 = MagicMock()
-    mock_hms_model_11.name = "test-hms-iceberg-cat"
-    mock_hms_model_11.s3_storage_id = 100
-    
-    mock_hms_svc.get.side_effect = lambda id: mock_hms_model_10 if id == 10 else mock_hms_model_11
+    mock_hms_svc.get.side_effect = lambda id: mock_hms_model_10
     mock_hms_svc._resolve_namespace.return_value = "hms-ns"
 
     # Mock S3StorageService
@@ -180,28 +160,18 @@ async def test_trino_template_rendering(mock_service_dependencies):
 
     assert "hms_uri" not in vars
     assert "iceberg_uri" not in vars
-    assert len(vars["catalogs"]) == 3
-    assert vars["preferred_catalog"] == "test-hms-iceberg-cat" # Iceberg has priority
+    assert len(vars["catalogs"]) == 2
+    assert vars["preferred_catalog"] == "test-hms-lakehouse"
     
     # Check HMS catalog
-    hms_cat = next(c for c in vars["catalogs"] if c["catalog"] == "test-hms-hive")
-    assert hms_cat["properties"]["connector.name"] == "hive"
+    hms_cat = next(c for c in vars["catalogs"] if c["catalog"] == "test-hms-lakehouse")
+    assert hms_cat["properties"]["connector.name"] == "lakehouse"
     assert hms_cat["properties"]["hive.metastore.uri"] == "thrift://hms-internal:9083"
     assert hms_cat["properties"]["fs.native-s3.enabled"] == "true"
     assert hms_cat["properties"]["s3.endpoint"] == "http://minio:9000"
     assert hms_cat["properties"]["s3.aws-access-key"] == "access"
     assert hms_cat["properties"]["s3.aws-secret-key"] == "secret"
     assert hms_cat["properties"]["s3.path-style-access"] == "true"
-
-    # Check HMS Iceberg catalog
-    iceberg_cat = next(c for c in vars["catalogs"] if c["catalog"] == "test-hms-iceberg-cat")
-    assert iceberg_cat["properties"]["connector.name"] == "iceberg"
-    assert iceberg_cat["properties"]["hive.metastore.uri"] == "thrift://hms-internal:9083"
-    assert iceberg_cat["properties"]["fs.native-s3.enabled"] == "true"
-    assert iceberg_cat["properties"]["s3.endpoint"] == "http://minio:9000"
-    assert iceberg_cat["properties"]["s3.aws-access-key"] == "access"
-    assert iceberg_cat["properties"]["s3.aws-secret-key"] == "secret"
-    assert iceberg_cat["properties"]["s3.path-style-access"] == "true"
 
     # Check PG catalog
     pg_cat = next(c for c in vars["catalogs"] if c["catalog"] == "mypsql")
@@ -226,17 +196,12 @@ async def test_trino_template_rendering(mock_service_dependencies):
     values_yaml_str = app_doc["spec"]["source"]["helm"]["values"]
     values = yaml.safe_load(values_yaml_str)
     
-    assert "test-hms-hive" in values["catalogs"]
-    assert "test-hms-iceberg-cat" in values["catalogs"]
+    assert "test-hms-lakehouse" in values["catalogs"]
     assert "mypsql" in values["catalogs"]
     
-    hive_props = values["catalogs"]["test-hms-hive"]
-    assert "connector.name=hive" in hive_props
-    assert "hive.metastore.uri=thrift://hms-internal:9083" in hive_props
-
-    iceberg_props = values["catalogs"]["test-hms-iceberg-cat"]
-    assert "connector.name=iceberg" in iceberg_props
-    assert "hive.metastore.uri=thrift://hms-internal:9083" in iceberg_props
+    hms_props = values["catalogs"]["test-hms-lakehouse"]
+    assert "connector.name=lakehouse" in hms_props
+    assert "hive.metastore.uri=thrift://hms-internal:9083" in hms_props
 
     assert "jdbc:postgresql://postgres-host:5432/mydb" in values["catalogs"]["mypsql"]
     # Verify the additional HTTPS NodePort service is present in the docs
@@ -649,3 +614,48 @@ async def test_trino_internal_shared_secret_visibility(mock_service_dependencies
     model2 = TrinoPlatform(name="t2", project_id=1)
     assert model1.internal_shared_secret != model2.internal_shared_secret
     assert len(model1.internal_shared_secret) == 64
+
+
+@pytest.mark.asyncio
+async def test_trino_catalog_custom_parameters(mock_service_dependencies):
+    """Test that trino.* parameters in data source are passed to catalog properties without prefix"""
+    request, session = mock_service_dependencies
+    svc = TrinoPlatformService(request, session)
+    svc._resolve_namespace = AsyncMock(return_value="trino-ns")
+    svc.project = AsyncMock(return_value=MagicMock(ldap_config_id=None))
+
+    # Mock Data Source with trino. prefixed parameters
+    ds = MagicMock()
+    ds.name = "custom-ds"
+    ds.engine = "postgresql"
+    ds.host = "host"
+    ds.port = 5432
+    ds.database = "db"
+    ds.login = "user"
+    ds.password = "pass"
+    ds.parameters = {
+        "trino.case-insensitive-name-matching": "true",
+        "normal-param": "value",
+    }
+
+    mock_ds_svc = AsyncMock()
+    mock_ds_svc.get.return_value = ds
+
+    model = TrinoPlatform(
+        name="trino-test",
+        project_id=1,
+        database_source_ids=[1],
+    )
+
+    with patch(
+        "mindweaver.platform_service.trino.service.DatabaseSourceService.get_service",
+        AsyncMock(return_value=mock_ds_svc),
+    ), patch("mindweaver.platform_service.trino.service.decrypt_password", lambda x: x):
+        vars = await svc.template_vars(model)
+
+    catalog = next(c for c in vars["catalogs"] if c["catalog"] == "custom-ds")
+    # Verify trino. prefix was stripped
+    assert catalog["properties"]["case-insensitive-name-matching"] == "true"
+    assert "trino.case-insensitive-name-matching" not in catalog["properties"]
+    # Verify normal parameters are kept
+    assert catalog["properties"]["normal-param"] == "value"
