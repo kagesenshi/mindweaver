@@ -38,11 +38,21 @@ then
           echo "db_password=${RANGER_DB_PASSWORD}"
           echo "db_root_user=${RANGER_DB_ROOT_USER:-postgres}"
           echo "db_root_password=${POSTGRES_PASSWORD}"
-          echo "rangerAdmin_password=${RANGER_DB_PASSWORD}"
-          echo "rangerTagsync_password=${RANGER_DB_PASSWORD}"
-          echo "rangerUsersync_password=${RANGER_DB_PASSWORD}"
-          echo "keyadmin_password=${RANGER_DB_PASSWORD}"
+          echo "rangerAdmin_password=${RANGER_ADMIN_PASSWORD}"
+          echo "rangerTagsync_password=${RANGER_TAGSYNC_PASSWORD}"
+          echo "rangerUsersync_password=${RANGER_USERSYNC_PASSWORD}"
+          echo "keyadmin_password=${RANGER_KEYADMIN_PASSWORD}"
   } >> ${RANGER_HOME}/admin/install.properties
+
+  if [ -d ${RANGER_PROPS_DIR} ]
+  then
+    for f in ${RANGER_PROPS_DIR}/*.properties; do
+        if [ -f "$f" ]; then
+            cat "$f" >> ${RANGER_HOME}/admin/install.properties
+        fi
+    done
+  fi
+
   cd ${RANGER_HOME}/admin || exit
   if ./setup.sh;
   then
