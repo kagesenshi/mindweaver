@@ -4,8 +4,7 @@
 import click
 from .mindweaver import MindWeaverReleaser
 from .hms import HMSReleaser
-
-
+from .ranger import RangerReleaser
 from .superset import SupersetReleaser
 
 
@@ -39,6 +38,12 @@ def hms():
 @cli.group()
 def superset():
     """Superset release commands"""
+    pass
+
+
+@cli.group()
+def ranger():
+    """Ranger release commands"""
     pass
 
 
@@ -94,6 +99,7 @@ def create_command(group, releaser_class):
 create_command(mindweaver, MindWeaverReleaser)
 create_command(hms, HMSReleaser)
 create_command(superset, SupersetReleaser)
+create_command(ranger, RangerReleaser)
 
 
 def main():
