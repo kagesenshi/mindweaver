@@ -2,5 +2,5 @@ apiVersion: v2
 name: ranger
 description: A Helm chart to deploy Apache Ranger 2.8.0 on Kubernetes
 type: application
-version: 0.1.0
-appVersion: "2.8.0"
+version: 0.1.1-alpha
+appVersion: "2.8.0-rev.1-alpha"
