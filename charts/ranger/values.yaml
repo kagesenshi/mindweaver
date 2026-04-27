@@ -5,7 +5,7 @@
 replicaCount: 1
 
 image:
-  repository: mindweaver/ranger
+  repository: ghcr.io/kagesenshi/mindweaver/ranger
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: "2.8.0"
@@ -88,7 +88,7 @@ admin:
   keyadminPassword: "rangerR0cks!"
   tagsyncPassword: "rangerR0cks!"
   usersyncPassword: "rangerR0cks!"
-  
+
   # Ranger External URL
   externalUrl: "http://ranger-admin:6080"
 
