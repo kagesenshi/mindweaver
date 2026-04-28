@@ -105,6 +105,7 @@ async def test_trino_template_rendering(mock_service_dependencies):
         project_id=1,
         hms_ids=[10],
         database_source_ids=[20],
+        process_forwarded=True,
     )
 
     # Mock _resolve_namespace
@@ -204,6 +205,10 @@ async def test_trino_template_rendering(mock_service_dependencies):
     assert "hive.metastore.uri=thrift://hms-internal:9083" in hms_props
 
     assert "jdbc:postgresql://postgres-host:5432/mydb" in values["catalogs"]["mypsql"]
+    
+    # Verify process_forwarded is rendered
+    assert "http-server.process-forwarded=true" in values["additionalConfigProperties"]
+
     # Verify the additional HTTPS NodePort service is present in the docs
     https_svc = next(d for d in docs if d["kind"] == "Service" and d["metadata"]["name"] == "trino-test-https-nodeport")
     assert https_svc["spec"]["type"] == "NodePort"

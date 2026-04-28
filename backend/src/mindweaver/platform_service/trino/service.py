@@ -63,6 +63,11 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
                 "type": "boolean",
             },
             "image": {"order": 8},
+            "process_forwarded": {
+                "order": 9,
+                "label": "Process X-Forwarded Headers",
+                "type": "boolean",
+            },
             "replica_count": {
                 "order": 10,
                 "type": "range",

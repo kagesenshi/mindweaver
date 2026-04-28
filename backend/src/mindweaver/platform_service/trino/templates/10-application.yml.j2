@@ -25,6 +25,9 @@ spec:
           {% if internal_shared_secret %}
           - internal-communication.shared-secret={{ internal_shared_secret }}
           {% endif %}
+          {% if process_forwarded %}
+          - http-server.process-forwarded=true
+          {% endif %}
           - http-server.https.enabled=true
           - http-server.https.port=8443
           - http-server.https.keystore.path=/etc/trino/tls/tls.pem
