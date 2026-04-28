@@ -86,6 +86,8 @@ spec:
               value: {{ .Values.admin.externalUrl | quote }}
             - name: SETUP_RANGER
               value: "true"
+            - name: RANGER_PROPS_DIR
+              value: /home/ranger/additional_props
             - name: DEBUG_ADMIN
               value: "false"
             - name: JAVA_HOME
@@ -104,7 +106,20 @@ spec:
               port: http
             initialDelaySeconds: 60
             periodSeconds: 10
-      volumes: []
+          {{- if .Values.admin.additionalProperties }}
+          volumeMounts:
+            - name: additional-props
+              mountPath: /home/ranger/additional_props
+          {{- end }}
+      volumes:
+        {{- if .Values.admin.additionalProperties }}
+        - name: additional-props
+          secret:
+            secretName: {{ include "ranger.fullname" . }}-passwords
+            items:
+              - key: additional.properties
+                path: additional.properties
+        {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

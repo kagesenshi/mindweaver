@@ -60,3 +60,12 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/*
+Format additional properties as key=value lines
+*/}}
+{{- define "ranger.additionalProperties" -}}
+{{- range $key, $value := .Values.admin.additionalProperties -}}
+{{ $key }}={{ $value }}
+{{ end -}}
+{{- end -}}

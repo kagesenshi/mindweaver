@@ -95,6 +95,11 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
             "keyadmin_password": {"order": 31, "type": "password", "label": "KeyAdmin Password"},
             "tagsync_password": {"order": 32, "type": "password", "label": "TagSync Password"},
             "usersync_password": {"order": 33, "type": "password", "label": "UserSync Password"},
+            "additional_properties": {
+                "order": 100,
+                "label": "Additional Properties",
+                "type": "key-value",
+            },
         }
 
     async def template_vars(self, model: RangerPlatform) -> dict:

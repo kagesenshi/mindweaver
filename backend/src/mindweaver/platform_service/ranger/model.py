@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
 # SPDX-License-Identifier: AGPLv3+
 
+from sqlalchemy import Column
+from sqlalchemy_utils import JSONType
 from sqlmodel import Field
 from mindweaver.platform_service.base import PlatformBase, PlatformStateBase
 from pydantic import model_validator
@@ -37,6 +39,12 @@ class RangerPlatform(PlatformBase, table=True):
     keyadmin_password: str = Field(default="rangerR0cks!")
     tagsync_password: str = Field(default="rangerR0cks!")
     usersync_password: str = Field(default="rangerR0cks!")
+
+    additional_properties: dict[str, str] = Field(
+        default_factory=dict,
+        sa_type=JSONType(),
+        description="Additional properties for Ranger Admin",
+    )
 
     @model_validator(mode="after")
     def validate_resource_limits(self) -> "RangerPlatform":

@@ -89,6 +89,9 @@ admin:
   tagsyncPassword: "rangerR0cks!"
   usersyncPassword: "rangerR0cks!"
 
+  # Additional Properties for install.properties
+  additionalProperties: {}
+
   # Ranger External URL
   externalUrl: "http://ranger-admin:6080"
 

@@ -95,6 +95,11 @@ async def test_ranger_template_vars(mock_service_dependencies):
         assert vars["audit_hdfs_dest_dir"] == "s3a://ranger/audit/test-ranger"
         assert vars["admin_password"] == "admin"
 
+        # Test with additional_properties
+        model.additional_properties = {"ranger.test.prop": "value1", "another.prop": "value2"}
+        vars = await svc.template_vars(model)
+        assert vars["additional_properties"] == {"ranger.test.prop": "value1", "another.prop": "value2"}
+
         # Test with custom audit_s3_uri
         model.audit_s3_uri = "s3://my-bucket/my/path"
         vars = await svc.template_vars(model)
