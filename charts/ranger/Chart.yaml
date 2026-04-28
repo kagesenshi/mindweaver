@@ -3,4 +3,4 @@ name: ranger
 description: A Helm chart to deploy Apache Ranger 2.8.0 on Kubernetes
 type: application
 version: 0.1.1
-appVersion: "2.8.0-rev.1"
+appVersion: "y"
