@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { ShieldCheck, ExternalLink } from 'lucide-react';
 import { useNotification } from '../../providers/NotificationProvider';
 import PlatformServiceView from '../../components/PlatformServiceView';
-import { InternalNetworkAccessBlock } from '../../components/ServiceBlocks';
+import { InternalNetworkAccessBlock, CredentialBlock } from '../../components/ServiceBlocks';
 
 const ServiceView = ({
     darkMode,
@@ -112,6 +112,17 @@ const ServiceView = ({
                         darkMode={darkMode}
                         icon={ShieldCheck}
                         endpoints={endpoints}
+                    />
+                )}
+                {platformState?.admin_password && (
+                    <CredentialBlock
+                        darkMode={darkMode}
+                        credentials={[
+                            { label: 'Admin Password', value: platformState?.admin_password, isMasked: true },
+                            { label: 'KeyAdmin Password', value: platformState?.keyadmin_password, isMasked: true },
+                            { label: 'TagSync Password', value: platformState?.tagsync_password, isMasked: true },
+                            { label: 'UserSync Password', value: platformState?.usersync_password, isMasked: true }
+                        ]}
                     />
                 )}
             </div>

@@ -35,10 +35,10 @@ class RangerPlatform(PlatformBase, table=True):
     audit_s3_uri: str = Field(default="s3://ranger/audit")
 
     # Credentials (Encrypted)
-    admin_password: str = Field(default="rangerR0cks!")
-    keyadmin_password: str = Field(default="rangerR0cks!")
-    tagsync_password: str = Field(default="rangerR0cks!")
-    usersync_password: str = Field(default="rangerR0cks!")
+    admin_password: str = Field(default=None)
+    keyadmin_password: str = Field(default=None)
+    tagsync_password: str = Field(default=None)
+    usersync_password: str = Field(default=None)
 
     additional_properties: dict[str, str] = Field(
         default_factory=dict,
@@ -61,3 +61,9 @@ class RangerPlatformState(PlatformStateBase, table=True):
     platform_id: int = Field(foreign_key="mw_ranger_platform.id", index=True)
 
     ranger_url: Optional[str] = Field(default=None)
+
+    # Credentials (Encrypted in database)
+    admin_password: Optional[str] = Field(default=None)
+    keyadmin_password: Optional[str] = Field(default=None)
+    tagsync_password: Optional[str] = Field(default=None)
+    usersync_password: Optional[str] = Field(default=None)

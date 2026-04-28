@@ -43,16 +43,19 @@ def redefine_model(
     make_all_optional = "__ALL__" in optional
     optional_fields = optional if not make_all_optional else []
 
+    from pydantic_core import PydanticUndefined
+    from pydantic import Field
+
     fields = {}
     for fname, field in Model.model_fields.items():
         if fname in exclude:
             continue
 
         annotation = field.annotation
-        default = field.default
-
+        
+        # Determine the new default/factory
         if make_all_optional or fname in optional_fields:
-            # Check if it's already optional
+            # Make it optional for Update model
             is_already_optional = (
                 hasattr(annotation, "__origin__")
                 and annotation.__origin__ is Union
@@ -60,14 +63,18 @@ def redefine_model(
             )
             if not is_already_optional:
                 annotation = Optional[annotation]
+            
+            new_field = Field(default=None)
+        else:
+            # Preserve existing default/factory for Create model
+            new_field = Field(
+                default=field.default,
+                default_factory=field.default_factory
+            )
 
-            # Use None as default for all fields in update model
-            default = None
+        fields[fname] = (annotation, new_field)
 
-        # In pydantic v2, we can just pass the new annotation and default
-        fields[fname] = (annotation, default)
-
-    model = create_model(name, **fields)
+    model = create_model(name, __base__=BaseModel, **fields)
     return model
 
 
@@ -110,3 +117,52 @@ def format_k8s_resource(value: float, unit: str = "") -> str:
 
     # Fallback to string representation if unit is unknown but it's a float
     return str(value) + unit
+
+
+import secrets
+import string
+
+
+def generate_password(length: int = 18, uri_safe: bool = True) -> str:
+    """
+    Generate a random password that meets the following requirements:
+    - at least 1 lowercase
+    - at least 1 uppercase
+    - at least 1 number
+    - at least 1 symbol
+    - minimum length 18 characters
+    """
+    if length < 4:
+        raise ValueError(
+            "Password length must be at least 4 to include all required character types"
+        )
+
+    lowercase = string.ascii_lowercase
+    uppercase = string.ascii_uppercase
+    digits = string.digits
+
+    if uri_safe:
+        # URI-safe unreserved characters as per RFC 3986: ALPHA / DIGIT / "-" / "." / "_" / "~"
+        # We use a subset of safe symbols
+        symbols = "-_.~"
+    else:
+        symbols = "!@#$%^&*()_+-=[]{}|;:,.<>?"
+
+    all_chars = lowercase + uppercase + digits + symbols
+
+    # Ensure at least one of each required type
+    password = [
+        secrets.choice(lowercase),
+        secrets.choice(uppercase),
+        secrets.choice(digits),
+        secrets.choice(symbols),
+    ]
+
+    # Fill the rest of the length
+    password += [secrets.choice(all_chars) for _ in range(length - 4)]
+
+    # Shuffle to avoid predictable pattern
+    password_list = list(password)
+    secrets.SystemRandom().shuffle(password_list)
+
+    return "".join(password_list)

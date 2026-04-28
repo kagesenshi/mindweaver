@@ -10,6 +10,8 @@ from kubernetes import client, config
 from mindweaver.platform_service.base import PlatformService
 from mindweaver.crypto import decrypt_password
 from mindweaver.fw.model import ts_now
+from mindweaver.fw.util import generate_password
+from mindweaver.fw.hooks import before_create
 from mindweaver.platform_service.pgsql.service import PgSqlPlatformService
 from mindweaver.service.s3_storage.service import S3StorageService
 
@@ -29,6 +31,24 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
     @classmethod
     def service_path(cls) -> str:
         return "/platform/ranger"
+
+    @classmethod
+    def redacted_fields(cls) -> list[str]:
+        return super().redacted_fields() + [
+            "admin_password",
+            "keyadmin_password",
+            "tagsync_password",
+            "usersync_password",
+        ]
+
+    @classmethod
+    def internal_fields(cls) -> list[str]:
+        return super().internal_fields() + [
+            "admin_password",
+            "keyadmin_password",
+            "tagsync_password",
+            "usersync_password",
+        ]
 
     @classmethod
     def widgets(cls) -> dict[str, Any]:
@@ -91,16 +111,20 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
                 "type": "s3-path",
                 "storage_field": "s3_storage_id",
             },
-            "admin_password": {"order": 30, "type": "password", "label": "Admin Password"},
-            "keyadmin_password": {"order": 31, "type": "password", "label": "KeyAdmin Password"},
-            "tagsync_password": {"order": 32, "type": "password", "label": "TagSync Password"},
-            "usersync_password": {"order": 33, "type": "password", "label": "UserSync Password"},
             "additional_properties": {
                 "order": 100,
                 "label": "Additional Properties",
                 "type": "key-value",
             },
         }
+
+    @before_create(before="_handle_redacted_create")
+    async def generate_passwords(self, model: RangerPlatform):
+        """Autogenerate random passwords for Ranger components."""
+        model.admin_password = generate_password()
+        model.keyadmin_password = generate_password()
+        model.tagsync_password = generate_password()
+        model.usersync_password = generate_password()
 
     async def template_vars(self, model: RangerPlatform) -> dict:
         vars = model.model_dump()
@@ -318,4 +342,13 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
             else:
                 state.ranger_url = f"http://{model.name}.{namespace}.svc.cluster.local:6080"
 
+        # Populating passwords for UI display
+        state.admin_password = model.admin_password
+        state.keyadmin_password = model.keyadmin_password
+        state.tagsync_password = model.tagsync_password
+        state.usersync_password = model.usersync_password
         state.last_heartbeat = ts_now()
+
+        await self.session.flush()
+
+

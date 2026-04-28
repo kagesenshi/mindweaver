@@ -29,6 +29,13 @@ const AuthRoleMappingWidget = ({ name, value, roles = [], onChange, darkMode, is
         return [];
     });
 
+    // Ensure we report at least an empty array if unset
+    React.useEffect(() => {
+        if (!value || !Array.isArray(value)) {
+            onChange(name, []);
+        }
+    }, []);
+
     const inputBg = darkMode ? "bg-slate-950 border-slate-800 text-slate-200" : "bg-slate-100 border-slate-200 text-slate-900";
     const disabledBg = darkMode ? "bg-slate-900 border-slate-800 text-slate-500" : "bg-slate-200 border-slate-300 text-slate-400";
 
