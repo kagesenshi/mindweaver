@@ -141,7 +141,9 @@ async def test_ranger_password_generation(mock_service_dependencies):
         has_lower = any(c in string.ascii_lowercase for c in p)
         has_upper = any(c in string.ascii_uppercase for c in p)
         has_digit = any(c in string.digits for c in p)
-        has_symbol = any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?" for c in p)
+        # Support both URI-safe and legacy symbols
+        symbols = "!@#$%^&*()_+-=[]{}|;:,.<>?-_.~"
+        has_symbol = any(c in symbols for c in p)
         return has_lower and has_upper and has_digit and has_symbol
 
     assert check_complexity(model.admin_password)
