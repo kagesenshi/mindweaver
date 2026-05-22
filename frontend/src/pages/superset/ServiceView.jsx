@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { LayoutDashboard, ExternalLink } from 'lucide-react';
 import { useNotification } from '../../providers/NotificationProvider';
 import PlatformServiceView from '../../components/PlatformServiceView';
-import { InternalNetworkAccessBlock, CredentialBlock } from '../../components/ServiceBlocks';
+import { InternalNetworkAccessBlock, ExternalNetworkAccessBlock, CredentialBlock } from '../../components/ServiceBlocks';
 
 const ServiceView = ({
     darkMode,
@@ -83,9 +83,7 @@ const ServiceView = ({
             });
         }
 
-        const uris = [];
-        if (platformState?.superset_uri) uris.push({ label: 'IPv4', uri: platformState.superset_uri });
-        if (platformState?.superset_uri_ipv6) uris.push({ label: 'IPv6', uri: platformState.superset_uri_ipv6 });
+        const httpPort = platformState?.node_ports?.find(np => np.port === 8088);
 
         return (
             <div className="space-y-6">
@@ -97,39 +95,18 @@ const ServiceView = ({
                     />
                 )}
 
-                {uris.length > 0 && (
-                    <div className="mw-card p-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-lg font-semibold flex items-center gap-2">
-                                <ExternalLink size={20} className="text-blue-500" />
-                                Access Superset
-                            </h3>
-                        </div>
-                        <p className="text-slate-500 dark:text-slate-400 mb-4 text-sm">
-                            Superset is available at the following external URIs:
-                        </p>
-                        <div className="space-y-4">
-                            {uris.map((item, idx) => (
-                                <div key={idx} className="flex flex-col gap-2">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{item.label}</span>
-                                        <a 
-                                            href={item.uri} 
-                                            target="_blank" 
-                                            rel="noopener noreferrer"
-                                            className="inline-flex items-center justify-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-colors w-max"
-                                        >
-                                            Open UI
-                                            <ExternalLink size={14} />
-                                        </a>
-                                    </div>
-                                    <div className="p-3 bg-slate-100 dark:bg-slate-800/50 rounded border border-slate-200 dark:border-slate-700">
-                                         <span className="text-xs font-mono text-slate-600 dark:text-slate-400">{item.uri}</span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+                {httpPort && (
+                    <ExternalNetworkAccessBlock
+                        darkMode={darkMode}
+                        ports={[{
+                            label: 'Superset UI',
+                            node_port: httpPort.node_port,
+                            scheme: 'http'
+                        }]}
+                        clusterNodes={platformState.cluster_nodes}
+                        icon={LayoutDashboard}
+                        iconColorClass="text-indigo-500"
+                    />
                 )}
 
                 {platformState?.admin_user && platformState?.admin_password && (

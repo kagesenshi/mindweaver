@@ -101,7 +101,8 @@ const ServiceView = ({
                         darkMode={darkMode}
                         ports={[{
                             label: 'Trino UI / API (HTTPS)',
-                            node_port: httpsPort.node_port
+                            node_port: httpsPort.node_port,
+                            scheme: 'https'
                         }]}
                         clusterNodes={platformState.cluster_nodes}
                         cliInfo={{

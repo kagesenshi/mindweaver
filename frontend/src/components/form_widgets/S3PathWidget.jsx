@@ -16,14 +16,12 @@ import { Folder, Loader2 } from 'lucide-react';
  */
 const S3PathWidget = ({
     name,
-    label,
     widget,
     formData,
     onChange,
     darkMode,
     isImmutable,
     hasError,
-    required
 }) => {
     const storageField = widget.storage_field || 's3_storage_id';
     const storageId = formData[storageField];
