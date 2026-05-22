@@ -179,3 +179,51 @@ async def test_ranger_invalid_db(mock_service_dependencies):
     with patch("mindweaver.platform_service.ranger.service.PgSqlPlatformService.get_service", AsyncMock(return_value=mock_pgsql_svc)):
         with pytest.raises(ValueError, match="is not active"):
             await svc.template_vars(model)
+
+
+@pytest.mark.asyncio
+async def test_ranger_render_manifests(mock_service_dependencies):
+    """Test that Ranger manifests render correct additional properties for limiting service-defs"""
+    request, session = mock_service_dependencies
+    svc = RangerPlatformService(request, session)
+
+    model = RangerPlatform(
+        name="test-ranger",
+        project_id=1,
+        database_id=10,
+        admin_password="admin",
+    )
+
+    svc._resolve_namespace = AsyncMock(return_value="test-ns")
+
+    mock_pgsql_svc = AsyncMock()
+    mock_pgsql_model = MagicMock()
+    mock_pgsql_model.name = "test-db"
+    mock_pgsql_svc.get.return_value = mock_pgsql_model
+    
+    mock_pgsql_state = MagicMock()
+    mock_pgsql_state.active = True
+    mock_pgsql_state.db_user = "user"
+    mock_pgsql_state.db_name = "ranger"
+    mock_pgsql_state.db_pass = "pass"
+    mock_pgsql_svc.platform_state.return_value = mock_pgsql_state
+
+    with patch("mindweaver.platform_service.ranger.service.PgSqlPlatformService.get_service", AsyncMock(return_value=mock_pgsql_svc)):
+        # Default behavior: policymgr_supportedcomponents should be rendered
+        manifests = await svc.render_manifests(model)
+        assert "policymgr_supportedcomponents: trino,kafka,elasticsearch,nifi" in manifests
+        assert "ranger.supportedcomponents: trino,kafka,elasticsearch,nifi" in manifests
+
+        # Custom override in additional_properties
+        model.additional_properties = {
+            "policymgr_supportedcomponents": "kafka,trino",
+            "ranger.supportedcomponents": "kafka,trino",
+            "custom.property": "value"
+        }
+        manifests_custom = await svc.render_manifests(model)
+        assert "policymgr_supportedcomponents: kafka,trino" in manifests_custom
+        assert "ranger.supportedcomponents: kafka,trino" in manifests_custom
+        assert "custom.property: value" in manifests_custom
+        # Ensure default list doesn't appear when overridden
+        assert "policymgr_supportedcomponents: trino,kafka,elasticsearch,nifi" not in manifests_custom
+
