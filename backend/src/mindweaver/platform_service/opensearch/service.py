@@ -12,42 +12,34 @@ from mindweaver.crypto import decrypt_password
 from mindweaver.fw.model import ts_now
 from mindweaver.fw.util import generate_password
 from mindweaver.fw.hooks import before_create
-from mindweaver.platform_service.pgsql.service import PgSqlPlatformService
-from mindweaver.service.s3_storage.service import S3StorageService
 
-from .model import RangerPlatform, RangerPlatformState
+from .model import OpenSearchPlatform, OpenSearchPlatformState
 
 logger = logging.getLogger(__name__)
 
 
-class RangerPlatformService(PlatformService[RangerPlatform]):
+class OpenSearchPlatformService(PlatformService[OpenSearchPlatform]):
     template_directory: str = os.path.join(os.path.dirname(__file__), "templates")
-    state_model: type[RangerPlatformState] = RangerPlatformState
+    state_model: type[OpenSearchPlatformState] = OpenSearchPlatformState
 
     @classmethod
-    def model_class(cls) -> type[RangerPlatform]:
-        return RangerPlatform
+    def model_class(cls) -> type[OpenSearchPlatform]:
+        return OpenSearchPlatform
 
     @classmethod
     def service_path(cls) -> str:
-        return "/platform/ranger"
+        return "/platform/opensearch"
 
     @classmethod
     def redacted_fields(cls) -> list[str]:
         return super().redacted_fields() + [
             "admin_password",
-            "keyadmin_password",
-            "tagsync_password",
-            "usersync_password",
         ]
 
     @classmethod
     def internal_fields(cls) -> list[str]:
         return super().internal_fields() + [
             "admin_password",
-            "keyadmin_password",
-            "tagsync_password",
-            "usersync_password",
         ]
 
     @classmethod
@@ -63,12 +55,14 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
                 "label": "Override Image",
             },
             "image": {"order": 5, "label": "Image"},
+            "image_tag": {"order": 6, "label": "Image Tag"},
+            "storage_size": {"order": 7, "label": "Storage Size"},
             "replica_count": {
                 "order": 10,
                 "type": "range",
                 "min": 1,
-                "max": 10,
-                "step": 1,
+                "max": 9,
+                "step": 2,
             },
             "cpu_request": {
                 "order": 11,
@@ -100,17 +94,6 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
                 "step": 0.5,
                 "label": "Memory Limit (Gi)",
             },
-            "database_id": {"order": 20, "label": "PostgreSQL"},
-            "s3_storage_id": {
-                "order": 21,
-                "label": "S3 Storage (Audit)",
-            },
-            "audit_s3_uri": {
-                "order": 22,
-                "label": "Audit S3 Location",
-                "type": "s3-path",
-                "storage_field": "s3_storage_id",
-            },
             "additional_properties": {
                 "order": 100,
                 "label": "Additional Properties",
@@ -119,82 +102,24 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
         }
 
     @before_create(before="_handle_redacted_create")
-    async def generate_passwords(self, model: RangerPlatform):
-        """Autogenerate random passwords for Ranger components."""
+    async def generate_passwords(self, model: OpenSearchPlatform):
+        """Autogenerate a strong random password for the admin user."""
         model.admin_password = generate_password()
-        model.keyadmin_password = generate_password()
-        model.tagsync_password = generate_password()
-        model.usersync_password = generate_password()
 
-    async def template_vars(self, model: RangerPlatform) -> dict:
+    async def template_vars(self, model: OpenSearchPlatform) -> dict:
         vars = model.model_dump()
         vars["namespace"] = await self._resolve_namespace(model)
 
-        # Resolve Database Connection
-        pgsql_svc = await PgSqlPlatformService.get_service(self.request, self.session)
-        pgsql_model = await pgsql_svc.get(model.database_id)
-        pgsql_state = await pgsql_svc.platform_state(pgsql_model)
-
-        if not pgsql_state or not pgsql_state.active:
-            raise ValueError(
-                f"Managed PostgreSQL cluster {pgsql_model.name} is not active"
-            )
-
-        vars["db_host"] = (
-            f"{pgsql_model.name}-pooler-rw.{vars['namespace']}.svc.cluster.local"
-        )
-        vars["db_port"] = 5432
-        vars["db_user"] = pgsql_state.db_user
-        vars["db_name"] = pgsql_state.db_name
-        if pgsql_state.db_pass:
+        # Decrypt password
+        if model.admin_password:
             try:
-                vars["db_pass"] = decrypt_password(pgsql_state.db_pass)
+                vars["admin_password"] = decrypt_password(model.admin_password)
             except Exception:
-                vars["db_pass"] = pgsql_state.db_pass
-
-        # Resolve S3 Storage Connection for Audits
-        if model.s3_storage_id:
-            s3_svc = await S3StorageService.get_service(self.request, self.session)
-            s3_model = await s3_svc.get(model.s3_storage_id)
-            vars["s3_endpoint_url"] = s3_model.endpoint_url
-            vars["s3_region"] = s3_model.region
-            vars["aws_access_key_id"] = s3_model.access_key
-            if s3_model.secret_key:
-                try:
-                    vars["aws_secret_access_key"] = decrypt_password(
-                        s3_model.secret_key
-                    )
-                except Exception:
-                    vars["aws_secret_access_key"] = s3_model.secret_key
-            else:
-                vars["aws_secret_access_key"] = ""
-            
-        # Set DB root user/pass to be the same as db_user/pass for managed DBs
-        vars["db_root_user"] = vars.get("db_user")
-        vars["db_root_pass"] = vars.get("db_pass")
-
-        # Parse audit_s3_uri to construct s3a:// URI for Ranger
-        # Format: s3://bucket/path -> s3a://bucket/path
-        uri = model.audit_s3_uri or "s3://ranger/audit"
-        if uri.startswith("s3://"):
-            s3a_uri = "s3a://" + uri[5:]
-        else:
-            s3a_uri = uri
-        
-        vars["audit_hdfs_dest_dir"] = f"{s3a_uri}/{model.name}"
-
-        # Decrypt passwords
-        for pwd_field in ["admin_password", "keyadmin_password", "tagsync_password", "usersync_password"]:
-            pwd_val = getattr(model, pwd_field)
-            if pwd_val:
-                try:
-                    vars[pwd_field] = decrypt_password(pwd_val)
-                except Exception:
-                    vars[pwd_field] = pwd_val
+                vars["admin_password"] = model.admin_password
 
         return vars
 
-    async def poll_status(self, model: RangerPlatform):
+    async def poll_status(self, model: OpenSearchPlatform):
         kubeconfig = await self.kubeconfig(model)
         namespace = await self._resolve_namespace(model)
         state = await self.platform_state(model)
@@ -270,7 +195,13 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
             try:
                 services = core_v1.list_namespaced_service(namespace=namespace)
                 for svc in services.items:
-                    if svc.metadata.name == model.name:
+                    instance_label = svc.metadata.labels.get("app.kubernetes.io/instance") if svc.metadata.labels else None
+                    if (
+                        svc.metadata.name == model.name
+                        or svc.metadata.name.startswith(model.name)
+                        or svc.metadata.name == f"{model.name}-opensearch"
+                        or instance_label == model.name
+                    ):
                         if svc.spec.type == "NodePort":
                             for port in svc.spec.ports:
                                 node_ports.append(
@@ -332,41 +263,36 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
         state.node_ports = node_ports
         state.cluster_nodes = cluster_nodes
 
-        # Derive Ranger URL
+        # Derive OpenSearch URL (default API port is 9200)
         if status == "online" and cluster_nodes:
-            ranger_np = next((np for np in node_ports if np["port"] == 6080), None)
-            if ranger_np:
+            opensearch_np = next((np for np in node_ports if np["port"] == 9200), None)
+            if opensearch_np:
                 # Find first node with IPv4
                 node_v4 = next((n for n in cluster_nodes if n["ipv4"]), None)
                 if node_v4:
-                    state.ranger_url = (
-                        f"http://{node_v4['ipv4']}:{ranger_np['node_port']}"
+                    state.opensearch_url = (
+                        f"https://{node_v4['ipv4']}:{opensearch_np['node_port']}"
                     )
                 else:
-                    state.ranger_url = None
+                    state.opensearch_url = None
 
                 # Find first node with IPv6
                 node_v6 = next((n for n in cluster_nodes if n["ipv6"]), None)
                 if node_v6:
-                    state.ranger_url_ipv6 = (
-                        f"http://[{node_v6['ipv6']}]:{ranger_np['node_port']}"
+                    state.opensearch_url_ipv6 = (
+                        f"https://[{node_v6['ipv6']}]:{opensearch_np['node_port']}"
                     )
                 else:
-                    state.ranger_url_ipv6 = None
+                    state.opensearch_url_ipv6 = None
             else:
-                state.ranger_url = f"http://{model.name}.{namespace}.svc.cluster.local:6080"
-                state.ranger_url_ipv6 = None
+                state.opensearch_url = f"https://{model.name}.{namespace}.svc.cluster.local:9200"
+                state.opensearch_url_ipv6 = None
         else:
-            state.ranger_url = None
-            state.ranger_url_ipv6 = None
+            state.opensearch_url = None
+            state.opensearch_url_ipv6 = None
 
         # Populating passwords for UI display
         state.admin_password = model.admin_password
-        state.keyadmin_password = model.keyadmin_password
-        state.tagsync_password = model.tagsync_password
-        state.usersync_password = model.usersync_password
         state.last_heartbeat = ts_now()
 
         await self.session.flush()
-
-

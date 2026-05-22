@@ -19,6 +19,7 @@ import {
     ChevronRight,
     Boxes,
     Globe,
+    Search,
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { useAuth } from '../providers/AuthProvider';
@@ -55,6 +56,7 @@ const INFRA_ITEMS = [
     { name: 'Apache Airflow', to: '/platform/airflow', icon: Activity },
     { name: 'Apache Superset', to: '/platform/superset', icon: BarChart3 },
     { name: 'Apache Ranger', to: '/platform/ranger', icon: ShieldCheck },
+    { name: 'OpenSearch', to: '/platform/opensearch', icon: Search },
     { name: 'Apache Kafka', to: '/platform/kafka', icon: RefreshCcw },
 ];
 

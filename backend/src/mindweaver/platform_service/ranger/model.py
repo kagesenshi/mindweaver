@@ -61,6 +61,7 @@ class RangerPlatformState(PlatformStateBase, table=True):
     platform_id: int = Field(foreign_key="mw_ranger_platform.id", index=True)
 
     ranger_url: Optional[str] = Field(default=None)
+    ranger_url_ipv6: Optional[str] = Field(default=None)
 
     # Credentials (Encrypted in database)
     admin_password: Optional[str] = Field(default=None)

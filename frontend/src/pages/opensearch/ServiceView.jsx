@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPLv3+
 
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, ExternalLink } from 'lucide-react';
+import { Search, ExternalLink } from 'lucide-react';
 import { useNotification } from '../../providers/NotificationProvider';
 import PlatformServiceView from '../../components/PlatformServiceView';
 import { InternalNetworkAccessBlock, CredentialBlock } from '../../components/ServiceBlocks';
@@ -13,9 +13,9 @@ const ServiceView = ({
     selectedPlatform,
     onBack,
     initialTab = 'connect',
-    ranger
+    opensearch
 }) => {
-    const { getPlatformState, refreshPlatformState, updatePlatformState, fetchPlatforms } = ranger;
+    const { getPlatformState, refreshPlatformState, updatePlatformState, fetchPlatforms } = opensearch;
     const [platformState, setPlatformState] = useState(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -80,15 +80,15 @@ const ServiceView = ({
         const endpoints = [];
         if (selectedPlatform && platformState?.extra_data?.namespace) {
             endpoints.push({
-                title: 'Ranger Admin UI',
-                code: `http://${selectedPlatform.name}.${platformState.extra_data.namespace}.svc.cluster.local:6080`,
-                description: 'Internal URI for Ranger Admin.'
+                title: 'OpenSearch Internal HTTP Endpoint',
+                code: `http://${selectedPlatform.name}.${platformState.extra_data.namespace}.svc.cluster.local:9200`,
+                description: 'Internal network URI for accessing the OpenSearch REST API.'
             });
         }
 
         const uris = [];
-        if (platformState?.ranger_url) uris.push({ label: 'IPv4', uri: platformState.ranger_url });
-        if (platformState?.ranger_url_ipv6) uris.push({ label: 'IPv6', uri: platformState.ranger_url_ipv6 });
+        if (platformState?.opensearch_url) uris.push({ label: 'IPv4', uri: platformState.opensearch_url });
+        if (platformState?.opensearch_url_ipv6) uris.push({ label: 'IPv6', uri: platformState.opensearch_url_ipv6 });
 
         return (
             <div className="space-y-6">
@@ -97,11 +97,11 @@ const ServiceView = ({
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-lg font-semibold flex items-center gap-2">
                                 <ExternalLink size={20} className="text-blue-500" />
-                                Access Ranger UI
+                                Access OpenSearch API
                             </h3>
                         </div>
                         <p className="text-slate-500 dark:text-slate-400 mb-4 text-sm">
-                            Ranger is available at the following external URIs:
+                            OpenSearch is available at the following external URIs:
                         </p>
                         <div className="space-y-4">
                             {uris.map((item, idx) => (
@@ -129,7 +129,7 @@ const ServiceView = ({
                 {endpoints.length > 0 && (
                     <InternalNetworkAccessBlock
                         darkMode={darkMode}
-                        icon={ShieldCheck}
+                        icon={Search}
                         endpoints={endpoints}
                     />
                 )}
@@ -137,10 +137,8 @@ const ServiceView = ({
                     <CredentialBlock
                         darkMode={darkMode}
                         credentials={[
-                            { label: 'Admin Password', value: platformState?.admin_password, isMasked: true },
-                            { label: 'KeyAdmin Password', value: platformState?.keyadmin_password, isMasked: true },
-                            { label: 'TagSync Password', value: platformState?.tagsync_password, isMasked: true },
-                            { label: 'UserSync Password', value: platformState?.usersync_password, isMasked: true }
+                            { label: 'Admin Username', value: 'admin', isMasked: false },
+                            { label: 'Admin Password', value: platformState?.admin_password, isMasked: true }
                         ]}
                     />
                 )}
@@ -160,17 +158,18 @@ const ServiceView = ({
             isRefreshing={isRefreshing}
             onToggleActive={toggleActive}
             onDecommission={handleDecommission}
-            icon={ShieldCheck}
+            icon={Search}
             iconClassName="text-blue-400"
-            entityPath="/platform/ranger"
+            entityPath="/platform/opensearch"
             fetchPlatforms={fetchPlatforms}
             renderConnectTab={renderConnectTab}
             decommissionWarningText="Permanently delete all associated resources. This cannot be undone."
-            notDeployedTitle="Ranger Not Deployed"
-            notDeployedDescription="Deploy Ranger to see connection endpoints."
-            deployButtonText="DEPLOY RANGER"
+            notDeployedTitle="OpenSearch Not Deployed"
+            notDeployedDescription="Deploy OpenSearch to see connection endpoints."
+            deployButtonText="DEPLOY OPENSEARCH"
         />
     );
 };
 
 export default ServiceView;
+//

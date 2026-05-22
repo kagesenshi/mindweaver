@@ -401,6 +401,8 @@ class SupersetPlatformService(PlatformService[SupersetPlatform]):
                     state.superset_uri = (
                         f"http://{node_v4['ipv4']}:{superset_np['node_port']}"
                     )
+                else:
+                    state.superset_uri = None
 
                 # Find first node with IPv6
                 node_v6 = next((n for n in cluster_nodes if n["ipv6"]), None)
@@ -408,9 +410,15 @@ class SupersetPlatformService(PlatformService[SupersetPlatform]):
                     state.superset_uri_ipv6 = (
                         f"http://[{node_v6['ipv6']}]:{superset_np['node_port']}"
                     )
+                else:
+                    state.superset_uri_ipv6 = None
             else:
                 state.superset_uri = (
                     f"http://{model.name}.{namespace}.svc.cluster.local:8088"
                 )
+                state.superset_uri_ipv6 = None
+        else:
+            state.superset_uri = None
+            state.superset_uri_ipv6 = None
 
         state.last_heartbeat = ts_now()

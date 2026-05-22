@@ -1,0 +1,69 @@
+# SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
+# SPDX-License-Identifier: AGPLv3+
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ name }}
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://opensearch-project.github.io/helm-charts/
+    chart: opensearch
+    targetRevision: {{ chart_version }}
+    helm:
+      values: |
+        # Single node vs multi-node scaling
+        {%- if replica_count == 1 %}
+        singleNode: true
+        replicas: 1
+        {%- else %}
+        singleNode: false
+        replicas: {{ replica_count }}
+        {%- endif %}
+
+        {% if override_image %}
+        image:
+          repository: "{{ image }}"
+          tag: "{{ image_tag }}"
+        {% endif %}
+
+        extraEnvs:
+          - name: OPENSEARCH_INITIAL_ADMIN_PASSWORD
+            value: "{{ admin_password }}"
+
+        resources:
+          requests:
+            cpu: "{{ cpu_request }}"
+            memory: "{{ mem_request }}Gi"
+          limits:
+            cpu: "{{ cpu_limit }}"
+            memory: "{{ mem_limit }}Gi"
+
+        persistence:
+          enabled: true
+          size: "{{ storage_size }}"
+
+        service:
+          type: NodePort
+
+        {% if additional_properties %}
+        config:
+          opensearch.yml: |
+            {%- for key, val in additional_properties.items() %}
+            {{ key }}: {{ val }}
+            {%- endfor %}
+        {% endif %}
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ namespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
