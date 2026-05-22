@@ -92,6 +92,9 @@ admin:
   # Additional Properties for install.properties
   additionalProperties: {}
 
+  # Secret containing Ranger configuration files (e.g. ranger-admin-site.xml)
+  confSecret: ""
+
   # Ranger External URL
   externalUrl: "http://ranger-admin:6080"
 

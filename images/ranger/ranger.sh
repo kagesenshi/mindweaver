@@ -30,9 +30,9 @@ fi
 if [ "${SETUP_RANGER}" == "true" ]
 then
   cp ${RANGER_SCRIPTS}/ranger-admin-install.properties ${RANGER_HOME}/admin/install.properties
-  if [ -d ${RANGER_DEFAULT_CONF_DIR} ]
+  if [ -n "${RANGER_DEFAULT_CONF_DIR}" ] && [ -d "${RANGER_DEFAULT_CONF_DIR}" ]
   then
-      cp ${RANGER_DEFAULT_CONF_DIR}/* ${RANGER_HOME}/conf/
+      cp "${RANGER_DEFAULT_CONF_DIR}"/* "${RANGER_HOME}/conf/"
   fi
   {
           echo "db_flavor=${RANGER_DB_TYPE:-postgres}"

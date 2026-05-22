@@ -88,6 +88,8 @@ spec:
               value: "true"
             - name: RANGER_PROPS_DIR
               value: /home/ranger/additional_props
+            - name: RANGER_DEFAULT_CONF_DIR
+              value: /home/ranger/conf_dir
             - name: DEBUG_ADMIN
               value: "false"
             - name: JAVA_HOME
@@ -106,10 +108,16 @@ spec:
               port: http
             initialDelaySeconds: 60
             periodSeconds: 10
-          {{- if .Values.admin.additionalProperties }}
+          {{- if or .Values.admin.additionalProperties .Values.admin.confSecret }}
           volumeMounts:
+            {{- if .Values.admin.additionalProperties }}
             - name: additional-props
               mountPath: /home/ranger/additional_props
+            {{- end }}
+            {{- if .Values.admin.confSecret }}
+            - name: conf-dir
+              mountPath: /home/ranger/conf_dir
+            {{- end }}
           {{- end }}
       volumes:
         {{- if .Values.admin.additionalProperties }}
@@ -119,6 +127,11 @@ spec:
             items:
               - key: additional.properties
                 path: additional.properties
+        {{- end }}
+        {{- if .Values.admin.confSecret }}
+        - name: conf-dir
+          secret:
+            secretName: {{ .Values.admin.confSecret }}
         {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
