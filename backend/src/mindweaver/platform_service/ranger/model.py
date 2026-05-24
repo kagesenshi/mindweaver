@@ -30,6 +30,9 @@ class RangerPlatform(PlatformBase, table=True):
     # Database configuration (PostgreSQL)
     database_id: int = Field(foreign_key="mw_pgsql_platform.id")
 
+    # OpenSearch Configuration (Audit store/search)
+    opensearch_id: Optional[int] = Field(default=None, foreign_key="mw_opensearch_platform.id")
+
     # S3 Configuration (Audit store)
     s3_storage_id: Optional[int] = Field(default=None, foreign_key="mw_s3_storage.id")
     audit_s3_uri: str = Field(default="s3://ranger/audit")

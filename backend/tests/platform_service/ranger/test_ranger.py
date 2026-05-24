@@ -24,6 +24,7 @@ def test_ranger_resource_defaults():
     assert model.cpu_limit == 2.0
     assert model.mem_request == 2.0
     assert model.mem_limit == 4.0
+    assert model.opensearch_id is None
 
 
 def test_ranger_validation():
@@ -226,4 +227,101 @@ async def test_ranger_render_manifests(mock_service_dependencies):
         assert "custom.property: value" in manifests_custom
         # Ensure default list doesn't appear when overridden
         assert "policymgr_supportedcomponents: trino,kafka,elasticsearch,nifi" not in manifests_custom
+
+
+@pytest.mark.asyncio
+async def test_ranger_template_vars_with_opensearch(mock_service_dependencies):
+    """Test that template_vars properly constructs OpenSearch properties when opensearch_id is provided."""
+    request, session = mock_service_dependencies
+    svc = RangerPlatformService(request, session)
+
+    model = RangerPlatform(
+        name="test-ranger",
+        project_id=1,
+        database_id=10,
+        opensearch_id=200,
+        admin_password="admin",
+    )
+
+    # Mock _resolve_namespace
+    svc._resolve_namespace = AsyncMock(return_value="test-ns")
+
+    # Mock PgSqlPlatformService
+    mock_pgsql_svc = AsyncMock()
+    mock_pgsql_model = MagicMock()
+    mock_pgsql_model.name = "test-db"
+    mock_pgsql_svc.get.return_value = mock_pgsql_model
+    
+    mock_pgsql_state = MagicMock()
+    mock_pgsql_state.active = True
+    mock_pgsql_state.db_user = "user"
+    mock_pgsql_state.db_name = "ranger"
+    mock_pgsql_state.db_pass = "pass"
+    mock_pgsql_svc.platform_state.return_value = mock_pgsql_state
+
+    # Mock OpenSearchPlatformService
+    mock_os_svc = AsyncMock()
+    mock_os_model = MagicMock()
+    mock_os_model.name = "test-os"
+    mock_os_svc.get.return_value = mock_os_model
+    mock_os_svc._resolve_namespace = AsyncMock(return_value="os-ns")
+    
+    mock_os_state = MagicMock()
+    mock_os_state.active = True
+    mock_os_state.opensearch_url = "https://test-os.os-ns.svc.cluster.local:9200"
+    mock_os_state.admin_password = "os-password"
+    mock_os_svc.platform_state.return_value = mock_os_state
+
+    with patch("mindweaver.platform_service.ranger.service.PgSqlPlatformService.get_service", AsyncMock(return_value=mock_pgsql_svc)), \
+         patch("mindweaver.platform_service.ranger.service.OpenSearchPlatformService.get_service", AsyncMock(return_value=mock_os_svc)):
+        
+        vars = await svc.template_vars(model)
+        
+        assert vars["name"] == "test-ranger"
+        assert vars["db_host"] == "test-db-pooler-rw.test-ns.svc.cluster.local"
+        assert vars["additional_properties"]["audit_store"] == "elasticsearch"
+        assert vars["additional_properties"]["audit_elasticsearch_urls"] == "test-os.os-ns.svc.cluster.local"
+        assert vars["additional_properties"]["audit_elasticsearch_port"] == "9200"
+        assert vars["additional_properties"]["audit_elasticsearch_protocol"] == "https"
+        assert vars["additional_properties"]["audit_elasticsearch_user"] == "admin"
+        assert vars["additional_properties"]["audit_elasticsearch_password"] == "os-password"
+
+
+@pytest.mark.asyncio
+async def test_ranger_invalid_opensearch(mock_service_dependencies):
+    """Test that template_vars raises ValueError if the associated OpenSearch instance is inactive."""
+    request, session = mock_service_dependencies
+    svc = RangerPlatformService(request, session)
+
+    model = RangerPlatform(
+        name="test-ranger",
+        project_id=1,
+        database_id=10,
+        opensearch_id=200,
+    )
+
+    svc._resolve_namespace = AsyncMock(return_value="test-ns")
+
+    # Mock PgSql
+    mock_pgsql_svc = AsyncMock()
+    mock_pgsql_model = MagicMock()
+    mock_pgsql_model.name = "test-db"
+    mock_pgsql_svc.get.return_value = mock_pgsql_model
+    mock_pgsql_state = MagicMock()
+    mock_pgsql_state.active = True
+    mock_pgsql_svc.platform_state.return_value = mock_pgsql_state
+
+    # Mock OpenSearch as inactive
+    mock_os_svc = AsyncMock()
+    mock_os_model = MagicMock()
+    mock_os_model.name = "test-os"
+    mock_os_svc.get.return_value = mock_os_model
+    mock_os_state = MagicMock()
+    mock_os_state.active = False
+    mock_os_svc.platform_state.return_value = mock_os_state
+
+    with patch("mindweaver.platform_service.ranger.service.PgSqlPlatformService.get_service", AsyncMock(return_value=mock_pgsql_svc)), \
+         patch("mindweaver.platform_service.ranger.service.OpenSearchPlatformService.get_service", AsyncMock(return_value=mock_os_svc)):
+        with pytest.raises(ValueError, match="is not active"):
+            await svc.template_vars(model)
 

@@ -51,7 +51,9 @@ spec:
           externalUrl: http://{{ name }}.{{ namespace }}.svc.cluster.local:6080
           
           # Audit Store Configuration
-          {%- if s3_storage_id %}
+          {%- if opensearch_id %}
+          auditStore: elasticsearch
+          {%- elif s3_storage_id %}
           auditStore: hdfs
           auditHdfsDestDir: {{ audit_hdfs_dest_dir }}
           {%- else %}

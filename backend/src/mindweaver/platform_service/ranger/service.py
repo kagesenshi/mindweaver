@@ -14,6 +14,7 @@ from mindweaver.fw.util import generate_password
 from mindweaver.fw.hooks import before_create
 from mindweaver.platform_service.pgsql.service import PgSqlPlatformService
 from mindweaver.service.s3_storage.service import S3StorageService
+from mindweaver.platform_service.opensearch.service import OpenSearchPlatformService
 
 from .model import RangerPlatform, RangerPlatformState
 
@@ -101,12 +102,16 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
                 "label": "Memory Limit (Gi)",
             },
             "database_id": {"order": 20, "label": "PostgreSQL"},
-            "s3_storage_id": {
+            "opensearch_id": {
                 "order": 21,
+                "label": "OpenSearch",
+            },
+            "s3_storage_id": {
+                "order": 22,
                 "label": "S3 Storage (Audit)",
             },
             "audit_s3_uri": {
-                "order": 22,
+                "order": 23,
                 "label": "Audit S3 Location",
                 "type": "s3-path",
                 "storage_field": "s3_storage_id",
@@ -168,6 +173,43 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
                     vars["aws_secret_access_key"] = s3_model.secret_key
             else:
                 vars["aws_secret_access_key"] = ""
+
+        # Resolve OpenSearch Connection for Audits
+        if model.opensearch_id:
+            opensearch_svc = await OpenSearchPlatformService.get_service(self.request, self.session)
+            opensearch_model = await opensearch_svc.get(model.opensearch_id)
+            opensearch_state = await opensearch_svc.platform_state(opensearch_model)
+
+            if not opensearch_state or not opensearch_state.active:
+                raise ValueError(
+                    f"Managed OpenSearch cluster {opensearch_model.name} is not active"
+                )
+
+            opensearch_ns = await opensearch_svc._resolve_namespace(opensearch_model)
+            opensearch_host = f"{opensearch_model.name}.{opensearch_ns}.svc.cluster.local"
+
+            opensearch_url = opensearch_state.opensearch_url or ""
+            opensearch_protocol = "https"
+            if opensearch_url.startswith("http://"):
+                opensearch_protocol = "http"
+
+            opensearch_pass = ""
+            if opensearch_state.admin_password:
+                try:
+                    opensearch_pass = decrypt_password(opensearch_state.admin_password)
+                except Exception:
+                    opensearch_pass = opensearch_state.admin_password
+
+            additional_props = vars.setdefault("additional_properties", {})
+            # Make sure we don't overwrite user custom properties if they exist
+            additional_props.setdefault("audit_store", "elasticsearch")
+            additional_props.setdefault("audit_elasticsearch_urls", opensearch_host)
+            additional_props.setdefault("audit_elasticsearch_port", "9200")
+            additional_props.setdefault("audit_elasticsearch_protocol", opensearch_protocol)
+            additional_props.setdefault("audit_elasticsearch_user", "admin")
+            additional_props.setdefault("audit_elasticsearch_password", opensearch_pass)
+            additional_props.setdefault("audit_elasticsearch_index", "ranger_audits")
+            additional_props.setdefault("audit_elasticsearch_bootstrap_enabled", "true")
             
         # Set DB root user/pass to be the same as db_user/pass for managed DBs
         vars["db_root_user"] = vars.get("db_user")
