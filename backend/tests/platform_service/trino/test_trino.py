@@ -10,6 +10,9 @@ from pydantic import ValidationError
 
 from mindweaver.platform_service.trino import TrinoPlatform, TrinoPlatformService
 from mindweaver.platform_service.hive_metastore import HiveMetastorePlatformState, HiveMetastorePlatform
+from mindweaver.platform_service.ranger.model import RangerPlatform, RangerPlatformState
+from mindweaver.platform_service.opensearch.model import OpenSearchPlatform, OpenSearchPlatformState
+from mindweaver.service.s3_storage.model import S3Storage
 from mindweaver.fw.model import AsyncSession
 
 
@@ -465,14 +468,16 @@ async def test_trino_ldap_rendering(mock_service_dependencies):
     assert vars["ldap"]["ldap.group-auth-pattern"] == "(uid=${USER})"
 
     assert "internal-communication.shared-secret=test-shared-secret" in manifest
-    assert "authenticationType: PASSWORD" in manifest
+    assert "http-server.authentication.type=PASSWORD" in manifest
     assert "additionalConfigFiles:" in manifest
+    assert "ldap.properties:" in manifest
     assert "password-authenticator.name=ldap" in manifest
     assert "ldap.url=ldap://ldap.example.com:389" in manifest
     assert "ldap.bind-dn=cn=admin,dc=example,dc=com" in manifest
     assert "ldap.bind-password=encrypted_pass" in manifest
     assert "ldap.user-base-dn=ou=users,dc=example,dc=com" in manifest
     assert "ldap.group-auth-pattern=(uid=${USER})" in manifest
+    assert "password-authenticator.config-files=/etc/trino/ldap.properties" in manifest
 
 
 @pytest.mark.asyncio
@@ -664,3 +669,400 @@ async def test_trino_catalog_custom_parameters(mock_service_dependencies):
     assert "trino.case-insensitive-name-matching" not in catalog["properties"]
     # Verify normal parameters are kept
     assert catalog["properties"]["normal-param"] == "value"
+
+
+@pytest.mark.asyncio
+async def test_trino_ranger_integration(mock_service_dependencies):
+    """Test that Trino template rendering configures Ranger authorization and audit logging (both OpenSearch and S3)."""
+    request, session = mock_service_dependencies
+    svc = TrinoPlatformService(request, session)
+    svc._resolve_namespace = AsyncMock(return_value="trino-ns")
+    svc.project = AsyncMock(return_value=MagicMock(ldap_config_id=None))
+
+    model = TrinoPlatform(
+        name="trino-ranger-test",
+        title="Trino Ranger Test",
+        project_id=1,
+        hms_ids=[10],  # Needs at least one catalog
+        ranger_id=99,
+    )
+
+    # Mock HMS service to avoid failure in template_vars
+    mock_hms_svc = AsyncMock()
+    mock_hms_model = MagicMock()
+    mock_hms_model.name = "test-hms"
+    mock_hms_model.s3_storage_id = None
+    mock_hms_svc.get.return_value = mock_hms_model
+    mock_hms_state = MagicMock()
+    mock_hms_state.active = True
+    mock_hms_state.hms_uri = "thrift://hms:9083"
+    mock_hms_svc.platform_state.return_value = mock_hms_state
+    mock_hms_svc._resolve_namespace.return_value = "hms-ns"
+
+    # Mock Ranger service
+    mock_ranger_svc = AsyncMock()
+    mock_ranger_model = MagicMock(spec=RangerPlatform)
+    mock_ranger_model.name = "my-ranger"
+    mock_ranger_model.opensearch_id = 200
+    mock_ranger_model.s3_storage_id = 300
+    mock_ranger_model.audit_s3_uri = "s3://my-audit-bucket/ranger-audits"
+    mock_ranger_svc.get.return_value = mock_ranger_model
+    mock_ranger_svc._resolve_namespace = AsyncMock(return_value="ranger-ns")
+    mock_ranger_svc.get_ranger_url = AsyncMock(return_value="http://my-ranger.ranger-ns.svc.cluster.local:6080")
+    
+    mock_ranger_state = MagicMock(spec=RangerPlatformState)
+    mock_ranger_state.ranger_url = "http://my-ranger.ranger-ns.svc.cluster.local:6080"
+    mock_ranger_svc.platform_state = AsyncMock(return_value=mock_ranger_state)
+
+    # Mock OpenSearch service
+    mock_opensearch_svc = AsyncMock()
+    mock_opensearch_model = MagicMock(spec=OpenSearchPlatform)
+    mock_opensearch_model.name = "my-opensearch"
+    mock_opensearch_svc.get.return_value = mock_opensearch_model
+    mock_opensearch_svc._resolve_namespace = AsyncMock(return_value="opensearch-ns")
+    
+    mock_opensearch_state = MagicMock(spec=OpenSearchPlatformState)
+    mock_opensearch_state.active = True
+    mock_opensearch_state.opensearch_url = "https://my-opensearch.opensearch-ns.svc.cluster.local:9200"
+    mock_opensearch_state.admin_password = "opensearch_admin_pass"
+    mock_opensearch_svc.platform_state = AsyncMock(return_value=mock_opensearch_state)
+
+    # Mock S3Storage service
+    mock_s3_svc = AsyncMock()
+    mock_s3_model = MagicMock(spec=S3Storage)
+    mock_s3_model.endpoint_url = "http://s3.amazonaws.com"
+    mock_s3_model.region = "us-east-1"
+    mock_s3_model.access_key = "my_access_key"
+    mock_s3_model.secret_key = "my_secret_key"
+    mock_s3_svc.get.return_value = mock_s3_model
+
+    # Patch all required services
+    with patch("mindweaver.platform_service.trino.service.HiveMetastorePlatformService.get_service", AsyncMock(return_value=mock_hms_svc)), \
+         patch("mindweaver.platform_service.trino.service.RangerPlatformService.get_service", AsyncMock(return_value=mock_ranger_svc)), \
+         patch("mindweaver.platform_service.trino.service.OpenSearchPlatformService.get_service", AsyncMock(return_value=mock_opensearch_svc)), \
+         patch("mindweaver.platform_service.trino.service.S3StorageService.get_service", AsyncMock(return_value=mock_s3_svc)), \
+         patch("mindweaver.platform_service.trino.service.decrypt_password", side_effect=lambda x: x):
+         
+        vars = await svc.template_vars(model)
+        manifest = await svc.render_manifests(model)
+
+    # Assert template vars
+    assert vars.get("ranger_enabled") is True
+    assert vars.get("ranger_url") == "http://my-ranger.ranger-ns.svc.cluster.local:6080"
+    assert vars.get("ranger_service_name") == "trino-ranger-test"
+    
+    assert vars.get("ranger_opensearch_enabled") == "true"
+    assert vars.get("ranger_opensearch_host") == "my-opensearch.opensearch-ns.svc.cluster.local"
+    assert vars.get("ranger_opensearch_protocol") == "https"
+    assert vars.get("ranger_opensearch_password") == "opensearch_admin_pass"
+
+    assert vars.get("ranger_audit_s3_enabled") == "true"
+    assert vars.get("s3_endpoint_url") == "http://s3.amazonaws.com"
+    assert vars.get("s3_region") == "us-east-1"
+    assert vars.get("aws_access_key_id") == "my_access_key"
+    assert vars.get("aws_secret_access_key") == "my_secret_key"
+    assert vars.get("ranger_audit_hdfs_dest_dir") == "s3a://my-audit-bucket/ranger-audits/trino-ranger-test"
+
+    # Assert YAML manifests
+    docs = list(yaml.safe_load_all(manifest))
+    app_doc = next(d for d in docs if d["kind"] == "Application")
+    values = yaml.safe_load(app_doc["spec"]["source"]["helm"]["values"])
+    
+    # Check accessControl block
+    assert "accessControl" in values
+    assert values["accessControl"]["type"] == "properties"
+    assert "access-control.name=ranger" in values["accessControl"]["properties"]
+    assert "ranger.service.name=trino-ranger-test" in values["accessControl"]["properties"]
+    assert "ranger.plugin.config.resource=/etc/trino/ranger-trino-security.xml,/etc/trino/ranger-trino-audit.xml" in values["accessControl"]["properties"]
+
+    # Check coordinator additionalConfigFiles for security and audit xml files
+    config_files = values["coordinator"]["additionalConfigFiles"]
+    assert "ranger-trino-security.xml" in config_files
+    assert "ranger-trino-audit.xml" in config_files
+    assert "file.properties" in config_files
+    assert "password.db" in config_files
+    assert "password-authenticator.name=file" in config_files["file.properties"]
+    assert "file.password-file=/etc/trino/password.db" in config_files["file.properties"]
+    assert config_files["password.db"].startswith("ranger:$2y$")
+    assert "password-authenticator.config-files=/etc/trino/file.properties" in values["server"]["coordinatorExtraConfig"]
+    assert "http-server.authentication.type=PASSWORD" in values["server"]["coordinatorExtraConfig"]
+
+    security_xml = config_files["ranger-trino-security.xml"]
+    assert "<name>ranger.plugin.trino.policy.rest.url</name>" in security_xml
+    assert f"<value>http://my-ranger.ranger-ns.svc.cluster.local:6080</value>" in security_xml
+    assert "<name>ranger.plugin.trino.service.name</name>" in security_xml
+    assert "<value>trino-ranger-test</value>" in security_xml
+
+    audit_xml = config_files["ranger-trino-audit.xml"]
+    assert "<name>xasecure.audit.is.enabled</name>" in audit_xml
+    assert "<value>true</value>" in audit_xml
+    
+    # OpenSearch assertions in XML
+    assert "<name>xasecure.audit.elasticsearch.is.enabled</name>" in audit_xml
+    assert "<value>true</value>" in audit_xml
+    assert "<name>xasecure.audit.elasticsearch.urls</name>" in audit_xml
+    assert "<value>my-opensearch.opensearch-ns.svc.cluster.local</value>" in audit_xml
+    assert "<name>xasecure.audit.elasticsearch.password</name>" in audit_xml
+    assert "<value>opensearch_admin_pass</value>" in audit_xml
+
+    # S3 assertions in XML
+    assert "<name>xasecure.audit.hdfs.is.enabled</name>" in audit_xml
+    assert "<value>true</value>" in audit_xml
+    assert "<name>xasecure.audit.hdfs.config.destination.directory</name>" in audit_xml
+    assert "<value>s3a://my-audit-bucket/ranger-audits/trino-ranger-test</value>" in audit_xml
+    assert "<name>fs.s3a.access.key</name>" in audit_xml
+    assert "<value>my_access_key</value>" in audit_xml
+    assert "<name>fs.s3a.secret.key</name>" in audit_xml
+    assert "<value>my_secret_key</value>" in audit_xml
+    assert "<name>fs.s3a.endpoint</name>" in audit_xml
+    assert "<value>http://s3.amazonaws.com</value>" in audit_xml
+
+
+@pytest.mark.asyncio
+async def test_trino_deploy_decommission_ranger_lifecycle(mock_service_dependencies):
+    """Test that deploying/decommissioning/deleting Trino automatically registers/deletes services in Ranger Admin API."""
+    request, session = mock_service_dependencies
+    svc = TrinoPlatformService(request, session)
+    
+    # Mock namespace and project/kubeconfig/manifest rendering
+    svc._resolve_namespace = AsyncMock(return_value="trino-ns")
+    svc.project = AsyncMock(return_value=MagicMock(ldap_config_id=None))
+    svc.kubeconfig = AsyncMock(return_value="dummy-kubeconfig")
+    
+    # Mock the internal methods to prevent actual cluster interaction
+    svc.render_manifests = AsyncMock(return_value="manifest-content")
+    svc._deploy_to_cluster = AsyncMock()
+    svc._decommission_from_cluster = AsyncMock()
+    svc.clear_state = AsyncMock()
+    
+    model = TrinoPlatform(
+        name="trino-ranger-test",
+        title="Trino Ranger Test",
+        project_id=1,
+        hms_ids=[10],
+        ranger_id=99,
+    )
+    
+    # Mock Ranger service
+    mock_ranger_svc = AsyncMock()
+    mock_ranger_model = MagicMock(spec=RangerPlatform)
+    mock_ranger_model.name = "my-ranger"
+    mock_ranger_model.admin_password = "ranger_admin_pass"
+    mock_ranger_svc.get.return_value = mock_ranger_model
+    mock_ranger_svc.get_ranger_url = AsyncMock(return_value="http://my-ranger-url")
+    
+    # Mock HttpClient calls using patch
+    mock_resp_get = MagicMock()
+    mock_resp_get.status_code = 404  # Service does not exist yet
+    
+    mock_resp_post = MagicMock()
+    mock_resp_post.status_code = 201
+    
+    mock_resp_delete = MagicMock()
+    mock_resp_delete.status_code = 204
+    
+    mock_client_context = AsyncMock()
+    mock_client_context.get.return_value = mock_resp_get
+    mock_client_context.post.return_value = mock_resp_post
+    mock_client_context.delete.return_value = mock_resp_delete
+
+    mock_client_instance = MagicMock()
+    mock_client_instance.__aenter__.return_value = mock_client_context
+    mock_client_instance.__aexit__ = AsyncMock()
+    
+    # Patch get_service, decrypt_password and httpx.AsyncClient
+    with patch("mindweaver.platform_service.trino.service.RangerPlatformService.get_service", AsyncMock(return_value=mock_ranger_svc)), \
+         patch("mindweaver.platform_service.trino.service.decrypt_password", side_effect=lambda x: x), \
+         patch("mindweaver.platform_service.trino.service.httpx.AsyncClient", return_value=mock_client_instance):
+         
+        # 1. Test deploy
+        await svc.deploy(model)
+        
+        # Verify httpx client calls for create
+        mock_client_context.get.assert_called_once_with(
+            "http://my-ranger-url/service/public/v2/api/service/name/trino-ranger-test",
+            auth=("admin", "ranger_admin_pass")
+        )
+        mock_client_context.post.assert_called_once_with(
+            "http://my-ranger-url/service/public/v2/api/service",
+            json={
+                "name": "trino-ranger-test",
+                "type": "trino",
+                "configs": {
+                    "username": "ranger",
+                    "password": "ranger",
+                    "jdbc.driverClassName": "io.trino.jdbc.TrinoDriver",
+                    "jdbc.url": "jdbc:trino://trino-ranger-test.trino-ns.svc.cluster.local:8443?SSL=true&SSLVerification=NONE",
+                    "ranger.plugin.super.users": "trino,ranger"
+                }
+            },
+            auth=("admin", "ranger_admin_pass")
+        )
+        
+        # Reset mock calls for decommission test
+        mock_client_context.get.reset_mock()
+        mock_client_context.post.reset_mock()
+        
+        # 2. Test decommission (should NOT delete the Ranger service)
+        await svc.decommission(model)
+        
+        # Verify HTTP DELETE was NOT called
+        mock_client_context.delete.assert_not_called()
+        
+        # 3. Test before_delete hook (deleting the config/model, should delete Ranger service)
+        await svc.delete_ranger_service_on_delete(model)
+        mock_client_context.delete.assert_called_once_with(
+            "http://my-ranger-url/service/public/v2/api/service/name/trino-ranger-test",
+            auth=("admin", "ranger_admin_pass")
+        )
+
+
+@pytest.mark.asyncio
+async def test_trino_ldap_ranger_combined_rendering(mock_service_dependencies):
+    """Test that when both LDAP and Ranger are enabled, authenticators list is correct (LDAP first)."""
+    request, session = mock_service_dependencies
+    svc = TrinoPlatformService(request, session)
+    svc._resolve_namespace = AsyncMock(return_value="trino-ns")
+
+    model = TrinoPlatform(
+        name="trino-combined-test",
+        title="Trino Combined Test",
+        project_id=1,
+        hms_ids=[10],
+        ranger_id=99,
+        ranger_user_password="ranger_secret_pass",
+    )
+
+    # Mock LDAP configuration
+    mock_ldap_config = LdapConfig(
+        id=5,
+        name="test-ldap",
+        server_url="ldap://ldap.example.com:389",
+        user_search_base="ou=users,dc=example,dc=com",
+        user_search_filter="(uid={0})",
+        username_attr="uid",
+    )
+
+    mock_ldap_svc = AsyncMock()
+    mock_ldap_svc.get.return_value = mock_ldap_config
+
+    # Mock Ranger configuration
+    mock_ranger_svc = AsyncMock()
+    mock_ranger_model = MagicMock(spec=RangerPlatform)
+    mock_ranger_model.name = "my-ranger"
+    mock_ranger_model.opensearch_id = None
+    mock_ranger_model.s3_storage_id = None
+    mock_ranger_svc.get.return_value = mock_ranger_model
+    mock_ranger_svc.get_ranger_url = AsyncMock(return_value="http://ranger:6080")
+
+    # Mock HMS service to avoid failure in template_vars
+    mock_hms_svc = AsyncMock()
+    mock_hms_model = MagicMock()
+    mock_hms_model.name = "test-hms"
+    mock_hms_model.s3_storage_id = None
+    mock_hms_svc.get.return_value = mock_hms_model
+    mock_hms_state = MagicMock()
+    mock_hms_state.active = True
+    mock_hms_state.hms_uri = "thrift://hms:9083"
+    mock_hms_svc.platform_state.return_value = mock_hms_state
+    mock_hms_svc._resolve_namespace.return_value = "hms-ns"
+
+    # Mock project relationship
+    mock_project = MagicMock()
+    mock_project.ldap_config_id = 5
+    svc.project = AsyncMock(return_value=mock_project)
+
+    with patch("mindweaver.platform_service.trino.service.LdapConfigService.get_service", AsyncMock(return_value=mock_ldap_svc)), \
+         patch("mindweaver.platform_service.trino.service.RangerPlatformService.get_service", AsyncMock(return_value=mock_ranger_svc)), \
+         patch("mindweaver.platform_service.trino.service.HiveMetastorePlatformService.get_service", AsyncMock(return_value=mock_hms_svc)), \
+         patch("mindweaver.platform_service.trino.service.decrypt_password", side_effect=lambda x: x):
+        
+        vars = await svc.template_vars(model)
+        manifest = await svc.render_manifests(model)
+
+    assert vars.get("password_authenticator_config_files") == "/etc/trino/ldap.properties,/etc/trino/file.properties"
+    assert "password-authenticator.config-files=/etc/trino/ldap.properties,/etc/trino/file.properties" in manifest
+    assert "ldap.properties:" in manifest
+    assert "file.properties:" in manifest
+    assert "password.db:" in manifest
+
+
+@pytest.mark.asyncio
+async def test_trino_deploy_ranger_service_update(mock_service_dependencies):
+    """Test that deploying Trino updates the Ranger service definition with a PUT request if it already exists."""
+    request, session = mock_service_dependencies
+    svc = TrinoPlatformService(request, session)
+    
+    # Mock namespace and project/kubeconfig/manifest rendering
+    svc._resolve_namespace = AsyncMock(return_value="trino-ns")
+    svc.project = AsyncMock(return_value=MagicMock(ldap_config_id=None))
+    svc.kubeconfig = AsyncMock(return_value="dummy-kubeconfig")
+    
+    # Mock the internal methods to prevent actual cluster interaction
+    svc.render_manifests = AsyncMock(return_value="manifest-content")
+    svc._deploy_to_cluster = AsyncMock()
+    svc.clear_state = AsyncMock()
+    
+    model = TrinoPlatform(
+        name="trino-ranger-test",
+        title="Trino Ranger Test",
+        project_id=1,
+        hms_ids=[10],
+        ranger_id=99,
+        ranger_user_password="my_updated_password",
+    )
+    
+    # Mock Ranger service
+    mock_ranger_svc = AsyncMock()
+    mock_ranger_model = MagicMock(spec=RangerPlatform)
+    mock_ranger_model.name = "my-ranger"
+    mock_ranger_model.admin_password = "ranger_admin_pass"
+    mock_ranger_svc.get.return_value = mock_ranger_model
+    mock_ranger_svc.get_ranger_url = AsyncMock(return_value="http://my-ranger-url")
+    
+    # Mock HttpClient calls using patch
+    mock_resp_get = MagicMock()
+    mock_resp_get.status_code = 200  # Service already exists
+    mock_resp_get.json.return_value = {"id": 123, "name": "trino-ranger-test"}
+    
+    mock_resp_put = MagicMock()
+    mock_resp_put.status_code = 200
+    
+    mock_client_context = AsyncMock()
+    mock_client_context.get.return_value = mock_resp_get
+    mock_client_context.put.return_value = mock_resp_put
+    
+    mock_client_instance = MagicMock()
+    mock_client_instance.__aenter__.return_value = mock_client_context
+    mock_client_instance.__aexit__ = AsyncMock()
+    
+    # Patch get_service, decrypt_password and httpx.AsyncClient
+    with patch("mindweaver.platform_service.trino.service.RangerPlatformService.get_service", AsyncMock(return_value=mock_ranger_svc)), \
+         patch("mindweaver.platform_service.trino.service.decrypt_password", side_effect=lambda x: x), \
+         patch("mindweaver.platform_service.trino.service.httpx.AsyncClient", return_value=mock_client_instance):
+         
+        # Test deploy which triggers _manage_ranger_service("create")
+        await svc.deploy(model)
+        
+        # Verify HTTP GET was called to check existence
+        mock_client_context.get.assert_called_once_with(
+            "http://my-ranger-url/service/public/v2/api/service/name/trino-ranger-test",
+            auth=("admin", "ranger_admin_pass")
+        )
+        # Verify HTTP PUT was called to update the service
+        mock_client_context.put.assert_called_once_with(
+            "http://my-ranger-url/service/public/v2/api/service/123",
+            json={
+                "id": 123,
+                "name": "trino-ranger-test",
+                "type": "trino",
+                "configs": {
+                    "username": "ranger",
+                    "password": "my_updated_password",
+                    "jdbc.driverClassName": "io.trino.jdbc.TrinoDriver",
+                    "jdbc.url": "jdbc:trino://trino-ranger-test.trino-ns.svc.cluster.local:8443?SSL=true&SSLVerification=NONE",
+                    "ranger.plugin.super.users": "trino,ranger"
+                }
+            },
+            auth=("admin", "ranger_admin_pass")
+        )

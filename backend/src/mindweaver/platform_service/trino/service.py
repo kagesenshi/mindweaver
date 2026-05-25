@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: AGPLv3+
 
 import os
+import httpx
+import bcrypt
 import secrets
 import logging
 import asyncio
@@ -11,7 +13,7 @@ from kubernetes import client, config
 from pydantic import ValidationError
 
 from mindweaver.fw.exc import FieldValidationError
-from mindweaver.fw.service import before_create, VALIDATION_MODE
+from mindweaver.fw.service import before_create, before_delete, VALIDATION_MODE
 from mindweaver.platform_service.base import PlatformService
 from mindweaver.fw.model import ts_now
 from mindweaver.platform_service.hive_metastore.service import (
@@ -20,7 +22,10 @@ from mindweaver.platform_service.hive_metastore.service import (
 from mindweaver.datasource_service import DatabaseSourceService
 from mindweaver.service.s3_storage.service import S3StorageService
 from mindweaver.service.ldap_config.service import LdapConfigService
+from mindweaver.platform_service.ranger.service import RangerPlatformService
+from mindweaver.platform_service.opensearch.service import OpenSearchPlatformService
 from mindweaver.crypto import decrypt_password
+from mindweaver.fw.util import generate_password
 
 from .model import TrinoPlatform, TrinoPlatformState
 
@@ -42,11 +47,11 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
 
     @classmethod
     def internal_fields(cls) -> list[str]:
-        return super().internal_fields() + ["internal_shared_secret"]
+        return super().internal_fields() + ["internal_shared_secret", "ranger_user_password"]
 
     @classmethod
     def redacted_fields(cls) -> list[str]:
-        return ["internal_shared_secret"]
+        return ["internal_shared_secret", "ranger_user_password"]
 
     @classmethod
     def widgets(cls) -> dict[str, Any]:
@@ -121,7 +126,20 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
                 "field": "id",
                 "multiselect": True,
             },
+            "ranger_id": {
+                "order": 25,
+                "label": "Ranger",
+                "type": "relationship",
+                "endpoint": "/api/v1/platform/ranger",
+                "field": "id",
+            },
         }
+
+    @before_create(before="_handle_redacted_create")
+    async def generate_passwords(self, model: TrinoPlatform):
+        """Autogenerate a strong random password for Ranger user to query Trino."""
+        if not model.ranger_user_password:
+            model.ranger_user_password = generate_password()
 
     async def get_preferred_catalog(self, model: TrinoPlatform) -> Optional[str]:
         """
@@ -307,6 +325,100 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
 
             vars["ldap"] = ldap_props
 
+        # 4. Resolve Ranger Configuration
+        if model.ranger_id:
+            ranger_svc = await RangerPlatformService.get_service(self.request, self.session)
+            ranger_model = await ranger_svc.get(model.ranger_id)
+            ranger_state = await ranger_svc.platform_state(ranger_model)
+
+            ranger_url = await ranger_svc.get_ranger_url(ranger_model)
+
+            vars["ranger_enabled"] = True
+            vars["ranger_url"] = ranger_url
+            vars["ranger_service_name"] = model.name
+
+            # OpenSearch auditing config resolution
+            if ranger_model.opensearch_id:
+                opensearch_svc = await OpenSearchPlatformService.get_service(self.request, self.session)
+                opensearch_model = await opensearch_svc.get(ranger_model.opensearch_id)
+                opensearch_state = await opensearch_svc.platform_state(opensearch_model)
+
+                if not opensearch_state or not opensearch_state.active:
+                    raise ValueError(
+                        f"Managed OpenSearch cluster {opensearch_model.name} is not active"
+                    )
+
+                opensearch_ns = await opensearch_svc._resolve_namespace(opensearch_model)
+                vars["ranger_opensearch_enabled"] = "true"
+                vars["ranger_opensearch_host"] = f"{opensearch_model.name}.{opensearch_ns}.svc.cluster.local"
+                
+                opensearch_url = opensearch_state.opensearch_url or ""
+                vars["ranger_opensearch_protocol"] = "http" if opensearch_url.startswith("http://") else "https"
+                
+                opensearch_pass = ""
+                if opensearch_state.admin_password:
+                    try:
+                        opensearch_pass = decrypt_password(opensearch_state.admin_password)
+                    except Exception:
+                        opensearch_pass = opensearch_state.admin_password
+                vars["ranger_opensearch_password"] = opensearch_pass
+            else:
+                vars["ranger_opensearch_enabled"] = "false"
+
+            # S3 auditing config resolution
+            if ranger_model.s3_storage_id:
+                s3_svc = await S3StorageService.get_service(self.request, self.session)
+                s3_model = await s3_svc.get(ranger_model.s3_storage_id)
+                
+                vars["ranger_audit_s3_enabled"] = "true"
+                vars["s3_endpoint_url"] = s3_model.endpoint_url
+                vars["s3_region"] = s3_model.region
+                vars["aws_access_key_id"] = s3_model.access_key
+                if s3_model.secret_key:
+                    try:
+                        vars["aws_secret_access_key"] = decrypt_password(s3_model.secret_key)
+                    except Exception:
+                        vars["aws_secret_access_key"] = s3_model.secret_key
+                else:
+                    vars["aws_secret_access_key"] = ""
+
+                # Parse audit_s3_uri to construct s3a:// URI for Trino audit
+                uri = ranger_model.audit_s3_uri or "s3://ranger/audit"
+                if uri.startswith("s3://"):
+                    s3a_uri = "s3a://" + uri[5:]
+                else:
+                    s3a_uri = uri
+                vars["ranger_audit_hdfs_dest_dir"] = f"{s3a_uri}/{model.name}"
+            else:
+                vars["ranger_audit_s3_enabled"] = "false"
+        else:
+            vars["ranger_enabled"] = False
+
+        # Resolve password authenticators list (LDAP first, then file/local)
+        auth_files = []
+        if vars.get("ldap"):
+            auth_files.append("/etc/trino/ldap.properties")
+        if model.ranger_id:
+            auth_files.append("/etc/trino/file.properties")
+            
+            ranger_pass = ""
+            if model.ranger_user_password:
+                try:
+                    ranger_pass = decrypt_password(model.ranger_user_password)
+                except Exception:
+                    ranger_pass = model.ranger_user_password
+            if not ranger_pass:
+                ranger_pass = "ranger"
+                
+            hashed = bcrypt.hashpw(ranger_pass.encode("utf-8"), bcrypt.gensalt(10))
+            hashed_str = hashed.decode("utf-8")
+            if hashed_str.startswith("$2b$"):
+                hashed_str = "$2y$" + hashed_str[4:]
+            vars["ranger_trino_password_hash"] = hashed_str
+
+        if auth_files:
+            vars["password_authenticator_config_files"] = ",".join(auth_files)
+
         vars["preferred_catalog"] = await self.get_preferred_catalog(model)
 
         return vars
@@ -474,3 +586,103 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
                 )
 
         state.last_heartbeat = ts_now()
+
+    async def deploy(self, model: TrinoPlatform):
+        """
+        Deploys/upgrades the Trino service and automatically creates
+        the corresponding service definition in Ranger if linked.
+        """
+        await super().deploy(model)
+        await self._manage_ranger_service(model, "create")
+
+    @before_delete()
+    async def delete_ranger_service_on_delete(self, model: TrinoPlatform):
+        """
+        Deletes the corresponding service definition in Ranger when the Trino platform is deleted.
+        """
+        await self._manage_ranger_service(model, "delete")
+
+    async def _manage_ranger_service(self, model: TrinoPlatform, action: str):
+        """
+        Create or delete a Ranger service definition for the Trino instance.
+        """
+        if not model.ranger_id:
+            return
+
+        try:
+            ranger_svc = await RangerPlatformService.get_service(self.request, self.session)
+            ranger_model = await ranger_svc.get(model.ranger_id)
+            ranger_url = await ranger_svc.get_ranger_url(ranger_model)
+            
+            admin_password = ""
+            if ranger_model.admin_password:
+                try:
+                    admin_password = decrypt_password(ranger_model.admin_password)
+                except Exception:
+                    admin_password = ranger_model.admin_password
+
+            auth = ("admin", admin_password)
+            
+            async with httpx.AsyncClient(timeout=10.0, verify=False) as client:
+                if action == "create":
+                    # Check if service already exists
+                    url = f"{ranger_url.rstrip('/')}/service/public/v2/api/service/name/{model.name}"
+                    existing_id = None
+                    try:
+                        resp = await client.get(url, auth=auth)
+                        if resp.status_code == 200:
+                            existing_id = resp.json().get("id")
+                            logger.info(f"Ranger service {model.name} already exists with ID {existing_id}. Will update it.")
+                    except Exception as e:
+                        logger.warning(f"Error checking if Ranger service {model.name} exists: {e}")
+
+                    # Resolve credentials and namespace
+                    namespace = await self._resolve_namespace(model)
+                    ranger_pass = ""
+                    if model.ranger_user_password:
+                        try:
+                            ranger_pass = decrypt_password(model.ranger_user_password)
+                        except Exception:
+                            ranger_pass = model.ranger_user_password
+                    if not ranger_pass:
+                        ranger_pass = "ranger"
+
+                    payload = {
+                        "name": model.name,
+                        "type": "trino",
+                        "configs": {
+                            "username": "ranger",
+                            "password": ranger_pass,
+                            "jdbc.driverClassName": "io.trino.jdbc.TrinoDriver",
+                            "jdbc.url": f"jdbc:trino://{model.name}.{namespace}.svc.cluster.local:8443?SSL=true&SSLVerification=NONE",
+                            "ranger.plugin.super.users": "trino,ranger"
+                        }
+                    }
+
+                    if existing_id is not None:
+                        payload["id"] = existing_id
+                        update_url = f"{ranger_url.rstrip('/')}/service/public/v2/api/service/{existing_id}"
+                        resp = await client.put(update_url, json=payload, auth=auth)
+                        if resp.status_code not in (200, 201):
+                            logger.error(f"Failed to update Ranger service {model.name}: {resp.status_code} - {resp.text}")
+                        else:
+                            logger.info(f"Successfully updated Ranger service {model.name} in Ranger.")
+                    else:
+                        create_url = f"{ranger_url.rstrip('/')}/service/public/v2/api/service"
+                        resp = await client.post(create_url, json=payload, auth=auth)
+                        if resp.status_code not in (200, 201):
+                            logger.error(f"Failed to create Ranger service {model.name}: {resp.status_code} - {resp.text}")
+                        else:
+                            logger.info(f"Successfully created Ranger service {model.name} in Ranger.")
+
+                elif action == "delete":
+                    # Delete service
+                    url = f"{ranger_url.rstrip('/')}/service/public/v2/api/service/name/{model.name}"
+                    resp = await client.delete(url, auth=auth)
+                    if resp.status_code not in (200, 204, 404):
+                        logger.error(f"Failed to delete Ranger service {model.name}: {resp.status_code} - {resp.text}")
+                    else:
+                        logger.info(f"Successfully deleted Ranger service {model.name} from Ranger.")
+
+        except Exception as e:
+            logger.error(f"Failed to {action} Ranger service for Trino {model.name}: {e}")

@@ -236,6 +236,18 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
 
         return vars
 
+    async def get_ranger_url(self, model: RangerPlatform) -> str:
+        """
+        Get the Ranger URL for a given RangerPlatform model.
+        Resolves to the active state URL, or falls back to the cluster local DNS URL.
+        """
+        state = await self.platform_state(model)
+        if state and state.ranger_url:
+            return state.ranger_url
+        
+        namespace = await self._resolve_namespace(model)
+        return f"http://{model.name}.{namespace}.svc.cluster.local:6080"
+
     async def poll_status(self, model: RangerPlatform):
         kubeconfig = await self.kubeconfig(model)
         namespace = await self._resolve_namespace(model)

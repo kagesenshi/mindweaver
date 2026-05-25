@@ -21,6 +21,14 @@ spec:
           tag: "{{ image.split(':')[-1] if ':' in image else 'latest' }}"
           repository: "{{ image.rsplit(':', 1)[0] if ':' in image else image }}"
         {% endif %}
+        {% if ranger_enabled %}
+        accessControl:
+          type: properties
+          properties: |
+            access-control.name=ranger
+            ranger.service.name={{ name }}
+            ranger.plugin.config.resource=/etc/trino/ranger-trino-security.xml,/etc/trino/ranger-trino-audit.xml
+        {% endif %}
         additionalConfigProperties:
           {% if internal_shared_secret %}
           - internal-communication.shared-secret={{ internal_shared_secret }}
@@ -35,9 +43,10 @@ spec:
           workers: {{ replica_count }}
           autoscaling:
             enabled: false
-          {% if ldap %}
-          config:
-            authenticationType: PASSWORD
+          {% if password_authenticator_config_files %}
+          coordinatorExtraConfig: |
+            http-server.authentication.type=PASSWORD
+            password-authenticator.config-files={{ password_authenticator_config_files }}
           {% endif %}
         
         initContainers:
@@ -77,11 +86,118 @@ spec:
               protocol: TCP
           additionalConfigFiles:
             {% if ldap %}
-            password-authenticator.properties: |
+            ldap.properties: |
               password-authenticator.name=ldap
               {% for key, value in ldap.items() %}
               {{ key }}={{ value }}
               {% endfor %}
+            {% endif %}
+            {% if ranger_enabled %}
+            file.properties: |
+              password-authenticator.name=file
+              file.password-file=/etc/trino/password.db
+            password.db: |
+              ranger:{{ ranger_trino_password_hash }}
+            {% endif %}
+            {% if ranger_enabled %}
+            ranger-trino-security.xml: |
+              <?xml version="1.0"?>
+              <?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+              <configuration xmlns:xi="http://www.w3.org/2001/XInclude">
+                <property>
+                  <name>ranger.plugin.trino.policy.rest.url</name>
+                  <value>{{ ranger_url }}</value>
+                </property>
+                <property>
+                  <name>ranger.plugin.trino.service.name</name>
+                  <value>{{ ranger_service_name }}</value>
+                </property>
+                <property>
+                  <name>ranger.plugin.trino.policy.cache.dir</name>
+                  <value>/tmp/ranger/cache</value>
+                </property>
+                <property>
+                  <name>ranger.plugin.trino.policy.pollIntervalMs</name>
+                  <value>30000</value>
+                </property>
+              </configuration>
+            ranger-trino-audit.xml: |
+              <?xml version="1.0"?>
+              <?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+              <configuration xmlns:xi="http://www.w3.org/2001/XInclude">
+                <property>
+                  <name>xasecure.audit.is.enabled</name>
+                  <value>true</value>
+                </property>
+                <property>
+                  <name>xasecure.audit.elasticsearch.is.enabled</name>
+                  <value>{{ ranger_opensearch_enabled }}</value>
+                </property>
+                {% if ranger_opensearch_enabled == 'true' %}
+                <property>
+                  <name>xasecure.audit.elasticsearch.urls</name>
+                  <value>{{ ranger_opensearch_host }}</value>
+                </property>
+                <property>
+                  <name>xasecure.audit.elasticsearch.port</name>
+                  <value>9200</value>
+                </property>
+                <property>
+                  <name>xasecure.audit.elasticsearch.protocol</name>
+                  <value>{{ ranger_opensearch_protocol }}</value>
+                </property>
+                <property>
+                  <name>xasecure.audit.elasticsearch.user</name>
+                  <value>admin</value>
+                </property>
+                <property>
+                  <name>xasecure.audit.elasticsearch.password</name>
+                  <value>{{ ranger_opensearch_password }}</value>
+                </property>
+                <property>
+                  <name>xasecure.audit.elasticsearch.index</name>
+                  <value>ranger_audits</value>
+                </property>
+                <property>
+                  <name>xasecure.audit.elasticsearch.bootstrap.enabled</name>
+                  <value>true</value>
+                </property>
+                {% endif %}
+                <property>
+                  <name>xasecure.audit.hdfs.is.enabled</name>
+                  <value>{{ ranger_audit_s3_enabled }}</value>
+                </property>
+                {% if ranger_audit_s3_enabled == 'true' %}
+                <property>
+                  <name>xasecure.audit.hdfs.config.destination.directory</name>
+                  <value>{{ ranger_audit_hdfs_dest_dir }}</value>
+                </property>
+                <property>
+                  <name>xasecure.audit.hdfs.config.local.buffer.directory</name>
+                  <value>/tmp/ranger/audit/buffer</value>
+                </property>
+                <property>
+                  <name>fs.s3a.access.key</name>
+                  <value>{{ aws_access_key_id }}</value>
+                </property>
+                <property>
+                  <name>fs.s3a.secret.key</name>
+                  <value>{{ aws_secret_access_key }}</value>
+                </property>
+                <property>
+                  <name>fs.s3a.endpoint</name>
+                  <value>{{ s3_endpoint_url }}</value>
+                </property>
+                <property>
+                  <name>fs.s3a.path.style.access</name>
+                  <value>true</value>
+                </property>
+                <property>
+                  <name>fs.s3a.impl</name>
+                  <value>org.apache.hadoop.fs.s3a.S3AFileSystem</value>
+                </property>
+                {% endif %}
+              </configuration>
             {% endif %}
           additionalVolumes:
             - name: tls-secret
