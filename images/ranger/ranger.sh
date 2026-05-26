@@ -63,7 +63,7 @@ then
   
   sleep 5
   
-  RANGER_USERSYNC_PID=$(ps -ef | grep -v grep | grep -i "org.apache.ranger.unixusersync.process.UserGroupSync" | awk '{print $2}')
+  RANGER_USERSYNC_PID=$(ps -ef | grep -v grep | grep -E -i "org.apache.ranger.unixusersync.process.UserGroupSync|org.apache.ranger.authentication.UnixAuthenticationService" | awk '{print $2}')
   if [ -z "$RANGER_USERSYNC_PID" ]
   then
     echo "Ranger UserSync process probably exited, no process id found!"
