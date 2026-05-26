@@ -11,8 +11,9 @@ RUN curl -LO https://archive.apache.org/dist/ranger/2.8.0/services/usersync/rang
     tar xvfz ranger-2.8.0-usersync.tar.gz --directory=/opt/ranger && \
     ln -s /opt/ranger/ranger-2.8.0-usersync /opt/ranger/usersync && \
     rm -f ranger-2.8.0-usersync.tar.gz && \
+    cp /opt/ranger/usersync/install.properties /home/ranger/scripts/ranger-usersync-install.properties && \
     mkdir -p /var/run/ranger /var/log/ranger/usersync /etc/ranger && \
-    chown -R ranger:ranger /opt/ranger/ranger-2.8.0-usersync /opt/ranger/usersync /var/run/ranger /var/log/ranger && \
+    chown -R ranger:ranger /opt/ranger/ranger-2.8.0-usersync /opt/ranger/usersync /var/run/ranger /var/log/ranger /etc/ranger /home/ranger/scripts/ranger-usersync-install.properties && \
     chmod +x /home/ranger/scripts/ranger.sh /home/ranger/scripts/create-ranger-services.py
 
 USER ranger
