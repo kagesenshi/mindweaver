@@ -87,9 +87,11 @@ then
       RANGER_USERSYNC_PID=$(cat "${RANGER_USERSYNC_PID_FILE}")
       if [ -n "$RANGER_USERSYNC_PID" ]
       then
+        echo "PID ${RANGER_USERSYNC_PID} found"
         break
       fi
     fi
+    echo "PID ${RANGER_USERSYNC_PID} not found, trying again in 1 second"
     sleep 1
   done
 
@@ -98,6 +100,7 @@ then
     echo "Ranger UserSync process probably exited, no process id found in ${RANGER_USERSYNC_PID_FILE}!"
     exit 1
   else
+    echo "Ranger UserSync is running with PID ${RANGER_USERSYNC_PID}"
     tail --pid=$RANGER_USERSYNC_PID -F ${RANGER_HOME}/usersync/logs/auth.log
   fi
 
