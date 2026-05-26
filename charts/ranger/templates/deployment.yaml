@@ -27,6 +27,7 @@ spec:
           command:
             - sh
             - -c
+            - |
               cp /opt/java/openjdk/jre/lib/security/cacerts /etc/ranger/truststore/truststore.jks || cp /opt/java/openjdk/lib/security/cacerts /etc/ranger/truststore/truststore.jks
               /opt/java/openjdk/bin/keytool -importcert -alias mindweaver-ca -file /tls-secret/ca.crt -keystore /etc/ranger/truststore/truststore.jks -storepass changeit -noprompt || keytool -importcert -alias mindweaver-ca -file /tls-secret/ca.crt -keystore /etc/ranger/truststore/truststore.jks -storepass changeit -noprompt
           volumeMounts:
