@@ -102,6 +102,7 @@ then
   else
     echo "Ranger UserSync is running with PID ${RANGER_USERSYNC_PID}"
     tail --pid=$RANGER_USERSYNC_PID -F ${RANGER_HOME}/usersync/logs/auth.log
+    tail -F /dev/null
   fi
 
 else
