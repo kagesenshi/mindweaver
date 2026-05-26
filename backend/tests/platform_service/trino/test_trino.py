@@ -706,10 +706,10 @@ async def test_trino_ranger_integration(mock_service_dependencies):
     mock_ranger_model.opensearch_id = 200
     mock_ranger_svc.get.return_value = mock_ranger_model
     mock_ranger_svc._resolve_namespace = AsyncMock(return_value="ranger-ns")
-    mock_ranger_svc.get_ranger_url = AsyncMock(return_value="http://my-ranger.ranger-ns.svc.cluster.local:6080")
+    mock_ranger_svc.get_ranger_url = AsyncMock(return_value="https://my-ranger.ranger-ns.svc.cluster.local:6080")
     
     mock_ranger_state = MagicMock(spec=RangerPlatformState)
-    mock_ranger_state.ranger_url = "http://my-ranger.ranger-ns.svc.cluster.local:6080"
+    mock_ranger_state.ranger_url = "https://my-ranger.ranger-ns.svc.cluster.local:6080"
     mock_ranger_svc.platform_state = AsyncMock(return_value=mock_ranger_state)
 
     # Mock OpenSearch service
@@ -736,7 +736,7 @@ async def test_trino_ranger_integration(mock_service_dependencies):
 
     # Assert template vars
     assert vars.get("ranger_enabled") is True
-    assert vars.get("ranger_url") == "http://my-ranger.ranger-ns.svc.cluster.local:6080"
+    assert vars.get("ranger_url") == "https://my-ranger.ranger-ns.svc.cluster.local:6080"
     assert vars.get("ranger_service_name") == "trino-ranger-test"
     
     assert vars.get("ranger_opensearch_enabled") == "true"
@@ -772,7 +772,7 @@ async def test_trino_ranger_integration(mock_service_dependencies):
 
     security_xml = config_files["ranger-trino-security.xml"]
     assert "<name>ranger.plugin.trino.policy.rest.url</name>" in security_xml
-    assert f"<value>http://my-ranger.ranger-ns.svc.cluster.local:6080</value>" in security_xml
+    assert f"<value>https://my-ranger.ranger-ns.svc.cluster.local:6080</value>" in security_xml
     assert "<name>ranger.plugin.trino.service.name</name>" in security_xml
     assert "<value>trino-ranger-test</value>" in security_xml
 
@@ -859,11 +859,11 @@ async def test_trino_deploy_decommission_ranger_lifecycle(mock_service_dependenc
         
         # Verify httpx client calls for create
         mock_client_context.get.assert_called_once_with(
-            "http://my-ranger.ranger-ns.svc.cluster.local:6080/service/public/v2/api/service/name/trino-ranger-test",
+            "https://my-ranger.ranger-ns.svc.cluster.local:6080/service/public/v2/api/service/name/trino-ranger-test",
             auth=("admin", "ranger_admin_pass")
         )
         mock_client_context.post.assert_called_once_with(
-            "http://my-ranger.ranger-ns.svc.cluster.local:6080/service/public/v2/api/service",
+            "https://my-ranger.ranger-ns.svc.cluster.local:6080/service/public/v2/api/service",
             json={
                 "name": "trino-ranger-test",
                 "type": "trino",
@@ -871,7 +871,7 @@ async def test_trino_deploy_decommission_ranger_lifecycle(mock_service_dependenc
                     "username": "ranger",
                     "password": "ranger",
                     "jdbc.driverClassName": "io.trino.jdbc.TrinoDriver",
-                    "jdbc.url": "jdbc:trino://trino-ranger-test.trino-ns.svc.cluster.local:8443?SSL=true&SSLVerification=NONE",
+                    "jdbc.url": "jdbc:trino://trino-ranger-test.trino-ns.svc.cluster.local:8443?SSL=true",
                     "ranger.plugin.super.users": "trino,ranger"
                 }
             },
@@ -891,7 +891,7 @@ async def test_trino_deploy_decommission_ranger_lifecycle(mock_service_dependenc
         # 3. Test before_delete hook (deleting the config/model, should delete Ranger service)
         await svc.delete_ranger_service_on_delete(model)
         mock_client_context.delete.assert_called_once_with(
-            "http://my-ranger.ranger-ns.svc.cluster.local:6080/service/public/v2/api/service/name/trino-ranger-test",
+            "https://my-ranger.ranger-ns.svc.cluster.local:6080/service/public/v2/api/service/name/trino-ranger-test",
             auth=("admin", "ranger_admin_pass")
         )
 
@@ -1025,12 +1025,12 @@ async def test_trino_deploy_ranger_service_update(mock_service_dependencies):
         
         # Verify HTTP GET was called to check existence
         mock_client_context.get.assert_called_once_with(
-            "http://my-ranger.ranger-ns.svc.cluster.local:6080/service/public/v2/api/service/name/trino-ranger-test",
+            "https://my-ranger.ranger-ns.svc.cluster.local:6080/service/public/v2/api/service/name/trino-ranger-test",
             auth=("admin", "ranger_admin_pass")
         )
         # Verify HTTP PUT was called to update the service
         mock_client_context.put.assert_called_once_with(
-            "http://my-ranger.ranger-ns.svc.cluster.local:6080/service/public/v2/api/service/123",
+            "https://my-ranger.ranger-ns.svc.cluster.local:6080/service/public/v2/api/service/123",
             json={
                 "id": 123,
                 "name": "trino-ranger-test",
@@ -1039,7 +1039,7 @@ async def test_trino_deploy_ranger_service_update(mock_service_dependencies):
                     "username": "ranger",
                     "password": "my_updated_password",
                     "jdbc.driverClassName": "io.trino.jdbc.TrinoDriver",
-                    "jdbc.url": "jdbc:trino://trino-ranger-test.trino-ns.svc.cluster.local:8443?SSL=true&SSLVerification=NONE",
+                    "jdbc.url": "jdbc:trino://trino-ranger-test.trino-ns.svc.cluster.local:8443?SSL=true",
                     "ranger.plugin.super.users": "trino,ranger"
                 }
             },

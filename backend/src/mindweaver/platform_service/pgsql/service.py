@@ -326,6 +326,20 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
                 except Exception as e:
                     logger.debug(f"Failed to fetch secret {model.name}-ca: {e}")
 
+            # Try to fetch CA cert from -tls secret if still missing
+            if not db_credentials.get("db_ca_crt"):
+                try:
+                    tls_secret_name = f"{model.name}-tls"
+                    tls_secret = core_v1.read_namespaced_secret(
+                        name=tls_secret_name, namespace=namespace
+                    )
+                    if tls_secret.data and "ca.crt" in tls_secret.data:
+                        db_credentials["db_ca_crt"] = base64.b64decode(
+                            tls_secret.data["ca.crt"]
+                        ).decode("utf-8")
+                except Exception as e:
+                    logger.debug(f"Failed to fetch secret {model.name}-tls: {e}")
+
             return (
                 status,
                 message,

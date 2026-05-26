@@ -1,0 +1,59 @@
+# SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
+# SPDX-License-Identifier: AGPLv3+
+
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ name }}-tls
+  namespace: {{ namespace }}
+spec:
+  secretName: {{ name }}-tls
+  secretTemplate:
+    labels:
+      cnpg.io/reload: ""
+  duration: 2160h # 90d
+  renewBefore: 360h # 15d
+  subject:
+    organizations:
+      - mindweaver
+  isCA: false
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 2048
+  usages:
+    - server auth
+    - client auth
+  dnsNames:
+    - {{ name }}
+    - {{ name }}.{{ namespace }}
+    - {{ name }}.{{ namespace }}.svc
+    - {{ name }}.{{ namespace }}.svc.cluster.local
+    - {{ name }}-rw
+    - {{ name }}-rw.{{ namespace }}
+    - {{ name }}-rw.{{ namespace }}.svc
+    - {{ name }}-rw.{{ namespace }}.svc.cluster.local
+    - {{ name }}-ro
+    - {{ name }}-ro.{{ namespace }}
+    - {{ name }}-ro.{{ namespace }}.svc
+    - {{ name }}-ro.{{ namespace }}.svc.cluster.local
+    - {{ name }}-r
+    - {{ name }}-r.{{ namespace }}
+    - {{ name }}-r.{{ namespace }}.svc
+    - {{ name }}-r.{{ namespace }}.svc.cluster.local
+    - {{ name }}-pooler-rw
+    - {{ name }}-pooler-rw.{{ namespace }}
+    - {{ name }}-pooler-rw.{{ namespace }}.svc
+    - {{ name }}-pooler-rw.{{ namespace }}.svc.cluster.local
+    - "*.{{ name }}-rw"
+    - "*.{{ name }}-rw.{{ namespace }}"
+    - "*.{{ name }}-rw.{{ namespace }}.svc"
+    - "*.{{ name }}-rw.{{ namespace }}.svc.cluster.local"
+    - "*.{{ name }}"
+    - "*.{{ name }}.{{ namespace }}"
+    - "*.{{ name }}.{{ namespace }}.svc"
+    - "*.{{ name }}.{{ namespace }}.svc.cluster.local"
+  issuerRef:
+    name: mindweaver-selfsigned-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io

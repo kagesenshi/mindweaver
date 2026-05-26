@@ -332,7 +332,7 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
             ranger_state = await ranger_svc.platform_state(ranger_model)
 
             ranger_ns = await ranger_svc._resolve_namespace(ranger_model)
-            ranger_url = f"http://{ranger_model.name}.{ranger_ns}.svc.cluster.local:6080"
+            ranger_url = f"https://{ranger_model.name}.{ranger_ns}.svc.cluster.local:6080"
 
             vars["ranger_enabled"] = True
             vars["ranger_url"] = ranger_url
@@ -592,7 +592,7 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
             ranger_svc = await RangerPlatformService.get_service(self.request, self.session)
             ranger_model = await ranger_svc.get(model.ranger_id)
             ranger_ns = await ranger_svc._resolve_namespace(ranger_model)
-            ranger_url = f"http://{ranger_model.name}.{ranger_ns}.svc.cluster.local:6080"
+            ranger_url = f"https://{ranger_model.name}.{ranger_ns}.svc.cluster.local:6080"
             
             admin_password = ""
             if ranger_model.admin_password:
@@ -634,7 +634,7 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
                             "username": "ranger",
                             "password": ranger_pass,
                             "jdbc.driverClassName": "io.trino.jdbc.TrinoDriver",
-                            "jdbc.url": f"jdbc:trino://{model.name}.{namespace}.svc.cluster.local:8443?SSL=true&SSLVerification=NONE",
+                            "jdbc.url": f"jdbc:trino://{model.name}.{namespace}.svc.cluster.local:8443?SSL=true",
                             "ranger.plugin.super.users": "trino,ranger"
                         }
                     }

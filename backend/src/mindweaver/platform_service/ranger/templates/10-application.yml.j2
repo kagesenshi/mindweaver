@@ -48,7 +48,10 @@ spec:
           keyadminPassword: {{ keyadmin_password }}
           tagsyncPassword: {{ tagsync_password }}
           usersyncPassword: {{ usersync_password }}
-          externalUrl: http://{{ name }}.{{ namespace }}.svc.cluster.local:6080
+          externalUrl: https://{{ name }}.{{ namespace }}.svc.cluster.local:6080
+          ssl:
+            enabled: true
+            keystorePassword: changeit
           
           # Audit Store Configuration
           {%- if opensearch_id %}

@@ -88,6 +88,9 @@ admin:
   keyadminPassword: "rangerR0cks!"
   tagsyncPassword: "rangerR0cks!"
   usersyncPassword: "rangerR0cks!"
+  ssl:
+    enabled: false
+    keystorePassword: "changeit"
 
   # Additional Properties for install.properties
   additionalProperties: {}

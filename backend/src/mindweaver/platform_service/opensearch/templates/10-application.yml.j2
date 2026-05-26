@@ -34,6 +34,13 @@ spec:
         extraEnvs:
           - name: OPENSEARCH_INITIAL_ADMIN_PASSWORD
             value: "{{ admin_password }}"
+          - name: DISABLE_INSTALL_DEMO_CONFIG
+            value: "true"
+
+        secretMounts:
+          - name: {{ name }}-tls
+            secretName: {{ name }}-tls
+            path: /usr/share/opensearch/config/certificates
 
         resources:
           requests:
@@ -50,13 +57,28 @@ spec:
         service:
           type: NodePort
 
-        {% if additional_properties %}
         config:
           opensearch.yml: |
-            {%- for key, val in additional_properties.items() %}
+            plugins.security.ssl.transport.pemcert_filepath: certificates/tls.crt
+            plugins.security.ssl.transport.pemkey_filepath: certificates/tls.key
+            plugins.security.ssl.transport.pemtrustedcas_filepath: certificates/ca.crt
+            plugins.security.ssl.transport.enforce_hostname_verification: false
+            plugins.security.ssl.http.enabled: true
+            plugins.security.ssl.http.pemcert_filepath: certificates/tls.crt
+            plugins.security.ssl.http.pemkey_filepath: certificates/tls.key
+            plugins.security.ssl.http.pemtrustedcas_filepath: certificates/ca.crt
+            plugins.security.nodes_dn:
+              - 'O=mindweaver'
+            plugins.security.authcz.admin_dn:
+              - 'CN=*,O=mindweaver'
+            plugins.security.allow_unsafe_democertificates: false
+            plugins.security.allow_default_init_securityindex: true
+            {% if additional_properties %}
+            {% for key, val in additional_properties.items() %}
             {{ key }}: {{ val }}
-            {%- endfor %}
-        {% endif %}
+            {% endfor %}
+            {% endif %}
+
 
   destination:
     server: https://kubernetes.default.svc

@@ -126,6 +126,13 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
         vars = model.model_dump()
         vars["namespace"] = await self._resolve_namespace(model)
 
+        # Force HTTPS / SSL for Ranger Admin
+        additional_props = vars.setdefault("additional_properties", {})
+        additional_props.setdefault("policymgr_http_enabled", "false")
+        additional_props.setdefault("policymgr_https_keystore_file", "/etc/ranger/tls/keystore.jks")
+        additional_props.setdefault("policymgr_https_keystore_password", "changeit")
+        additional_props.setdefault("policymgr_https_keystore_keyalias", "certificate")
+
         # Resolve Database Connection
         pgsql_svc = await PgSqlPlatformService.get_service(self.request, self.session)
         pgsql_model = await pgsql_svc.get(model.database_id)
@@ -281,7 +288,7 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
             return state.ranger_url
         
         namespace = await self._resolve_namespace(model)
-        return f"http://{model.name}.{namespace}.svc.cluster.local:6080"
+        return f"https://{model.name}.{namespace}.svc.cluster.local:6080"
 
     async def poll_status(self, model: RangerPlatform):
         kubeconfig = await self.kubeconfig(model)
@@ -429,7 +436,7 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
                 node_v4 = next((n for n in cluster_nodes if n["ipv4"]), None)
                 if node_v4:
                     state.ranger_url = (
-                        f"http://{node_v4['ipv4']}:{ranger_np['node_port']}"
+                        f"https://{node_v4['ipv4']}:{ranger_np['node_port']}"
                     )
                 else:
                     state.ranger_url = None
@@ -438,12 +445,12 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
                 node_v6 = next((n for n in cluster_nodes if n["ipv6"]), None)
                 if node_v6:
                     state.ranger_url_ipv6 = (
-                        f"http://[{node_v6['ipv6']}]:{ranger_np['node_port']}"
+                        f"https://[{node_v6['ipv6']}]:{ranger_np['node_port']}"
                     )
                 else:
                     state.ranger_url_ipv6 = None
             else:
-                state.ranger_url = f"http://{model.name}.{namespace}.svc.cluster.local:6080"
+                state.ranger_url = f"https://{model.name}.{namespace}.svc.cluster.local:6080"
                 state.ranger_url_ipv6 = None
         else:
             state.ranger_url = None

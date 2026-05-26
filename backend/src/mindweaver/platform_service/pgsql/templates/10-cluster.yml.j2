@@ -18,7 +18,11 @@ spec:
           name: {{ name }}
           instances: {{ instances }}
           imageName: {{ image_name }}
+          certificates:
+            serverTLSSecret: {{ name }}-tls
+            serverCASecret: {{ name }}-tls
           storage:
+
             size: {{ storage_size }}
           resources:
             requests:
