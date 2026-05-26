@@ -165,38 +165,8 @@ spec:
                 {% endif %}
                 <property>
                   <name>xasecure.audit.hdfs.is.enabled</name>
-                  <value>{{ ranger_audit_s3_enabled }}</value>
+                  <value>false</value>
                 </property>
-                {% if ranger_audit_s3_enabled == 'true' %}
-                <property>
-                  <name>xasecure.audit.hdfs.config.destination.directory</name>
-                  <value>{{ ranger_audit_hdfs_dest_dir }}</value>
-                </property>
-                <property>
-                  <name>xasecure.audit.hdfs.config.local.buffer.directory</name>
-                  <value>/tmp/ranger/audit/buffer</value>
-                </property>
-                <property>
-                  <name>fs.s3a.access.key</name>
-                  <value>{{ aws_access_key_id }}</value>
-                </property>
-                <property>
-                  <name>fs.s3a.secret.key</name>
-                  <value>{{ aws_secret_access_key }}</value>
-                </property>
-                <property>
-                  <name>fs.s3a.endpoint</name>
-                  <value>{{ s3_endpoint_url }}</value>
-                </property>
-                <property>
-                  <name>fs.s3a.path.style.access</name>
-                  <value>true</value>
-                </property>
-                <property>
-                  <name>fs.s3a.impl</name>
-                  <value>org.apache.hadoop.fs.s3a.S3AFileSystem</value>
-                </property>
-                {% endif %}
               </configuration>
             {% endif %}
           additionalVolumes:

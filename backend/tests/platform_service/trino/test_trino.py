@@ -704,8 +704,6 @@ async def test_trino_ranger_integration(mock_service_dependencies):
     mock_ranger_model = MagicMock(spec=RangerPlatform)
     mock_ranger_model.name = "my-ranger"
     mock_ranger_model.opensearch_id = 200
-    mock_ranger_model.s3_storage_id = 300
-    mock_ranger_model.audit_s3_uri = "s3://my-audit-bucket/ranger-audits"
     mock_ranger_svc.get.return_value = mock_ranger_model
     mock_ranger_svc._resolve_namespace = AsyncMock(return_value="ranger-ns")
     mock_ranger_svc.get_ranger_url = AsyncMock(return_value="http://my-ranger.ranger-ns.svc.cluster.local:6080")
@@ -727,20 +725,10 @@ async def test_trino_ranger_integration(mock_service_dependencies):
     mock_opensearch_state.admin_password = "opensearch_admin_pass"
     mock_opensearch_svc.platform_state = AsyncMock(return_value=mock_opensearch_state)
 
-    # Mock S3Storage service
-    mock_s3_svc = AsyncMock()
-    mock_s3_model = MagicMock(spec=S3Storage)
-    mock_s3_model.endpoint_url = "http://s3.amazonaws.com"
-    mock_s3_model.region = "us-east-1"
-    mock_s3_model.access_key = "my_access_key"
-    mock_s3_model.secret_key = "my_secret_key"
-    mock_s3_svc.get.return_value = mock_s3_model
-
     # Patch all required services
     with patch("mindweaver.platform_service.trino.service.HiveMetastorePlatformService.get_service", AsyncMock(return_value=mock_hms_svc)), \
          patch("mindweaver.platform_service.trino.service.RangerPlatformService.get_service", AsyncMock(return_value=mock_ranger_svc)), \
          patch("mindweaver.platform_service.trino.service.OpenSearchPlatformService.get_service", AsyncMock(return_value=mock_opensearch_svc)), \
-         patch("mindweaver.platform_service.trino.service.S3StorageService.get_service", AsyncMock(return_value=mock_s3_svc)), \
          patch("mindweaver.platform_service.trino.service.decrypt_password", side_effect=lambda x: x):
          
         vars = await svc.template_vars(model)
@@ -756,12 +744,7 @@ async def test_trino_ranger_integration(mock_service_dependencies):
     assert vars.get("ranger_opensearch_protocol") == "https"
     assert vars.get("ranger_opensearch_password") == "opensearch_admin_pass"
 
-    assert vars.get("ranger_audit_s3_enabled") == "true"
-    assert vars.get("s3_endpoint_url") == "http://s3.amazonaws.com"
-    assert vars.get("s3_region") == "us-east-1"
-    assert vars.get("aws_access_key_id") == "my_access_key"
-    assert vars.get("aws_secret_access_key") == "my_secret_key"
-    assert vars.get("ranger_audit_hdfs_dest_dir") == "s3a://my-audit-bucket/ranger-audits/trino-ranger-test"
+    assert vars.get("ranger_audit_s3_enabled") == "false"
 
     # Assert YAML manifests
     docs = list(yaml.safe_load_all(manifest))
@@ -807,15 +790,9 @@ async def test_trino_ranger_integration(mock_service_dependencies):
 
     # S3 assertions in XML
     assert "<name>xasecure.audit.hdfs.is.enabled</name>" in audit_xml
-    assert "<value>true</value>" in audit_xml
-    assert "<name>xasecure.audit.hdfs.config.destination.directory</name>" in audit_xml
-    assert "<value>s3a://my-audit-bucket/ranger-audits/trino-ranger-test</value>" in audit_xml
-    assert "<name>fs.s3a.access.key</name>" in audit_xml
-    assert "<value>my_access_key</value>" in audit_xml
-    assert "<name>fs.s3a.secret.key</name>" in audit_xml
-    assert "<value>my_secret_key</value>" in audit_xml
-    assert "<name>fs.s3a.endpoint</name>" in audit_xml
-    assert "<value>http://s3.amazonaws.com</value>" in audit_xml
+    assert "<value>false</value>" in audit_xml
+    assert "fs.s3a.access.key" not in audit_xml
+    assert "fs.s3a.secret.key" not in audit_xml
 
 
 @pytest.mark.asyncio

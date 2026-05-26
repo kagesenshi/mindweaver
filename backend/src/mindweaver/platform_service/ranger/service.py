@@ -13,7 +13,6 @@ from mindweaver.fw.model import ts_now
 from mindweaver.fw.util import generate_password
 from mindweaver.fw.hooks import before_create
 from mindweaver.platform_service.pgsql.service import PgSqlPlatformService
-from mindweaver.service.s3_storage.service import S3StorageService
 from mindweaver.platform_service.opensearch.service import OpenSearchPlatformService
 from mindweaver.service.ldap_config.service import LdapConfigService
 
@@ -107,16 +106,7 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
                 "order": 21,
                 "label": "OpenSearch",
             },
-            "s3_storage_id": {
-                "order": 22,
-                "label": "S3 Storage (Audit)",
-            },
-            "audit_s3_uri": {
-                "order": 23,
-                "label": "Audit S3 Location",
-                "type": "s3-path",
-                "storage_field": "s3_storage_id",
-            },
+
             "additional_properties": {
                 "order": 100,
                 "label": "Additional Properties",
@@ -158,22 +148,7 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
             except Exception:
                 vars["db_pass"] = pgsql_state.db_pass
 
-        # Resolve S3 Storage Connection for Audits
-        if model.s3_storage_id:
-            s3_svc = await S3StorageService.get_service(self.request, self.session)
-            s3_model = await s3_svc.get(model.s3_storage_id)
-            vars["s3_endpoint_url"] = s3_model.endpoint_url
-            vars["s3_region"] = s3_model.region
-            vars["aws_access_key_id"] = s3_model.access_key
-            if s3_model.secret_key:
-                try:
-                    vars["aws_secret_access_key"] = decrypt_password(
-                        s3_model.secret_key
-                    )
-                except Exception:
-                    vars["aws_secret_access_key"] = s3_model.secret_key
-            else:
-                vars["aws_secret_access_key"] = ""
+
 
         # Resolve OpenSearch Connection for Audits
         if model.opensearch_id:
@@ -281,15 +256,7 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
             # Set referral to ignore to avoid referral chasing errors in AD/LDAP
             additional_props.setdefault("SYNC_LDAP_REFERRAL", "ignore")
 
-        # Parse audit_s3_uri to construct s3a:// URI for Ranger
-        # Format: s3://bucket/path -> s3a://bucket/path
-        uri = model.audit_s3_uri or "s3://ranger/audit"
-        if uri.startswith("s3://"):
-            s3a_uri = "s3a://" + uri[5:]
-        else:
-            s3a_uri = uri
-        
-        vars["audit_hdfs_dest_dir"] = f"{s3a_uri}/{model.name}"
+
 
         # Decrypt passwords
         for pwd_field in ["admin_password", "keyadmin_password", "tagsync_password", "usersync_password"]:

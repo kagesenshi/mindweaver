@@ -367,31 +367,7 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
                 vars["ranger_opensearch_enabled"] = "false"
 
             # S3 auditing config resolution
-            if ranger_model.s3_storage_id:
-                s3_svc = await S3StorageService.get_service(self.request, self.session)
-                s3_model = await s3_svc.get(ranger_model.s3_storage_id)
-                
-                vars["ranger_audit_s3_enabled"] = "true"
-                vars["s3_endpoint_url"] = s3_model.endpoint_url
-                vars["s3_region"] = s3_model.region
-                vars["aws_access_key_id"] = s3_model.access_key
-                if s3_model.secret_key:
-                    try:
-                        vars["aws_secret_access_key"] = decrypt_password(s3_model.secret_key)
-                    except Exception:
-                        vars["aws_secret_access_key"] = s3_model.secret_key
-                else:
-                    vars["aws_secret_access_key"] = ""
-
-                # Parse audit_s3_uri to construct s3a:// URI for Trino audit
-                uri = ranger_model.audit_s3_uri or "s3://ranger/audit"
-                if uri.startswith("s3://"):
-                    s3a_uri = "s3a://" + uri[5:]
-                else:
-                    s3a_uri = uri
-                vars["ranger_audit_hdfs_dest_dir"] = f"{s3a_uri}/{model.name}"
-            else:
-                vars["ranger_audit_s3_enabled"] = "false"
+            vars["ranger_audit_s3_enabled"] = "false"
         else:
             vars["ranger_enabled"] = False
 

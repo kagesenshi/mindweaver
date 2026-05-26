@@ -53,9 +53,6 @@ spec:
           # Audit Store Configuration
           {%- if opensearch_id %}
           auditStore: elasticsearch
-          {%- elif s3_storage_id %}
-          auditStore: hdfs
-          auditHdfsDestDir: {{ audit_hdfs_dest_dir }}
           {%- else %}
           auditStore: none
           {%- endif %}

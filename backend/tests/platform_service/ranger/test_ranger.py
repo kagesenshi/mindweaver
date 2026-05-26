@@ -53,7 +53,6 @@ async def test_ranger_template_vars(mock_service_dependencies):
         name="test-ranger",
         project_id=1,
         database_id=10,
-        s3_storage_id=100,
         admin_password="admin",
     )
 
@@ -78,38 +77,19 @@ async def test_ranger_template_vars(mock_service_dependencies):
     mock_pgsql_state.db_pass = "pass"
     mock_pgsql_svc.platform_state.return_value = mock_pgsql_state
 
-    # S3 Configuration Check
-    mock_s3_svc = AsyncMock()
-    mock_s3_model = MagicMock()
-    mock_s3_model.endpoint_url = "http://s3.local"
-    mock_s3_model.region = "us-east-1"
-    mock_s3_model.access_key = "access"
-    mock_s3_model.secret_key = "secret"
-    mock_s3_svc.get.return_value = mock_s3_model
-
-    with patch("mindweaver.platform_service.ranger.service.PgSqlPlatformService.get_service", AsyncMock(return_value=mock_pgsql_svc)), \
-         patch("mindweaver.platform_service.ranger.service.S3StorageService.get_service", AsyncMock(return_value=mock_s3_svc)):
-        
-        # Test with default audit_s3_uri (s3://ranger/audit)
+    with patch("mindweaver.platform_service.ranger.service.PgSqlPlatformService.get_service", AsyncMock(return_value=mock_pgsql_svc)):
         vars = await svc.template_vars(model)
         
         assert vars["name"] == "test-ranger"
         assert vars["db_host"] == "test-db-pooler-rw.test-ns.svc.cluster.local"
         assert vars["db_user"] == "user"
         assert vars["db_pass"] == "pass"
-        # s3://ranger/audit -> s3a://ranger/audit + /model.name
-        assert vars["audit_hdfs_dest_dir"] == "s3a://ranger/audit/test-ranger"
         assert vars["admin_password"] == "admin"
 
         # Test with additional_properties
         model.additional_properties = {"ranger.test.prop": "value1", "another.prop": "value2"}
         vars = await svc.template_vars(model)
         assert vars["additional_properties"] == {"ranger.test.prop": "value1", "another.prop": "value2"}
-
-        # Test with custom audit_s3_uri
-        model.audit_s3_uri = "s3://my-bucket/my/path"
-        vars = await svc.template_vars(model)
-        assert vars["audit_hdfs_dest_dir"] == "s3a://my-bucket/my/path/test-ranger"
 
 
 @pytest.mark.asyncio
