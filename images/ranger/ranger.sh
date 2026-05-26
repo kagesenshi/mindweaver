@@ -76,12 +76,26 @@ then
 
   cd ${RANGER_HOME}/usersync && ./ranger-usersync-services.sh start
   
-  sleep 5
-  
-  RANGER_USERSYNC_PID=$(ps -ef | grep -v grep | grep -E -i "org.apache.ranger.unixusersync.process.UserGroupSync|org.apache.ranger.authentication.UnixAuthenticationService" | awk '{print $2}')
+  USERSYNC_PID_DIR_PATH=${USERSYNC_PID_DIR_PATH:-/var/run/ranger}
+  USERSYNC_PID_NAME=${USERSYNC_PID_NAME:-usersync.pid}
+  RANGER_USERSYNC_PID_FILE="${USERSYNC_PID_DIR_PATH}/${USERSYNC_PID_NAME}"
+
+  for i in {1..10}
+  do
+    if [ -f "${RANGER_USERSYNC_PID_FILE}" ]
+    then
+      RANGER_USERSYNC_PID=$(cat "${RANGER_USERSYNC_PID_FILE}")
+      if [ -n "$RANGER_USERSYNC_PID" ]
+      then
+        break
+      fi
+    fi
+    sleep 1
+  done
+
   if [ -z "$RANGER_USERSYNC_PID" ]
   then
-    echo "Ranger UserSync process probably exited, no process id found!"
+    echo "Ranger UserSync process probably exited, no process id found in ${RANGER_USERSYNC_PID_FILE}!"
     exit 1
   else
     tail --pid=$RANGER_USERSYNC_PID -f /dev/null
