@@ -98,7 +98,7 @@ then
     echo "Ranger UserSync process probably exited, no process id found in ${RANGER_USERSYNC_PID_FILE}!"
     exit 1
   else
-    tail --pid=$RANGER_USERSYNC_PID -f /dev/null
+    tail --pid=$RANGER_USERSYNC_PID -F ${RANGER_HOME}/usersync/logs/auth.log
   fi
 
 else
