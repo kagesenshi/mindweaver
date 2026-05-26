@@ -101,6 +101,25 @@ class OpenSearchPlatformService(PlatformService[OpenSearchPlatform]):
             },
         }
 
+    @classmethod
+    def get_internal_host(
+        cls,
+        model: OpenSearchPlatform,
+        state: Optional[OpenSearchPlatformState],
+        namespace: str,
+    ) -> str:
+        """Returns the internal service hostname for OpenSearch.
+        
+        It attempts to use the dynamically resolved service name from state.extra_data,
+        falling back to 'opensearch-cluster-master' if not yet populated.
+        """
+        service_name = None
+        if state and isinstance(getattr(state, "extra_data", None), dict):
+            service_name = state.extra_data.get("service_name")
+        if not service_name:
+            service_name = "opensearch-cluster-master"
+        return f"{service_name}.{namespace}.svc.cluster.local"
+
     @before_create(before="_handle_redacted_create")
     async def generate_passwords(self, model: OpenSearchPlatform):
         """Autogenerate a strong random password for the admin user."""
@@ -171,7 +190,7 @@ class OpenSearchPlatformService(PlatformService[OpenSearchPlatform]):
                 else:
                     status = "error"
                     message = f"Failed to fetch ArgoCD status: {str(e)}"
-                return status, message, {}, [], []
+                return status, message, {}, [], [], None
 
             # 2. Fetch Pod Status
             try:
@@ -190,8 +209,9 @@ class OpenSearchPlatformService(PlatformService[OpenSearchPlatform]):
             except Exception as e:
                 logger.error(f"Failed to fetch pods for {model.name}: {e}")
 
-            # 3. Fetch NodePorts for UI
+            # 3. Fetch NodePorts for UI and find main service name
             node_ports = []
+            service_name = None
             try:
                 services = core_v1.list_namespaced_service(namespace=namespace)
                 for svc in services.items:
@@ -202,6 +222,12 @@ class OpenSearchPlatformService(PlatformService[OpenSearchPlatform]):
                         or svc.metadata.name == f"{model.name}-opensearch"
                         or instance_label == model.name
                     ):
+                        # Detect the main non-headless service
+                        # Check if it has port 9200 and cluster_ip != "None"
+                        has_9200 = any(p.port == 9200 for p in (svc.spec.ports or []))
+                        if has_9200 and svc.spec.cluster_ip != "None":
+                            service_name = svc.metadata.name
+
                         if svc.spec.type == "NodePort":
                             for port in svc.spec.ports:
                                 node_ports.append(
@@ -238,9 +264,10 @@ class OpenSearchPlatformService(PlatformService[OpenSearchPlatform]):
                 argo_app.get("status", {}),
                 node_ports,
                 cluster_nodes,
+                service_name,
             )
 
-        status, message, extra_data, node_ports, cluster_nodes = (
+        status, message, argo_status, node_ports, cluster_nodes, service_name = (
             await asyncio.to_thread(_poll, is_active)
         )
 
@@ -256,9 +283,12 @@ class OpenSearchPlatformService(PlatformService[OpenSearchPlatform]):
 
         state.status = status
         state.message = message
-        if extra_data is None:
-            extra_data = {}
+        if argo_status is None:
+            argo_status = {}
+        extra_data = argo_status
         extra_data["namespace"] = namespace
+        if service_name:
+            extra_data["service_name"] = service_name
         state.extra_data = extra_data
         state.node_ports = node_ports
         state.cluster_nodes = cluster_nodes
@@ -285,7 +315,8 @@ class OpenSearchPlatformService(PlatformService[OpenSearchPlatform]):
                 else:
                     state.opensearch_url_ipv6 = None
             else:
-                state.opensearch_url = f"https://{model.name}.{namespace}.svc.cluster.local:9200"
+                svc_name = service_name or "opensearch-cluster-master"
+                state.opensearch_url = f"https://{svc_name}.{namespace}.svc.cluster.local:9200"
                 state.opensearch_url_ipv6 = None
         else:
             state.opensearch_url = None

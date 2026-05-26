@@ -162,7 +162,9 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
                 )
 
             opensearch_ns = await opensearch_svc._resolve_namespace(opensearch_model)
-            opensearch_host = f"{opensearch_model.name}.{opensearch_ns}.svc.cluster.local"
+            opensearch_host = OpenSearchPlatformService.get_internal_host(
+                opensearch_model, opensearch_state, opensearch_ns
+            )
 
             opensearch_url = opensearch_state.opensearch_url or ""
             opensearch_protocol = "https"

@@ -740,7 +740,7 @@ async def test_trino_ranger_integration(mock_service_dependencies):
     assert vars.get("ranger_service_name") == "trino-ranger-test"
     
     assert vars.get("ranger_opensearch_enabled") == "true"
-    assert vars.get("ranger_opensearch_host") == "my-opensearch.opensearch-ns.svc.cluster.local"
+    assert vars.get("ranger_opensearch_host") == "opensearch-cluster-master.opensearch-ns.svc.cluster.local"
     assert vars.get("ranger_opensearch_protocol") == "https"
     assert vars.get("ranger_opensearch_password") == "opensearch_admin_pass"
 
@@ -781,12 +781,14 @@ async def test_trino_ranger_integration(mock_service_dependencies):
     assert "<value>true</value>" in audit_xml
     
     # OpenSearch assertions in XML
-    assert "<name>xasecure.audit.elasticsearch.is.enabled</name>" in audit_xml
+    assert "<name>xasecure.audit.destination.elasticsearch</name>" in audit_xml
     assert "<value>true</value>" in audit_xml
-    assert "<name>xasecure.audit.elasticsearch.urls</name>" in audit_xml
-    assert "<value>my-opensearch.opensearch-ns.svc.cluster.local</value>" in audit_xml
-    assert "<name>xasecure.audit.elasticsearch.password</name>" in audit_xml
+    assert "<name>xasecure.audit.destination.elasticsearch.urls</name>" in audit_xml
+    assert "<value>opensearch-cluster-master.opensearch-ns.svc.cluster.local</value>" in audit_xml
+    assert "<name>xasecure.audit.destination.elasticsearch.password</name>" in audit_xml
     assert "<value>opensearch_admin_pass</value>" in audit_xml
+    assert "<name>xasecure.audit.destination.elasticsearch.ssl.trustall</name>" in audit_xml
+    assert "<value>true</value>" in audit_xml
 
     # S3 assertions in XML
     assert "<name>xasecure.audit.hdfs.is.enabled</name>" in audit_xml

@@ -351,7 +351,9 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
 
                 opensearch_ns = await opensearch_svc._resolve_namespace(opensearch_model)
                 vars["ranger_opensearch_enabled"] = "true"
-                vars["ranger_opensearch_host"] = f"{opensearch_model.name}.{opensearch_ns}.svc.cluster.local"
+                vars["ranger_opensearch_host"] = OpenSearchPlatformService.get_internal_host(
+                    opensearch_model, opensearch_state, opensearch_ns
+                )
                 
                 opensearch_url = opensearch_state.opensearch_url or ""
                 vars["ranger_opensearch_protocol"] = "http" if opensearch_url.startswith("http://") else "https"
