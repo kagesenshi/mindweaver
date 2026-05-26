@@ -62,7 +62,6 @@ then
           fi
       done
     fi
-    
     cd ${RANGER_HOME}/usersync || exit
     if ./setup.sh;
     then

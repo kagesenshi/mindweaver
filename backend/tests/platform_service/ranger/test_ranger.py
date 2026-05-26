@@ -441,6 +441,8 @@ async def test_ranger_template_vars_with_ldap(mock_service_dependencies):
         assert additional_props["SYNC_GROUP_SEARCH_BASE"] == "ou=groups,dc=example,dc=com"
         assert additional_props["SYNC_GROUP_SEARCH_FILTER"] == "(member={0})"
         assert additional_props["SYNC_GROUP_MEMBER_ATTRIBUTE_NAME"] == "member"
+        assert additional_props["SYNC_GROUP_OBJECT_CLASS"] == "groupofnames"
+        assert additional_props["SYNC_GROUP_NAME_ATTRIBUTE"] == "cn"
         assert additional_props["SYNC_LDAP_DELTASYNC"] == "false"
         assert additional_props["SYNC_LDAP_REFERRAL"] == "ignore"
 

@@ -205,6 +205,23 @@ class BaseReleaser:
         else:
             print("Skipping Git operations.")
 
+    def update_values_yaml(self, values_file, tag):
+        """Update values.yaml image.tag with the new tag."""
+        if not os.path.exists(values_file):
+            print(f"Warning: {values_file} not found, skipping values.yaml update.")
+            return
+
+        print(f"Updating {values_file} image.tag to {tag} ...")
+        if not self.dry_run:
+            with open(values_file, "r") as f:
+                content = f.read()
+
+            pattern = r"(image:\s*\n\s*repository:[^\n]*\n\s*pullPolicy:[^\n]*\n(?:\s*#[^\n]*\n)*\s*tag:\s*\")[^\"]*(\")"
+            content = re.sub(pattern, rf"\g<1>{tag}\2", content)
+
+            with open(values_file, "w") as f:
+                f.write(content)
+
     def git_commit(self, files, message, push=True):
         """Commit files and optionally push."""
         print(f"Committing changes: {message} ...")

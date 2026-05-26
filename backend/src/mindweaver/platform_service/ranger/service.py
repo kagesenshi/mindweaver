@@ -265,6 +265,8 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
             
             if ldap_config.group_search_base:
                 additional_props.setdefault("SYNC_GROUP_SEARCH_BASE", ldap_config.group_search_base)
+                additional_props.setdefault("SYNC_GROUP_OBJECT_CLASS", "groupofnames")
+                additional_props.setdefault("SYNC_GROUP_NAME_ATTRIBUTE", "cn")
             if ldap_config.group_search_filter:
                 additional_props.setdefault("SYNC_GROUP_SEARCH_FILTER", ldap_config.group_search_filter)
             if ldap_config.group_member_attr:

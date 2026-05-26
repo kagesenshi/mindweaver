@@ -53,8 +53,14 @@ class RangerReleaser(BaseReleaser):
             f"Preparing Ranger release {version} (Chart: {new_chart_version}) ..."
         )
         self.update_chart(CHART_FILE, version=new_chart_version, app_version=version)
+        self.update_values_yaml("charts/ranger/values.yaml", version)
 
         if release_new_image:
+            # Download external dependencies
+            print("Downloading external dependencies ...")
+            self.run_command(["chmod", "+x", "images/ranger/download.sh"])
+            self.run_command(["./download.sh"], cwd="images/ranger")
+
             # Build Container Image
             image_tag = f"{self.registry}/{IMAGE_NAME}:{version}"
             latest_tag = f"{self.registry}/{IMAGE_NAME}:latest"
@@ -134,7 +140,7 @@ class RangerReleaser(BaseReleaser):
             self.set_version(RELEASED_VERSION_FILE, version)
 
         self.git_ops(
-            version_files=[VERSION_FILE, CHART_FILE, RELEASED_VERSION_FILE],
+            version_files=[VERSION_FILE, CHART_FILE, RELEASED_VERSION_FILE, "charts/ranger/values.yaml"],
             tag=f"{IMAGE_NAME}-v{current_chart_version}",
             message=f"release {IMAGE_NAME} {current_chart_version} (app: {version})",
         )
