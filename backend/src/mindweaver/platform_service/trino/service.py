@@ -331,7 +331,8 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
             ranger_model = await ranger_svc.get(model.ranger_id)
             ranger_state = await ranger_svc.platform_state(ranger_model)
 
-            ranger_url = await ranger_svc.get_ranger_url(ranger_model)
+            ranger_ns = await ranger_svc._resolve_namespace(ranger_model)
+            ranger_url = f"http://{ranger_model.name}.{ranger_ns}.svc.cluster.local:6080"
 
             vars["ranger_enabled"] = True
             vars["ranger_url"] = ranger_url
@@ -612,7 +613,8 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
         try:
             ranger_svc = await RangerPlatformService.get_service(self.request, self.session)
             ranger_model = await ranger_svc.get(model.ranger_id)
-            ranger_url = await ranger_svc.get_ranger_url(ranger_model)
+            ranger_ns = await ranger_svc._resolve_namespace(ranger_model)
+            ranger_url = f"http://{ranger_model.name}.{ranger_ns}.svc.cluster.local:6080"
             
             admin_password = ""
             if ranger_model.admin_password:

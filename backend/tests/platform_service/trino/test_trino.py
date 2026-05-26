@@ -849,7 +849,7 @@ async def test_trino_deploy_decommission_ranger_lifecycle(mock_service_dependenc
     mock_ranger_model.name = "my-ranger"
     mock_ranger_model.admin_password = "ranger_admin_pass"
     mock_ranger_svc.get.return_value = mock_ranger_model
-    mock_ranger_svc.get_ranger_url = AsyncMock(return_value="http://my-ranger-url")
+    mock_ranger_svc._resolve_namespace = AsyncMock(return_value="ranger-ns")
     
     # Mock HttpClient calls using patch
     mock_resp_get = MagicMock()
@@ -880,11 +880,11 @@ async def test_trino_deploy_decommission_ranger_lifecycle(mock_service_dependenc
         
         # Verify httpx client calls for create
         mock_client_context.get.assert_called_once_with(
-            "http://my-ranger-url/service/public/v2/api/service/name/trino-ranger-test",
+            "http://my-ranger.ranger-ns.svc.cluster.local:6080/service/public/v2/api/service/name/trino-ranger-test",
             auth=("admin", "ranger_admin_pass")
         )
         mock_client_context.post.assert_called_once_with(
-            "http://my-ranger-url/service/public/v2/api/service",
+            "http://my-ranger.ranger-ns.svc.cluster.local:6080/service/public/v2/api/service",
             json={
                 "name": "trino-ranger-test",
                 "type": "trino",
@@ -912,7 +912,7 @@ async def test_trino_deploy_decommission_ranger_lifecycle(mock_service_dependenc
         # 3. Test before_delete hook (deleting the config/model, should delete Ranger service)
         await svc.delete_ranger_service_on_delete(model)
         mock_client_context.delete.assert_called_once_with(
-            "http://my-ranger-url/service/public/v2/api/service/name/trino-ranger-test",
+            "http://my-ranger.ranger-ns.svc.cluster.local:6080/service/public/v2/api/service/name/trino-ranger-test",
             auth=("admin", "ranger_admin_pass")
         )
 
@@ -1018,7 +1018,7 @@ async def test_trino_deploy_ranger_service_update(mock_service_dependencies):
     mock_ranger_model.name = "my-ranger"
     mock_ranger_model.admin_password = "ranger_admin_pass"
     mock_ranger_svc.get.return_value = mock_ranger_model
-    mock_ranger_svc.get_ranger_url = AsyncMock(return_value="http://my-ranger-url")
+    mock_ranger_svc._resolve_namespace = AsyncMock(return_value="ranger-ns")
     
     # Mock HttpClient calls using patch
     mock_resp_get = MagicMock()
@@ -1046,12 +1046,12 @@ async def test_trino_deploy_ranger_service_update(mock_service_dependencies):
         
         # Verify HTTP GET was called to check existence
         mock_client_context.get.assert_called_once_with(
-            "http://my-ranger-url/service/public/v2/api/service/name/trino-ranger-test",
+            "http://my-ranger.ranger-ns.svc.cluster.local:6080/service/public/v2/api/service/name/trino-ranger-test",
             auth=("admin", "ranger_admin_pass")
         )
         # Verify HTTP PUT was called to update the service
         mock_client_context.put.assert_called_once_with(
-            "http://my-ranger-url/service/public/v2/api/service/123",
+            "http://my-ranger.ranger-ns.svc.cluster.local:6080/service/public/v2/api/service/123",
             json={
                 "id": 123,
                 "name": "trino-ranger-test",
