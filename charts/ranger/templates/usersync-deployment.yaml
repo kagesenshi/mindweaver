@@ -1,0 +1,85 @@
+# SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
+# SPDX-License-Identifier: AGPLv3+
+
+{{- if .Values.usersync.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ranger.fullname" . }}-usersync
+  labels:
+    {{- include "ranger.labels" . | nindent 4 }}
+    app.kubernetes.io/component: usersync
+spec:
+  replicas: {{ .Values.usersync.replicaCount | default 1 }}
+  selector:
+    matchLabels:
+      {{- include "ranger.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: usersync
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "ranger.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: usersync
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "ranger.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: usersync
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: RANGER_COMPONENT
+              value: "usersync"
+            - name: RANGER_ADMIN_URL
+              value: "http://{{ include "ranger.fullname" . }}:{{ .Values.service.port }}"
+            - name: RANGER_USERSYNC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ranger.fullname" . }}-passwords
+                  key: usersync-password
+            - name: SETUP_RANGER
+              value: "true"
+            - name: RANGER_PROPS_DIR
+              value: /home/ranger/additional_props
+            - name: JAVA_HOME
+              value: /opt/java/openjdk
+          resources:
+            {{- toYaml .Values.usersync.resources | default .Values.resources | nindent 12 }}
+          {{- if .Values.admin.additionalProperties }}
+          volumeMounts:
+            - name: additional-props
+              mountPath: /home/ranger/additional_props
+          {{- end }}
+      {{- if .Values.admin.additionalProperties }}
+      volumes:
+        - name: additional-props
+          secret:
+            secretName: {{ include "ranger.fullname" . }}-passwords
+            items:
+              - key: additional.properties
+                path: additional.properties
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

@@ -137,6 +137,12 @@ zookeeper:
   service:
     port: 2181
 
+# UserSync Configuration
+usersync:
+  enabled: false
+  replicaCount: 1
+  resources: {}
+
 # Kerberos Configuration
 kerberos:
   enabled: false

@@ -73,6 +73,10 @@ spec:
             {%- endfor %}
             {%- endif %}
 
+        # UserSync Configuration
+        usersync:
+          enabled: {{ 'true' if additional_properties and additional_properties.get('SYNC_SOURCE') == 'ldap' else 'false' }}
+
         resources:
           requests:
             cpu: {{ cpu_request }}

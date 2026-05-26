@@ -15,6 +15,7 @@ from mindweaver.fw.hooks import before_create
 from mindweaver.platform_service.pgsql.service import PgSqlPlatformService
 from mindweaver.service.s3_storage.service import S3StorageService
 from mindweaver.platform_service.opensearch.service import OpenSearchPlatformService
+from mindweaver.service.ldap_config.service import LdapConfigService
 
 from .model import RangerPlatform, RangerPlatformState
 
@@ -214,6 +215,60 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
         # Set DB root user/pass to be the same as db_user/pass for managed DBs
         vars["db_root_user"] = vars.get("db_user")
         vars["db_root_pass"] = vars.get("db_pass")
+
+        # Resolve LDAP Configuration from Project
+        project = await self.project(model)
+        if project.ldap_config_id:
+            ldap_svc = await LdapConfigService.get_service(self.request, self.session)
+            ldap_config = await ldap_svc.get(project.ldap_config_id)
+            
+            additional_props = vars.setdefault("additional_properties", {})
+            additional_props.setdefault("authentication_method", "LDAP")
+            additional_props.setdefault("xa_ldap_url", ldap_config.server_url)
+            
+            if ldap_config.bind_dn:
+                additional_props.setdefault("xa_ldap_bind_dn", ldap_config.bind_dn)
+                if ldap_config.bind_password:
+                    try:
+                        bind_pass = decrypt_password(ldap_config.bind_password)
+                    except Exception:
+                        bind_pass = ldap_config.bind_password
+                    additional_props.setdefault("xa_ldap_bind_password", bind_pass)
+            
+            additional_props.setdefault("xa_ldap_base_dn", ldap_config.user_search_base)
+            additional_props.setdefault("xa_ldap_userDNpattern", f"{ldap_config.username_attr}={{0}},{ldap_config.user_search_base}")
+            additional_props.setdefault("xa_ldap_userSearchFilter", ldap_config.user_search_filter)
+            
+            if ldap_config.group_search_base:
+                additional_props.setdefault("xa_ldap_groupSearchBase", ldap_config.group_search_base)
+            if ldap_config.group_search_filter:
+                additional_props.setdefault("xa_ldap_groupSearchFilter", ldap_config.group_search_filter)
+            if ldap_config.group_member_attr:
+                additional_props.setdefault("xa_ldap_groupRoleAttribute", ldap_config.group_member_attr)
+
+            # UserSync configuration
+            additional_props.setdefault("SYNC_SOURCE", "ldap")
+            additional_props.setdefault("SYNC_LDAP_URL", ldap_config.server_url)
+            if ldap_config.bind_dn:
+                additional_props.setdefault("SYNC_LDAP_BIND_DN", ldap_config.bind_dn)
+                if ldap_config.bind_password:
+                    try:
+                        bind_pass = decrypt_password(ldap_config.bind_password)
+                    except Exception:
+                        bind_pass = ldap_config.bind_password
+                    additional_props.setdefault("SYNC_LDAP_BIND_PASSWORD", bind_pass)
+            
+            additional_props.setdefault("SYNC_LDAP_SEARCH_BASE", ldap_config.user_search_base)
+            additional_props.setdefault("SYNC_LDAP_USER_SEARCH_BASE", ldap_config.user_search_base)
+            additional_props.setdefault("SYNC_LDAP_USER_SEARCH_FILTER", ldap_config.user_search_filter)
+            additional_props.setdefault("SYNC_LDAP_USER_NAME_ATTRIBUTE", ldap_config.username_attr)
+            
+            if ldap_config.group_search_base:
+                additional_props.setdefault("SYNC_GROUP_SEARCH_BASE", ldap_config.group_search_base)
+            if ldap_config.group_search_filter:
+                additional_props.setdefault("SYNC_GROUP_SEARCH_FILTER", ldap_config.group_search_filter)
+            if ldap_config.group_member_attr:
+                additional_props.setdefault("SYNC_GROUP_MEMBER_ATTRIBUTE_NAME", ldap_config.group_member_attr)
 
         # Parse audit_s3_uri to construct s3a:// URI for Ranger
         # Format: s3://bucket/path -> s3a://bucket/path

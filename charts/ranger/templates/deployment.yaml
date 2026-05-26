@@ -9,6 +9,7 @@ spec:
   selector:
     matchLabels:
       {{- include "ranger.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: admin
   template:
     metadata:
       {{- with .Values.podAnnotations }}
@@ -17,6 +18,7 @@ spec:
       {{- end }}
       labels:
         {{- include "ranger.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: admin
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:

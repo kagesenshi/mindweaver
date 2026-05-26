@@ -60,6 +60,11 @@ async def test_ranger_template_vars(mock_service_dependencies):
     # Mock _resolve_namespace
     svc._resolve_namespace = AsyncMock(return_value="test-ns")
 
+    # Mock project
+    mock_project = MagicMock()
+    mock_project.ldap_config_id = None
+    svc.project = AsyncMock(return_value=mock_project)
+
     # Mock PgSqlPlatformService
     mock_pgsql_svc = AsyncMock()
     mock_pgsql_model = MagicMock()
@@ -177,6 +182,11 @@ async def test_ranger_invalid_db(mock_service_dependencies):
     # Mock _resolve_namespace
     svc._resolve_namespace = AsyncMock(return_value="test-ns")
 
+    # Mock project
+    mock_project = MagicMock()
+    mock_project.ldap_config_id = None
+    svc.project = AsyncMock(return_value=mock_project)
+
     with patch("mindweaver.platform_service.ranger.service.PgSqlPlatformService.get_service", AsyncMock(return_value=mock_pgsql_svc)):
         with pytest.raises(ValueError, match="is not active"):
             await svc.template_vars(model)
@@ -197,6 +207,11 @@ async def test_ranger_render_manifests(mock_service_dependencies):
 
     svc._resolve_namespace = AsyncMock(return_value="test-ns")
 
+    # Mock project
+    mock_project = MagicMock()
+    mock_project.ldap_config_id = None
+    svc.project = AsyncMock(return_value=mock_project)
+
     mock_pgsql_svc = AsyncMock()
     mock_pgsql_model = MagicMock()
     mock_pgsql_model.name = "test-db"
@@ -214,6 +229,8 @@ async def test_ranger_render_manifests(mock_service_dependencies):
         manifests = await svc.render_manifests(model)
         assert "policymgr_supportedcomponents: trino,kafka,elasticsearch,nifi" in manifests
         assert "ranger.supportedcomponents: trino,kafka,elasticsearch,nifi" in manifests
+        # Default behavior: usersync should be disabled
+        assert "enabled: false" in manifests
 
         # Custom override in additional_properties
         model.additional_properties = {
@@ -227,6 +244,13 @@ async def test_ranger_render_manifests(mock_service_dependencies):
         assert "custom.property: value" in manifests_custom
         # Ensure default list doesn't appear when overridden
         assert "policymgr_supportedcomponents: trino,kafka,elasticsearch,nifi" not in manifests_custom
+
+        # Test with SYNC_SOURCE=ldap should enable usersync
+        model.additional_properties = {
+            "SYNC_SOURCE": "ldap",
+        }
+        manifests_ldap = await svc.render_manifests(model)
+        assert "enabled: true" in manifests_ldap
 
 
 @pytest.mark.asyncio
@@ -245,6 +269,11 @@ async def test_ranger_template_vars_with_opensearch(mock_service_dependencies):
 
     # Mock _resolve_namespace
     svc._resolve_namespace = AsyncMock(return_value="test-ns")
+
+    # Mock project
+    mock_project = MagicMock()
+    mock_project.ldap_config_id = None
+    svc.project = AsyncMock(return_value=mock_project)
 
     # Mock PgSqlPlatformService
     mock_pgsql_svc = AsyncMock()
@@ -302,6 +331,11 @@ async def test_ranger_invalid_opensearch(mock_service_dependencies):
 
     svc._resolve_namespace = AsyncMock(return_value="test-ns")
 
+    # Mock project
+    mock_project = MagicMock()
+    mock_project.ldap_config_id = None
+    svc.project = AsyncMock(return_value=mock_project)
+
     # Mock PgSql
     mock_pgsql_svc = AsyncMock()
     mock_pgsql_model = MagicMock()
@@ -324,4 +358,87 @@ async def test_ranger_invalid_opensearch(mock_service_dependencies):
          patch("mindweaver.platform_service.ranger.service.OpenSearchPlatformService.get_service", AsyncMock(return_value=mock_os_svc)):
         with pytest.raises(ValueError, match="is not active"):
             await svc.template_vars(model)
+
+
+@pytest.mark.asyncio
+async def test_ranger_template_vars_with_ldap(mock_service_dependencies):
+    """Test that template_vars properly constructs LDAP properties when project has ldap_config_id."""
+    request, session = mock_service_dependencies
+    svc = RangerPlatformService(request, session)
+
+    model = RangerPlatform(
+        name="test-ranger",
+        project_id=1,
+        database_id=10,
+        admin_password="admin",
+    )
+
+    # Mock _resolve_namespace
+    svc._resolve_namespace = AsyncMock(return_value="test-ns")
+
+    # Mock project
+    mock_project = MagicMock()
+    mock_project.ldap_config_id = 500
+    svc.project = AsyncMock(return_value=mock_project)
+
+    # Mock PgSqlPlatformService
+    mock_pgsql_svc = AsyncMock()
+    mock_pgsql_model = MagicMock()
+    mock_pgsql_model.name = "test-db"
+    mock_pgsql_svc.get.return_value = mock_pgsql_model
+    
+    mock_pgsql_state = MagicMock()
+    mock_pgsql_state.active = True
+    mock_pgsql_state.db_user = "user"
+    mock_pgsql_state.db_name = "ranger"
+    mock_pgsql_state.db_pass = "pass"
+    mock_pgsql_svc.platform_state.return_value = mock_pgsql_state
+
+    # Mock LdapConfigService
+    mock_ldap_svc = AsyncMock()
+    mock_ldap_config = MagicMock()
+    mock_ldap_config.server_url = "ldap://ldap.example.com:389"
+    mock_ldap_config.bind_dn = "cn=admin,dc=example,dc=com"
+    mock_ldap_config.bind_password = "ldap-secret-password"
+    mock_ldap_config.user_search_base = "ou=users,dc=example,dc=com"
+    mock_ldap_config.user_search_filter = "(uid={0})"
+    mock_ldap_config.username_attr = "uid"
+    mock_ldap_config.group_search_base = "ou=groups,dc=example,dc=com"
+    mock_ldap_config.group_search_filter = "(member={0})"
+    mock_ldap_config.group_member_attr = "member"
+    mock_ldap_svc.get.return_value = mock_ldap_config
+
+    with patch("mindweaver.platform_service.ranger.service.PgSqlPlatformService.get_service", AsyncMock(return_value=mock_pgsql_svc)), \
+         patch("mindweaver.platform_service.ranger.service.LdapConfigService.get_service", AsyncMock(return_value=mock_ldap_svc)), \
+         patch("mindweaver.platform_service.ranger.service.decrypt_password", lambda x: x):
+        
+        vars = await svc.template_vars(model)
+        
+        assert vars["name"] == "test-ranger"
+        additional_props = vars["additional_properties"]
+        
+        # Admin authentication properties
+        assert additional_props["authentication_method"] == "LDAP"
+        assert additional_props["xa_ldap_url"] == "ldap://ldap.example.com:389"
+        assert additional_props["xa_ldap_bind_dn"] == "cn=admin,dc=example,dc=com"
+        assert additional_props["xa_ldap_bind_password"] == "ldap-secret-password"
+        assert additional_props["xa_ldap_base_dn"] == "ou=users,dc=example,dc=com"
+        assert additional_props["xa_ldap_userDNpattern"] == "uid={0},ou=users,dc=example,dc=com"
+        assert additional_props["xa_ldap_userSearchFilter"] == "(uid={0})"
+        assert additional_props["xa_ldap_groupSearchBase"] == "ou=groups,dc=example,dc=com"
+        assert additional_props["xa_ldap_groupSearchFilter"] == "(member={0})"
+        assert additional_props["xa_ldap_groupRoleAttribute"] == "member"
+
+        # UserSync properties
+        assert additional_props["SYNC_SOURCE"] == "ldap"
+        assert additional_props["SYNC_LDAP_URL"] == "ldap://ldap.example.com:389"
+        assert additional_props["SYNC_LDAP_BIND_DN"] == "cn=admin,dc=example,dc=com"
+        assert additional_props["SYNC_LDAP_BIND_PASSWORD"] == "ldap-secret-password"
+        assert additional_props["SYNC_LDAP_SEARCH_BASE"] == "ou=users,dc=example,dc=com"
+        assert additional_props["SYNC_LDAP_USER_SEARCH_BASE"] == "ou=users,dc=example,dc=com"
+        assert additional_props["SYNC_LDAP_USER_SEARCH_FILTER"] == "(uid={0})"
+        assert additional_props["SYNC_LDAP_USER_NAME_ATTRIBUTE"] == "uid"
+        assert additional_props["SYNC_GROUP_SEARCH_BASE"] == "ou=groups,dc=example,dc=com"
+        assert additional_props["SYNC_GROUP_SEARCH_FILTER"] == "(member={0})"
+        assert additional_props["SYNC_GROUP_MEMBER_ATTRIBUTE_NAME"] == "member"
 
