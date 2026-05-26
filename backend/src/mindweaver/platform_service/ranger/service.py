@@ -269,6 +269,11 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
                 additional_props.setdefault("SYNC_GROUP_SEARCH_FILTER", ldap_config.group_search_filter)
             if ldap_config.group_member_attr:
                 additional_props.setdefault("SYNC_GROUP_MEMBER_ATTRIBUTE_NAME", ldap_config.group_member_attr)
+            
+            # Disable delta sync to avoid Operations Error (e.g. uSNChanged) on OpenLDAP
+            additional_props.setdefault("SYNC_LDAP_DELTASYNC", "false")
+            # Set referral to ignore to avoid referral chasing errors in AD/LDAP
+            additional_props.setdefault("SYNC_LDAP_REFERRAL", "ignore")
 
         # Parse audit_s3_uri to construct s3a:// URI for Ranger
         # Format: s3://bucket/path -> s3a://bucket/path
