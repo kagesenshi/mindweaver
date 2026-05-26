@@ -1,7 +1,6 @@
+{{- if .Values.usersync.enabled -}}
 # SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
 # SPDX-License-Identifier: AGPLv3+
-
-{{- if .Values.usersync.enabled -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
