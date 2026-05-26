@@ -19,6 +19,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set_property() {
+  local key="$1"
+  local value="$2"
+  local file="$3"
+  if grep -q "^[[:space:]]*${key}[[:space:]]*=" "${file}"; then
+    local escaped_value=$(echo "${value}" | sed 's/[&/\]/\\&/g')
+    sed -i "s|^[[:space:]]*${key}[[:space:]]*=.*|${key}=${escaped_value}|" "${file}"
+  else
+    echo "${key}=${value}" >> "${file}"
+  fi
+}
+
 RANGER_COMPONENT=${RANGER_COMPONENT:-admin}
 
 if [ "${RANGER_COMPONENT}" == "usersync" ]
@@ -33,17 +45,20 @@ then
   if [ "${SETUP_USERSYNC}" == "true" ]
   then
     cp ${RANGER_SCRIPTS}/ranger-usersync-install.properties ${RANGER_HOME}/usersync/install.properties
-    {
-      echo "POLICY_MGR_URL=${RANGER_ADMIN_URL:-http://localhost:6080}"
-      echo "rangerUsersync_password=${RANGER_USERSYNC_PASSWORD}"
-    } >> ${RANGER_HOME}/usersync/install.properties
+    set_property "POLICY_MGR_URL" "${RANGER_ADMIN_URL:-http://localhost:6080}" "${RANGER_HOME}/usersync/install.properties"
+    set_property "rangerUsersync_password" "${RANGER_USERSYNC_PASSWORD}" "${RANGER_HOME}/usersync/install.properties"
     
     # Append all custom properties (including SYNC_*) to usersync install.properties
     if [ -d ${RANGER_PROPS_DIR} ]
     then
       for f in ${RANGER_PROPS_DIR}/*.properties; do
           if [ -f "$f" ]; then
-              cat "$f" >> ${RANGER_HOME}/usersync/install.properties
+              while IFS='=' read -r key value || [ -n "$key" ]; do
+                  [[ -z "$key" || "$key" =~ ^[[:space:]]*# ]] && continue
+                  key=$(echo "$key" | xargs)
+                  value=$(echo "$value" | xargs)
+                  set_property "$key" "$value" "${RANGER_HOME}/usersync/install.properties"
+              done < "$f"
           fi
       done
     fi
@@ -87,25 +102,28 @@ else
     then
         cp "${RANGER_DEFAULT_CONF_DIR}"/* "${RANGER_HOME}/conf/"
     fi
-    {
-            echo "db_flavor=${RANGER_DB_TYPE:-postgres}"
-            echo "db_host=${RANGER_DB_HOST}"
-            echo "db_name=${RANGER_DB_NAME}"
-            echo "db_user=${RANGER_DB_USER}"
-            echo "db_password=${RANGER_DB_PASSWORD}"
-            echo "db_root_user=${RANGER_DB_ROOT_USER:-postgres}"
-            echo "db_root_password=${POSTGRES_PASSWORD}"
-            echo "rangerAdmin_password=${RANGER_ADMIN_PASSWORD}"
-            echo "rangerTagsync_password=${RANGER_TAGSYNC_PASSWORD}"
-            echo "rangerUsersync_password=${RANGER_USERSYNC_PASSWORD}"
-            echo "keyadmin_password=${RANGER_KEYADMIN_PASSWORD}"
-    } >> ${RANGER_HOME}/admin/install.properties
+    set_property "db_flavor" "${RANGER_DB_TYPE:-postgres}" "${RANGER_HOME}/admin/install.properties"
+    set_property "db_host" "${RANGER_DB_HOST}" "${RANGER_HOME}/admin/install.properties"
+    set_property "db_name" "${RANGER_DB_NAME}" "${RANGER_HOME}/admin/install.properties"
+    set_property "db_user" "${RANGER_DB_USER}" "${RANGER_HOME}/admin/install.properties"
+    set_property "db_password" "${RANGER_DB_PASSWORD}" "${RANGER_HOME}/admin/install.properties"
+    set_property "db_root_user" "${RANGER_DB_ROOT_USER:-postgres}" "${RANGER_HOME}/admin/install.properties"
+    set_property "db_root_password" "${POSTGRES_PASSWORD}" "${RANGER_HOME}/admin/install.properties"
+    set_property "rangerAdmin_password" "${RANGER_ADMIN_PASSWORD}" "${RANGER_HOME}/admin/install.properties"
+    set_property "rangerTagsync_password" "${RANGER_TAGSYNC_PASSWORD}" "${RANGER_HOME}/admin/install.properties"
+    set_property "rangerUsersync_password" "${RANGER_USERSYNC_PASSWORD}" "${RANGER_HOME}/admin/install.properties"
+    set_property "keyadmin_password" "${RANGER_KEYADMIN_PASSWORD}" "${RANGER_HOME}/admin/install.properties"
 
     if [ -d ${RANGER_PROPS_DIR} ]
     then
       for f in ${RANGER_PROPS_DIR}/*.properties; do
           if [ -f "$f" ]; then
-              cat "$f" >> ${RANGER_HOME}/admin/install.properties
+              while IFS='=' read -r key value || [ -n "$key" ]; do
+                  [[ -z "$key" || "$key" =~ ^[[:space:]]*# ]] && continue
+                  key=$(echo "$key" | xargs)
+                  value=$(echo "$value" | xargs)
+                  set_property "$key" "$value" "${RANGER_HOME}/admin/install.properties"
+              done < "$f"
           fi
       done
     fi
