@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import {
-    Activity, Monitor, RefreshCw
+    Activity, Monitor, RefreshCw, Shield, Key, CheckCircle2, AlertCircle, Eye, Download
 } from 'lucide-react';
 import { useNotification } from '../../providers/NotificationProvider';
+import Modal from '../../components/Modal';
 
 const ServiceView = ({
     selectedClusterId,
@@ -10,27 +11,68 @@ const ServiceView = ({
     onBack,
     clustersHook
 }) => {
-    const { getClusterState, refreshClusterState } = clustersHook;
+    const { getClusterState, getClusterCertManager, getClusterIssuerCert, refreshClusterState } = clustersHook;
     const [clusterState, setClusterState] = useState(null);
+    const [certData, setCertData] = useState(null);
+    const [selectedCert, setSelectedCert] = useState(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [installingActions, setInstallingActions] = useState({});
     const { showSuccess, showError } = useNotification();
 
+    const handleDownloadIssuerCert = async (name, kind, namespace) => {
+        if (!getClusterIssuerCert) return;
+        try {
+            const data = await getClusterIssuerCert(selectedClusterId, name, kind, namespace);
+            if (data && data.pem) {
+                const blob = new Blob([data.pem], { type: 'application/x-x509-ca-cert' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = data.filename || `${name}-ca.crt`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                showSuccess("CA Certificate downloaded");
+            } else {
+                showError("No certificate data returned");
+            }
+        } catch (e) {
+            console.error(e);
+            const errMsg = e.response?.data?.detail || "Failed to download CA certificate";
+            showError(errMsg);
+        }
+    };
+
     useEffect(() => {
         let timer;
         if (selectedClusterId && getClusterState) {
-            getClusterState(selectedClusterId).then(setClusterState);
+            getClusterState(selectedClusterId).then(newState => {
+                setClusterState(newState);
+                if (newState.cert_manager_installed && getClusterCertManager) {
+                    getClusterCertManager(selectedClusterId).then(setCertData).catch(console.error);
+                }
+            });
 
             timer = setInterval(() => {
-                getClusterState(selectedClusterId).then(setClusterState);
+                getClusterState(selectedClusterId).then(newState => {
+                    setClusterState(newState);
+                    if (newState.cert_manager_installed && getClusterCertManager) {
+                        getClusterCertManager(selectedClusterId).then(setCertData).catch(console.error);
+                    }
+                });
             }, 10000);
         } else {
-            Promise.resolve().then(() => setClusterState(null));
+            Promise.resolve().then(() => {
+                setClusterState(null);
+                setCertData(null);
+            });
         }
         return () => {
             if (timer) clearInterval(timer);
         };
-    }, [selectedClusterId, getClusterState]);
+    }, [selectedClusterId, getClusterState, getClusterCertManager]);
 
     const handleRefresh = async () => {
         if (!refreshClusterState) return;
@@ -38,6 +80,10 @@ const ServiceView = ({
         try {
             const newState = await refreshClusterState(selectedClusterId);
             setClusterState(newState);
+            if (newState.cert_manager_installed && getClusterCertManager) {
+                const cmData = await getClusterCertManager(selectedClusterId);
+                setCertData(cmData);
+            }
             showSuccess("Cluster state refreshed");
         } catch (e) {
             console.error(e);
@@ -307,6 +353,270 @@ const ServiceView = ({
                     </div>
                 </div>
             </div>
+
+            {clusterState.cert_manager_installed && certData && (
+                <div className="mw-card p-8 space-y-8 animate-in slide-in-from-bottom duration-700">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className="mw-icon-box text-indigo-500">
+                                <Shield size={24} />
+                            </div>
+                            <div>
+                                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Cert Manager Resources</h3>
+                                <p className="text-sm text-slate-500 font-medium uppercase tracking-tight">Active Issuers & Issued Certificates</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-6">
+                        {(() => {
+                            const grouped = {};
+                            const issuers = certData.issuers || [];
+                            const certificates = certData.certificates || [];
+
+                            issuers.forEach(issuer => {
+                                grouped[`${issuer.kind}/${issuer.name}`] = {
+                                    issuer,
+                                    certs: []
+                                };
+                            });
+
+                            const orphanCerts = [];
+                            certificates.forEach(cert => {
+                                const key = `${cert.issuer_kind}/${cert.issuer_name}`;
+                                if (grouped[key]) {
+                                    grouped[key].certs.push(cert);
+                                } else {
+                                    orphanCerts.push(cert);
+                                }
+                            });
+
+                            const hasResources = issuers.length > 0 || certificates.length > 0;
+
+                            if (!hasResources) {
+                                return (
+                                    <div className="text-center py-8 text-slate-500">
+                                        No Cert Manager resources found in this cluster.
+                                    </div>
+                                );
+                            }
+
+                            return (
+                                <div className="grid grid-cols-1 gap-6">
+                                    {Object.entries(grouped).map(([key, group]) => (
+                                        <div key={key} className="bg-slate-50/50 dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-200/50 dark:border-slate-800/50 space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-xs font-bold uppercase tracking-wider px-2 py-0.5 bg-indigo-500/10 text-indigo-500 rounded">
+                                                        {group.issuer.kind}
+                                                    </span>
+                                                    <h4 className="text-lg font-bold text-slate-900 dark:text-white">{group.issuer.name}</h4>
+                                                    {group.issuer.namespace && (
+                                                        <span className="text-xs text-slate-400 font-mono">
+                                                            namespace: {group.issuer.namespace}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center gap-3">
+                                                    <button
+                                                        onClick={() => handleDownloadIssuerCert(group.issuer.name, group.issuer.kind, group.issuer.namespace)}
+                                                        className="mw-btn-secondary py-1 px-2.5 text-xs flex items-center gap-1.5"
+                                                        title="Download CA Certificate"
+                                                    >
+                                                        <Download size={12} />
+                                                        CA CERT
+                                                    </button>
+                                                    <div className="flex items-center gap-1.5">
+                                                        {group.issuer.status === 'Ready' ? (
+                                                            <CheckCircle2 size={16} className="text-green-500" />
+                                                        ) : (
+                                                            <AlertCircle size={16} className="text-red-500" />
+                                                        )}
+                                                        <span className={`text-xs font-bold uppercase tracking-wider ${group.issuer.status === 'Ready' ? 'text-green-500' : 'text-red-500'}`}>
+                                                            {group.issuer.status}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="ml-2 pl-4 border-l border-slate-200 dark:border-slate-800 space-y-3">
+                                                <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Issued Certificates ({group.certs.length})</p>
+                                                {group.certs.length === 0 ? (
+                                                    <p className="text-sm text-slate-500 italic">No certificates issued by this issuer.</p>
+                                                ) : (
+                                                    <div className="grid grid-cols-1 gap-2">
+                                                        {group.certs.map(cert => (
+                                                            <div key={cert.name} className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-500">
+                                                                        <Key size={16} />
+                                                                    </div>
+                                                                    <div>
+                                                                        <span className="text-sm font-bold text-slate-700 dark:text-white">{cert.name}</span>
+                                                                        <div className="flex items-center gap-2 mt-0.5">
+                                                                            <span className="text-[10px] text-slate-400 font-mono">ns: {cert.namespace}</span>
+                                                                            {cert.secret_name && (
+                                                                                <span className="text-[10px] text-slate-400 font-mono">• secret: {cert.secret_name}</span>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex items-center gap-4">
+                                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${cert.status === 'Ready' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                                                                        {cert.status}
+                                                                    </span>
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setSelectedCert(cert);
+                                                                            setIsModalOpen(true);
+                                                                        }}
+                                                                        className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-500 transition-colors"
+                                                                        title="View Details"
+                                                                    >
+                                                                        <Eye size={16} />
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+
+                                    {orphanCerts.length > 0 && (
+                                        <div className="bg-slate-50/50 dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-200/50 dark:border-slate-800/50 space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-xs font-bold uppercase tracking-wider px-2 py-0.5 bg-yellow-500/10 text-yellow-500 rounded">
+                                                        External / Orphan
+                                                    </span>
+                                                    <h4 className="text-lg font-bold text-slate-900 dark:text-white">Other Certificates</h4>
+                                                </div>
+                                            </div>
+
+                                            <div className="ml-2 pl-4 border-l border-slate-200 dark:border-slate-800 space-y-3">
+                                                <div className="grid grid-cols-1 gap-2">
+                                                    {orphanCerts.map(cert => (
+                                                        <div key={cert.name} className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-500">
+                                                                    <Key size={16} />
+                                                                </div>
+                                                                <div>
+                                                                    <span className="text-sm font-bold text-slate-700 dark:text-white">{cert.name}</span>
+                                                                    <div className="flex items-center gap-2 mt-0.5">
+                                                                        <span className="text-[10px] text-slate-400 font-mono">ns: {cert.namespace}</span>
+                                                                        <span className="text-[10px] text-slate-400">• issuer: {cert.issuer_kind}/{cert.issuer_name}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-center gap-4">
+                                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${cert.status === 'Ready' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                                                                    {cert.status}
+                                                                </span>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setSelectedCert(cert);
+                                                                        setIsModalOpen(true);
+                                                                    }}
+                                                                    className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-500 transition-colors"
+                                                                    title="View Details"
+                                                                >
+                                                                    <Eye size={16} />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })()}
+                    </div>
+                </div>
+            )}
+
+            {selectedCert && (
+                <Modal
+                    isOpen={isModalOpen}
+                    onClose={() => {
+                        setIsModalOpen(false);
+                        setSelectedCert(null);
+                    }}
+                    title={`Certificate: ${selectedCert.name}`}
+                    maxWidth="max-w-2xl"
+                >
+                    <div className="space-y-6">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Namespace</span>
+                                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{selectedCert.namespace}</p>
+                            </div>
+                            <div className="space-y-1">
+                                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Secret Name</span>
+                                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 font-mono">{selectedCert.secret_name || 'N/A'}</p>
+                            </div>
+                            <div className="space-y-1">
+                                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Issuer Reference</span>
+                                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                    {selectedCert.issuer_kind}: {selectedCert.issuer_name}
+                                </p>
+                            </div>
+                            <div className="space-y-1">
+                                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Status</span>
+                                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{selectedCert.status}</p>
+                            </div>
+                            {selectedCert.not_before && (
+                                <div className="space-y-1">
+                                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Not Before</span>
+                                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 font-mono">{new Date(selectedCert.not_before).toLocaleString()}</p>
+                                </div>
+                            )}
+                            {selectedCert.not_after && (
+                                <div className="space-y-1">
+                                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Not After (Expiration)</span>
+                                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 font-mono">{new Date(selectedCert.not_after).toLocaleString()}</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {selectedCert.dns_names && selectedCert.dns_names.length > 0 && (
+                            <div className="space-y-2">
+                                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">DNS Names (Domains)</span>
+                                <div className="flex flex-wrap gap-2">
+                                    {selectedCert.dns_names.map(domain => (
+                                        <span key={domain} className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs font-mono text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                                            {domain}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {selectedCert.conditions && selectedCert.conditions.length > 0 && (
+                            <div className="space-y-3">
+                                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Conditions</span>
+                                <div className="space-y-2 max-h-48 overflow-y-auto">
+                                    {selectedCert.conditions.map((cond, idx) => (
+                                        <div key={idx} className="p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 flex items-start justify-between gap-4 text-xs">
+                                            <div className="space-y-1">
+                                                <div className="font-bold text-slate-700 dark:text-slate-200">{cond.type}</div>
+                                                {cond.message && <div className="text-slate-500 font-mono">{cond.message}</div>}
+                                            </div>
+                                            <span className={`font-bold uppercase tracking-wider px-2 py-0.5 rounded ${cond.status === 'True' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                                                {cond.status}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </Modal>
+            )}
         </div>
     );
 };
