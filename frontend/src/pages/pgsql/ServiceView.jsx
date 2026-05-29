@@ -129,7 +129,7 @@ const ServiceView = ({
                         }]}
                         clusterNodes={platformState.cluster_nodes}
                         cliInfo={{
-                            command: `psql "host=${platformState.cluster_nodes?.[0]?.ipv4 || '[NODE_IP]'} port=${pgbouncerPort.node_port} user=${platformState?.db_user || 'pending'} dbname=${platformState?.db_name || 'pending'} sslmode=verify-full sslrootcert=ca.crt"`,
+                            command: `psql "host=${platformState.cluster_nodes?.[0]?.ipv4 || '[NODE_IP]'} port=${pgbouncerPort.node_port} user=${platformState?.db_user || 'pending'} dbname=${platformState?.db_name || 'pending'}"`,
                             languageButtons: ['python']
                         }}
                     />
@@ -143,7 +143,6 @@ const ServiceView = ({
                             { label: 'Password', value: platformState?.db_pass, isMasked: true },
                             { label: 'Database', value: platformState?.db_name }
                         ]}
-                        caCert={platformState?.db_ca_crt}
                     />
                 )}
             </div>
