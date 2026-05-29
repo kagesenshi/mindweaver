@@ -783,12 +783,12 @@ async def test_trino_ranger_integration(mock_service_dependencies):
     ssl_xml = config_files["ranger-policymgr-ssl.xml"]
     assert "<name>xasecure.policymgr.clientssl.keystore</name>" in ssl_xml
     assert "<value>/etc/trino/tls/keystore.jks</value>" in ssl_xml
-    assert "<name>xasecure.policymgr.clientssl.keystore.password</name>" in ssl_xml
-    assert "<value>changeit</value>" in ssl_xml
+    assert "<name>xasecure.policymgr.clientssl.keystore.credential.file</name>" in ssl_xml
+    assert "<value>jceks://file/etc/trino/tls/ranger-link.jceks</value>" in ssl_xml
     assert "<name>xasecure.policymgr.clientssl.truststore</name>" in ssl_xml
     assert "<value>/etc/trino/tls/truststore.jks</value>" in ssl_xml
-    assert "<name>xasecure.policymgr.clientssl.truststore.password</name>" in ssl_xml
-    assert "<value>changeit</value>" in ssl_xml
+    assert "<name>xasecure.policymgr.clientssl.truststore.credential.file</name>" in ssl_xml
+    assert "<value>jceks://file/etc/trino/tls/ranger-link.jceks</value>" in ssl_xml
 
     audit_xml = config_files["ranger-trino-audit.xml"]
     assert "<name>xasecure.audit.is.enabled</name>" in audit_xml

@@ -16,6 +16,9 @@ spec:
     targetRevision: {{ chart_version }}
     helm:
       values: |
+        env:
+          - name: HADOOP_CREDSTORE_PASSWORD
+            value: changeit
         {% if override_image %}
         image:
           tag: "{{ image.split(':')[-1] if ':' in image else 'latest' }}"
@@ -60,6 +63,10 @@ spec:
                   cat /tls-secret/tls.key /tls-secret/tls.crt > /tls/tls.pem
                   cp /tls-secret/keystore.jks /tls/keystore.jks
                   cp /tls-secret/truststore.jks /tls/truststore.jks
+                  {% if ranger_enabled %}
+                  echo "changeit" | keytool -importpass -alias sslKeyStore -keypass changeit -storepass changeit -keystore /tls/ranger-link.jceks -storetype JCEKS -noprompt
+                  echo "changeit" | keytool -importpass -alias sslTrustStore -keypass changeit -storepass changeit -keystore /tls/ranger-link.jceks -storetype JCEKS -noprompt
+                  {% endif %}
               volumeMounts:
                 - name: tls-secret
                   mountPath: /tls-secret
@@ -95,7 +102,6 @@ spec:
             - "-Djavax.net.ssl.trustStorePassword=changeit"
             - "-Djavax.net.ssl.keyStore=/etc/trino/tls/keystore.jks"
             - "-Djavax.net.ssl.keyStorePassword=changeit"
-            - "-Djavax.net.debug=ssl,handshake"
           additionalConfigFiles:
             {% if ldap %}
             ldap.properties: |
@@ -146,16 +152,16 @@ spec:
                   <value>/etc/trino/tls/keystore.jks</value>
                 </property>
                 <property>
-                  <name>xasecure.policymgr.clientssl.keystore.password</name>
-                  <value>changeit</value>
+                  <name>xasecure.policymgr.clientssl.keystore.credential.file</name>
+                  <value>jceks://file/etc/trino/tls/ranger-link.jceks</value>
                 </property>
                 <property>
                   <name>xasecure.policymgr.clientssl.truststore</name>
                   <value>/etc/trino/tls/truststore.jks</value>
                 </property>
                 <property>
-                  <name>xasecure.policymgr.clientssl.truststore.password</name>
-                  <value>changeit</value>
+                  <name>xasecure.policymgr.clientssl.truststore.credential.file</name>
+                  <value>jceks://file/etc/trino/tls/ranger-link.jceks</value>
                 </property>
               </configuration>
             ranger-trino-audit.xml: |
