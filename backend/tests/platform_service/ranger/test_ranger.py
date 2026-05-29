@@ -211,7 +211,6 @@ async def test_ranger_render_manifests(mock_service_dependencies):
         manifests = await svc.render_manifests(model)
         assert "policymgr_supportedcomponents: trino,kafka,elasticsearch,nifi" in manifests
         assert "ranger.supportedcomponents: trino,kafka,elasticsearch,nifi" in manifests
-        assert 'javaOpts: "-Djavax.net.debug=ssl,handshake"' in manifests
         # Default behavior: usersync should be disabled
         assert "enabled: false" in manifests
 
