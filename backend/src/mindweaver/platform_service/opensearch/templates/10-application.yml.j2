@@ -16,6 +16,9 @@ spec:
     targetRevision: {{ chart_version }}
     helm:
       values: |
+        clusterName: "{{ name }}-cluster"
+        masterService: "{{ name }}-cluster-master"
+
         # Single node vs multi-node scaling
         {%- if replica_count == 1 %}
         singleNode: true
@@ -41,6 +44,13 @@ spec:
           - name: {{ name }}-tls
             secretName: {{ name }}-tls
             path: /usr/share/opensearch/config/certificates
+          - name: {{ name }}-admin-tls
+            secretName: {{ name }}-admin-tls
+            path: /usr/share/opensearch/config/admin-certificates
+          - name: {{ name }}-security-config
+            secretName: {{ name }}-security-config
+            path: /usr/share/opensearch/config/opensearch-security/internal_users.yml
+            subPath: internal_users.yml
 
         resources:
           requests:
@@ -68,9 +78,11 @@ spec:
             plugins.security.ssl.http.pemkey_filepath: certificates/tls.key
             plugins.security.ssl.http.pemtrustedcas_filepath: certificates/ca.crt
             plugins.security.nodes_dn:
-              - 'O=mindweaver'
+              - 'CN={{ name }},O=mindweaver'
+              - 'O=mindweaver,CN={{ name }}'
             plugins.security.authcz.admin_dn:
-              - 'CN=*,O=mindweaver'
+              - 'CN=admin,O=mindweaver'
+              - 'O=mindweaver,CN=admin'
             plugins.security.allow_unsafe_democertificates: false
             plugins.security.allow_default_init_securityindex: true
             {% if additional_properties %}

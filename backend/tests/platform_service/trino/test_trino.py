@@ -519,13 +519,14 @@ async def test_trino_https_rendering(mock_service_dependencies):
     # Ensure no local Issuer is created (it's cluster-wide now)
     issuer_kinds = [d["kind"] for d in docs]
     assert "Issuer" not in issuer_kinds
-    assert "Secret" not in issuer_kinds  # no keystore-password secret anymore
+    assert "Secret" in issuer_kinds
     
     cert = next(d for d in docs if d["kind"] == "Certificate")
     assert cert["metadata"]["name"] == "trino-https-test-tls"
     assert cert["spec"]["issuerRef"]["name"] == "mindweaver-selfsigned-issuer"
     assert cert["spec"]["issuerRef"]["kind"] == "ClusterIssuer"
-    assert "keystores" not in cert["spec"]  # PEM format - no JKS keystore
+    assert "keystores" in cert["spec"]
+    assert cert["spec"]["keystores"]["jks"]["create"] is True
 
     # Check additional NodePort service
     service = next(d for d in docs if d["kind"] == "Service" and d["metadata"]["name"] == "trino-https-test-https-nodeport")
@@ -740,7 +741,7 @@ async def test_trino_ranger_integration(mock_service_dependencies):
     assert vars.get("ranger_service_name") == "trino-ranger-test"
     
     assert vars.get("ranger_opensearch_enabled") == "true"
-    assert vars.get("ranger_opensearch_host") == "opensearch-cluster-master.opensearch-ns.svc.cluster.local"
+    assert vars.get("ranger_opensearch_host") == "my-opensearch-cluster-master.opensearch-ns.svc.cluster.local"
     assert vars.get("ranger_opensearch_protocol") == "https"
     assert vars.get("ranger_opensearch_password") == "opensearch_admin_pass"
 
@@ -784,7 +785,7 @@ async def test_trino_ranger_integration(mock_service_dependencies):
     assert "<name>xasecure.audit.destination.elasticsearch</name>" in audit_xml
     assert "<value>true</value>" in audit_xml
     assert "<name>xasecure.audit.destination.elasticsearch.urls</name>" in audit_xml
-    assert "<value>opensearch-cluster-master.opensearch-ns.svc.cluster.local</value>" in audit_xml
+    assert "<value>my-opensearch-cluster-master.opensearch-ns.svc.cluster.local</value>" in audit_xml
     assert "<name>xasecure.audit.destination.elasticsearch.password</name>" in audit_xml
     assert "<value>opensearch_admin_pass</value>" in audit_xml
     assert "<name>xasecure.audit.destination.elasticsearch.ssl.trustall</name>" in audit_xml

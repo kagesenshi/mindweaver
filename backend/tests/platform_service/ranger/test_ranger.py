@@ -291,7 +291,7 @@ async def test_ranger_template_vars_with_opensearch(mock_service_dependencies):
         assert vars["name"] == "test-ranger"
         assert vars["db_host"] == "test-db-pooler-rw.test-ns.svc.cluster.local"
         assert vars["additional_properties"]["audit_store"] == "elasticsearch"
-        assert vars["additional_properties"]["audit_elasticsearch_urls"] == "opensearch-cluster-master.os-ns.svc.cluster.local"
+        assert vars["additional_properties"]["audit_elasticsearch_urls"] == "test-os-cluster-master.os-ns.svc.cluster.local"
         assert vars["additional_properties"]["audit_elasticsearch_port"] == "9200"
         assert vars["additional_properties"]["audit_elasticsearch_protocol"] == "https"
         assert vars["additional_properties"]["audit_elasticsearch_user"] == "admin"

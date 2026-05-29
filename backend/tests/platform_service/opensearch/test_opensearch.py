@@ -90,6 +90,9 @@ async def test_opensearch_template_vars(mock_service_dependencies):
     assert vars["namespace"] == "test-ns"
     assert vars["admin_password"] == "my-admin-password"
     assert vars["replica_count"] == 1
+    assert "admin_password_hash" in vars
+    # Deterministic salt should output a consistent hash starting with $2a$12$
+    assert vars["admin_password_hash"].startswith("$2a$12$MindweaverDefaultSalte")
 
 
 @pytest.mark.asyncio
@@ -143,6 +146,21 @@ async def test_opensearch_render_manifests(mock_service_dependencies):
     assert "replicas: 1" in manifests_single
     assert "OPENSEARCH_INITIAL_ADMIN_PASSWORD" in manifests_single
     assert 'value: "pass"' in manifests_single
+    
+    # Assert security-config Secret is rendered
+    assert "kind: Secret" in manifests_single
+    assert "name: os-single-security-config" in manifests_single
+    assert "internal_users.yml" in manifests_single
+    
+    # Assert admin certificate is rendered
+    assert "name: os-single-admin-tls" in manifests_single
+    
+    # Assert secret mount and subPath are rendered in the application manifest
+    assert "name: os-single-security-config" in manifests_single
+    assert "subPath: internal_users.yml" in manifests_single
+    assert "path: /usr/share/opensearch/config/opensearch-security/internal_users.yml" in manifests_single
+    assert "name: os-single-admin-tls" in manifests_single
+    assert "path: /usr/share/opensearch/config/admin-certificates" in manifests_single
 
     # 2. Multi node scale case
     model_multi = OpenSearchPlatform(
@@ -154,3 +172,4 @@ async def test_opensearch_render_manifests(mock_service_dependencies):
     manifests_multi = await svc.render_manifests(model_multi)
     assert "singleNode: false" in manifests_multi
     assert "replicas: 3" in manifests_multi
+

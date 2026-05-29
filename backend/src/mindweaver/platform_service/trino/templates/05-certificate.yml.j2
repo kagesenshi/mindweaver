@@ -30,3 +30,9 @@ spec:
     name: mindweaver-selfsigned-issuer
     kind: ClusterIssuer
     group: cert-manager.io
+  keystores:
+    jks:
+      create: true
+      passwordSecretRef:
+        name: {{ name }}-passwords
+        key: jks-password

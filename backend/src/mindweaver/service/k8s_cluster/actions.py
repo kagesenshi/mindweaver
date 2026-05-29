@@ -268,9 +268,34 @@ class InstallSelfSignedIssuerAction(InstallArgoCDAction):
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
 metadata:
-  name: mindweaver-selfsigned-issuer
+  name: mindweaver-bootstrap-issuer
 spec:
   selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: mindweaver-ca-cert
+  namespace: cert-manager
+spec:
+  isCA: true
+  commonName: mindweaver-ca
+  secretName: mindweaver-ca-secret
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: mindweaver-bootstrap-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: mindweaver-selfsigned-issuer
+spec:
+  ca:
+    secretName: mindweaver-ca-secret
 """
         await self._apply_yaml(manifest)
 

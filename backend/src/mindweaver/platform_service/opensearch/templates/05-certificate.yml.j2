@@ -13,10 +13,11 @@ spec:
   subject:
     organizations:
       - mindweaver
+  commonName: {{ name }}
   isCA: false
   privateKey:
     algorithm: RSA
-    encoding: PKCS1
+    encoding: PKCS8
     size: 2048
   usages:
     - server auth
@@ -34,6 +35,40 @@ spec:
     - "*.{{ name }}-cluster-master.{{ namespace }}"
     - "*.{{ name }}-cluster-master.{{ namespace }}.svc"
     - "*.{{ name }}-cluster-master.{{ namespace }}.svc.cluster.local"
+    - {{ name }}-cluster-master-headless
+    - {{ name }}-cluster-master-headless.{{ namespace }}
+    - {{ name }}-cluster-master-headless.{{ namespace }}.svc
+    - {{ name }}-cluster-master-headless.{{ namespace }}.svc.cluster.local
+    - "*.{{ name }}-cluster-master-headless"
+    - "*.{{ name }}-cluster-master-headless.{{ namespace }}"
+    - "*.{{ name }}-cluster-master-headless.{{ namespace }}.svc"
+    - "*.{{ name }}-cluster-master-headless.{{ namespace }}.svc.cluster.local"
+  issuerRef:
+    name: mindweaver-selfsigned-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ name }}-admin-tls
+  namespace: {{ namespace }}
+spec:
+  secretName: {{ name }}-admin-tls
+  duration: 2160h # 90d
+  renewBefore: 360h # 15d
+  subject:
+    organizations:
+      - mindweaver
+  commonName: admin
+  isCA: false
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS8
+    size: 2048
+  usages:
+    - client auth
   issuerRef:
     name: mindweaver-selfsigned-issuer
     kind: ClusterIssuer

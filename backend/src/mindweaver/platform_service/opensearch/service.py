@@ -117,7 +117,7 @@ class OpenSearchPlatformService(PlatformService[OpenSearchPlatform]):
         if state and isinstance(getattr(state, "extra_data", None), dict):
             service_name = state.extra_data.get("service_name")
         if not service_name:
-            service_name = "opensearch-cluster-master"
+            service_name = f"{model.name}-cluster-master"
         return f"{service_name}.{namespace}.svc.cluster.local"
 
     @before_create(before="_handle_redacted_create")
@@ -132,9 +132,17 @@ class OpenSearchPlatformService(PlatformService[OpenSearchPlatform]):
         # Decrypt password
         if model.admin_password:
             try:
-                vars["admin_password"] = decrypt_password(model.admin_password)
+                decrypted = decrypt_password(model.admin_password)
             except Exception:
-                vars["admin_password"] = model.admin_password
+                decrypted = model.admin_password
+            vars["admin_password"] = decrypted
+
+            # Generate deterministic bcrypt hash for the password
+            import bcrypt
+            # Fixed salt for deterministic hash representation in ArgoCD
+            salt = b"$2a$12$MindweaverDefaultSalte"
+            hashed = bcrypt.hashpw(decrypted.encode("utf-8"), salt).decode("utf-8")
+            vars["admin_password_hash"] = hashed
 
         return vars
 
@@ -315,7 +323,7 @@ class OpenSearchPlatformService(PlatformService[OpenSearchPlatform]):
                 else:
                     state.opensearch_url_ipv6 = None
             else:
-                svc_name = service_name or "opensearch-cluster-master"
+                svc_name = service_name or f"{model.name}-cluster-master"
                 state.opensearch_url = f"https://{svc_name}.{namespace}.svc.cluster.local:9200"
                 state.opensearch_url_ipv6 = None
         else:
