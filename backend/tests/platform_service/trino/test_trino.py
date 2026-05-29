@@ -1118,3 +1118,32 @@ async def test_trino_state_credentials_no_admin(mock_service_dependencies):
     assert res["db_user"] == "trino"
     assert res["db_pass"] == "admin"
 
+
+@pytest.mark.asyncio
+async def test_trino_state_ranger_credentials(mock_service_dependencies):
+    """Test that TrinoState.get returns ranger credentials when ranger_id is configured."""
+    request, session = mock_service_dependencies
+    
+    model = TrinoPlatform(
+        id=1,
+        name="trino",
+        project_id=1,
+        admin_password="admin_secret_pass",
+        ranger_id=99,
+        ranger_user_password="ranger_secret_pass",
+    )
+    
+    svc = MagicMock()
+    svc.platform_state = AsyncMock(return_value=None)
+    
+    with patch("mindweaver.platform_service.trino.state.decrypt_password", side_effect=lambda x: x):
+        t_state = TrinoState(model, svc)
+        with patch("mindweaver.platform_service.base.DefaultPlatformState.get", AsyncMock(return_value={"id": 1, "active": True})):
+            res = await t_state.get()
+            
+    assert res["db_user"] == "trino"
+    assert res["db_pass"] == "admin_secret_pass"
+    assert res["ranger_user"] == "ranger"
+    assert res["ranger_pass"] == "ranger_secret_pass"
+
+
