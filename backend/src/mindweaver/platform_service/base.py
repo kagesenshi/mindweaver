@@ -519,6 +519,20 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
         ):
             model = await svc.get(id)
             await svc.poll_status(model)
+            try:
+                await svc.session.refresh(model)
+            except Exception:
+                # If session is in a state where refresh fails, fetch a clean copy
+                model = await svc.get(id)
+            
+            state_class = cls.get_state_class()
+            if state_class:
+                state_instance = state_class(model, svc)
+                if asyncio.iscoroutinefunction(state_instance.get):
+                    return await state_instance.get()
+                else:
+                    return state_instance.get()
+
             state = await svc.platform_state(id)
             return state or {}
 

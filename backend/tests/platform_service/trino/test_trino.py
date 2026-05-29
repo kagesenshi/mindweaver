@@ -8,7 +8,7 @@ from fastapi import Request
 from sqlmodel import Session
 from pydantic import ValidationError
 
-from mindweaver.platform_service.trino import TrinoPlatform, TrinoPlatformService
+from mindweaver.platform_service.trino import TrinoPlatform, TrinoPlatformService, TrinoState, TrinoPlatformState
 from mindweaver.platform_service.hive_metastore import HiveMetastorePlatformState, HiveMetastorePlatform
 from mindweaver.platform_service.ranger.model import RangerPlatform, RangerPlatformState
 from mindweaver.platform_service.opensearch.model import OpenSearchPlatform, OpenSearchPlatformState
@@ -768,7 +768,8 @@ async def test_trino_ranger_integration(mock_service_dependencies):
     assert "password.db" in config_files
     assert "password-authenticator.name=file" in config_files["file.properties"]
     assert "file.password-file=/etc/trino/password.db" in config_files["file.properties"]
-    assert config_files["password.db"].startswith("ranger:$2y$")
+    assert config_files["password.db"].startswith("trino:$2y$")
+    assert "ranger:$2y$" in config_files["password.db"]
     assert "password-authenticator.config-files=/etc/trino/file.properties" in values["server"]["coordinatorExtraConfig"]
     assert "http-server.authentication.type=PASSWORD" in values["server"]["coordinatorExtraConfig"]
 
@@ -834,6 +835,7 @@ async def test_trino_deploy_decommission_ranger_lifecycle(mock_service_dependenc
         project_id=1,
         hms_ids=[10],
         ranger_id=99,
+        ranger_user_password="ranger",
     )
     
     # Mock Ranger service
@@ -1061,3 +1063,58 @@ async def test_trino_deploy_ranger_service_update(mock_service_dependencies):
             },
             auth=("admin", "ranger_admin_pass")
         )
+
+@pytest.mark.asyncio
+async def test_trino_state_credentials(mock_service_dependencies):
+    """Test that TrinoState.get returns decrypted admin credentials if admin_password is set."""
+    request, session = mock_service_dependencies
+    
+    # Platform model with admin_password
+    model = TrinoPlatform(
+        id=1,
+        name="trino",
+        project_id=1,
+        admin_password="admin_secret_pass",
+    )
+    
+    # State model
+    state = TrinoPlatformState(platform_id=1, trino_uri="https://trino.local")
+    
+    # Mock service
+    svc = MagicMock()
+    svc.platform_state = AsyncMock(return_value=state)
+    
+    # Patch decrypt_password
+    with patch("mindweaver.platform_service.trino.state.decrypt_password", side_effect=lambda x: x):
+        t_state = TrinoState(model, svc)
+        # Mock DefaultPlatformState.get to return a dict
+        with patch("mindweaver.platform_service.base.DefaultPlatformState.get", AsyncMock(return_value={"id": 1, "active": True})):
+            res = await t_state.get()
+            
+    assert res["db_user"] == "trino"
+    assert res["db_pass"] == "admin_secret_pass"
+
+
+@pytest.mark.asyncio
+async def test_trino_state_credentials_no_admin(mock_service_dependencies):
+    """Test that TrinoState.get returns trino and fallback pass if admin_password is not set."""
+    request, session = mock_service_dependencies
+    
+    # Platform model with no admin_password
+    model = TrinoPlatform(
+        id=1,
+        name="trino",
+        project_id=1,
+        admin_password=None,
+    )
+    
+    svc = MagicMock()
+    svc.platform_state = AsyncMock(return_value=None)
+    
+    t_state = TrinoState(model, svc)
+    with patch("mindweaver.platform_service.base.DefaultPlatformState.get", AsyncMock(return_value={"id": 1, "active": True})):
+        res = await t_state.get()
+        
+    assert res["db_user"] == "trino"
+    assert res["db_pass"] == "admin"
+

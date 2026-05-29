@@ -110,12 +110,15 @@ spec:
               {{ key }}={{ value }}
               {% endfor %}
             {% endif %}
-            {% if ranger_enabled %}
+            {% if file_auth_enabled %}
             file.properties: |
               password-authenticator.name=file
               file.password-file=/etc/trino/password.db
             password.db: |
+              trino:{{ admin_trino_password_hash }}
+              {% if ranger_enabled %}
               ranger:{{ ranger_trino_password_hash }}
+              {% endif %}
             {% endif %}
             {% if ranger_enabled %}
             ranger-trino-security.xml: |

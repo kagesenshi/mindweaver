@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Server } from 'lucide-react';
 import { useNotification } from '../../providers/NotificationProvider';
 import PlatformServiceView from '../../components/PlatformServiceView';
-import { InternalNetworkAccessBlock, ExternalNetworkAccessBlock } from '../../components/ServiceBlocks';
+import { InternalNetworkAccessBlock, ExternalNetworkAccessBlock, CredentialBlock } from '../../components/ServiceBlocks';
 
 const ServiceView = ({
     darkMode,
@@ -109,6 +109,16 @@ const ServiceView = ({
                             command: `trino --server ${externalUri || 'https://[NODE_IP]:[NODE_PORT]'} --catalog ${platformState?.extra_data?.preferred_catalog || 'hive'} --schema default`,
                             languageButtons: []
                         }}
+                    />
+                )}
+
+                {platformState?.db_user && platformState?.db_pass && (
+                    <CredentialBlock
+                        darkMode={darkMode}
+                        credentials={[
+                            { label: 'Username', value: platformState?.db_user },
+                            { label: 'Password', value: platformState?.db_pass, isMasked: true }
+                        ]}
                     />
                 )}
             </div>

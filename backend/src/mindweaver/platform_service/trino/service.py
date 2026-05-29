@@ -47,11 +47,11 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
 
     @classmethod
     def internal_fields(cls) -> list[str]:
-        return super().internal_fields() + ["internal_shared_secret", "ranger_user_password"]
+        return super().internal_fields() + ["internal_shared_secret", "ranger_user_password", "admin_password"]
 
     @classmethod
     def redacted_fields(cls) -> list[str]:
-        return ["internal_shared_secret", "ranger_user_password"]
+        return ["internal_shared_secret", "ranger_user_password", "admin_password"]
 
     @classmethod
     def widgets(cls) -> dict[str, Any]:
@@ -137,9 +137,11 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
 
     @before_create(before="_handle_redacted_create")
     async def generate_passwords(self, model: TrinoPlatform):
-        """Autogenerate a strong random password for Ranger user to query Trino."""
+        """Autogenerate a strong random password for Ranger and Admin users to query Trino."""
         if not model.ranger_user_password:
             model.ranger_user_password = generate_password()
+        if not model.admin_password:
+            model.admin_password = generate_password()
 
     async def get_preferred_catalog(self, model: TrinoPlatform) -> Optional[str]:
         """
@@ -377,9 +379,27 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
         auth_files = []
         if vars.get("ldap"):
             auth_files.append("/etc/trino/ldap.properties")
-        if model.ranger_id:
-            auth_files.append("/etc/trino/file.properties")
+        
+        # Admin file authentication is always enabled
+        auth_files.append("/etc/trino/file.properties")
+        vars["file_auth_enabled"] = True
+        
+        admin_pass = ""
+        if model.admin_password:
+            try:
+                admin_pass = decrypt_password(model.admin_password)
+            except Exception:
+                admin_pass = model.admin_password
+        if not admin_pass:
+            admin_pass = "admin"
             
+        hashed_admin = bcrypt.hashpw(admin_pass.encode("utf-8"), bcrypt.gensalt(10))
+        hashed_admin_str = hashed_admin.decode("utf-8")
+        if hashed_admin_str.startswith("$2b$"):
+            hashed_admin_str = "$2y$" + hashed_admin_str[4:]
+        vars["admin_trino_password_hash"] = hashed_admin_str
+
+        if model.ranger_id:
             ranger_pass = ""
             if model.ranger_user_password:
                 try:
@@ -571,6 +591,19 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
         Deploys/upgrades the Trino service and automatically creates
         the corresponding service definition in Ranger if linked.
         """
+        db_updated = False
+        if not model.ranger_user_password:
+            model.ranger_user_password = generate_password()
+            db_updated = True
+        if not model.admin_password:
+            model.admin_password = generate_password()
+            db_updated = True
+        if db_updated:
+            self.session.add(model)
+            coro = self.session.flush()
+            if asyncio.iscoroutine(coro):
+                await coro
+
         await super().deploy(model)
         await self._manage_ranger_service(model, "create")
 
