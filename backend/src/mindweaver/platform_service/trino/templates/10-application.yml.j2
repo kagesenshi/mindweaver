@@ -95,6 +95,7 @@ spec:
             - "-Djavax.net.ssl.trustStorePassword=changeit"
             - "-Djavax.net.ssl.keyStore=/etc/trino/tls/keystore.jks"
             - "-Djavax.net.ssl.keyStorePassword=changeit"
+            - "-Djavax.net.debug=ssl,handshake"
           additionalConfigFiles:
             {% if ldap %}
             ldap.properties: |
@@ -130,6 +131,31 @@ spec:
                 <property>
                   <name>ranger.plugin.trino.policy.pollIntervalMs</name>
                   <value>30000</value>
+                </property>
+                <property>
+                  <name>ranger.plugin.trino.policy.rest.ssl.config.file</name>
+                  <value>/etc/trino/ranger-policymgr-ssl.xml</value>
+                </property>
+              </configuration>
+            ranger-policymgr-ssl.xml: |
+              <?xml version="1.0"?>
+              <?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+              <configuration xmlns:xi="http://www.w3.org/2001/XInclude">
+                <property>
+                  <name>xasecure.policymgr.clientssl.keystore</name>
+                  <value>/etc/trino/tls/keystore.jks</value>
+                </property>
+                <property>
+                  <name>xasecure.policymgr.clientssl.keystore.password</name>
+                  <value>changeit</value>
+                </property>
+                <property>
+                  <name>xasecure.policymgr.clientssl.truststore</name>
+                  <value>/etc/trino/tls/truststore.jks</value>
+                </property>
+                <property>
+                  <name>xasecure.policymgr.clientssl.truststore.password</name>
+                  <value>changeit</value>
                 </property>
               </configuration>
             ranger-trino-audit.xml: |

@@ -763,6 +763,7 @@ async def test_trino_ranger_integration(mock_service_dependencies):
     config_files = values["coordinator"]["additionalConfigFiles"]
     assert "ranger-trino-security.xml" in config_files
     assert "ranger-trino-audit.xml" in config_files
+    assert "ranger-policymgr-ssl.xml" in config_files
     assert "file.properties" in config_files
     assert "password.db" in config_files
     assert "password-authenticator.name=file" in config_files["file.properties"]
@@ -776,6 +777,18 @@ async def test_trino_ranger_integration(mock_service_dependencies):
     assert f"<value>https://my-ranger.ranger-ns.svc.cluster.local:6080</value>" in security_xml
     assert "<name>ranger.plugin.trino.service.name</name>" in security_xml
     assert "<value>trino-ranger-test</value>" in security_xml
+    assert "<name>ranger.plugin.trino.policy.rest.ssl.config.file</name>" in security_xml
+    assert "<value>/etc/trino/ranger-policymgr-ssl.xml</value>" in security_xml
+
+    ssl_xml = config_files["ranger-policymgr-ssl.xml"]
+    assert "<name>xasecure.policymgr.clientssl.keystore</name>" in ssl_xml
+    assert "<value>/etc/trino/tls/keystore.jks</value>" in ssl_xml
+    assert "<name>xasecure.policymgr.clientssl.keystore.password</name>" in ssl_xml
+    assert "<value>changeit</value>" in ssl_xml
+    assert "<name>xasecure.policymgr.clientssl.truststore</name>" in ssl_xml
+    assert "<value>/etc/trino/tls/truststore.jks</value>" in ssl_xml
+    assert "<name>xasecure.policymgr.clientssl.truststore.password</name>" in ssl_xml
+    assert "<value>changeit</value>" in ssl_xml
 
     audit_xml = config_files["ranger-trino-audit.xml"]
     assert "<name>xasecure.audit.is.enabled</name>" in audit_xml
@@ -873,7 +886,8 @@ async def test_trino_deploy_decommission_ranger_lifecycle(mock_service_dependenc
                     "password": "ranger",
                     "jdbc.driverClassName": "io.trino.jdbc.TrinoDriver",
                     "jdbc.url": "jdbc:trino://trino-ranger-test.trino-ns.svc.cluster.local:8443?SSL=true",
-                    "ranger.plugin.super.users": "trino,ranger"
+                    "ranger.plugin.super.users": "trino,ranger",
+                    "commonNameForCertificate": "trino-ranger-test"
                 }
             },
             auth=("admin", "ranger_admin_pass")
@@ -1041,7 +1055,8 @@ async def test_trino_deploy_ranger_service_update(mock_service_dependencies):
                     "password": "my_updated_password",
                     "jdbc.driverClassName": "io.trino.jdbc.TrinoDriver",
                     "jdbc.url": "jdbc:trino://trino-ranger-test.trino-ns.svc.cluster.local:8443?SSL=true",
-                    "ranger.plugin.super.users": "trino,ranger"
+                    "ranger.plugin.super.users": "trino,ranger",
+                    "commonNameForCertificate": "trino-ranger-test"
                 }
             },
             auth=("admin", "ranger_admin_pass")

@@ -635,7 +635,8 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
                             "password": ranger_pass,
                             "jdbc.driverClassName": "io.trino.jdbc.TrinoDriver",
                             "jdbc.url": f"jdbc:trino://{model.name}.{namespace}.svc.cluster.local:8443?SSL=true",
-                            "ranger.plugin.super.users": "trino,ranger"
+                            "ranger.plugin.super.users": "trino,ranger",
+                            "commonNameForCertificate": model.name
                         }
                     }
 
