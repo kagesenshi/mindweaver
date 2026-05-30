@@ -10,12 +10,12 @@ import { getSelectStyles } from './widgetStyles';
 /**
  * SelectWidget - Component for dropdown selection (enum or explicit options)
  */
-const SelectWidget = ({
+const SelectWidget = React.memo(({
     name,
     label,
     prop,
     widget,
-    formData,
+    value,
     selectEndpointOptions,
     onChange,
     darkMode,
@@ -37,8 +37,7 @@ const SelectWidget = ({
         return { label: opt, value: opt };
     }) : [];
 
-    const currentVal = formData[name];
-    const currentValue = selectOptions.find(opt => opt.value === currentVal) || null;
+    const currentValue = selectOptions.find(opt => opt.value === value) || null;
 
     return (
         <Select
@@ -52,6 +51,8 @@ const SelectWidget = ({
             classNamePrefix="react-select"
         />
     );
-};
+});
+
+SelectWidget.displayName = 'SelectWidget';
 
 export default SelectWidget;

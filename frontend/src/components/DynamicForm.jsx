@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import apiClient from '../services/api';
 import { cn } from '../utils/cn';
 import { Save, X, RefreshCcw, AlertCircle } from 'lucide-react';
@@ -14,6 +14,8 @@ import InputWidget from './form_widgets/InputWidget';
 import S3PathWidget from './form_widgets/S3PathWidget';
 
 
+
+const DEFAULT_WIDGET = {};
 
 const DynamicForm = ({
     entityPath,
@@ -203,14 +205,27 @@ const DynamicForm = ({
         }
     };
 
-    const handleChange = (name, value) => {
+    const handleChange = useCallback((name, value) => {
         setFieldErrors(prev => {
             const next = { ...prev };
             delete next[name];
             return next;
         });
         setFormData(prev => ({ ...prev, [name]: value }));
-    };
+    }, []);
+
+    // Filter out internal fields
+    const properties = useMemo(() => {
+        if (!schema) return [];
+        const internalFields = schema.internal_fields || [];
+        return Object.entries(schema.jsonschema.properties || {})
+            .filter(([key]) => !internalFields.includes(key))
+            .sort(([keyA], [keyB]) => {
+                const orderA = schema.widgets?.[keyA]?.order ?? 999;
+                const orderB = schema.widgets?.[keyB]?.order ?? 999;
+                return orderA - orderB;
+            });
+    }, [schema]);
 
     if (loading) {
         return (
@@ -222,16 +237,6 @@ const DynamicForm = ({
     }
 
     if (!schema) return null;
-
-    // Filter out internal fields
-    const internalFields = schema.internal_fields || [];
-    const properties = Object.entries(schema.jsonschema.properties || {})
-        .filter(([key]) => !internalFields.includes(key))
-        .sort(([keyA], [keyB]) => {
-            const orderA = schema.widgets?.[keyA]?.order ?? 999;
-            const orderB = schema.widgets?.[keyB]?.order ?? 999;
-            return orderA - orderB;
-        });
 
 
     const renderField = (name, prop, widget) => {
@@ -258,7 +263,8 @@ const DynamicForm = ({
                     name={name}
                     label={label}
                     widget={widget}
-                    formData={formData}
+                    value={formData[name]}
+                    projectId={formData.project_id}
                     relationshipOptions={relationshipOptions}
                     onChange={handleChange}
                     darkMode={darkMode}
@@ -277,7 +283,7 @@ const DynamicForm = ({
                     label={label}
                     prop={prop}
                     widget={widget}
-                    formData={formData}
+                    value={formData[name]}
                     selectEndpointOptions={selectEndpointOptions}
                     onChange={handleChange}
                     darkMode={darkMode}
@@ -294,7 +300,7 @@ const DynamicForm = ({
                 <RangeWidget
                     name={name}
                     widget={widget}
-                    formData={formData}
+                    value={formData[name]}
                     onChange={handleChange}
                     darkMode={darkMode}
                     isImmutable={isImmutable}
@@ -336,7 +342,8 @@ const DynamicForm = ({
                     name={name}
                     label={label}
                     widget={widget}
-                    formData={formData}
+                    value={formData[name]}
+                    storageId={formData[widget.storage_field || 's3_storage_id']}
                     onChange={handleChange}
                     darkMode={darkMode}
                     isImmutable={isImmutable}
@@ -351,7 +358,7 @@ const DynamicForm = ({
             return (
                 <BooleanWidget
                     name={name}
-                    formData={formData}
+                    value={formData[name]}
                     onChange={handleChange}
                     darkMode={darkMode}
                     isImmutable={isImmutable}
@@ -368,7 +375,7 @@ const DynamicForm = ({
                     name={name}
                     label={label}
                     widget={widget}
-                    formData={formData}
+                    value={formData[name]}
                     onChange={handleChange}
                     isImmutable={isImmutable}
                     disabledBg={disabledBg}
@@ -391,7 +398,7 @@ const DynamicForm = ({
                     name={name}
                     label={label}
                     widget={widget}
-                    formData={formData}
+                    value={formData[name]}
                     onChange={handleChange}
                     isImmutable={isImmutable}
                     disabledBg={disabledBg}
@@ -407,7 +414,7 @@ const DynamicForm = ({
                 name={name}
                 label={label}
                 widget={widget}
-                formData={formData}
+                value={formData[name]}
                 onChange={handleChange}
                 isImmutable={isImmutable}
                 disabledBg={disabledBg}
@@ -429,7 +436,7 @@ const DynamicForm = ({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {properties.map(([name, prop]) => {
-                    const widget = schema.widgets?.[name] || {};
+                    const widget = schema.widgets?.[name] || DEFAULT_WIDGET;
                     // Use column_span from metadata, default to 1 (unless implicit rules exist)
                     // Flutter default is 2 (full width) unless specified? 
                     // Let's stick to explicit span or 2 (full) for major fields, 1 for small?

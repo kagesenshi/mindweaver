@@ -9,11 +9,11 @@ import { cn } from '../../utils/cn';
 /**
  * PasswordWidget - Scrambled input for sensitive information
  */
-const PasswordWidget = ({ 
+const PasswordWidget = React.memo(({ 
     name, 
     label, 
     widget, 
-    formData, 
+    value, 
     onChange, 
     isImmutable, 
     disabledBg, 
@@ -23,7 +23,7 @@ const PasswordWidget = ({
     return (
         <input
             type="password"
-            value={formData[name] ?? ''}
+            value={value ?? ''}
             disabled={isImmutable}
             onChange={(e) => onChange(name, e.target.value)}
             placeholder={widget.placeholder || `Enter ${label.toLowerCase()}...`}
@@ -35,6 +35,8 @@ const PasswordWidget = ({
             )}
         />
     );
-};
+});
+
+PasswordWidget.displayName = 'PasswordWidget';
 
 export default PasswordWidget;

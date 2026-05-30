@@ -9,11 +9,11 @@ import { cn } from '../../utils/cn';
 /**
  * TextAreaWidget - Multi-line text input
  */
-const TextAreaWidget = ({ 
+const TextAreaWidget = React.memo(({ 
     name, 
     label, 
     widget, 
-    formData, 
+    value, 
     onChange, 
     isImmutable, 
     disabledBg, 
@@ -23,7 +23,7 @@ const TextAreaWidget = ({
     const rows = name.includes('description') ? 3 : 5;
     return (
         <textarea
-            value={formData[name] ?? ''}
+            value={value ?? ''}
             disabled={isImmutable}
             onChange={(e) => onChange(name, e.target.value)}
             placeholder={widget.placeholder || `Enter ${label.toLowerCase()}...`}
@@ -36,6 +36,8 @@ const TextAreaWidget = ({
             )}
         />
     );
-};
+});
+
+TextAreaWidget.displayName = 'TextAreaWidget';
 
 export default TextAreaWidget;

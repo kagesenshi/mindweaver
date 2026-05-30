@@ -16,7 +16,7 @@ import { Plus, Trash2 } from 'lucide-react';
  * @param {boolean} darkMode - Whether dark mode is enabled
  * @param {boolean} isImmutable - Whether the field is disabled
  */
-const KeyValueWidget = ({ name, value, onChange, darkMode, isImmutable }) => {
+const KeyValueWidget = React.memo(({ name, value, onChange, darkMode, isImmutable }) => {
     // Initial load: convert object to array of items
     const [items, setItems] = useState(() => {
         if (value && typeof value === 'object' && !Array.isArray(value)) {
@@ -38,6 +38,7 @@ const KeyValueWidget = ({ name, value, onChange, darkMode, isImmutable }) => {
         if (!value || typeof value !== 'object' || Array.isArray(value)) {
             onChange(name, {});
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const inputBg = darkMode ? "bg-slate-950 border-slate-800 text-slate-200" : "bg-slate-100 border-slate-200 text-slate-900";
@@ -184,6 +185,8 @@ const KeyValueWidget = ({ name, value, onChange, darkMode, isImmutable }) => {
             )}
         </div>
     );
-};
+});
+
+KeyValueWidget.displayName = 'KeyValueWidget';
 
 export default KeyValueWidget;

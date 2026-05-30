@@ -14,18 +14,16 @@ import { Folder, Loader2 } from 'lucide-react';
  * S3PathWidget - Compound widget for selecting S3 bucket and path prefix
  * with autocomplete suggestions from the actual S3 storage.
  */
-const S3PathWidget = ({
+const S3PathWidget = React.memo(({
     name,
-    widget,
-    formData,
+    value,
+    storageId,
     onChange,
     darkMode,
     isImmutable,
     hasError,
 }) => {
-    const storageField = widget.storage_field || 's3_storage_id';
-    const storageId = formData[storageField];
-    const currentValue = formData[name] || 's3://ranger/audit';
+    const currentValue = value || 's3://ranger/audit';
 
     // Parse current URI: s3://bucket/path
     const parseUri = (uri) => {
@@ -50,8 +48,8 @@ const S3PathWidget = ({
     // Update internal state when external value changes (e.g. initial load)
     useEffect(() => {
         const { bucket: b, path: p } = parseUri(currentValue);
-        setBucket(b);
-        setPath(p);
+        setBucket(prev => prev !== b ? b : prev);
+        setPath(prev => prev !== p ? p : prev);
     }, [currentValue]);
 
     // Fetch buckets when storage changes
@@ -210,6 +208,8 @@ const S3PathWidget = ({
             )}
         </div>
     );
-};
+});
+
+S3PathWidget.displayName = 'S3PathWidget';
 
 export default S3PathWidget;

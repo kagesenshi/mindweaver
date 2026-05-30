@@ -9,10 +9,10 @@ import { cn } from '../../utils/cn';
 /**
  * RangeWidget - Custom range input with badge and steps
  */
-const RangeWidget = ({ 
+const RangeWidget = React.memo(({ 
     name, 
     widget, 
-    formData, 
+    value, 
     onChange, 
     darkMode, 
     isImmutable 
@@ -20,7 +20,7 @@ const RangeWidget = ({
     const min = widget.min ?? 0;
     const max = widget.max ?? 100;
     const step = widget.step ?? 1;
-    const val = formData[name] ?? min;
+    const val = value ?? min;
     const percentage = ((val - min) / (max - min)) * 100;
 
     // Generate step markers if number of steps is reasonable
@@ -71,6 +71,8 @@ const RangeWidget = ({
             </div>
         </div>
     );
-};
+});
+
+RangeWidget.displayName = 'RangeWidget';
 
 export default RangeWidget;

@@ -17,7 +17,7 @@ import { Plus, Trash2 } from 'lucide-react';
  * @param {boolean} darkMode - Whether dark mode is enabled
  * @param {boolean} isImmutable - Whether the field is disabled
  */
-const AuthRoleMappingWidget = ({ name, value, roles = [], onChange, darkMode, isImmutable }) => {
+const AuthRoleMappingWidget = React.memo(({ name, value, roles = [], onChange, darkMode, isImmutable }) => {
     // Initial load: convert array of objects to internal state
     const [items, setItems] = useState(() => {
         if (Array.isArray(value)) {
@@ -34,6 +34,7 @@ const AuthRoleMappingWidget = ({ name, value, roles = [], onChange, darkMode, is
         if (!value || !Array.isArray(value)) {
             onChange(name, []);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const inputBg = darkMode ? "bg-slate-950 border-slate-800 text-slate-200" : "bg-slate-100 border-slate-200 text-slate-900";
@@ -118,6 +119,8 @@ const AuthRoleMappingWidget = ({ name, value, roles = [], onChange, darkMode, is
             )}
         </div>
     );
-};
+});
+
+AuthRoleMappingWidget.displayName = 'AuthRoleMappingWidget';
 
 export default AuthRoleMappingWidget;

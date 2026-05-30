@@ -9,11 +9,11 @@ import { cn } from '../../utils/cn';
 /**
  * InputWidget - Default text or number input
  */
-const InputWidget = ({ 
+const InputWidget = React.memo(({ 
     name, 
     label, 
     widget, 
-    formData, 
+    value, 
     onChange, 
     isImmutable, 
     disabledBg, 
@@ -35,7 +35,7 @@ const InputWidget = ({
         <input
             type={isNumeric ? 'number' : 'text'}
             step={isFloat ? 'any' : undefined}
-            value={formData[name] ?? ''}
+            value={value ?? ''}
             disabled={isImmutable}
             onChange={(e) => {
                 let val = e.target.value;
@@ -51,6 +51,8 @@ const InputWidget = ({
             )}
         />
     );
-};
+});
+
+InputWidget.displayName = 'InputWidget';
 
 export default InputWidget;

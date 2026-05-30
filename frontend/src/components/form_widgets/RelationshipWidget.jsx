@@ -10,11 +10,12 @@ import { getSelectStyles } from './widgetStyles';
 /**
  * RelationshipWidget - Component for selecting related resources
  */
-const RelationshipWidget = ({ 
+const RelationshipWidget = React.memo(({ 
     name, 
     label, 
     widget, 
-    formData, 
+    value,
+    projectId, 
     relationshipOptions, 
     onChange, 
     darkMode, 
@@ -27,10 +28,10 @@ const RelationshipWidget = ({
     const idField = widget.field || 'id';
 
     // Filter options based on project_id if applicable
-    if (name !== 'project_id' && formData.project_id) {
+    if (name !== 'project_id' && projectId) {
         options = options.filter(opt => {
             if (opt.project_id !== undefined && opt.project_id !== null) {
-                return opt.project_id == formData.project_id;
+                return opt.project_id == projectId;
             }
             return true;
         });
@@ -44,11 +45,10 @@ const RelationshipWidget = ({
     // Find current value object(s)
     let currentValue = null;
     if (isMultiselect) {
-        const currentVals = formData[name] || [];
+        const currentVals = value || [];
         currentValue = selectOptions.filter(opt => currentVals.includes(opt.value));
     } else {
-        const currentVal = formData[name];
-        currentValue = selectOptions.find(opt => opt.value === currentVal) || null;
+        currentValue = selectOptions.find(opt => opt.value === value) || null;
     }
 
     return (
@@ -70,6 +70,8 @@ const RelationshipWidget = ({
             classNamePrefix="react-select"
         />
     );
-};
+});
+
+RelationshipWidget.displayName = 'RelationshipWidget';
 
 export default RelationshipWidget;
