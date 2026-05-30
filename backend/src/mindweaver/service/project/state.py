@@ -1,9 +1,12 @@
 # SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
 # SPDX-License-Identifier: AGPLv3+
 
+import logging
 from sqlmodel import select, func
 from mindweaver.fw.state import BaseState
 from .service import ProjectService
+
+logger = logging.getLogger(__name__)
 
 
 @ProjectService.with_state()
@@ -49,10 +52,73 @@ class ProjectState(BaseState):
                 )
                 status_data["last_update"] = status_model.last_update.isoformat()
 
+        # Dynamic check for Dex OIDC in project namespace
+        dex_installed = False
+        dex_version = None
+        if self.model.k8s_cluster_id and self.model.k8s_namespace:
+            from mindweaver.service.k8s_cluster import K8sCluster, K8sClusterType
+            stmt_c = select(K8sCluster).where(K8sCluster.id == self.model.k8s_cluster_id)
+            res_c = await self.svc.session.exec(stmt_c)
+            cluster_model = res_c.one_or_none()
+            if cluster_model:
+                import tempfile
+                import asyncio
+                from kubernetes import client, config
+
+                def _get_dex_status():
+                    try:
+                        if cluster_model.type == K8sClusterType.IN_CLUSTER:
+                            config.load_incluster_config()
+                        else:
+                            if not cluster_model.kubeconfig:
+                                return False, None
+                            with tempfile.NamedTemporaryFile(mode="w") as kf:
+                                kf.write(cluster_model.kubeconfig)
+                                kf.flush()
+                                config.load_kube_config(config_file=kf.name)
+                        
+                        core_v1 = client.CoreV1Api()
+                        secrets = core_v1.list_namespaced_secret(namespace=self.model.k8s_namespace)
+                        installed = False
+                        for secret in secrets.items:
+                            if secret.metadata.name.startswith("sh.helm.release.v1.dex"):
+                                installed = True
+                                break
+                        if not installed:
+                            svcs = core_v1.list_namespaced_service(
+                                namespace=self.model.k8s_namespace,
+                                label_selector="app.kubernetes.io/name=dex"
+                            )
+                            if svcs.items:
+                                installed = True
+                        
+                        version = None
+                        if installed:
+                            pods = core_v1.list_namespaced_pod(
+                                namespace=self.model.k8s_namespace,
+                                label_selector="app.kubernetes.io/name=dex"
+                            )
+                            if pods.items:
+                                pod = pods.items[0]
+                                version = pod.metadata.labels.get("app.kubernetes.io/version")
+                                if not version and pod.spec.containers:
+                                    image = pod.spec.containers[0].image
+                                    if ":" in image:
+                                        version = image.split(":")[-1]
+                        return installed, version
+                    except Exception as e:
+                        logger.warning(f"Failed to check project Dex status: {e}")
+                        return False, None
+
+                dex_installed, dex_version = await asyncio.to_thread(_get_dex_status)
+
         return {
             "pgsql": pgsql_count,
             "trino": 0,
             "spark": 0,
             "airflow": 0,
             "cluster": status_data,
+            "dex_installed": dex_installed,
+            "dex_version": dex_version,
         }
+

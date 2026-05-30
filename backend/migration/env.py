@@ -21,6 +21,7 @@ from mindweaver.platform_service.ranger.model import RangerPlatform, RangerPlatf
 from mindweaver.platform_service.opensearch.model import OpenSearchPlatform, OpenSearchPlatformState
 from mindweaver.service.ldap_config.model import LdapConfig
 from mindweaver.fw.auth import User
+from mindweaver.service.project_user.model import ProjectLocalUser
 
 # from mindweaver.auth.model import User # If exists
 

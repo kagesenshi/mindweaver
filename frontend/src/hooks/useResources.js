@@ -804,3 +804,6 @@ export const useOpenSearch = () => {
     };
 };
 
+export const useProjectLocalUsers = createGenericSourceHook('/project-local-users');
+
+

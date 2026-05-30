@@ -90,7 +90,11 @@ def mock_k8s():
         mock_secret_cnpg.metadata.name = "sh.helm.release.v1.cnpg.v1"
 
         mock_secret_list = MagicMock()
-        mock_secret_list.items = [mock_secret_argo, mock_secret_cm, mock_secret_cnpg]
+        mock_secret_list.items = [
+            mock_secret_argo,
+            mock_secret_cm,
+            mock_secret_cnpg,
+        ]
         mock_core.return_value.list_secret_for_all_namespaces.return_value = (
             mock_secret_list
         )
@@ -320,3 +324,5 @@ def test_install_argocd_action_triggers_task(client: TestClient):
         # Verify status updated immediately in DB
         resp_state = client.get(f"/api/v1/k8s_clusters/{p1['id']}/_state")
         assert resp_state.json()["argocd_installed"] is True
+
+

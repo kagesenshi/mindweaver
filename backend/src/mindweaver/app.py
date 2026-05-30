@@ -7,6 +7,7 @@ from .service.s3_storage import router as s3_router
 from .service.ldap_config import router as ldap_config_router
 from .service.project import router as project_router
 from .service.k8s_cluster import router as k8s_cluster_router
+from .service.project_user import router as project_user_router
 from .datasource_service import (
     db_router,
     web_router,
@@ -183,6 +184,7 @@ async def feature_flags():
 
 app.include_router(project_router, prefix="/api/v1")
 app.include_router(k8s_cluster_router, prefix="/api/v1")
+app.include_router(project_user_router, prefix="/api/v1")
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(user_router, prefix="/api/v1")
 app.include_router(pgsql_router, prefix="/api/v1")

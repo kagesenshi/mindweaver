@@ -4,6 +4,7 @@
 from .service import ProjectService
 from .model import Project
 import mindweaver.service.project.state
+import mindweaver.service.project.actions
 
 
 router = ProjectService.router()

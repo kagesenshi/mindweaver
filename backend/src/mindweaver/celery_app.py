@@ -8,7 +8,7 @@ app = Celery(
     "mindweaver",
     broker=settings.celery_broker_url,
     backend=settings.celery_result_backend,
-    include=["mindweaver.tasks.platform_status", "mindweaver.tasks.k8s_cluster_status"],
+    include=["mindweaver.tasks.platform_status", "mindweaver.tasks.k8s_cluster_status", "mindweaver.tasks.project_tasks"],
 )
 
 app.conf.update(

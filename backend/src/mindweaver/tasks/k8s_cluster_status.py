@@ -180,3 +180,6 @@ async def _install_self_signed_issuer_task(k8s_cluster_id: int):
             logger.error(
                 f"Error installing Self-signed ClusterIssuer for cluster {k8s_cluster_id}: {e}"
             )
+
+
+
