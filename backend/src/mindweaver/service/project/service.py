@@ -31,6 +31,11 @@ class ProjectService(Service[Project]):
         return {
             "description": {"order": 5, "column_span": 2},
             "k8s_namespace": {"order": 6, "column_span": 2, "label": "K8S Namespace"},
+            "ingress_domain": {
+                "order": 7,
+                "column_span": 2,
+                "label": "Ingress Domain",
+            },
             "k8s_cluster_id": {
                 "order": 10,
                 "label": "K8S Cluster",

@@ -65,6 +65,11 @@ def mock_k8s():
             MagicMock(image="ghcr.io/cloudnative-pg/cloudnative-pg:1.28.1")
         ]
 
+        # Mock Pods (Envoy Gateway version)
+        mock_pod_eg = MagicMock()
+        mock_pod_eg.metadata.labels = {"app.kubernetes.io/version": "v1.0.0"}
+        mock_pod_eg.spec.containers = [MagicMock(image="envoyproxy/gateway:v1.0.0")]
+
         def _mock_list_pod_for_all_namespaces(label_selector=None):
             m_list = MagicMock()
             if "argocd-server" in label_selector:
@@ -73,6 +78,8 @@ def mock_k8s():
                 m_list.items = [mock_pod_cm]
             elif "cloudnative-pg" in label_selector:
                 m_list.items = [mock_pod_cnpg]
+            elif "envoy-gateway" in label_selector:
+                m_list.items = [mock_pod_eg]
             else:
                 m_list.items = []
             return m_list
@@ -88,12 +95,15 @@ def mock_k8s():
         mock_secret_cm.metadata.name = "sh.helm.release.v1.cert-manager.v1"
         mock_secret_cnpg = MagicMock()
         mock_secret_cnpg.metadata.name = "sh.helm.release.v1.cnpg.v1"
+        mock_secret_eg = MagicMock()
+        mock_secret_eg.metadata.name = "sh.helm.release.v1.eg.v1"
 
         mock_secret_list = MagicMock()
         mock_secret_list.items = [
             mock_secret_argo,
             mock_secret_cm,
             mock_secret_cnpg,
+            mock_secret_eg,
         ]
         mock_core.return_value.list_secret_for_all_namespaces.return_value = (
             mock_secret_list
@@ -133,6 +143,8 @@ def test_poll_k8s_cluster_status(client: TestClient, mock_k8s):
     assert data["cert_manager_version"] == "v1.20.0"
     assert data["cnpg_installed"] is True
     assert data["cnpg_version"] == "1.28.1"
+    assert data["envoy_gateway_installed"] is True
+    assert data["envoy_gateway_version"] == "v1.0.0"
 
 
 @pytest.mark.asyncio
@@ -324,5 +336,84 @@ def test_install_argocd_action_triggers_task(client: TestClient):
         # Verify status updated immediately in DB
         resp_state = client.get(f"/api/v1/k8s_clusters/{p1['id']}/_state")
         assert resp_state.json()["argocd_installed"] is True
+
+
+@pytest.mark.asyncio
+async def test_install_envoy_gateway():
+    from mindweaver.service.k8s_cluster.model import K8sCluster, K8sClusterType
+
+    cluster = K8sCluster(
+        name="test-cluster-eg",
+        title="Test Cluster EG",
+        type=K8sClusterType.REMOTE,
+        kubeconfig="fake-kubeconfig",
+    )
+
+    mock_svc = MagicMock()
+    mock_svc.kubeconfig = pytest.importorskip("unittest.mock").AsyncMock(
+        return_value="fake-kubeconfig"
+    )
+
+    from mindweaver.service.k8s_cluster.actions import InstallEnvoyGatewayAction
+
+    with patch("asyncio.create_subprocess_exec") as mock_exec:
+        mock_proc = MagicMock()
+        mock_proc.returncode = 0
+        mock_proc.communicate = pytest.importorskip("unittest.mock").AsyncMock(
+            return_value=(b"success", b"")
+        )
+        mock_exec.return_value = mock_proc
+
+        action = InstallEnvoyGatewayAction(cluster, mock_svc)
+        await action.run()
+
+        # Verify helm upgrade --install with OCI chart and kubectl apply
+        assert mock_exec.call_count == 2
+
+        calls = [call[0] for call in mock_exec.call_args_list]
+        found_upgrade = False
+        found_kubectl = False
+        for call_args in calls:
+            if "upgrade" in call_args and "--install" in call_args:
+                if "eg" in call_args:
+                    found_upgrade = True
+                    assert "oci://docker.io/envoyproxy/gateway-helm" in call_args
+                    assert "--kubeconfig" in call_args
+                    assert "envoy-gateway-system" in call_args
+            elif "kubectl" in call_args and "apply" in call_args:
+                found_kubectl = True
+
+        assert found_upgrade
+        assert found_kubectl
+
+
+def test_install_envoy_gateway_action_triggers_task(client: TestClient):
+    # Create cluster
+    p1 = client.post(
+        "/api/v1/k8s_clusters",
+        json={
+            "name": "task-test-eg",
+            "title": "Task Test EG",
+            "type": "in-cluster",
+        },
+    ).json()["data"]
+
+    with patch(
+        "mindweaver.tasks.k8s_cluster_status.install_envoy_gateway_task.delay"
+    ) as mock_delay:
+        resp = client.post(
+            f"/api/v1/k8s_clusters/{p1['id']}/_actions",
+            json={"action": "install_envoy_gateway"},
+        )
+        assert resp.status_code == 200
+        assert (
+            resp.json()["message"]
+            == "Envoy Gateway installation triggered and status being refreshed."
+        )
+        mock_delay.assert_called_once_with(p1["id"])
+
+        # Verify status updated immediately in DB
+        resp_state = client.get(f"/api/v1/k8s_clusters/{p1['id']}/_state")
+        assert resp_state.json()["envoy_gateway_installed"] is True
 
 

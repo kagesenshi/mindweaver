@@ -36,3 +36,31 @@ async def _install_dex_project_task(project_id: int):
             logger.error(
                 f"Error installing Dex for project {project_id}: {e}"
             )
+
+
+@app.task
+def deploy_gateway_project_task(project_id: int):
+    """Trigger Envoy Gateway deployment for a specific project namespace."""
+    logger.info(f"Triggering Envoy Gateway deployment for project {project_id}")
+    run_async(_deploy_gateway_project_task(project_id))
+
+
+async def _deploy_gateway_project_task(project_id: int):
+    engine = get_engine()
+    async with AsyncSession(engine) as session:
+
+        class MockRequest:
+            headers = {}
+
+        svc = ProjectService(MockRequest(), session)
+        try:
+            model = await svc.get(project_id)
+            from mindweaver.service.project.actions import DeployGatewayAction
+
+            action = DeployGatewayAction(model, svc)
+            await action.run()
+            logger.info(f"Successfully deployed Envoy Gateway resources for project {project_id}")
+        except Exception as e:
+            logger.error(
+                f"Error deploying Envoy Gateway resources for project {project_id}: {e}"
+            )

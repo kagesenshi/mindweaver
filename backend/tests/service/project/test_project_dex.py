@@ -123,3 +123,151 @@ def test_project_install_dex_action_triggers_task(client: TestClient):
             == "Dex installation triggered for this project namespace."
         )
         mock_delay.assert_called_once_with(project_data["id"])
+
+
+@pytest.mark.asyncio
+async def test_project_install_dex_with_ingress_domain(client):
+    cluster = K8sCluster(
+        name="test-cluster-dex-ingress",
+        title="Test Cluster Dex Ingress",
+        type=K8sClusterType.REMOTE,
+        kubeconfig="fake-kubeconfig",
+    )
+
+    engine = get_engine()
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        session.add(cluster)
+        await session.commit()
+        await session.refresh(cluster)
+
+        project = Project(
+            name="test-proj-dex-ingress",
+            title="Test Proj Dex Ingress",
+            k8s_cluster_id=cluster.id,
+            k8s_namespace="test-proj-dex-ingress",
+            ingress_domain="ingress.test.local",
+        )
+        session.add(project)
+        await session.commit()
+        await session.refresh(project)
+
+        mock_svc = MagicMock()
+        mock_svc.session = session
+        mock_svc.request = MagicMock()
+
+        with patch("asyncio.create_subprocess_exec") as mock_exec, patch("yaml.safe_dump") as mock_dump:
+            mock_proc = MagicMock()
+            mock_proc.returncode = 0
+            mock_proc.communicate = pytest.importorskip("unittest.mock").AsyncMock(
+                return_value=(b"success", b"")
+            )
+            mock_exec.return_value = mock_proc
+
+            action = InstallDexAction(project, mock_svc)
+            action.session = session
+            await action.run()
+
+            # Verify helm was executed, and also kubectl apply was executed
+            assert mock_exec.call_count >= 4
+            called_values = mock_dump.call_args[0][0]
+            assert called_values["config"]["issuer"] == "https://dex.ingress.test.local/dex"
+
+            calls = [call[0] for call in mock_exec.call_args_list]
+            found_kubectl = False
+            for call_args in calls:
+                if "kubectl" in call_args and "apply" in call_args:
+                    found_kubectl = True
+            assert found_kubectl
+
+
+@pytest.mark.asyncio
+async def test_project_deploy_gateway(client):
+    from mindweaver.service.project.actions import DeployGatewayAction
+
+    cluster = K8sCluster(
+        name="test-cluster-gw",
+        title="Test Cluster GW",
+        type=K8sClusterType.REMOTE,
+        kubeconfig="fake-kubeconfig",
+    )
+
+    engine = get_engine()
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        session.add(cluster)
+        await session.commit()
+        await session.refresh(cluster)
+
+        project = Project(
+            name="test-proj-gw",
+            title="Test Proj GW",
+            k8s_cluster_id=cluster.id,
+            k8s_namespace="test-proj-gw",
+            ingress_domain="gw.test.local",
+        )
+        session.add(project)
+        await session.commit()
+        await session.refresh(project)
+
+        mock_svc = MagicMock()
+        mock_svc.session = session
+        mock_svc.request = MagicMock()
+
+        with patch("asyncio.create_subprocess_exec") as mock_exec:
+            mock_proc = MagicMock()
+            mock_proc.returncode = 0
+            mock_proc.communicate = pytest.importorskip("unittest.mock").AsyncMock(
+                return_value=(b"success", b"")
+            )
+            mock_exec.return_value = mock_proc
+
+            action = DeployGatewayAction(project, mock_svc)
+            action.session = session
+            await action.run()
+
+            # Verify kubectl was executed to apply gateway resources
+            assert mock_exec.call_count >= 1
+            calls = [call[0] for call in mock_exec.call_args_list]
+            found_kubectl = False
+            for call_args in calls:
+                if "kubectl" in call_args and "apply" in call_args:
+                    found_kubectl = True
+            assert found_kubectl
+
+
+def test_project_deploy_gateway_action_triggers_task(client: TestClient):
+    # Create cluster and project with ingress_domain
+    cluster_data = client.post(
+        "/api/v1/k8s_clusters",
+        json={
+            "name": "gw-cluster-test",
+            "title": "GW Cluster Test",
+            "type": "in-cluster",
+        },
+    ).json()["data"]
+
+    project_data = client.post(
+        "/api/v1/projects",
+        json={
+            "name": "gw-project-test",
+            "title": "GW Project Test",
+            "k8s_cluster_id": cluster_data["id"],
+            "k8s_namespace": "gw-project-test",
+            "ingress_domain": "gw-test.domain",
+        },
+    ).json()["data"]
+
+    with patch(
+        "mindweaver.tasks.project_tasks.deploy_gateway_project_task.delay"
+    ) as mock_delay:
+        resp = client.post(
+            f"/api/v1/projects/{project_data['id']}/_actions",
+            json={"action": "deploy_gateway"},
+        )
+        assert resp.status_code == 200
+        assert (
+            resp.json()["message"]
+            == "Project Envoy Gateway deployment triggered."
+        )
+        mock_delay.assert_called_once_with(project_data["id"])
+
+

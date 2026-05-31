@@ -47,6 +47,7 @@ class K8sClusterStatus(Base, table=True):
     k8s_version: Optional[str] = Field(default=None)
     node_count: int = Field(default=0)
     nodes_status: dict[str, Any] = Field(default_factory=dict, sa_type=JSONType())
+    node_ips: list[str] = Field(default_factory=list, sa_type=JSONType())
 
     cpu_total: float = Field(default=0.0)
     cpu_allocated: float = Field(default=0.0)
@@ -63,6 +64,9 @@ class K8sClusterStatus(Base, table=True):
     cnpg_version: Optional[str] = Field(default=None)
 
     cluster_issuer_installed: bool = Field(default=False)
+
+    envoy_gateway_installed: bool = Field(default=False)
+    envoy_gateway_version: Optional[str] = Field(default=None)
 
     last_update: datetime = Field(
         default_factory=ts_now, sa_type=DateTime(timezone=True)

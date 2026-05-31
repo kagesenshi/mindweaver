@@ -71,6 +71,7 @@ class K8sClusterService(Service[K8sCluster]):
                     except ValueError:
                         return 0.0
 
+                node_ips = []
                 for node in nodes.items:
                     name = node.metadata.name
                     status = "Unknown"
@@ -79,6 +80,10 @@ class K8sClusterService(Service[K8sCluster]):
                             status = "Ready" if cond.status == "True" else "NotReady"
                             break
                     nodes_status[name] = status
+
+                    for addr in node.status.addresses:
+                        if addr.type in ["InternalIP", "ExternalIP"] and addr.address not in node_ips:
+                            node_ips.append(addr.address)
 
                     # Resource totals
                     cpu_total += _parse_res(node.status.capacity.get("cpu", "0"))
@@ -179,6 +184,30 @@ class K8sClusterService(Service[K8sCluster]):
                 except Exception as e:
                     logger.warning(f"Failed to check Mindweaver Cluster Issuer presence: {e}")
 
+                # Check Envoy Gateway
+                envoy_gateway_installed = False
+                envoy_gateway_version = None
+                try:
+                    for secret in secrets.items:
+                        if secret.metadata.name.startswith("sh.helm.release.v1.eg") or secret.metadata.name.startswith("sh.helm.release.v1.envoy-gateway"):
+                            envoy_gateway_installed = True
+                            break
+                    if not envoy_gateway_installed:
+                        svcs = core_v1.list_service_for_all_namespaces(
+                            label_selector="app.kubernetes.io/name=envoy-gateway"
+                        )
+                        if svcs.items:
+                            envoy_gateway_installed = True
+
+                    if envoy_gateway_installed:
+                        pods = core_v1.list_pod_for_all_namespaces(
+                            label_selector="app.kubernetes.io/name=envoy-gateway"
+                        )
+                        if pods.items:
+                            envoy_gateway_version = _get_version(pods.items[0])
+                except Exception as e:
+                    logger.warning(f"Failed to check Envoy Gateway presence: {e}")
+
                 return {
                     "k8s_version": k8s_version,
                     "node_count": node_count,
@@ -192,6 +221,9 @@ class K8sClusterService(Service[K8sCluster]):
                     "cnpg_installed": cnpg_installed,
                     "cnpg_version": cnpg_version,
                     "cluster_issuer_installed": cluster_issuer_installed,
+                    "envoy_gateway_installed": envoy_gateway_installed,
+                    "envoy_gateway_version": envoy_gateway_version,
+                    "node_ips": node_ips,
                 }
 
             info = await asyncio.to_thread(_get_k8s_info)
@@ -220,6 +252,9 @@ class K8sClusterService(Service[K8sCluster]):
             status_model.cnpg_installed = info["cnpg_installed"]
             status_model.cnpg_version = info["cnpg_version"]
             status_model.cluster_issuer_installed = info["cluster_issuer_installed"]
+            status_model.envoy_gateway_installed = info["envoy_gateway_installed"]
+            status_model.envoy_gateway_version = info["envoy_gateway_version"]
+            status_model.node_ips = info["node_ips"]
             status_model.last_update = ts_now()
             status_model.message = None
 

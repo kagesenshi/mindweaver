@@ -321,6 +321,31 @@ const ServiceView = ({
                             )}
                         </div>
 
+                        {/* Envoy Gateway */}
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                            <div className="flex items-center gap-3">
+                                <div className={`p-2 rounded-lg ${clusterState.envoy_gateway_installed ? 'bg-indigo-500 text-white' : 'bg-slate-200 text-slate-400'}`}>
+                                    <Activity size={16} />
+                                </div>
+                                <span className="text-sm font-bold text-slate-700 dark:text-white">Envoy Gateway</span>
+                            </div>
+                            {clusterState.envoy_gateway_installed ? (
+                                <span className="text-[10px] font-bold bg-green-500/10 text-green-500 px-2 py-0.5 rounded">
+                                    {clusterState.envoy_gateway_version || "ACTIVE"}
+                                </span>
+                            ) : (
+                                <button 
+                                    id="install-envoy-gateway-btn"
+                                    onClick={() => handleInstallAction('install_envoy_gateway')}
+                                    disabled={installingActions['install_envoy_gateway']}
+                                    className="mw-btn-primary py-1 px-3 text-[10px] flex items-center gap-2"
+                                >
+                                    {installingActions['install_envoy_gateway'] && <RefreshCw size={10} className="animate-spin" />}
+                                    {installingActions['install_envoy_gateway'] ? 'INSTALLING' : 'INSTALL'}
+                                </button>
+                            )}
+                        </div>
+
                         {/* Self-Signed ClusterIssuer */}
                         <div className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
                             <div className="flex items-center gap-3">

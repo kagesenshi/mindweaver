@@ -17,3 +17,6 @@ class Project(NamedBase, table=True):
     ldap_config_id: Optional[int] = Field(
         default=None, foreign_key="mw_ldap_config.id"
     )
+    ingress_domain: Optional[str] = Field(
+        default=None, sa_type=String(length=255), nullable=True
+    )

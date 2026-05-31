@@ -43,6 +43,11 @@ export const useProjects = () => {
         return response.data;
     }, []);
 
+    const refreshProjectState = useCallback(async (id) => {
+        const response = await apiClient.post(`/projects/${id}/_refresh`);
+        return response.data;
+    }, []);
+
     const fetchActions = useCallback(async (id) => {
         const response = await apiClient.get(`/projects/${id}/_actions`);
         return response.data.actions || [];
@@ -57,7 +62,7 @@ export const useProjects = () => {
         fetchProjects();
     }, [fetchProjects]);
 
-    return { projects, loading, error, fetchProjects, createProject, updateProject, deleteProject, getProjectState, fetchActions, executeAction };
+    return { projects, loading, error, fetchProjects, createProject, updateProject, deleteProject, getProjectState, refreshProjectState, fetchActions, executeAction };
 };
 
 

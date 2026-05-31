@@ -105,8 +105,9 @@ class InstallArgoCDAction(BaseAction):
                 return stdout.decode()
 
             # Ensure repo is added
-            await run_helm("repo", "add", repo_name, repo_url)
-            await run_helm("repo", "update")
+            if repo_url and not repo_url.startswith("oci://"):
+                await run_helm("repo", "add", repo_name, repo_url)
+                await run_helm("repo", "update")
 
             # Install
             args = [
@@ -133,6 +134,51 @@ class InstallArgoCDAction(BaseAction):
                     os.unlink(temp_kf.name)
                 except Exception:
                     pass
+
+    async def _apply_yaml(self, manifest: str):
+        kubeconfig_path = None
+        temp_kf = None
+        temp_manifest = None
+
+        try:
+            if self.model.type == K8sClusterType.REMOTE:
+                if not self.model.kubeconfig:
+                    raise ValueError(f"Cluster {self.model.name} has no kubeconfig")
+                temp_kf = tempfile.NamedTemporaryFile(mode="w", delete=False)
+                temp_kf.write(self.model.kubeconfig)
+                temp_kf.flush()
+                temp_kf.close()
+                kubeconfig_path = temp_kf.name
+
+            temp_manifest = tempfile.NamedTemporaryFile(mode="w", delete=False)
+            temp_manifest.write(manifest)
+            temp_manifest.flush()
+            temp_manifest.close()
+
+            cmd = ["kubectl"]
+            if kubeconfig_path:
+                cmd.extend(["--kubeconfig", kubeconfig_path])
+            cmd.extend(["apply", "-f", temp_manifest.name])
+
+            logger.debug(f"Running kubectl command: {' '.join(cmd)}")
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await proc.communicate()
+            if proc.returncode != 0:
+                raise RuntimeError(f"Kubectl command failed: {stderr.decode()}")
+            return stdout.decode()
+
+        finally:
+            for f in [temp_kf, temp_manifest]:
+                if f:
+                    try:
+                        os.unlink(f.name)
+                    except Exception:
+                        pass
+
 
 
 @K8sClusterService.register_action("install_cert_manager")
@@ -300,49 +346,82 @@ spec:
 """
         await self._apply_yaml(manifest)
 
-    async def _apply_yaml(self, manifest: str):
-        kubeconfig_path = None
-        temp_kf = None
-        temp_manifest = None
 
-        try:
-            if self.model.type == K8sClusterType.REMOTE:
-                if not self.model.kubeconfig:
-                    raise ValueError(f"Cluster {self.model.name} has no kubeconfig")
-                temp_kf = tempfile.NamedTemporaryFile(mode="w", delete=False)
-                temp_kf.write(self.model.kubeconfig)
-                temp_kf.flush()
-                temp_kf.close()
-                kubeconfig_path = temp_kf.name
 
-            temp_manifest = tempfile.NamedTemporaryFile(mode="w", delete=False)
-            temp_manifest.write(manifest)
-            temp_manifest.flush()
-            temp_manifest.close()
 
-            cmd = ["kubectl"]
-            if kubeconfig_path:
-                cmd.extend(["--kubeconfig", kubeconfig_path])
-            cmd.extend(["apply", "-f", temp_manifest.name])
+@K8sClusterService.register_action("install_envoy_gateway")
+class InstallEnvoyGatewayAction(InstallArgoCDAction):
 
-            logger.debug(f"Running kubectl command: {' '.join(cmd)}")
-            proc = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-            stdout, stderr = await proc.communicate()
-            if proc.returncode != 0:
-                raise RuntimeError(f"Kubectl command failed: {stderr.decode()}")
-            return stdout.decode()
+    async def available(self) -> bool:
+        stmt = select(K8sClusterStatus).where(
+            K8sClusterStatus.k8s_cluster_id == self.model.id
+        )
+        result = await self.session.exec(stmt)
+        status = result.one_or_none()
+        return not (status and status.envoy_gateway_installed)
 
-        finally:
-            for f in [temp_kf, temp_manifest]:
-                if f:
-                    try:
-                        os.unlink(f.name)
-                    except Exception:
-                        pass
+    async def __call__(self, **kwargs):
+        from mindweaver.tasks.k8s_cluster_status import install_envoy_gateway_task
+
+        # Set status to installed immediately so UI reflects it
+        stmt = select(K8sClusterStatus).where(
+            K8sClusterStatus.k8s_cluster_id == self.model.id
+        )
+        result = await self.session.exec(stmt)
+        status_model = result.one_or_none()
+        if not status_model:
+            status_model = K8sClusterStatus(k8s_cluster_id=self.model.id)
+            self.session.add(status_model)
+        status_model.envoy_gateway_installed = True
+        await self.session.flush()
+
+        install_envoy_gateway_task.delay(self.model.id)
+        return {
+            "status": "success",
+            "message": "Envoy Gateway installation triggered and status being refreshed.",
+        }
+
+    async def run(self):
+        """Install Envoy Gateway to the cluster using Helm chart"""
+        logger.info(f"Installing Envoy Gateway for cluster {self.model.name}")
+
+        await self._install_helm_chart(
+            repo_name="eg",
+            repo_url="oci://docker.io/envoyproxy",
+            release_name="eg",
+            chart_name="oci://docker.io/envoyproxy/gateway-helm",
+            namespace="envoy-gateway-system",
+        )
+
+        # Deploy global GatewayClass and EnvoyProxy resources
+        global_manifest = """
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: envoy-gateway
+spec:
+  controllerName: gateway.envoyproxy.io/gatewayclass-controller
+  parametersRef:
+    group: gateway.envoyproxy.io
+    kind: EnvoyProxy
+    name: envoy-gateway-config
+    namespace: envoy-gateway-system
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: envoy-gateway-config
+  namespace: envoy-gateway-system
+spec:
+  provider:
+    type: Kubernetes
+    kubernetes:
+      envoyService:
+        type: NodePort
+"""
+        logger.info("Applying global Envoy GatewayClass and EnvoyProxy configuration")
+        await self._apply_yaml(global_manifest)
+
 
 
 

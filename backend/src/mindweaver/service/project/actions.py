@@ -119,9 +119,13 @@ class InstallDexAction(BaseAction):
         namespace = self.model.k8s_namespace or self.model.name
 
         # 5. Build values dict for Dex
+        issuer_url = f"http://dex.{namespace}.svc.cluster.local:5556/dex"
+        if self.model.ingress_domain:
+            issuer_url = f"https://dex.{self.model.ingress_domain}/dex"
+
         dex_values = {
             "config": {
-                "issuer": f"http://dex.{namespace}.svc.cluster.local:5556/dex",
+                "issuer": issuer_url,
                 "storage": {
                     "type": "kubernetes",
                     "config": {
@@ -135,6 +139,75 @@ class InstallDexAction(BaseAction):
             dex_values["config"]["staticPasswords"] = static_passwords
         if connectors:
             dex_values["config"]["connectors"] = connectors
+
+        gateway_manifest = ""
+        if self.model.ingress_domain:
+            gateway_manifest = f"""
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: dex-tls
+  namespace: {namespace}
+spec:
+  secretName: dex-tls
+  duration: 2160h # 90d
+  renewBefore: 360h # 15d
+  subject:
+    organizations:
+      - mindweaver
+  isCA: false
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 2048
+  usages:
+    - server auth
+    - client auth
+  dnsNames:
+    - dex.{self.model.ingress_domain}
+  issuerRef:
+    name: mindweaver-selfsigned-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: project-gateway
+  namespace: {namespace}
+spec:
+  gatewayClassName: envoy-gateway
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: "dex.{self.model.ingress_domain}"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - group: ""
+            kind: Secret
+            name: dex-tls
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: dex-route
+  namespace: {namespace}
+spec:
+  parentRefs:
+    - name: project-gateway
+  hostnames:
+    - "dex.{self.model.ingress_domain}"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: dex
+          port: 5556
+"""
 
         # 6. Install Dex using Helm and values file
         kubeconfig_path = None
@@ -191,6 +264,35 @@ class InstallDexAction(BaseAction):
                 temp_values.name,
             )
 
+            if gateway_manifest:
+                async def run_kubectl(manifest: str):
+                    temp_m = None
+                    try:
+                        temp_m = tempfile.NamedTemporaryFile(mode="w", delete=False)
+                        temp_m.write(manifest)
+                        temp_m.flush()
+                        temp_m.close()
+                        cmd = ["kubectl"]
+                        if kubeconfig_path:
+                            cmd.extend(["--kubeconfig", kubeconfig_path])
+                        cmd.extend(["apply", "-f", temp_m.name])
+                        proc = await asyncio.create_subprocess_exec(
+                            *cmd,
+                            stdout=asyncio.subprocess.PIPE,
+                            stderr=asyncio.subprocess.PIPE,
+                        )
+                        stdout, stderr = await proc.communicate()
+                        if proc.returncode != 0:
+                            raise RuntimeError(f"Kubectl command failed: {stderr.decode()}")
+                    finally:
+                        if temp_m:
+                            try:
+                                os.unlink(temp_m.name)
+                            except Exception:
+                                pass
+
+                await run_kubectl(gateway_manifest)
+
         finally:
             for f in [temp_kf, temp_values]:
                 if f:
@@ -198,3 +300,145 @@ class InstallDexAction(BaseAction):
                         os.unlink(f.name)
                     except Exception:
                         pass
+
+
+@ProjectService.register_action("deploy_gateway")
+class DeployGatewayAction(BaseAction):
+    """
+    Action to deploy Envoy Gateway (Gateway / HTTPRoute) resources for this project.
+    """
+
+    async def available(self) -> bool:
+        return self.model.k8s_cluster_id is not None and bool(self.model.ingress_domain)
+
+    async def __call__(self, **kwargs):
+        from mindweaver.tasks.project_tasks import deploy_gateway_project_task
+
+        deploy_gateway_project_task.delay(self.model.id)
+        return {
+            "status": "success",
+            "message": "Project Envoy Gateway deployment triggered.",
+        }
+
+    async def run(self):
+        logger.info(f"Deploying Envoy Gateway resources for project {self.model.name}")
+
+        stmt_cluster = select(K8sCluster).where(K8sCluster.id == self.model.k8s_cluster_id)
+        res_cluster = await self.session.exec(stmt_cluster)
+        cluster = res_cluster.one()
+
+        namespace = self.model.k8s_namespace or self.model.name
+
+        gateway_manifest = f"""
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: dex-tls
+  namespace: {namespace}
+spec:
+  secretName: dex-tls
+  duration: 2160h # 90d
+  renewBefore: 360h # 15d
+  subject:
+    organizations:
+      - mindweaver
+  isCA: false
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 2048
+  usages:
+    - server auth
+    - client auth
+  dnsNames:
+    - dex.{self.model.ingress_domain}
+  issuerRef:
+    name: mindweaver-selfsigned-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: project-gateway
+  namespace: {namespace}
+spec:
+  gatewayClassName: envoy-gateway
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: "dex.{self.model.ingress_domain}"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - group: ""
+            kind: Secret
+            name: dex-tls
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: dex-route
+  namespace: {namespace}
+spec:
+  parentRefs:
+    - name: project-gateway
+  hostnames:
+    - "dex.{self.model.ingress_domain}"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: dex
+          port: 5556
+"""
+
+        kubeconfig_path = None
+        temp_kf = None
+        try:
+            if cluster.type == K8sClusterType.REMOTE:
+                if not cluster.kubeconfig:
+                    raise ValueError(f"Cluster {cluster.name} has no kubeconfig")
+                temp_kf = tempfile.NamedTemporaryFile(mode="w", delete=False)
+                temp_kf.write(cluster.kubeconfig)
+                temp_kf.flush()
+                temp_kf.close()
+                kubeconfig_path = temp_kf.name
+
+            async def run_kubectl(manifest: str):
+                temp_m = None
+                try:
+                    temp_m = tempfile.NamedTemporaryFile(mode="w", delete=False)
+                    temp_m.write(manifest)
+                    temp_m.flush()
+                    temp_m.close()
+                    cmd = ["kubectl"]
+                    if kubeconfig_path:
+                        cmd.extend(["--kubeconfig", kubeconfig_path])
+                    cmd.extend(["apply", "-f", temp_m.name])
+                    proc = await asyncio.create_subprocess_exec(
+                        *cmd,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE,
+                    )
+                    stdout, stderr = await proc.communicate()
+                    if proc.returncode != 0:
+                        raise RuntimeError(f"Kubectl command failed: {stderr.decode()}")
+                finally:
+                    if temp_m:
+                        try:
+                            os.unlink(temp_m.name)
+                        except Exception:
+                            pass
+
+            await run_kubectl(gateway_manifest)
+        finally:
+            if temp_kf:
+                try:
+                    os.unlink(temp_kf.name)
+                except Exception:
+                    pass
+

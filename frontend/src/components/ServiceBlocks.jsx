@@ -74,6 +74,8 @@ export const ExternalNetworkAccessBlock = ({
     cliInfo, 
     guideTitle = "External Connection Guide", 
     guideText = "Use any of the <strong>Node IP:Port</strong> combinations listed above to connect from outside the cluster.",
+    cliLanguage = "bash",
+    cliTitle = "CLI Example",
     icon = Server,
     iconColorClass = "text-indigo-500",
     iconBgClass = "bg-indigo-500/10"
@@ -180,12 +182,12 @@ export const ExternalNetworkAccessBlock = ({
                         )}>
                             <div className={cn("flex border-b p-1 items-center justify-between", darkMode ? 'border-slate-800' : 'border-slate-700')}>
                                 <div className="flex p-1 gap-1">
-                                    <button className="px-4 py-1.5 text-xs font-bold uppercase rounded-lg bg-slate-700 text-white shadow-inner">bash</button>
+                                    <button className="px-4 py-1.5 text-xs font-bold uppercase rounded-lg bg-slate-700 text-white shadow-inner">{cliLanguage}</button>
                                     {cliInfo.languageButtons && cliInfo.languageButtons.map((btn, i) => (
                                         <button key={i} className="px-4 py-1.5 text-xs font-bold uppercase rounded-lg text-slate-500 hover:text-slate-300">{btn}</button>
                                     ))}
                                 </div>
-                                <div className="px-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">CLI Example</div>
+                                <div className="px-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">{cliTitle}</div>
                             </div>
                             <div className="p-6 relative group">
                                 <pre className="text-sm font-mono text-blue-400 leading-relaxed overflow-x-auto whitespace-pre-wrap">
