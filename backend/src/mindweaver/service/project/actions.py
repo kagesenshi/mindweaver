@@ -188,6 +188,16 @@ spec:
           - group: ""
             kind: Secret
             name: dex-tls
+    - name: wildcard-https
+      protocol: HTTPS
+      port: 443
+      hostname: "*.{self.model.ingress_domain}"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - group: ""
+            kind: Secret
+            name: envoy-{self.model.name}
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -207,6 +217,34 @@ spec:
       backendRefs:
         - name: dex
           port: 5556
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: envoy-{self.model.name}
+  namespace: {namespace}
+spec:
+  secretName: envoy-{self.model.name}
+  duration: 2160h # 90d
+  renewBefore: 360h # 15d
+  subject:
+    organizations:
+      - mindweaver
+  isCA: false
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 2048
+  usages:
+    - server auth
+    - client auth
+  dnsNames:
+    - "{self.model.ingress_domain}"
+    - "*.{self.model.ingress_domain}"
+  issuerRef:
+    name: mindweaver-selfsigned-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
 """
 
         # 6. Install Dex using Helm and values file
@@ -375,6 +413,16 @@ spec:
           - group: ""
             kind: Secret
             name: dex-tls
+    - name: wildcard-https
+      protocol: HTTPS
+      port: 443
+      hostname: "*.{self.model.ingress_domain}"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - group: ""
+            kind: Secret
+            name: envoy-{self.model.name}
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute

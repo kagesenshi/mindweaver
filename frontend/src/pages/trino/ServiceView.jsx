@@ -83,8 +83,11 @@ const ServiceView = ({
             });
         }
 
+        const ingressDomain = platformState?.extra_data?.ingress_domain;
         const httpsPort = platformState?.node_ports?.find(np => np.name.endsWith('https-nodeport'));
-        const externalUri = platformState?.trino_uri || (httpsPort && platformState.cluster_nodes?.[0]?.ipv4 ? `https://${platformState.cluster_nodes[0].ipv4}:${httpsPort.node_port}` : null);
+        const externalUri = ingressDomain 
+            ? `https://${selectedPlatform.name}.${ingressDomain}`
+            : (platformState?.trino_uri || (httpsPort && platformState.cluster_nodes?.[0]?.ipv4 ? `https://${platformState.cluster_nodes[0].ipv4}:${httpsPort.node_port}` : null));
 
         return (
             <div className="space-y-6">
@@ -96,14 +99,22 @@ const ServiceView = ({
                     />
                 )}
 
-                {httpsPort && (
+                {(ingressDomain || httpsPort) && (
                     <ExternalNetworkAccessBlock
                         darkMode={darkMode}
-                        ports={[{
-                            label: 'Trino UI / API (HTTPS)',
-                            node_port: httpsPort.node_port,
-                            scheme: 'https'
-                        }]}
+                        ports={[
+                            ...(ingressDomain ? [{
+                                label: 'Trino UI / API (Envoy Ingress)',
+                                load_balancer_ips: [`${selectedPlatform.name}.${ingressDomain}`],
+                                port: 443,
+                                scheme: 'https'
+                            }] : []),
+                            ...(httpsPort ? [{
+                                label: 'Trino UI / API (NodePort)',
+                                node_port: httpsPort.node_port,
+                                scheme: 'https'
+                            }] : [])
+                        ]}
                         clusterNodes={platformState.cluster_nodes}
                         cliInfo={{
                             command: `trino --server ${externalUri || 'https://[NODE_IP]:[NODE_PORT]'} --catalog ${platformState?.extra_data?.preferred_catalog || 'hive'} --schema default`,

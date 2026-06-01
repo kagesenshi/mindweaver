@@ -165,6 +165,8 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
     async def template_vars(self, model: TrinoPlatform) -> dict:
         vars = model.model_dump(exclude=self.redacted_fields())
         vars["namespace"] = await self._resolve_namespace(model)
+        project = await self.project(model)
+        vars["ingress_domain"] = project.ingress_domain
 
         # HTTPS is mandatory
         vars["enable_https"] = True
@@ -291,7 +293,6 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
         vars["catalogs"] = catalogs
 
         # 3. Resolve LDAP Configuration from Project
-        project = await self.project(model)
         if project.ldap_config_id:
             ldap_svc = await LdapConfigService.get_service(self.request, self.session)
             ldap_config = await ldap_svc.get(project.ldap_config_id)
@@ -555,34 +556,39 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
 
         state.status = status
         state.message = message
+        project = await self.project(model)
         if extra_data is None:
             extra_data = {}
         extra_data["namespace"] = namespace
         extra_data["preferred_catalog"] = await self.get_preferred_catalog(model)
+        extra_data["ingress_domain"] = project.ingress_domain
         state.extra_data = extra_data
         state.node_ports = node_ports
         state.cluster_nodes = cluster_nodes
 
         # Derive URIs
-        if status == "online" and cluster_nodes:
-            trino_np = next(
-                (
-                    np
-                    for np in node_ports
-                    if np["name"] == f"{model.name}-https-nodeport"
-                ),
-                None,
-            )
-            scheme = "https"
-            if trino_np:
-                state.trino_uri = (
-                    f"{scheme}://{cluster_nodes[0]['ipv4']}:{trino_np['node_port']}"
+        if status == "online":
+            if project.ingress_domain:
+                state.trino_uri = f"https://{model.name}.{project.ingress_domain}"
+            elif cluster_nodes:
+                trino_np = next(
+                    (
+                        np
+                        for np in node_ports
+                        if np["name"] == f"{model.name}-https-nodeport"
+                    ),
+                    None,
                 )
-            else:
-                port = 8443
-                state.trino_uri = (
-                    f"{scheme}://{model.name}.{namespace}.svc.cluster.local:{port}"
-                )
+                scheme = "https"
+                if trino_np:
+                    state.trino_uri = (
+                        f"{scheme}://{cluster_nodes[0]['ipv4']}:{trino_np['node_port']}"
+                    )
+                else:
+                    port = 8443
+                    state.trino_uri = (
+                        f"{scheme}://{model.name}.{namespace}.svc.cluster.local:{port}"
+                    )
 
         state.last_heartbeat = ts_now()
 

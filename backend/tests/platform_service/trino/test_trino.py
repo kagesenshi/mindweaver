@@ -592,6 +592,7 @@ async def test_trino_poll_status_with_https_nodeport(mock_service_dependencies):
 
     # Mock template_vars and get_preferred_catalog to avoid heavy lifting
     svc.get_preferred_catalog = AsyncMock(return_value="hive")
+    svc.project = AsyncMock(return_value=MagicMock(ingress_domain=None))
 
     # Call poll_status
     with patch("mindweaver.platform_service.trino.service.asyncio.to_thread") as mock_to_thread:
@@ -602,6 +603,95 @@ async def test_trino_poll_status_with_https_nodeport(mock_service_dependencies):
         # Verify the state was updated with the correct URI from the https-nodeport service
         state = await svc.platform_state(model)
         assert state.trino_uri == "https://1.2.3.4:30443"
+
+
+@pytest.mark.asyncio
+async def test_trino_poll_status_with_ingress_domain(mock_service_dependencies):
+    """Test that poll_status sets the correct trino_uri when ingress_domain is configured"""
+    request, session = mock_service_dependencies
+    svc = TrinoPlatformService(request, session)
+
+    svc._resolve_namespace = AsyncMock(return_value="trino-ns")
+    svc.kubeconfig = AsyncMock(return_value="dummy-kubeconfig")
+    svc.platform_state = AsyncMock(return_value=MagicMock(active=True))
+    svc.project = AsyncMock(return_value=MagicMock(ingress_domain="example.com"))
+
+    model = TrinoPlatform(
+        id=1,
+        name="trino-instance",
+        title="Trino Instance",
+        project_id=1,
+        hms_ids=[10],
+    )
+
+    node_ports = []
+    cluster_nodes = []
+
+    svc.get_preferred_catalog = AsyncMock(return_value="hive")
+
+    with patch("mindweaver.platform_service.trino.service.asyncio.to_thread") as mock_to_thread:
+        mock_to_thread.return_value = ("online", "Healthy", {"argo": "ok"}, node_ports, cluster_nodes)
+
+        await svc.poll_status(model)
+
+        state = await svc.platform_state(model)
+        assert state.trino_uri == "https://trino-instance.example.com"
+        assert state.extra_data["ingress_domain"] == "example.com"
+
+
+@pytest.mark.asyncio
+async def test_trino_envoy_route_rendering(mock_service_dependencies):
+    """Test that Envoy Gateway HTTPRoute and BackendTLSPolicy are rendered when ingress_domain is set"""
+    request, session = mock_service_dependencies
+    svc = TrinoPlatformService(request, session)
+    svc._resolve_namespace = AsyncMock(return_value="trino-ns")
+
+    model = TrinoPlatform(
+        name="trino-envoy",
+        title="Trino Envoy",
+        project_id=1,
+        hms_ids=[10],
+    )
+
+    # Mock project with ingress_domain
+    mock_project = MagicMock()
+    mock_project.ingress_domain = "myproject.local"
+    mock_project.ldap_config_id = None
+    svc.project = AsyncMock(return_value=mock_project)
+
+    # Mock HMS service
+    mock_hms_svc = AsyncMock()
+    mock_hms_model = MagicMock()
+    mock_hms_model.name = "test-hms"
+    mock_hms_model.s3_storage_id = None
+    mock_hms_svc.get.return_value = mock_hms_model
+    mock_hms_state = MagicMock()
+    mock_hms_state.active = True
+    mock_hms_state.hms_uri = "thrift://hms:9083"
+    mock_hms_svc.platform_state.return_value = mock_hms_state
+    mock_hms_svc._resolve_namespace.return_value = "hms-ns"
+
+    with patch("mindweaver.platform_service.trino.service.HiveMetastorePlatformService.get_service", AsyncMock(return_value=mock_hms_svc)), \
+         patch("mindweaver.platform_service.trino.service.decrypt_password", lambda x: x):
+        
+        manifest = await svc.render_manifests(model)
+
+    docs = list(yaml.safe_load_all(manifest))
+    
+    # Verify HTTPRoute is present
+    route = next(d for d in docs if d.get("kind") == "HTTPRoute")
+    assert route["metadata"]["name"] == "trino-envoy-route"
+    assert route["spec"]["parentRefs"][0]["name"] == "project-gateway"
+    assert route["spec"]["hostnames"][0] == "trino-envoy.myproject.local"
+    assert route["spec"]["rules"][0]["backendRefs"][0]["name"] == "trino-envoy"
+    assert route["spec"]["rules"][0]["backendRefs"][0]["port"] == 8443
+
+    # Verify BackendTLSPolicy is present
+    tls_policy = next(d for d in docs if d.get("kind") == "BackendTLSPolicy")
+    assert tls_policy["metadata"]["name"] == "trino-envoy-tls-policy"
+    assert tls_policy["spec"]["targetRefs"][0]["name"] == "trino-envoy"
+    assert tls_policy["spec"]["validation"]["hostname"] == "trino-envoy.trino-ns.svc.cluster.local"
+    assert tls_policy["spec"]["validation"]["caCertificateRefs"][0]["name"] == "trino-envoy-tls"
 
 @pytest.mark.asyncio
 async def test_trino_internal_shared_secret_visibility(mock_service_dependencies):
