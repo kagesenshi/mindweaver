@@ -14,6 +14,7 @@ def mock_service_dependencies():
     request = MagicMock(spec=Request)
     session = MagicMock(spec=AsyncSession)
     session.exec = AsyncMock()
+    session.flush = AsyncMock()
     return request, session
 
 
@@ -427,4 +428,87 @@ async def test_ranger_template_vars_with_ldap(mock_service_dependencies):
         assert additional_props["SYNC_GROUP_NAME_ATTRIBUTE"] == "cn"
         assert additional_props["SYNC_LDAP_DELTASYNC"] == "false"
         assert additional_props["SYNC_LDAP_REFERRAL"] == "ignore"
+
+
+@pytest.mark.asyncio
+async def test_ranger_poll_status_with_ingress_domain(mock_service_dependencies):
+    """Test that poll_status sets the correct ranger_url when ingress_domain is configured"""
+    request, session = mock_service_dependencies
+    svc = RangerPlatformService(request, session)
+
+    svc._resolve_namespace = AsyncMock(return_value="ranger-ns")
+    svc.kubeconfig = AsyncMock(return_value="dummy-kubeconfig")
+    svc.platform_state = AsyncMock(return_value=MagicMock(active=True))
+    svc.project = AsyncMock(return_value=MagicMock(ingress_domain="example.com"))
+
+    model = RangerPlatform(
+        id=1,
+        name="ranger-instance",
+        title="Ranger Instance",
+        project_id=1,
+        database_id=10,
+    )
+
+    node_ports = []
+    cluster_nodes = []
+
+    with patch("mindweaver.platform_service.ranger.service.asyncio.to_thread") as mock_to_thread:
+        mock_to_thread.return_value = ("online", "Healthy", {"argo": "ok"}, node_ports, cluster_nodes)
+
+        await svc.poll_status(model)
+
+        state = await svc.platform_state(model)
+        assert state.ranger_url == "https://ranger-instance.example.com"
+        assert state.extra_data["ingress_domain"] == "example.com"
+
+
+@pytest.mark.asyncio
+async def test_ranger_envoy_route_rendering(mock_service_dependencies):
+    """Test that Envoy Gateway HTTPRoute and BackendTLSPolicy are rendered for Ranger when ingress_domain is set"""
+    import yaml
+    request, session = mock_service_dependencies
+    svc = RangerPlatformService(request, session)
+    svc._resolve_namespace = AsyncMock(return_value="ranger-ns")
+
+    model = RangerPlatform(
+        name="ranger-envoy",
+        title="Ranger Envoy",
+        project_id=1,
+        database_id=10,
+    )
+
+    # Mock project with ingress_domain
+    mock_project = MagicMock()
+    mock_project.ingress_domain = "myproject.local"
+    mock_project.ldap_config_id = None
+    svc.project = AsyncMock(return_value=mock_project)
+
+    # Mock PgSql
+    mock_pgsql_svc = AsyncMock()
+    mock_pgsql_model = MagicMock()
+    mock_pgsql_model.name = "test-db"
+    mock_pgsql_svc.get.return_value = mock_pgsql_model
+    mock_pgsql_state = MagicMock()
+    mock_pgsql_state.active = True
+    mock_pgsql_svc.platform_state.return_value = mock_pgsql_state
+
+    with patch("mindweaver.platform_service.ranger.service.PgSqlPlatformService.get_service", AsyncMock(return_value=mock_pgsql_svc)):
+        manifest = await svc.render_manifests(model)
+
+    docs = list(yaml.safe_load_all(manifest))
+    
+    # Verify HTTPRoute is present
+    route = next(d for d in docs if d.get("kind") == "HTTPRoute")
+    assert route["metadata"]["name"] == "ranger-envoy-route"
+    assert route["spec"]["parentRefs"][0]["name"] == "project-gateway"
+    assert route["spec"]["hostnames"][0] == "ranger-envoy.myproject.local"
+    assert route["spec"]["rules"][0]["backendRefs"][0]["name"] == "ranger-envoy"
+    assert route["spec"]["rules"][0]["backendRefs"][0]["port"] == 6080
+
+    # Verify BackendTLSPolicy is present
+    tls_policy = next(d for d in docs if d.get("kind") == "BackendTLSPolicy")
+    assert tls_policy["metadata"]["name"] == "ranger-envoy-tls-policy"
+    assert tls_policy["spec"]["targetRefs"][0]["name"] == "ranger-envoy"
+    assert tls_policy["spec"]["validation"]["hostname"] == "ranger-envoy.ranger-ns.svc.cluster.local"
+    assert tls_policy["spec"]["validation"]["caCertificateRefs"][0]["name"] == "ranger-envoy-tls"
 

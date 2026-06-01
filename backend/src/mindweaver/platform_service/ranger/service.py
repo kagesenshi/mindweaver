@@ -125,6 +125,8 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
     async def template_vars(self, model: RangerPlatform) -> dict:
         vars = model.model_dump()
         vars["namespace"] = await self._resolve_namespace(model)
+        project = await self.project(model)
+        vars["ingress_domain"] = project.ingress_domain
 
         # Force HTTPS / SSL for Ranger Admin
         additional_props = vars.setdefault("additional_properties", {})
@@ -201,7 +203,6 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
         vars["db_root_pass"] = vars.get("db_pass")
 
         # Resolve LDAP Configuration from Project
-        project = await self.project(model)
         if project.ldap_config_id:
             ldap_svc = await LdapConfigService.get_service(self.request, self.session)
             ldap_config = await ldap_svc.get(project.ldap_config_id)
@@ -421,33 +422,42 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
 
         state.status = status
         state.message = message
+        project = await self.project(model)
         if extra_data is None:
             extra_data = {}
         extra_data["namespace"] = namespace
+        extra_data["ingress_domain"] = project.ingress_domain
         state.extra_data = extra_data
         state.node_ports = node_ports
         state.cluster_nodes = cluster_nodes
 
         # Derive Ranger URL
-        if status == "online" and cluster_nodes:
-            ranger_np = next((np for np in node_ports if np["port"] == 6080), None)
-            if ranger_np:
-                # Find first node with IPv4
-                node_v4 = next((n for n in cluster_nodes if n["ipv4"]), None)
-                if node_v4:
-                    state.ranger_url = (
-                        f"https://{node_v4['ipv4']}:{ranger_np['node_port']}"
-                    )
-                else:
-                    state.ranger_url = None
+        if status == "online":
+            if project.ingress_domain:
+                state.ranger_url = f"https://{model.name}.{project.ingress_domain}"
+                state.ranger_url_ipv6 = None
+            elif cluster_nodes:
+                ranger_np = next((np for np in node_ports if np["port"] == 6080), None)
+                if ranger_np:
+                    # Find first node with IPv4
+                    node_v4 = next((n for n in cluster_nodes if n["ipv4"]), None)
+                    if node_v4:
+                        state.ranger_url = (
+                            f"https://{node_v4['ipv4']}:{ranger_np['node_port']}"
+                        )
+                    else:
+                        state.ranger_url = None
 
-                # Find first node with IPv6
-                node_v6 = next((n for n in cluster_nodes if n["ipv6"]), None)
-                if node_v6:
-                    state.ranger_url_ipv6 = (
-                        f"https://[{node_v6['ipv6']}]:{ranger_np['node_port']}"
-                    )
+                    # Find first node with IPv6
+                    node_v6 = next((n for n in cluster_nodes if n["ipv6"]), None)
+                    if node_v6:
+                        state.ranger_url_ipv6 = (
+                            f"https://[{node_v6['ipv6']}]:{ranger_np['node_port']}"
+                        )
+                    else:
+                        state.ranger_url_ipv6 = None
                 else:
+                    state.ranger_url = f"https://{model.name}.{namespace}.svc.cluster.local:6080"
                     state.ranger_url_ipv6 = None
             else:
                 state.ranger_url = f"https://{model.name}.{namespace}.svc.cluster.local:6080"

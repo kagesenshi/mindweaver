@@ -81,11 +81,12 @@ const ServiceView = ({
         if (selectedPlatform && platformState?.extra_data?.namespace) {
             endpoints.push({
                 title: 'Ranger Admin UI',
-                code: `http://${selectedPlatform.name}.${platformState.extra_data.namespace}.svc.cluster.local:6080`,
+                code: `https://${selectedPlatform.name}.${platformState.extra_data.namespace}.svc.cluster.local:6080`,
                 description: 'Internal URI for Ranger Admin.'
             });
         }
 
+        const ingressDomain = platformState?.extra_data?.ingress_domain;
         const httpPort = platformState?.node_ports?.find(np => np.port === 6080);
 
         return (
@@ -97,14 +98,22 @@ const ServiceView = ({
                         endpoints={endpoints}
                     />
                 )}
-                {httpPort && (
+                {(ingressDomain || httpPort) && (
                     <ExternalNetworkAccessBlock
                         darkMode={darkMode}
-                        ports={[{
-                            label: 'Ranger Admin UI',
-                            node_port: httpPort.node_port,
-                            scheme: 'http'
-                        }]}
+                        ports={[
+                            ...(ingressDomain ? [{
+                                label: 'Ranger Admin UI (Envoy Ingress)',
+                                load_balancer_ips: [`${selectedPlatform.name}.${ingressDomain}`],
+                                port: 443,
+                                scheme: 'https'
+                            }] : []),
+                            ...(httpPort ? [{
+                                label: 'Ranger Admin UI (NodePort)',
+                                node_port: httpPort.node_port,
+                                scheme: 'https'
+                            }] : [])
+                        ]}
                         clusterNodes={platformState.cluster_nodes}
                         icon={ShieldCheck}
                         iconColorClass="text-blue-400"
