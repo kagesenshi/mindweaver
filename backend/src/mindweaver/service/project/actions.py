@@ -6,8 +6,9 @@ import logging
 import os
 import tempfile
 import yaml
-from typing import Any
+from typing import Any, Optional
 from sqlmodel import select
+
 
 from mindweaver.fw.action import BaseAction
 from mindweaver.service.project.service import ProjectService
@@ -17,6 +18,189 @@ from mindweaver.service.ldap_config.service import LdapConfigService
 from mindweaver.crypto import decrypt_password
 
 logger = logging.getLogger(__name__)
+
+
+async def _get_existing_nodeport(cluster, namespace: str) -> Optional[int]:
+    """Retrieve existing Envoy HTTPS nodePort if it has been dynamically allocated."""
+    from kubernetes import client, config
+    def _get():
+        try:
+            if cluster.type == K8sClusterType.IN_CLUSTER:
+                config.load_incluster_config()
+            else:
+                if not cluster.kubeconfig:
+                    return None
+                with tempfile.NamedTemporaryFile(mode="w", delete=False) as kf:
+                    kf.write(cluster.kubeconfig)
+                    kf.flush()
+                    config.load_kube_config(config_file=kf.name)
+            core_v1 = client.CoreV1Api()
+            # Try project namespace first
+            try:
+                svcs = core_v1.list_namespaced_service(namespace=namespace)
+                for svc in svcs.items:
+                    if "envoy" in svc.metadata.name or "project-gateway" in svc.metadata.name:
+                        for p in svc.spec.ports:
+                            if p.port == 443 and getattr(p, "node_port", None):
+                                return p.node_port
+            except Exception:
+                pass
+
+            # Try envoy-gateway-system namespace next
+            expected_prefix = f"envoy-{namespace}-project-gateway"
+            try:
+                eg_svcs = core_v1.list_namespaced_service(namespace="envoy-gateway-system")
+                for svc in eg_svcs.items:
+                    if svc.metadata.name.startswith(expected_prefix):
+                        for p in svc.spec.ports:
+                            if p.port == 443 and getattr(p, "node_port", None):
+                                return p.node_port
+            except Exception:
+                pass
+        except Exception as e:
+            logger.warning(f"Error checking existing nodeport: {e}")
+        return None
+    return await asyncio.to_thread(_get)
+
+
+def _generate_gateway_manifest(model, namespace: str, nodeport: Optional[int] = None) -> str:
+    """Generate Gateway and Certificate manifests, optionally including EnvoyProxy for custom nodePort."""
+    envoy_proxy_manifest = ""
+    gateway_spec_infrastructure = ""
+
+    if nodeport:
+        envoy_proxy_manifest = f"""apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: project-envoy-proxy-config
+  namespace: {namespace}
+spec:
+  provider:
+    type: Kubernetes
+    kubernetes:
+      envoyService:
+        type: NodePort
+      patch:
+        type: StrategicMerge
+        value:
+          spec:
+            ports:
+              - name: https
+                port: 443
+                nodePort: {nodeport}
+---
+"""
+        gateway_spec_infrastructure = """  infrastructure:
+    parametersRef:
+      group: gateway.envoyproxy.io
+      kind: EnvoyProxy
+      name: project-envoy-proxy-config
+"""
+
+    return f"""{envoy_proxy_manifest}apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: dex-tls
+  namespace: {namespace}
+spec:
+  secretName: dex-tls
+  duration: 2160h # 90d
+  renewBefore: 360h # 15d
+  subject:
+    organizations:
+      - mindweaver
+  isCA: false
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 2048
+  usages:
+    - server auth
+    - client auth
+  dnsNames:
+    - dex.{model.ingress_domain}
+  issuerRef:
+    name: mindweaver-selfsigned-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: project-gateway
+  namespace: {namespace}
+spec:
+  gatewayClassName: envoy-gateway
+{gateway_spec_infrastructure}  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: "dex.{model.ingress_domain}"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - group: ""
+            kind: Secret
+            name: dex-tls
+    - name: wildcard-https
+      protocol: HTTPS
+      port: 443
+      hostname: "*.{model.ingress_domain}"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - group: ""
+            kind: Secret
+            name: envoy-{model.name}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: dex-route
+  namespace: {namespace}
+spec:
+  parentRefs:
+    - name: project-gateway
+  hostnames:
+    - "dex.{model.ingress_domain}"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: dex
+          port: 5556
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: envoy-{model.name}
+  namespace: {namespace}
+spec:
+  secretName: envoy-{model.name}
+  duration: 2160h # 90d
+  renewBefore: 360h # 15d
+  subject:
+    organizations:
+      - mindweaver
+  isCA: false
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 2048
+  usages:
+    - server auth
+    - client auth
+  dnsNames:
+    - "{model.ingress_domain}"
+    - "*.{model.ingress_domain}"
+  issuerRef:
+    name: mindweaver-selfsigned-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+"""
+
 
 
 @ProjectService.register_action("install_dex")
@@ -140,112 +324,21 @@ class InstallDexAction(BaseAction):
         if connectors:
             dex_values["config"]["connectors"] = connectors
 
+        # Check existing nodePort to persist if not set
+        if not self.model.envoy_nodeport:
+            existing_port = await _get_existing_nodeport(cluster, namespace)
+            if existing_port:
+                self.model.envoy_nodeport = existing_port
+                self.session.add(self.model)
+                await self.session.commit()
+                await self.session.refresh(self.model)
+
         gateway_manifest = ""
         if self.model.ingress_domain:
-            gateway_manifest = f"""
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: dex-tls
-  namespace: {namespace}
-spec:
-  secretName: dex-tls
-  duration: 2160h # 90d
-  renewBefore: 360h # 15d
-  subject:
-    organizations:
-      - mindweaver
-  isCA: false
-  privateKey:
-    algorithm: RSA
-    encoding: PKCS1
-    size: 2048
-  usages:
-    - server auth
-    - client auth
-  dnsNames:
-    - dex.{self.model.ingress_domain}
-  issuerRef:
-    name: mindweaver-selfsigned-issuer
-    kind: ClusterIssuer
-    group: cert-manager.io
----
-apiVersion: gateway.networking.k8s.io/v1
-kind: Gateway
-metadata:
-  name: project-gateway
-  namespace: {namespace}
-spec:
-  gatewayClassName: envoy-gateway
-  listeners:
-    - name: https
-      protocol: HTTPS
-      port: 443
-      hostname: "dex.{self.model.ingress_domain}"
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - group: ""
-            kind: Secret
-            name: dex-tls
-    - name: wildcard-https
-      protocol: HTTPS
-      port: 443
-      hostname: "*.{self.model.ingress_domain}"
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - group: ""
-            kind: Secret
-            name: envoy-{self.model.name}
----
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: dex-route
-  namespace: {namespace}
-spec:
-  parentRefs:
-    - name: project-gateway
-  hostnames:
-    - "dex.{self.model.ingress_domain}"
-  rules:
-    - matches:
-        - path:
-            type: PathPrefix
-            value: /
-      backendRefs:
-        - name: dex
-          port: 5556
----
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: envoy-{self.model.name}
-  namespace: {namespace}
-spec:
-  secretName: envoy-{self.model.name}
-  duration: 2160h # 90d
-  renewBefore: 360h # 15d
-  subject:
-    organizations:
-      - mindweaver
-  isCA: false
-  privateKey:
-    algorithm: RSA
-    encoding: PKCS1
-    size: 2048
-  usages:
-    - server auth
-    - client auth
-  dnsNames:
-    - "{self.model.ingress_domain}"
-    - "*.{self.model.ingress_domain}"
-  issuerRef:
-    name: mindweaver-selfsigned-issuer
-    kind: ClusterIssuer
-    group: cert-manager.io
-"""
+            gateway_manifest = _generate_gateway_manifest(
+                self.model, namespace, self.model.envoy_nodeport
+            )
+
 
         # 6. Install Dex using Helm and values file
         kubeconfig_path = None
@@ -367,110 +460,21 @@ class DeployGatewayAction(BaseAction):
 
         namespace = self.model.k8s_namespace or self.model.name
 
-        gateway_manifest = f"""
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: dex-tls
-  namespace: {namespace}
-spec:
-  secretName: dex-tls
-  duration: 2160h # 90d
-  renewBefore: 360h # 15d
-  subject:
-    organizations:
-      - mindweaver
-  isCA: false
-  privateKey:
-    algorithm: RSA
-    encoding: PKCS1
-    size: 2048
-  usages:
-    - server auth
-    - client auth
-  dnsNames:
-    - dex.{self.model.ingress_domain}
-  issuerRef:
-    name: mindweaver-selfsigned-issuer
-    kind: ClusterIssuer
-    group: cert-manager.io
----
-apiVersion: gateway.networking.k8s.io/v1
-kind: Gateway
-metadata:
-  name: project-gateway
-  namespace: {namespace}
-spec:
-  gatewayClassName: envoy-gateway
-  listeners:
-    - name: https
-      protocol: HTTPS
-      port: 443
-      hostname: "dex.{self.model.ingress_domain}"
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - group: ""
-            kind: Secret
-            name: dex-tls
-    - name: wildcard-https
-      protocol: HTTPS
-      port: 443
-      hostname: "*.{self.model.ingress_domain}"
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - group: ""
-            kind: Secret
-            name: envoy-{self.model.name}
----
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: dex-route
-  namespace: {namespace}
-spec:
-  parentRefs:
-    - name: project-gateway
-  hostnames:
-    - "dex.{self.model.ingress_domain}"
-  rules:
-    - matches:
-        - path:
-            type: PathPrefix
-            value: /
-      backendRefs:
-        - name: dex
-          port: 5556
----
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: envoy-{self.model.name}
-  namespace: {namespace}
-spec:
-  secretName: envoy-{self.model.name}
-  duration: 2160h # 90d
-  renewBefore: 360h # 15d
-  subject:
-    organizations:
-      - mindweaver
-  isCA: false
-  privateKey:
-    algorithm: RSA
-    encoding: PKCS1
-    size: 2048
-  usages:
-    - server auth
-    - client auth
-  dnsNames:
-    - "{self.model.ingress_domain}"
-    - "*.{self.model.ingress_domain}"
-  issuerRef:
-    name: mindweaver-selfsigned-issuer
-    kind: ClusterIssuer
-    group: cert-manager.io
-"""
+        # Check existing nodePort to persist if not set
+        if not self.model.envoy_nodeport:
+            existing_port = await _get_existing_nodeport(cluster, namespace)
+            if existing_port:
+                self.model.envoy_nodeport = existing_port
+                self.session.add(self.model)
+                await self.session.commit()
+                await self.session.refresh(self.model)
+
+        gateway_manifest = ""
+        if self.model.ingress_domain:
+            gateway_manifest = _generate_gateway_manifest(
+                self.model, namespace, self.model.envoy_nodeport
+            )
+
 
         kubeconfig_path = None
         temp_kf = None

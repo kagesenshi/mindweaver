@@ -36,6 +36,12 @@ class ProjectService(Service[Project]):
                 "column_span": 2,
                 "label": "Ingress Domain",
             },
+            "envoy_nodeport": {
+                "order": 8,
+                "column_span": 2,
+                "label": "Envoy NodePort",
+            },
+
             "k8s_cluster_id": {
                 "order": 10,
                 "label": "K8S Cluster",

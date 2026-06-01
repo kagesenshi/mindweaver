@@ -20,3 +20,7 @@ class Project(NamedBase, table=True):
     ingress_domain: Optional[str] = Field(
         default=None, sa_type=String(length=255), nullable=True
     )
+    envoy_nodeport: Optional[int] = Field(
+        default=None, nullable=True
+    )
+

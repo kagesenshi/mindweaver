@@ -270,3 +270,37 @@ def test_project_with_ldap(client: TestClient, test_cluster: dict):
     # 3. Verify retrieval
     get_resp = client.get(f"/api/v1/projects/{data['id']}")
     assert get_resp.json()["data"]["ldap_config_id"] == ldap_id
+
+
+def test_project_with_envoy_nodeport(client: TestClient, test_cluster: dict):
+    # 1. Create project with envoy_nodeport
+    proj_resp = client.post(
+        "/api/v1/projects",
+        json={
+            "name": "proj-with-np",
+            "title": "Project with Envoy NodePort",
+            "k8s_cluster_id": test_cluster["id"],
+            "envoy_nodeport": 31234,
+        }
+    )
+    assert proj_resp.status_code == 200
+    data = proj_resp.json()["data"]
+    assert data["envoy_nodeport"] == 31234
+
+    # 2. Verify retrieval
+    get_resp = client.get(f"/api/v1/projects/{data['id']}")
+    assert get_resp.json()["data"]["envoy_nodeport"] == 31234
+
+    # 3. Verify updating envoy_nodeport
+    upd_resp = client.put(
+        f"/api/v1/projects/{data['id']}",
+        json={
+            "name": "proj-with-np",
+            "title": "Project with Envoy NodePort Updated",
+            "k8s_cluster_id": test_cluster["id"],
+            "envoy_nodeport": 31235,
+        }
+    )
+    assert upd_resp.status_code == 200
+    assert upd_resp.json()["data"]["envoy_nodeport"] == 31235
+
