@@ -5,6 +5,7 @@ from .service import ProjectService
 from .model import Project
 import mindweaver.service.project.state
 import mindweaver.service.project.actions
+from . import views
 
 
 router = ProjectService.router()

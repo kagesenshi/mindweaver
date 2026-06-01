@@ -271,3 +271,50 @@ def test_project_deploy_gateway_action_triggers_task(client: TestClient):
         mock_delay.assert_called_once_with(project_data["id"])
 
 
+def test_download_haproxy_cert_view(client: TestClient):
+    # Create cluster and project
+    cluster_data = client.post(
+        "/api/v1/k8s_clusters",
+        json={
+            "name": "cert-cluster-test",
+            "title": "Cert Cluster Test",
+            "type": "in-cluster",
+        },
+    ).json()["data"]
+
+    project_data = client.post(
+        "/api/v1/projects",
+        json={
+            "name": "cert-project-test",
+            "title": "Cert Project Test",
+            "k8s_cluster_id": cluster_data["id"],
+            "k8s_namespace": "cert-project-test",
+            "ingress_domain": "cert-test.domain",
+        },
+    ).json()["data"]
+
+    # Test secret not found (returns 404)
+    with patch("kubernetes.config.load_incluster_config"), \
+         patch("kubernetes.config.load_kube_config"), \
+         patch("kubernetes.client.CoreV1Api.read_namespaced_secret", side_effect=Exception("Not found")):
+        resp = client.get(f"/api/v1/projects/{project_data['id']}/_download-haproxy-cert")
+        assert resp.status_code == 404
+
+    # Test successful download
+    import base64
+    mock_secret = MagicMock()
+    mock_secret.data = {
+        "tls.crt": base64.b64encode(b"MOCK CERTIFICATE CONTENT").decode("utf-8"),
+        "tls.key": base64.b64encode(b"MOCK PRIVATE KEY CONTENT").decode("utf-8"),
+    }
+    with patch("kubernetes.config.load_incluster_config"), \
+         patch("kubernetes.config.load_kube_config"), \
+         patch("kubernetes.client.CoreV1Api.read_namespaced_secret", return_value=mock_secret):
+        resp = client.get(f"/api/v1/projects/{project_data['id']}/_download-haproxy-cert")
+        assert resp.status_code == 200
+        assert resp.headers["Content-Disposition"] == f"attachment; filename=envoy-{project_data['name']}.pem"
+        assert b"MOCK CERTIFICATE CONTENT" in resp.content
+        assert b"MOCK PRIVATE KEY CONTENT" in resp.content
+
+
+

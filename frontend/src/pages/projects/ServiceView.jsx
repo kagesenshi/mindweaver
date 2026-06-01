@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-    Briefcase, Database, Server, Activity, ArrowLeft, Monitor, Users, UserPlus, Edit, Trash2, Shield, RefreshCw
+    Briefcase, Database, Server, Activity, ArrowLeft, Monitor, Users, UserPlus, Edit, Trash2, Shield, RefreshCw, Download
 } from 'lucide-react';
 import { useProjectLocalUsers } from '../../hooks/useResources';
 import Modal from '../../components/Modal';
@@ -8,6 +8,7 @@ import DynamicForm from '../../components/DynamicForm';
 import ResourceConfirmModal from '../../components/ResourceConfirmModal';
 import { useNotification } from '../../providers/NotificationProvider';
 import { ExternalNetworkAccessBlock } from '../../components/ServiceBlocks';
+import apiClient from '../../services/api';
 
 const ServiceView = ({
     context,
@@ -20,6 +21,28 @@ const ServiceView = ({
     const { getProjectState, refreshProjectState } = projectsHook;
     const [projectState, setProjectState] = useState(null);
     const { showSuccess, showError } = useNotification();
+
+    const handleDownloadCert = async () => {
+        try {
+            const response = await apiClient.get(`/projects/${selectedProjectId}/_download-haproxy-cert`, {
+                responseType: 'blob'
+            });
+            const blob = new Blob([response.data], { type: 'application/x-pem-file' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `envoy-${selectedProject.name}.pem`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+            showSuccess("Certificate downloaded successfully");
+        } catch (e) {
+            console.error(e);
+            showError("Failed to download HAProxy certificate. Ensure Envoy Gateway is active.");
+        }
+    };
+
 
     const localUsersHook = useProjectLocalUsers();
     const { items: localUsers, loading: loadingUsers, fetchItems: fetchUsers, deleteItem: deleteUser } = localUsersHook;
@@ -192,6 +215,15 @@ const ServiceView = ({
                                 ACTIVE
                             </span>
                             <button
+                                onClick={handleDownloadCert}
+                                className="mw-btn-secondary px-6 py-2.5 flex items-center gap-2"
+                                id="download-haproxy-cert-btn"
+                                title="Download HAProxy SSL PEM Certificate"
+                            >
+                                <Download size={16} />
+                                DOWNLOAD PEM CERT
+                            </button>
+                            <button
                                 onClick={handleDeployGateway}
                                 disabled={isDeployingGateway}
                                 className="mw-btn-secondary px-6 py-2.5 flex items-center gap-2"
@@ -228,7 +260,7 @@ const ServiceView = ({
                                 hostname: `Node ${idx + 1}`
                             })) || []}
                             guideTitle="HAProxy Ingress Gateway Configuration"
-                            guideText="To route external HTTPS (port 443) traffic to the Envoy Gateway NodePorts, configure your external HAProxy load balancer using SSL Passthrough (TCP mode)."
+                            guideText="To route external HTTPS (port 443) traffic to the Envoy Gateway NodePorts, configure your external HAProxy load balancer using SSL Termination (HTTP mode) with your custom SSL certificate."
                             cliLanguage="haproxy"
                             cliTitle="HAProxy Configuration"
                             cliInfo={{
@@ -242,25 +274,24 @@ const ServiceView = ({
 
 defaults
     log     global
-    mode    tcp
-    option  tcplog
+    mode    http
+    option  httplog
     option  dontlognull
     timeout connect 5s
     timeout client  50s
     timeout server  50s
 
 frontend ingress_443
-    bind :443
-    mode tcp
-    tcp-request inspect-delay 5s
-    tcp-request content accept if { req_ssl_hello_type 1 }
+    bind :443 ssl crt /etc/pki/tls/certs/haproxy.pem
+    mode http
+    option forwardfor
+    http-request set-header X-Forwarded-Proto https
     default_backend envoy_gateway_backend
 
 backend envoy_gateway_backend
-    mode tcp
+    mode http
     balance roundrobin
-    option ssl-hello-chk
-${projectState.cluster_node_ips?.map((ip, idx) => `    server node${idx + 1} ${ip}:${projectState.ingress_ports[0].node_port} check`).join('\n') || `    server node1 ${projectState.cluster_node_ips?.[0] || 'NODE_IP'}:${projectState.ingress_ports[0].node_port} check`}
+${projectState.cluster_node_ips?.map((ip, idx) => `    server node${idx + 1} ${ip}:${projectState.ingress_ports[0].node_port} ssl verify none no-check-ssl check sni req.hdr(host)`).join('\n') || `    server node1 ${projectState.cluster_node_ips?.[0] || 'NODE_IP'}:${projectState.ingress_ports[0].node_port} ssl verify none no-check-ssl check sni req.hdr(host)`}
 `
                             }}
                         />
