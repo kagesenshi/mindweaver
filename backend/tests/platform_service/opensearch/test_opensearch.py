@@ -15,6 +15,7 @@ def mock_service_dependencies():
     request = MagicMock(spec=Request)
     session = MagicMock(spec=AsyncSession)
     session.exec = AsyncMock()
+    session.flush = AsyncMock()
     return request, session
 
 
@@ -82,6 +83,7 @@ async def test_opensearch_template_vars(mock_service_dependencies):
     )
 
     svc._resolve_namespace = AsyncMock(return_value="test-ns")
+    svc.project = AsyncMock(return_value=MagicMock(ingress_domain=None))
 
     # Resolve variables
     vars = await svc.template_vars(model)
@@ -140,6 +142,7 @@ async def test_opensearch_render_manifests(mock_service_dependencies):
         admin_password="pass",
     )
     svc._resolve_namespace = AsyncMock(return_value="test-ns")
+    svc.project = AsyncMock(return_value=MagicMock(ingress_domain=None))
 
     manifests_single = await svc.render_manifests(model_single)
     assert "singleNode: true" in manifests_single
@@ -172,4 +175,90 @@ async def test_opensearch_render_manifests(mock_service_dependencies):
     manifests_multi = await svc.render_manifests(model_multi)
     assert "singleNode: false" in manifests_multi
     assert "replicas: 3" in manifests_multi
+
+
+@pytest.mark.asyncio
+async def test_opensearch_ingress_rendering(mock_service_dependencies):
+    """Test that Envoy Gateway HTTPRoute and BackendTLSPolicy are rendered when ingress_domain is set"""
+    import yaml
+    request, session = mock_service_dependencies
+    svc = OpenSearchPlatformService(request, session)
+
+    model = OpenSearchPlatform(
+        name="os-test",
+        project_id=1,
+        replica_count=1,
+        admin_password="pass",
+    )
+    svc._resolve_namespace = AsyncMock(return_value="test-ns")
+
+    # Mock project relationship
+    mock_project = MagicMock()
+    mock_project.ingress_domain = "132.home.kagesenshi.org"
+    svc.project = AsyncMock(return_value=mock_project)
+
+    manifests = await svc.render_manifests(model)
+    docs = [d for d in yaml.safe_load_all(manifests) if d is not None]
+
+    # Verify HTTPRoute is rendered
+    route_doc = next(d for d in docs if d.get("kind") == "HTTPRoute")
+    assert route_doc["metadata"]["name"] == "os-test-route"
+    assert route_doc["spec"]["hostnames"] == ["os-test.132.home.kagesenshi.org"]
+    assert route_doc["spec"]["rules"][0]["backendRefs"][0]["name"] == "os-test-cluster-master"
+    assert route_doc["spec"]["rules"][0]["backendRefs"][0]["port"] == 9200
+
+    # Verify BackendTLSPolicy is rendered
+    policy_doc = next(d for d in docs if d.get("kind") == "BackendTLSPolicy")
+    assert policy_doc["metadata"]["name"] == "os-test-tls-policy"
+    assert policy_doc["spec"]["targetRefs"][0]["name"] == "os-test-cluster-master"
+    assert policy_doc["spec"]["validation"]["caCertificateRefs"][0]["name"] == "os-test-tls"
+    assert policy_doc["spec"]["validation"]["hostname"] == "os-test-cluster-master.test-ns.svc.cluster.local"
+
+
+@pytest.mark.asyncio
+async def test_opensearch_poll_status_ingress(mock_service_dependencies):
+    """Test that opensearch_url is derived via ingress_domain in poll_status"""
+    from mindweaver.platform_service.opensearch.model import OpenSearchPlatformState
+    request, session = mock_service_dependencies
+    svc = OpenSearchPlatformService(request, session)
+
+    model = OpenSearchPlatform(
+        name="os-test",
+        project_id=1,
+    )
+
+    mock_state = MagicMock(spec=OpenSearchPlatformState)
+    mock_state.active = True
+
+    with patch.object(svc, "platform_state", AsyncMock(return_value=mock_state)), \
+         patch.object(svc, "kubeconfig", AsyncMock(return_value="mock-kubeconfig")), \
+         patch.object(svc, "_resolve_namespace", AsyncMock(return_value="test-ns")):
+
+        node_ports = [{"name": "os-test", "port": 9200, "node_port": 30001}]
+        cluster_nodes = [{"hostname": "node1", "ipv4": "1.2.3.4", "ipv6": None}]
+
+        async def mock_poll(*args):
+            return "online", "Healthy", {}, node_ports, cluster_nodes, "os-test-cluster-master"
+
+        with patch("mindweaver.platform_service.opensearch.service.asyncio.to_thread", side_effect=mock_poll), \
+             patch("mindweaver.platform_service.opensearch.service.decrypt_password", side_effect=lambda x: x):
+            
+            # 1. Test without ingress_domain (should derive NodePort URL)
+            mock_project_no_ingress = MagicMock()
+            mock_project_no_ingress.ingress_domain = None
+            svc.project = AsyncMock(return_value=mock_project_no_ingress)
+
+            await svc.poll_status(model)
+            assert mock_state.opensearch_url == "https://1.2.3.4:30001"
+
+            # 2. Test with ingress_domain (should derive secure Ingress URL)
+            mock_project_ingress = MagicMock()
+            mock_project_ingress.ingress_domain = "132.home.kagesenshi.org"
+            svc.project = AsyncMock(return_value=mock_project_ingress)
+
+            await svc.poll_status(model)
+            assert mock_state.opensearch_url == "https://os-test.132.home.kagesenshi.org"
+            assert mock_state.opensearch_url_ipv6 is None
+            assert mock_state.extra_data["ingress_domain"] == "132.home.kagesenshi.org"
+
 

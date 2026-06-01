@@ -128,6 +128,8 @@ class OpenSearchPlatformService(PlatformService[OpenSearchPlatform]):
     async def template_vars(self, model: OpenSearchPlatform) -> dict:
         vars = model.model_dump()
         vars["namespace"] = await self._resolve_namespace(model)
+        project = await self.project(model)
+        vars["ingress_domain"] = project.ingress_domain
 
         # Decrypt password
         if model.admin_password:
@@ -291,10 +293,12 @@ class OpenSearchPlatformService(PlatformService[OpenSearchPlatform]):
 
         state.status = status
         state.message = message
+        project = await self.project(model)
         if argo_status is None:
             argo_status = {}
         extra_data = argo_status
         extra_data["namespace"] = namespace
+        extra_data["ingress_domain"] = project.ingress_domain
         if service_name:
             extra_data["service_name"] = service_name
         state.extra_data = extra_data
@@ -302,25 +306,33 @@ class OpenSearchPlatformService(PlatformService[OpenSearchPlatform]):
         state.cluster_nodes = cluster_nodes
 
         # Derive OpenSearch URL (default API port is 9200)
-        if status == "online" and cluster_nodes:
-            opensearch_np = next((np for np in node_ports if np["port"] == 9200), None)
-            if opensearch_np:
-                # Find first node with IPv4
-                node_v4 = next((n for n in cluster_nodes if n["ipv4"]), None)
-                if node_v4:
-                    state.opensearch_url = (
-                        f"https://{node_v4['ipv4']}:{opensearch_np['node_port']}"
-                    )
-                else:
-                    state.opensearch_url = None
+        if status == "online":
+            if project.ingress_domain:
+                state.opensearch_url = f"https://{model.name}.{project.ingress_domain}"
+                state.opensearch_url_ipv6 = None
+            elif cluster_nodes:
+                opensearch_np = next((np for np in node_ports if np["port"] == 9200), None)
+                if opensearch_np:
+                    # Find first node with IPv4
+                    node_v4 = next((n for n in cluster_nodes if n["ipv4"]), None)
+                    if node_v4:
+                        state.opensearch_url = (
+                            f"https://{node_v4['ipv4']}:{opensearch_np['node_port']}"
+                        )
+                    else:
+                        state.opensearch_url = None
 
-                # Find first node with IPv6
-                node_v6 = next((n for n in cluster_nodes if n["ipv6"]), None)
-                if node_v6:
-                    state.opensearch_url_ipv6 = (
-                        f"https://[{node_v6['ipv6']}]:{opensearch_np['node_port']}"
-                    )
+                    # Find first node with IPv6
+                    node_v6 = next((n for n in cluster_nodes if n["ipv6"]), None)
+                    if node_v6:
+                        state.opensearch_url_ipv6 = (
+                            f"https://[{node_v6['ipv6']}]:{opensearch_np['node_port']}"
+                        )
+                    else:
+                        state.opensearch_url_ipv6 = None
                 else:
+                    svc_name = service_name or f"{model.name}-cluster-master"
+                    state.opensearch_url = f"https://{svc_name}.{namespace}.svc.cluster.local:9200"
                     state.opensearch_url_ipv6 = None
             else:
                 svc_name = service_name or f"{model.name}-cluster-master"

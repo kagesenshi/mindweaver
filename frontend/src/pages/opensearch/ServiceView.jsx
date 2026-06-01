@@ -86,6 +86,7 @@ const ServiceView = ({
             });
         }
 
+        const ingressDomain = platformState?.extra_data?.ingress_domain;
         const httpPort = platformState?.node_ports?.find(np => np.port === 9200);
 
         return (
@@ -97,14 +98,22 @@ const ServiceView = ({
                         endpoints={endpoints}
                     />
                 )}
-                {httpPort && (
+                {(ingressDomain || httpPort) && (
                     <ExternalNetworkAccessBlock
                         darkMode={darkMode}
-                        ports={[{
-                            label: 'OpenSearch API (HTTPS)',
-                            node_port: httpPort.node_port,
-                            scheme: 'https'
-                        }]}
+                        ports={[
+                            ...(ingressDomain ? [{
+                                label: 'OpenSearch API (Envoy Ingress)',
+                                load_balancer_ips: [`${selectedPlatform.name}.${ingressDomain}`],
+                                port: 443,
+                                scheme: 'https'
+                            }] : []),
+                            ...(httpPort ? [{
+                                label: 'OpenSearch API (NodePort)',
+                                node_port: httpPort.node_port,
+                                scheme: 'https'
+                            }] : [])
+                        ]}
                         clusterNodes={platformState.cluster_nodes}
                         icon={Search}
                         iconColorClass="text-blue-400"
