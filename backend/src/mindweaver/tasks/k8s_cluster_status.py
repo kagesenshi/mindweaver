@@ -214,4 +214,38 @@ async def _install_envoy_gateway_task(k8s_cluster_id: int):
             )
 
 
+@app.task
+def sync_core_integrations_task(k8s_cluster_id: int):
+    """Trigger update/installation of configurations for all core integrations."""
+    logger.info(f"Triggering core integrations sync for cluster {k8s_cluster_id}")
+    run_async(_sync_core_integrations_task(k8s_cluster_id))
+
+
+async def _sync_core_integrations_task(k8s_cluster_id: int):
+    """Async helper to execute SyncCoreIntegrationsAction"""
+    engine = get_engine()
+    async with AsyncSession(engine) as session:
+
+        class MockRequest:
+            headers = {}
+
+        svc = K8sClusterService(MockRequest(), session)
+        try:
+            model = await svc.get(k8s_cluster_id)
+            from mindweaver.service.k8s_cluster.actions import SyncCoreIntegrationsAction
+
+            action = SyncCoreIntegrationsAction(model, svc)
+            action.session = session
+            await action.run()
+            await svc.poll_status(model)
+            await session.commit()
+            logger.info(
+                f"Successfully synced core integrations for cluster {k8s_cluster_id}"
+            )
+        except Exception as e:
+            logger.error(
+                f"Error syncing core integrations for cluster {k8s_cluster_id}: {e}"
+            )
+
+
 

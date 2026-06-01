@@ -58,12 +58,14 @@ class ProjectState(BaseState):
         dex_installed = False
         dex_version = None
         ingress_ports = []
+        envoy_gateway_service_type = "NodePort"
         if self.model.k8s_cluster_id and self.model.k8s_namespace:
             from mindweaver.service.k8s_cluster import K8sCluster, K8sClusterType
             stmt_c = select(K8sCluster).where(K8sCluster.id == self.model.k8s_cluster_id)
             res_c = await self.svc.session.exec(stmt_c)
             cluster_model = res_c.one_or_none()
             if cluster_model:
+                envoy_gateway_service_type = cluster_model.envoy_gateway_service_type
                 import tempfile
                 import asyncio
                 from kubernetes import client, config
@@ -84,16 +86,29 @@ class ProjectState(BaseState):
                         
                         ports_info = []
                         try:
+                            # Helper to extract load balancer ingress
+                            def _get_lb_ips(service):
+                                ips = []
+                                if service.status and service.status.load_balancer and service.status.load_balancer.ingress:
+                                    for ing in service.status.load_balancer.ingress:
+                                        if ing.ip:
+                                            ips.append(ing.ip)
+                                        elif ing.hostname:
+                                            ips.append(ing.hostname)
+                                return ips
+
                             # 1. Search in project namespace
                             svcs = core_v1.list_namespaced_service(namespace=self.model.k8s_namespace)
                             for svc in svcs.items:
                                 if "envoy" in svc.metadata.name or "project-gateway" in svc.metadata.name:
+                                    lb_ips = _get_lb_ips(svc)
                                     for p in svc.spec.ports:
                                         ports_info.append({
                                             "name": svc.metadata.name,
                                             "port": p.port,
                                             "node_port": p.node_port if getattr(p, "node_port", None) else None,
                                             "protocol": p.protocol,
+                                            "load_balancer_ips": lb_ips,
                                         })
                             # 2. Search in envoy-gateway-system namespace for prefix matching
                             expected_prefix = f"envoy-{self.model.k8s_namespace or self.model.name}-project-gateway"
@@ -101,12 +116,14 @@ class ProjectState(BaseState):
                                 eg_svcs = core_v1.list_namespaced_service(namespace="envoy-gateway-system")
                                 for svc in eg_svcs.items:
                                     if svc.metadata.name.startswith(expected_prefix):
+                                        lb_ips = _get_lb_ips(svc)
                                         for p in svc.spec.ports:
                                             ports_info.append({
                                                 "name": svc.metadata.name,
                                                 "port": p.port,
                                                 "node_port": p.node_port if getattr(p, "node_port", None) else None,
                                                 "protocol": p.protocol,
+                                                "load_balancer_ips": lb_ips,
                                             })
                             except Exception as eg_e:
                                 logger.warning(f"Failed to list services in envoy-gateway-system: {eg_e}")
@@ -157,5 +174,6 @@ class ProjectState(BaseState):
             "dex_version": dex_version,
             "cluster_node_ips": cluster_node_ips,
             "ingress_ports": ingress_ports,
+            "envoy_gateway_service_type": envoy_gateway_service_type,
         }
 

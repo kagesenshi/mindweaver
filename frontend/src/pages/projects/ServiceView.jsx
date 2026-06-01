@@ -253,6 +253,8 @@ const ServiceView = ({
                             ports={projectState.ingress_ports.map(port => ({
                                 label: port.name,
                                 node_port: port.node_port,
+                                port: port.port,
+                                load_balancer_ips: projectState.envoy_gateway_service_type === 'LoadBalancer' ? (port.load_balancer_ips || []) : undefined,
                                 scheme: 'https'
                             }))}
                             clusterNodes={projectState.cluster_node_ips?.map((ip, idx) => ({

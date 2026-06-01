@@ -382,7 +382,7 @@ class InstallEnvoyGatewayAction(InstallArgoCDAction):
         }
 
     async def run(self):
-        """Install Envoy Gateway to the cluster using Helm chart"""
+        """Install Envoy Gateway to the cluster using Helm chart and configured service type"""
         logger.info(f"Installing Envoy Gateway for cluster {self.model.name}")
 
         await self._install_helm_chart(
@@ -394,7 +394,7 @@ class InstallEnvoyGatewayAction(InstallArgoCDAction):
         )
 
         # Deploy global GatewayClass and EnvoyProxy resources
-        global_manifest = """
+        global_manifest = f"""
 apiVersion: gateway.networking.k8s.io/v1
 kind: GatewayClass
 metadata:
@@ -417,10 +417,107 @@ spec:
     type: Kubernetes
     kubernetes:
       envoyService:
-        type: NodePort
+        type: {self.model.envoy_gateway_service_type}
 """
         logger.info("Applying global Envoy GatewayClass and EnvoyProxy configuration")
         await self._apply_yaml(global_manifest)
+
+
+@K8sClusterService.register_action("sync_core_integrations")
+class SyncCoreIntegrationsAction(InstallArgoCDAction):
+
+    async def available(self) -> bool:
+        """Check if action is available"""
+        stmt = select(K8sClusterStatus).where(
+            K8sClusterStatus.k8s_cluster_id == self.model.id
+        )
+        result = await self.session.exec(stmt)
+        status = result.one_or_none()
+        if status and status.status == "offline":
+            return False
+        return True
+
+    async def __call__(self, **kwargs):
+        """Invoke the action asynchronously via Celery task"""
+        from mindweaver.tasks.k8s_cluster_status import sync_core_integrations_task
+
+        # Set status flags to True immediately so UI shows sync in progress or active states
+        stmt = select(K8sClusterStatus).where(
+            K8sClusterStatus.k8s_cluster_id == self.model.id
+        )
+        result = await self.session.exec(stmt)
+        status_model = result.one_or_none()
+        if not status_model:
+            status_model = K8sClusterStatus(k8s_cluster_id=self.model.id)
+            self.session.add(status_model)
+        await self.session.flush()
+
+        sync_core_integrations_task.delay(self.model.id)
+        return {
+            "status": "success",
+            "message": "Core integrations synchronization triggered.",
+        }
+
+    async def run(self):
+        """Execute the sync workflow sequentially to install or update all integrations"""
+        logger.info(f"Syncing core integrations for cluster {self.model.name}")
+        
+        stmt = select(K8sClusterStatus).where(
+            K8sClusterStatus.k8s_cluster_id == self.model.id
+        )
+        result = await self.session.exec(stmt)
+        status = result.one_or_none()
+        if not status:
+            return
+
+        # 1. Install ArgoCD if missing
+        if not status.argocd_installed:
+            logger.info("Sync: Installing ArgoCD...")
+            from .actions import InstallArgoCDAction
+            action = InstallArgoCDAction(self.model, self.service)
+            action.session = self.session
+            await action.run()
+            status.argocd_installed = True
+            await self.session.flush()
+
+        # 2. Install Cert Manager if missing
+        if not status.cert_manager_installed:
+            logger.info("Sync: Installing Cert Manager...")
+            from .actions import InstallCertManagerAction
+            action = InstallCertManagerAction(self.model, self.service)
+            action.session = self.session
+            await action.run()
+            status.cert_manager_installed = True
+            await self.session.flush()
+
+        # 3. Install CNPG Operator if missing
+        if not status.cnpg_installed:
+            logger.info("Sync: Installing CNPG Operator...")
+            from .actions import InstallCNPGAction
+            action = InstallCNPGAction(self.model, self.service)
+            action.session = self.session
+            await action.run()
+            status.cnpg_installed = True
+            await self.session.flush()
+
+        # 4. Install Envoy Gateway or update config if envoy gateway is already installed
+        logger.info("Sync: Deploying/updating Envoy Gateway config...")
+        from .actions import InstallEnvoyGatewayAction
+        action = InstallEnvoyGatewayAction(self.model, self.service)
+        action.session = self.session
+        await action.run()
+        status.envoy_gateway_installed = True
+        await self.session.flush()
+
+        # 5. Install Self-signed Issuer if CM is installed and issuer is missing
+        if status.cert_manager_installed and not status.cluster_issuer_installed:
+            logger.info("Sync: Installing Self-signed Issuer...")
+            from .actions import InstallSelfSignedIssuerAction
+            action = InstallSelfSignedIssuerAction(self.model, self.service)
+            action.session = self.session
+            await action.run()
+            status.cluster_issuer_installed = True
+            await self.session.flush()
 
 
 

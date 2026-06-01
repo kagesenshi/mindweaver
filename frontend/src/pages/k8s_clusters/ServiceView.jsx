@@ -246,7 +246,18 @@ const ServiceView = ({
 
                     {/* Integration Services */}
                     <div className="space-y-4 bg-slate-50/50 dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-200/50 dark:border-slate-800/50">
-                        <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">Core Integrations</p>
+                        <div className="flex items-center justify-between mb-4">
+                            <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Core Integrations</p>
+                            <button 
+                                id="sync-core-integrations-btn"
+                                onClick={() => handleInstallAction('sync_core_integrations')}
+                                disabled={installingActions['sync_core_integrations']}
+                                className="mw-btn-primary py-1.5 px-3 text-xs flex items-center gap-2"
+                            >
+                                {installingActions['sync_core_integrations'] && <RefreshCw size={12} className="animate-spin" />}
+                                {installingActions['sync_core_integrations'] ? 'SYNCING...' : 'SYNC INTEGRATIONS'}
+                            </button>
+                        </div>
                         
                         {/* ArgoCD */}
                         <div className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
@@ -261,14 +272,9 @@ const ServiceView = ({
                                     {clusterState.argocd_version || "ACTIVE"}
                                 </span>
                             ) : (
-                                <button 
-                                    onClick={() => handleInstallAction('install_argocd')}
-                                    disabled={installingActions['install_argocd']}
-                                    className="mw-btn-primary py-1 px-3 text-[10px] flex items-center gap-2"
-                                >
-                                    {installingActions['install_argocd'] && <RefreshCw size={10} className="animate-spin" />}
-                                    {installingActions['install_argocd'] ? 'INSTALLING' : 'INSTALL'}
-                                </button>
+                                <span className="text-[10px] font-bold bg-slate-100 text-slate-400 px-2 py-0.5 rounded">
+                                    INACTIVE
+                                </span>
                             )}
                         </div>
 
@@ -285,14 +291,9 @@ const ServiceView = ({
                                     {clusterState.cert_manager_version || "ACTIVE"}
                                 </span>
                             ) : (
-                                <button 
-                                    onClick={() => handleInstallAction('install_cert_manager')}
-                                    disabled={installingActions['install_cert_manager']}
-                                    className="mw-btn-primary py-1 px-3 text-[10px] flex items-center gap-2"
-                                >
-                                    {installingActions['install_cert_manager'] && <RefreshCw size={10} className="animate-spin" />}
-                                    {installingActions['install_cert_manager'] ? 'INSTALLING' : 'INSTALL'}
-                                </button>
+                                <span className="text-[10px] font-bold bg-slate-100 text-slate-400 px-2 py-0.5 rounded">
+                                    INACTIVE
+                                </span>
                             )}
                         </div>
 
@@ -309,15 +310,9 @@ const ServiceView = ({
                                     {clusterState.cnpg_version || "ACTIVE"}
                                 </span>
                             ) : (
-                                <button 
-                                    id="install-cnpg-operator-btn"
-                                    onClick={() => handleInstallAction('install_cnpg_operator')}
-                                    disabled={installingActions['install_cnpg_operator']}
-                                    className="mw-btn-primary py-1 px-3 text-[10px] flex items-center gap-2"
-                                >
-                                    {installingActions['install_cnpg_operator'] && <RefreshCw size={10} className="animate-spin" />}
-                                    {installingActions['install_cnpg_operator'] ? 'INSTALLING' : 'INSTALL'}
-                                </button>
+                                <span className="text-[10px] font-bold bg-slate-100 text-slate-400 px-2 py-0.5 rounded">
+                                    INACTIVE
+                                </span>
                             )}
                         </div>
 
@@ -334,15 +329,9 @@ const ServiceView = ({
                                     {clusterState.envoy_gateway_version || "ACTIVE"}
                                 </span>
                             ) : (
-                                <button 
-                                    id="install-envoy-gateway-btn"
-                                    onClick={() => handleInstallAction('install_envoy_gateway')}
-                                    disabled={installingActions['install_envoy_gateway']}
-                                    className="mw-btn-primary py-1 px-3 text-[10px] flex items-center gap-2"
-                                >
-                                    {installingActions['install_envoy_gateway'] && <RefreshCw size={10} className="animate-spin" />}
-                                    {installingActions['install_envoy_gateway'] ? 'INSTALLING' : 'INSTALL'}
-                                </button>
+                                <span className="text-[10px] font-bold bg-slate-100 text-slate-400 px-2 py-0.5 rounded">
+                                    INACTIVE
+                                </span>
                             )}
                         </div>
 
@@ -355,7 +344,7 @@ const ServiceView = ({
                                 <div>
                                     <span className="text-sm font-bold text-slate-700 dark:text-white">Self-Signed Issuer</span>
                                     {!clusterState.cert_manager_installed && (
-                                        <p className="text-[10px] text-slate-400">Requires Cert Manager</p>
+                                        <p className="text-[10px] text-slate-400 font-medium">Requires Cert Manager</p>
                                     )}
                                 </div>
                             </div>
@@ -364,15 +353,9 @@ const ServiceView = ({
                                     ACTIVE
                                 </span>
                             ) : (
-                                <button
-                                    id="install-self-signed-issuer-btn"
-                                    onClick={() => handleInstallAction('install_self_signed_issuer')}
-                                    disabled={!clusterState.cert_manager_installed || installingActions['install_self_signed_issuer']}
-                                    className="mw-btn-primary py-1 px-3 text-[10px] flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
-                                >
-                                    {installingActions['install_self_signed_issuer'] && <RefreshCw size={10} className="animate-spin" />}
-                                    {installingActions['install_self_signed_issuer'] ? 'INSTALLING' : 'INSTALL'}
-                                </button>
+                                <span className="text-[10px] font-bold bg-slate-100 text-slate-400 px-2 py-0.5 rounded">
+                                    INACTIVE
+                                </span>
                             )}
                         </div>
                     </div>

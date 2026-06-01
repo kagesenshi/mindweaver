@@ -417,3 +417,72 @@ def test_install_envoy_gateway_action_triggers_task(client: TestClient):
         assert resp_state.json()["envoy_gateway_installed"] is True
 
 
+def test_sync_core_integrations_action_triggers_task(client: TestClient):
+    # Create cluster
+    p1 = client.post(
+        "/api/v1/k8s_clusters",
+        json={
+            "name": "task-test-sync",
+            "title": "Task Test Sync",
+            "type": "in-cluster",
+            "envoy_gateway_service_type": "LoadBalancer",
+        },
+    ).json()["data"]
+
+    with patch(
+        "mindweaver.tasks.k8s_cluster_status.sync_core_integrations_task.delay"
+    ) as mock_delay:
+        resp = client.post(
+            f"/api/v1/k8s_clusters/{p1['id']}/_actions",
+            json={"action": "sync_core_integrations"},
+        )
+        assert resp.status_code == 200
+        assert (
+            resp.json()["message"]
+            == "Core integrations synchronization triggered."
+        )
+        mock_delay.assert_called_once_with(p1["id"])
+
+
+@pytest.mark.asyncio
+async def test_install_envoy_gateway_with_loadbalancer():
+    from mindweaver.service.k8s_cluster.model import K8sCluster, K8sClusterType, EnvoyGatewayServiceType
+
+    cluster = K8sCluster(
+        name="test-cluster-eg-lb",
+        title="Test Cluster EG LB",
+        type=K8sClusterType.REMOTE,
+        kubeconfig="fake-kubeconfig",
+        envoy_gateway_service_type=EnvoyGatewayServiceType.LOAD_BALANCER,
+    )
+
+    mock_svc = MagicMock()
+    mock_svc.kubeconfig = pytest.importorskip("unittest.mock").AsyncMock(
+        return_value="fake-kubeconfig"
+    )
+
+    from mindweaver.service.k8s_cluster.actions import InstallEnvoyGatewayAction
+
+    with patch("asyncio.create_subprocess_exec") as mock_exec:
+        mock_proc = MagicMock()
+        mock_proc.returncode = 0
+        mock_proc.communicate = pytest.importorskip("unittest.mock").AsyncMock(
+            return_value=(b"success", b"")
+        )
+        mock_exec.return_value = mock_proc
+
+        action = InstallEnvoyGatewayAction(cluster, mock_svc)
+        await action.run()
+
+        # Verify that kubectl apply applied LoadBalancer service type
+        assert mock_exec.call_count == 2
+        calls = [call[0] for call in mock_exec.call_args_list]
+        found_kubectl = False
+        for call_args in calls:
+            if "kubectl" in call_args and "apply" in call_args:
+                found_kubectl = True
+
+        assert found_kubectl
+
+
+

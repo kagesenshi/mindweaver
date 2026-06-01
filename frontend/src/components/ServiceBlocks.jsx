@@ -84,86 +84,148 @@ export const ExternalNetworkAccessBlock = ({
         <ServiceBlock darkMode={darkMode} icon={icon} iconColorClass={iconColorClass} iconBgClass={iconBgClass} title="External Network Access">
             <div className="space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {ports.map((np, i) => (
-                        <div key={i} className="p-5 border rounded-2xl bg-slate-50 border-slate-200 dark:bg-slate-950/50 dark:border-slate-800 flex flex-col h-full">
-                            <div className="flex items-center justify-between mb-4">
-                                <div>
-                                    <p className="text-xs text-slate-500 font-bold uppercase tracking-widest leading-none mb-1">Service Type</p>
-                                    <h5 className="text-lg font-bold text-slate-900 dark:text-white leading-none">{np.label}</h5>
+                    {ports.map((np, i) => {
+                        const isLoadBalancer = np.load_balancer_ips !== undefined;
+                        return (
+                            <div key={i} className="p-5 border rounded-2xl bg-slate-50 border-slate-200 dark:bg-slate-950/50 dark:border-slate-800 flex flex-col h-full">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div>
+                                        <p className="text-xs text-slate-500 font-bold uppercase tracking-widest leading-none mb-1">Service Type</p>
+                                        <h5 className="text-lg font-bold text-slate-900 dark:text-white leading-none">{np.label}</h5>
+                                    </div>
+                                    <div className="px-2 py-1 rounded text-[10px] font-bold bg-indigo-500/10 text-indigo-600 border border-indigo-500/20 uppercase tracking-tighter">
+                                        {isLoadBalancer ? `LoadBalancer: ${np.port}` : `NodePort: ${np.node_port}`}
+                                    </div>
                                 </div>
-                                <div className="px-2 py-1 rounded text-[10px] font-bold bg-indigo-500/10 text-indigo-600 border border-indigo-500/20 uppercase tracking-tighter">NodePort: {np.node_port}</div>
-                            </div>
 
-                            <div className="space-y-3">
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Available Endpoints</p>
-                                {clusterNodes?.map((node, j) => {
-                                    const endpointsToShow = [];
-                                    if (node.ipv4) {
-                                        endpointsToShow.push({
-                                            type: 'IPv4',
-                                            value: np.scheme ? `${np.scheme}://${node.ipv4}:${np.node_port}` : `${node.ipv4}:${np.node_port}`
-                                        });
-                                    }
-                                    if (node.ipv6) {
-                                        endpointsToShow.push({
-                                            type: 'IPv6',
-                                            value: np.scheme ? `${np.scheme}://[${node.ipv6}]:${np.node_port}` : `[${node.ipv6}]:${np.node_port}`
-                                        });
-                                    }
-
-                                    if (endpointsToShow.length === 0) return null;
-
-                                    return (
-                                        <div key={j} className="flex flex-col gap-2 p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight truncate">{node.hostname}</span>
-                                            {endpointsToShow.map((ep, k) => (
-                                                <div key={k} className="flex items-center justify-between gap-3 border-t first:border-t-0 pt-2.5 first:pt-0 border-slate-100 dark:border-slate-800/50">
-                                                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                                                        <span className="text-[10px] font-bold text-slate-400 shrink-0 uppercase tracking-wider w-8">{ep.type}</span>
-                                                        {np.scheme ? (
-                                                            <a
-                                                                href={ep.value}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="text-xs font-mono text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 truncate px-2 py-1 bg-slate-50 dark:bg-slate-950 rounded border border-slate-100 dark:border-slate-800/40 text-left hover:underline flex-1 min-w-0"
-                                                                title="Open URL"
-                                                            >
-                                                                {ep.value}
-                                                            </a>
-                                                        ) : (
-                                                            <code className="text-xs font-mono text-emerald-600 dark:text-emerald-400 truncate px-2 py-1 bg-slate-50 dark:bg-slate-950 rounded border border-slate-100 dark:border-slate-800/40 text-left flex-1 min-w-0">
-                                                                {ep.value}
-                                                            </code>
-                                                        )}
+                                <div className="space-y-3">
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Available Endpoints</p>
+                                    {isLoadBalancer ? (
+                                        np.load_balancer_ips.length === 0 ? (
+                                            <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-500 italic">
+                                                Pending LoadBalancer IP/Hostname...
+                                            </div>
+                                        ) : (
+                                            np.load_balancer_ips.map((ip, j) => {
+                                                const epValue = np.scheme ? `${np.scheme}://${ip}:${np.port}` : `${ip}:${np.port}`;
+                                                return (
+                                                    <div key={j} className="flex flex-col gap-2 p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight truncate">Load Balancer Address</span>
+                                                        <div className="flex items-center justify-between gap-3 pt-0 text-left">
+                                                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                                <span className="text-[10px] font-bold text-slate-400 shrink-0 uppercase tracking-wider w-8">IP/Host</span>
+                                                                {np.scheme ? (
+                                                                    <a
+                                                                        href={epValue}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="text-xs font-mono text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 truncate px-2 py-1 bg-slate-50 dark:bg-slate-950 rounded border border-slate-100 dark:border-slate-800/40 text-left hover:underline flex-1 min-w-0"
+                                                                        title="Open URL"
+                                                                    >
+                                                                        {epValue}
+                                                                    </a>
+                                                                ) : (
+                                                                    <code className="text-xs font-mono text-emerald-600 dark:text-emerald-400 truncate px-2 py-1 bg-slate-50 dark:bg-slate-950 rounded border border-slate-100 dark:border-slate-800/40 text-left flex-1 min-w-0">
+                                                                        {epValue}
+                                                                    </code>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex items-center gap-1 shrink-0">
+                                                                {np.scheme && (
+                                                                    <a
+                                                                        href={epValue}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="p-1.5 text-slate-400 hover:text-blue-500 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 rounded"
+                                                                        title="Open in new tab"
+                                                                    >
+                                                                        <ExternalLink size={12} />
+                                                                    </a>
+                                                                )}
+                                                                <button
+                                                                    onClick={() => navigator.clipboard.writeText(epValue)}
+                                                                    className="p-1.5 text-slate-400 hover:text-blue-500 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 rounded"
+                                                                    title="Copy endpoint"
+                                                                >
+                                                                    <Copy size={12} />
+                                                                </button>
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                    <div className="flex items-center gap-1 shrink-0">
-                                                        {np.scheme && (
-                                                            <a
-                                                                href={ep.value}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="p-1.5 text-slate-400 hover:text-blue-500 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 rounded"
-                                                                title="Open in new tab"
-                                                            >
-                                                                <ExternalLink size={12} />
-                                                            </a>
-                                                        )}
-                                                        <button
-                                                            onClick={() => navigator.clipboard.writeText(ep.value)}
-                                                            className="p-1.5 text-slate-400 hover:text-blue-500 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 rounded"
-                                                            title="Copy endpoint"
-                                                        >
-                                                            <Copy size={12} />
-                                                        </button>
-                                                    </div>
+                                                );
+                                            })
+                                        )
+                                    ) : (
+                                        clusterNodes?.map((node, j) => {
+                                            const endpointsToShow = [];
+                                            if (node.ipv4) {
+                                                endpointsToShow.push({
+                                                    type: 'IPv4',
+                                                    value: np.scheme ? `${np.scheme}://${node.ipv4}:${np.node_port}` : `${node.ipv4}:${np.node_port}`
+                                                });
+                                            }
+                                            if (node.ipv6) {
+                                                endpointsToShow.push({
+                                                    type: 'IPv6',
+                                                    value: np.scheme ? `${np.scheme}://[${node.ipv6}]:${np.node_port}` : `[${node.ipv6}]:${np.node_port}`
+                                                });
+                                            }
+
+                                            if (endpointsToShow.length === 0) return null;
+
+                                            return (
+                                                <div key={j} className="flex flex-col gap-2 p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight truncate">{node.hostname}</span>
+                                                    {endpointsToShow.map((ep, k) => (
+                                                        <div key={k} className="flex items-center justify-between gap-3 border-t first:border-t-0 pt-2.5 first:pt-0 border-slate-100 dark:border-slate-800/50">
+                                                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                                <span className="text-[10px] font-bold text-slate-400 shrink-0 uppercase tracking-wider w-8">{ep.type}</span>
+                                                                {np.scheme ? (
+                                                                    <a
+                                                                        href={ep.value}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="text-xs font-mono text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 truncate px-2 py-1 bg-slate-50 dark:bg-slate-950 rounded border border-slate-100 dark:border-slate-800/40 text-left hover:underline flex-1 min-w-0"
+                                                                        title="Open URL"
+                                                                    >
+                                                                        {ep.value}
+                                                                    </a>
+                                                                ) : (
+                                                                    <code className="text-xs font-mono text-emerald-600 dark:text-emerald-400 truncate px-2 py-1 bg-slate-50 dark:bg-slate-950 rounded border border-slate-100 dark:border-slate-800/40 text-left flex-1 min-w-0">
+                                                                        {ep.value}
+                                                                    </code>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex items-center gap-1 shrink-0">
+                                                                {np.scheme && (
+                                                                    <a
+                                                                        href={ep.value}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="p-1.5 text-slate-400 hover:text-blue-500 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 rounded"
+                                                                        title="Open in new tab"
+                                                                    >
+                                                                        <ExternalLink size={12} />
+                                                                    </a>
+                                                                )}
+                                                                <button
+                                                                    onClick={() => navigator.clipboard.writeText(ep.value)}
+                                                                    className="p-1.5 text-slate-400 hover:text-blue-500 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 rounded"
+                                                                    title="Copy endpoint"
+                                                                >
+                                                                    <Copy size={12} />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ))}
                                                 </div>
-                                            ))}
-                                        </div>
-                                    );
-                                })}
+                                            );
+                                        })
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
 
                 {cliInfo && (
