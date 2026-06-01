@@ -19,6 +19,7 @@ def mock_service_dependencies():
     request = MagicMock(spec=Request)
     session = MagicMock(spec=AsyncSession)
     session.exec = AsyncMock()
+    session.flush = AsyncMock()
     return request, session
 
 
@@ -200,6 +201,7 @@ async def test_superset_template_rendering(mock_service_dependencies):
         # Mock project relationship
         mock_project = MagicMock()
         mock_project.ldap_config_id = 5
+        mock_project.ingress_domain = None
         svc.project = AsyncMock(return_value=mock_project)
 
         vars = await svc.template_vars(model)
@@ -218,7 +220,7 @@ async def test_superset_template_rendering(mock_service_dependencies):
         assert "trino://admin@mytrino.trino-ns.svc.cluster.local:8443" in ds_trino["sqlalchemy_uri"]
 
         # Verify rendered manifests (Application)
-        docs = list(yaml.safe_load_all(manifest))
+        docs = [d for d in yaml.safe_load_all(manifest) if d is not None]
         assert len(docs) == 1
         
         app_doc = docs[0]
@@ -243,7 +245,7 @@ async def test_superset_template_rendering(mock_service_dependencies):
         model.image = "my-registry/superset:v1.2.3"
         vars_override = await svc.template_vars(model)
         manifest_override = await svc.render_manifests(model)
-        docs_override = list(yaml.safe_load_all(manifest_override))
+        docs_override = [d for d in yaml.safe_load_all(manifest_override) if d is not None]
         app_doc_override = next(d for d in docs_override if d["kind"] == "Application")
         values_override = yaml.safe_load(app_doc_override["spec"]["source"]["helm"]["values"])
         
@@ -251,6 +253,19 @@ async def test_superset_template_rendering(mock_service_dependencies):
         assert values_override["image"]["tag"] == "v1.2.3"
         
         assert values_override["image"]["tag"] == "v1.2.3"
+
+        # 1.2 Verify with ingress_domain set
+        mock_project.ingress_domain = "132.home.kagesenshi.org"
+        vars_ingress = await svc.template_vars(model)
+        manifest_ingress = await svc.render_manifests(model)
+        docs_ingress = [d for d in yaml.safe_load_all(manifest_ingress) if d is not None]
+        # Now there should be 2 docs: Application and HTTPRoute
+        assert len(docs_ingress) == 2
+        route_doc = next(d for d in docs_ingress if d["kind"] == "HTTPRoute")
+        assert route_doc["metadata"]["name"] == "superset-test-route"
+        assert route_doc["spec"]["hostnames"] == ["superset-test.132.home.kagesenshi.org"]
+        assert route_doc["spec"]["rules"][0]["backendRefs"][0]["name"] == "superset-test"
+        assert route_doc["spec"]["rules"][0]["backendRefs"][0]["port"] == 8088
 
     # 3. Verify dual-stack URI derivation in poll_status
     # We need a new mock for this as it's a separate concern from template rendering
@@ -277,12 +292,27 @@ async def test_superset_template_rendering(mock_service_dependencies):
             
         with patch("mindweaver.platform_service.superset.service.asyncio.to_thread", side_effect=mock_poll), \
              patch("mindweaver.platform_service.superset.service.decrypt_password", side_effect=lambda x: x):
+            # Test without ingress_domain
+            mock_project_no_ingress = MagicMock()
+            mock_project_no_ingress.ingress_domain = None
+            svc.project = AsyncMock(return_value=mock_project_no_ingress)
+
             await svc.poll_status(model)
             
             assert mock_state.superset_uri == "http://1.2.3.4:30001"
             assert mock_state.superset_uri_ipv6 == "http://[2001:db8::1]:30001"
             assert mock_state.admin_user == "admin"
             assert mock_state.admin_password is not None
+
+            # Test with ingress_domain
+            mock_project_ingress = MagicMock()
+            mock_project_ingress.ingress_domain = "132.home.kagesenshi.org"
+            svc.project = AsyncMock(return_value=mock_project_ingress)
+
+            await svc.poll_status(model)
+            assert mock_state.superset_uri == "https://superset-test.132.home.kagesenshi.org"
+            assert mock_state.superset_uri_ipv6 is None
+            assert mock_state.extra_data["ingress_domain"] == "132.home.kagesenshi.org"
 
 
 @pytest.mark.asyncio

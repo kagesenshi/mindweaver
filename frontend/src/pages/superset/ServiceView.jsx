@@ -83,6 +83,7 @@ const ServiceView = ({
             });
         }
 
+        const ingressDomain = platformState?.extra_data?.ingress_domain;
         const httpPort = platformState?.node_ports?.find(np => np.port === 8088);
 
         return (
@@ -95,14 +96,22 @@ const ServiceView = ({
                     />
                 )}
 
-                {httpPort && (
+                {(ingressDomain || httpPort) && (
                     <ExternalNetworkAccessBlock
                         darkMode={darkMode}
-                        ports={[{
-                            label: 'Superset UI',
-                            node_port: httpPort.node_port,
-                            scheme: 'http'
-                        }]}
+                        ports={[
+                            ...(ingressDomain ? [{
+                                label: 'Superset UI (Envoy Ingress)',
+                                load_balancer_ips: [`${selectedPlatform.name}.${ingressDomain}`],
+                                port: 443,
+                                scheme: 'https'
+                            }] : []),
+                            ...(httpPort ? [{
+                                label: 'Superset UI (NodePort)',
+                                node_port: httpPort.node_port,
+                                scheme: 'http'
+                            }] : [])
+                        ]}
                         clusterNodes={platformState.cluster_nodes}
                         icon={LayoutDashboard}
                         iconColorClass="text-indigo-500"

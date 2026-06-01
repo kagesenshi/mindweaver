@@ -130,6 +130,8 @@ class SupersetPlatformService(PlatformService[SupersetPlatform]):
     async def template_vars(self, model: SupersetPlatform) -> dict:
         vars = model.model_dump()
         vars["namespace"] = await self._resolve_namespace(model)
+        project = await self.project(model)
+        vars["ingress_domain"] = project.ingress_domain
 
         # 0. Decrypt internal secrets
         for field in self.redacted_fields():
@@ -378,9 +380,11 @@ class SupersetPlatformService(PlatformService[SupersetPlatform]):
 
         state.status = status
         state.message = message
+        project = await self.project(model)
         if extra_data is None:
             extra_data = {}
         extra_data["namespace"] = namespace
+        extra_data["ingress_domain"] = project.ingress_domain
         state.extra_data = extra_data
         state.node_ports = node_ports
         state.cluster_nodes = cluster_nodes
@@ -390,27 +394,36 @@ class SupersetPlatformService(PlatformService[SupersetPlatform]):
         state.admin_password = decrypt_password(model.admin_password)
 
         # Derive Superset URI
-        if status == "online" and cluster_nodes:
-            superset_np = next(
-                (np for np in node_ports if np["name"] == model.name), None
-            )
-            if superset_np:
-                # Find first node with IPv4
-                node_v4 = next((n for n in cluster_nodes if n["ipv4"]), None)
-                if node_v4:
-                    state.superset_uri = (
-                        f"http://{node_v4['ipv4']}:{superset_np['node_port']}"
-                    )
-                else:
-                    state.superset_uri = None
+        if status == "online":
+            if project.ingress_domain:
+                state.superset_uri = f"https://{model.name}.{project.ingress_domain}"
+                state.superset_uri_ipv6 = None
+            elif cluster_nodes:
+                superset_np = next(
+                    (np for np in node_ports if np["name"] == model.name), None
+                )
+                if superset_np:
+                    # Find first node with IPv4
+                    node_v4 = next((n for n in cluster_nodes if n["ipv4"]), None)
+                    if node_v4:
+                        state.superset_uri = (
+                            f"http://{node_v4['ipv4']}:{superset_np['node_port']}"
+                        )
+                    else:
+                        state.superset_uri = None
 
-                # Find first node with IPv6
-                node_v6 = next((n for n in cluster_nodes if n["ipv6"]), None)
-                if node_v6:
-                    state.superset_uri_ipv6 = (
-                        f"http://[{node_v6['ipv6']}]:{superset_np['node_port']}"
-                    )
+                    # Find first node with IPv6
+                    node_v6 = next((n for n in cluster_nodes if n["ipv6"]), None)
+                    if node_v6:
+                        state.superset_uri_ipv6 = (
+                            f"http://[{node_v6['ipv6']}]:{superset_np['node_port']}"
+                        )
+                    else:
+                        state.superset_uri_ipv6 = None
                 else:
+                    state.superset_uri = (
+                        f"http://{model.name}.{namespace}.svc.cluster.local:8088"
+                    )
                     state.superset_uri_ipv6 = None
             else:
                 state.superset_uri = (
@@ -422,3 +435,4 @@ class SupersetPlatformService(PlatformService[SupersetPlatform]):
             state.superset_uri_ipv6 = None
 
         state.last_heartbeat = ts_now()
+        await self.session.flush()
