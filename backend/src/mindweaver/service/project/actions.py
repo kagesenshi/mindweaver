@@ -226,8 +226,11 @@ class InstallDexAction(BaseAction):
             if self.model.ingress_domain:
                 redirect_uris.append(f"https://{sp.name}.{self.model.ingress_domain}/oauth-authorized/dex")
                 redirect_uris.append(f"http://{sp.name}.{self.model.ingress_domain}/oauth-authorized/dex")
+                redirect_uris.append(f"https://{sp.name}.{self.model.ingress_domain}/api/v1/database/oauth2/")
+                redirect_uris.append(f"http://{sp.name}.{self.model.ingress_domain}/api/v1/database/oauth2/")
             else:
                 redirect_uris.append("http://localhost:8088/oauth-authorized/dex")
+                redirect_uris.append("http://localhost:8088/api/v1/database/oauth2/")
             
             secret_val = ""
             if sp.oidc_client_secret:

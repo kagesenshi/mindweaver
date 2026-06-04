@@ -1255,6 +1255,13 @@ async def test_trino_jwt_rendering(mock_service_dependencies):
     
     assert "http-server.authentication.type=PASSWORD,JWT" in values["server"]["coordinatorExtraConfig"]
     assert "http-server.authentication.jwt.key-file=http://dex.trino-ns.svc.cluster.local:5556/dex/keys" in values["server"]["coordinatorExtraConfig"]
+    assert "http-server.authentication.jwt.principal-field=email" in values["server"]["coordinatorExtraConfig"]
+    assert "additionalLogProperties" in values
+    assert "http-server.log.enabled=true" in values["additionalConfigProperties"]
+    assert "http-server.log.path=/dev/stdout" in values["additionalConfigProperties"]
+    assert "log.properties" not in values["coordinator"]["additionalConfigFiles"]
+    assert "-Dlog.enable-console=true" in values["coordinator"]["additionalJVMConfig"]
+    assert "-Dlog.enable-console=true" in values["worker"]["additionalJVMConfig"]
 
 
 

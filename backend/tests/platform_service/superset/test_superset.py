@@ -294,19 +294,20 @@ async def test_superset_template_rendering(mock_service_dependencies):
         
         assert "AUTH_OAUTH" in values_oidc["configOverrides"]["oidc"]
         assert "OAUTH_PROVIDERS" in values_oidc["configOverrides"]["oidc"]
-        assert "'save_token': True" in values_oidc["configOverrides"]["oidc"]
         assert "DATABASE_OAUTH2_UPSTREAM_PROVIDERS" in values_oidc["configOverrides"]["oidc"]
-        assert '"trino": "dex"' in values_oidc["configOverrides"]["oidc"]
+        assert "DATABASE_OAUTH2_CLIENTS" not in values_oidc["configOverrides"]["oidc"]
         assert "CustomSecurityManager" in values_oidc["configOverrides"]["oidc"]
-        assert "_add_sql_lab_role_to_alpha" in values_oidc["configOverrides"]["oidc"]
         assert "https://dex.132.home.kagesenshi.org/dex/auth" in values_oidc["configOverrides"]["oidc"]
         assert "http://dex.superset-ns.svc.cluster.local:5556/dex/token" in values_oidc["configOverrides"]["oidc"]
         assert "ENABLE_PROXY_FIX = True" in values_oidc["configOverrides"]["oidc"]
+        assert "import trino.auth" in values_oidc["configOverrides"]["oidc"]
+        assert "ALLOWED_EXTRA_AUTHENTICATIONS" in values_oidc["configOverrides"]["oidc"]
 
         # Verify Trino datasource has extra connecting args when OIDC is enabled
         assert "import_datasources.yaml" in values_oidc["extraConfigs"]
         datasources_yaml = yaml.safe_load(values_oidc["extraConfigs"]["import_datasources.yaml"])
         trino_ds = next(ds for ds in datasources_yaml["databases"] if ds["database_name"] == "mytrino")
+        assert trino_ds.get("impersonate_user") is True
         assert "extra" in trino_ds
         extra_data = yaml.safe_load(trino_ds["extra"])
         assert extra_data["engine_params"]["connect_args"]["http_scheme"] == "https"

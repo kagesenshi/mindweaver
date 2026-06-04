@@ -237,7 +237,9 @@ class SupersetPlatformService(PlatformService[SupersetPlatform]):
                             "database_name": trino_model.name,
                             "sqlalchemy_uri": sqlalchemy_uri,
                             "expose_in_sqllab": True,
+                            "impersonate_user": True if model.oidc_enabled else False,
                             "extra": extra_dict,
+                            "is_trino": True,
                         }
                     )
 
