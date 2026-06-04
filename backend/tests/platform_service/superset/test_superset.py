@@ -231,6 +231,15 @@ async def test_superset_template_rendering(mock_service_dependencies):
         # 1. Verify Application
         values = yaml.safe_load(app_doc["spec"]["source"]["helm"]["values"])
         assert values["supersetNode"]["connections"]["db_type"] == "postgresql+asyncpg"
+        
+        # Verify initscript database auto-cleanup exists in rendered helm values
+        assert "initscript" in values["init"]
+        assert "superset db upgrade" in values["init"]["initscript"]
+        assert "superset import_datasources" in values["init"]["initscript"]
+        assert "Cleaning up removed datasources..." in values["init"]["initscript"]
+        assert "create_app()" in values["init"]["initscript"]
+        assert "app.app_context()" in values["init"]["initscript"]
+        assert "db.session.delete" in values["init"]["initscript"]
         assert values["supersetNode"]["connections"]["db_host"] == "my-db-pooler-rw.superset-ns.svc.cluster.local"
         assert values["service"]["type"] == "NodePort"
         assert values["service"]["port"] == 8088
@@ -280,10 +289,22 @@ async def test_superset_template_rendering(mock_service_dependencies):
         
         assert "AUTH_OAUTH" in values_oidc["configOverrides"]["oidc"]
         assert "OAUTH_PROVIDERS" in values_oidc["configOverrides"]["oidc"]
+        assert "'save_token': True" in values_oidc["configOverrides"]["oidc"]
+        assert "DATABASE_OAUTH2_UPSTREAM_PROVIDERS" in values_oidc["configOverrides"]["oidc"]
+        assert '"trino": "dex"' in values_oidc["configOverrides"]["oidc"]
         assert "CustomSecurityManager" in values_oidc["configOverrides"]["oidc"]
+        assert "_add_sql_lab_role_to_alpha" in values_oidc["configOverrides"]["oidc"]
         assert "https://dex.132.home.kagesenshi.org/dex/auth" in values_oidc["configOverrides"]["oidc"]
         assert "http://dex.superset-ns.svc.cluster.local:5556/dex/token" in values_oidc["configOverrides"]["oidc"]
         assert "ENABLE_PROXY_FIX = True" in values_oidc["configOverrides"]["oidc"]
+
+        # Verify Trino datasource has extra connecting args when OIDC is enabled
+        assert "import_datasources.yaml" in values_oidc["extraConfigs"]
+        datasources_yaml = yaml.safe_load(values_oidc["extraConfigs"]["import_datasources.yaml"])
+        trino_ds = next(ds for ds in datasources_yaml["databases"] if ds["database_name"] == "mytrino")
+        assert "extra" in trino_ds
+        extra_data = yaml.safe_load(trino_ds["extra"])
+        assert extra_data["engine_params"]["connect_args"]["http_scheme"] == "https"
 
     # 3. Verify dual-stack URI derivation in poll_status
     # We need a new mock for this as it's a separate concern from template rendering

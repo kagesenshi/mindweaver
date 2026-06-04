@@ -222,11 +222,21 @@ class SupersetPlatformService(PlatformService[SupersetPlatform]):
                     # Use internal URI for Superset -> Trino communication
                     trino_namespace = await trino_svc._resolve_namespace(trino_model)
                     sqlalchemy_uri = f"trino://admin@{trino_model.name}.{trino_namespace}.svc.cluster.local:8443/"
+                    extra_dict = {}
+                    if model.oidc_enabled:
+                        extra_dict = {
+                            "engine_params": {
+                                "connect_args": {
+                                    "http_scheme": "https"
+                                }
+                            }
+                        }
                     datasources.append(
                         {
                             "database_name": trino_model.name,
                             "sqlalchemy_uri": sqlalchemy_uri,
                             "expose_in_sqllab": True,
+                            "extra": extra_dict,
                         }
                     )
 

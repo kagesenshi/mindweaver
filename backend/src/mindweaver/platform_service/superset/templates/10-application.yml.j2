@@ -72,6 +72,34 @@ spec:
           {% if datasources %}
           loadExamples: false
           {% endif %}
+          initscript: |-
+            #!/bin/sh
+            set -eu
+            echo "Upgrading DB schema..."
+            superset db upgrade
+            echo "Initializing roles..."
+            superset init
+            if [ -f /app/configs/import_datasources.yaml ]; then
+              echo "Importing datasources..."
+              superset import_datasources -p /app/configs/import_datasources.yaml
+              echo "Cleaning up removed datasources..."
+              python3 -c "
+            import yaml
+            from superset.app import create_app
+            app = create_app()
+            with app.app_context():
+                from superset import db
+                from superset.models.core import Database
+                with open('/app/configs/import_datasources.yaml', 'r') as f:
+                    config = yaml.safe_load(f)
+                expected_names = [db_entry['database_name'] for db_entry in config.get('databases', [])] + ['main', 'examples']
+                for d in db.session.query(Database).all():
+                    if d.database_name not in expected_names:
+                        print(f'Deleting database connection: {d.database_name}')
+                        db.session.delete(d)
+                db.session.commit()
+            "
+            fi
 
         configOverrides:
           secret_key: |
@@ -107,6 +135,7 @@ spec:
                     'name': 'dex',
                     'token_key': 'access_token',
                     'icon': 'fa-key',
+                    'save_token': True,
                     'remote_app': {
                         'client_id': '{{ oidc_client_id }}',
                         'client_secret': '{{ oidc_client_secret }}',
@@ -121,9 +150,35 @@ spec:
                 }
             ]
 
+            DATABASE_OAUTH2_UPSTREAM_PROVIDERS = {
+                "trino": "dex"
+            }
+
             from superset.security import SupersetSecurityManager
 
             class CustomSecurityManager(SupersetSecurityManager):
+                def _add_sql_lab_role_to_alpha(self, user):
+                    if user:
+                        alpha_role = self.find_role("Alpha")
+                        sql_lab_role = self.find_role("sql_lab")
+                        if alpha_role and sql_lab_role:
+                            if alpha_role in user.roles and sql_lab_role not in user.roles:
+                                user.roles.append(sql_lab_role)
+                                self.get_session.commit()
+                    return user
+
+                def auth_user_oauth(self, userinfo):
+                    user = super().auth_user_oauth(userinfo)
+                    return self._add_sql_lab_role_to_alpha(user)
+
+                def auth_user_ldap(self, username, password):
+                    user = super().auth_user_ldap(username, password)
+                    return self._add_sql_lab_role_to_alpha(user)
+
+                def auth_user_db(self, username, password):
+                    user = super().auth_user_db(username, password)
+                    return self._add_sql_lab_role_to_alpha(user)
+
                 def oauth_user_info(self, provider, response=None):
                     if provider == 'dex':
                         remote_app = self.oauth_remotes.get(provider)
@@ -183,6 +238,10 @@ spec:
             - database_name: "{{ ds.database_name }}"
               sqlalchemy_uri: "{{ ds.sqlalchemy_uri }}"
               expose_in_sqllab: true
+              {% if ds.extra %}
+              extra: |
+                {{ ds.extra | tojson }}
+              {% endif %}
             {% endfor %}
         {% endif %}
 
