@@ -17,23 +17,27 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 # Read admin password from environment, fallback to rangerR0cks!
 admin_password = os.environ.get("RANGER_ADMIN_PASSWORD", "rangerR0cks!")
 
-# Attempt to discover the correct protocol (HTTPS vs HTTP) and initialize the client
+# Attempt to discover the correct protocol and port (HTTPS vs HTTP, 6182 vs 6080)
 ranger_client = None
-for protocol in ['https', 'http']:
-    url = f"{protocol}://localhost:6080"
-    try:
-        client = RangerClient(url, ('admin', admin_password))
-        client.session.verify = False
-        # Perform a test call to verify connectivity
-        client.get_service_def('tag')
-        ranger_client = client
-        print(f"Successfully connected to Ranger Admin using {url}")
+for port in [6182, 6080]:
+    for protocol in ['https', 'http']:
+        url = f"{protocol}://localhost:{port}"
+        try:
+            client = RangerClient(url, ('admin', admin_password))
+            client.session.verify = False
+            # Perform a test call to verify connectivity
+            client.get_service_def('tag')
+            ranger_client = client
+            print(f"Successfully connected to Ranger Admin using {url}")
+            break
+        except Exception as e:
+            pass
+    if ranger_client:
         break
-    except Exception as e:
-        print(f"Failed connection check on {url}: {e}")
 
 if not ranger_client:
-    print("Warning: Could not verify connection to Ranger Admin. Defaulting to HTTP client.")
+    print("Warning: Could not verify connection to Ranger Admin. Defaulting to default client configuration.")
+    # Fallback default
     ranger_client = RangerClient('http://localhost:6080', ('admin', admin_password))
     ranger_client.session.verify = False
 

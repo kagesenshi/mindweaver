@@ -160,7 +160,10 @@ else
   # Wait for Ranger Admin to become ready and register services asynchronously
   (
     for i in {1..150}; do
-      (curl -s -k http://localhost:6080 > /dev/null || curl -s -k https://localhost:6080 > /dev/null) && break
+      (curl -s -k http://localhost:6080 > /dev/null || \
+       curl -s -k https://localhost:6080 > /dev/null || \
+       curl -s -k http://localhost:6182 > /dev/null || \
+       curl -s -k https://localhost:6182 > /dev/null) && break
       sleep 2
     done
     python3 ${RANGER_SCRIPTS}/create-ranger-services.py
