@@ -33,6 +33,10 @@ RUN mkdir -p /opt/ranger/admin/ews/webapp/WEB-INF/classes/ranger-plugins/superse
     chown -R ranger:ranger /opt/ranger/admin/ews/webapp/WEB-INF/classes/ranger-plugins/superset && \
     mv /tmp/plugin/superset/ranger-servicedef-superset.json /home/ranger/scripts/ranger-servicedef-superset.json && \
     chown ranger:ranger /home/ranger/scripts/ranger-servicedef-superset.json && \
+    mv /tmp/plugin/superset/superset-icon.svg /opt/ranger/admin/ews/webapp/images/superset-icon.svg && \
+    chown ranger:ranger /opt/ranger/admin/ews/webapp/images/superset-icon.svg && \
+    python3 -c "import glob; path = glob.glob('/opt/ranger/admin/ews/webapp/dist/main.*.js')[0]; code = open(path).read(); code = code.replace('M={4300:', 'M={9999:(e,t,n)=>{\"use strict\";n.r(t),n.d(t,{default:()=>o});const o=\"../images/superset-icon.svg\"},4300:', 1); code = code.replace('var o={\"./atlas/icon.svg\":6556', 'var o={\"./superset/icon.svg\":9999,\"./atlas/icon.svg\":6556', 1); open(path, 'w').write(code);" && \
+    printf '\n.icon-component-superset:before {\n  font-family: "FontAwesome" !important;\n  content: "\\f080";\n}\n' >> /opt/ranger/admin/ews/webapp/styles/xa.css && \
     rm -rf /tmp/plugin
 
 USER ranger
