@@ -343,25 +343,22 @@ ${projectState.cluster_node_ips?.map((ip, idx) => `    server node${idx + 1} ${i
                 {projectState?.dex_installed && (
                     <div className="mt-6 border-t border-slate-100 dark:border-slate-800/80 pt-6 space-y-4" id="dex-connection-details">
                         <h4 className="text-sm font-bold uppercase tracking-wider text-slate-400">Connection Details</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800/50">
-                                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Ingress URL</span>
-                                <div className="mt-1 flex items-center justify-between gap-2">
-                                    <span className="text-sm font-mono text-slate-700 dark:text-slate-300 break-all select-all">
-                                        {selectedProject.ingress_domain 
-                                            ? `https://dex.${selectedProject.ingress_domain}` 
-                                            : "Not configured (Set Ingress Domain in Project settings)"}
-                                    </span>
-                                </div>
-                            </div>
+                        <div className="grid grid-cols-1 gap-4">
                             <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800/50">
                                 <span className="text-xs font-bold uppercase tracking-wider text-slate-400">OIDC Discovery URL</span>
                                 <div className="mt-1 flex items-center justify-between gap-2">
-                                    <span className="text-sm font-mono text-slate-700 dark:text-slate-300 break-all select-all">
+                                    <a
+                                        href={selectedProject.ingress_domain 
+                                            ? `https://dex.${selectedProject.ingress_domain}/dex/.well-known/openid-configuration` 
+                                            : `http://dex.${selectedProject.k8s_namespace || selectedProject.name}.svc.cluster.local:5556/dex/.well-known/openid-configuration`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-sm font-mono text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300 break-all transition-colors"
+                                    >
                                         {selectedProject.ingress_domain 
                                             ? `https://dex.${selectedProject.ingress_domain}/dex/.well-known/openid-configuration` 
                                             : `http://dex.${selectedProject.k8s_namespace || selectedProject.name}.svc.cluster.local:5556/dex/.well-known/openid-configuration`}
-                                    </span>
+                                    </a>
                                 </div>
                             </div>
                         </div>
