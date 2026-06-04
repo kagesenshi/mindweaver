@@ -17,20 +17,16 @@ class SupersetReleaser(BaseReleaser):
 
     def prep(self, version=None):
         """Prepare release: update versions, build docker."""
-        release_new_image = (
-            input("Release new image version? [y/N]: ").strip().lower() == "y"
-        )
+        release_new_image = self.confirm("Release new image version? [y/N]: ", default=False)
         self.new_image_released = release_new_image
 
         current_app_version = self.get_version(VERSION_FILE)
         recommended_app_version = current_app_version.replace("-alpha", "")
         if release_new_image:
             if not version:
-                version = (
-                    input(
-                        f"Enter app version to release [{recommended_app_version}]: "
-                    ).strip()
-                    or recommended_app_version
+                version = self.prompt(
+                    f"Enter app version to release [{recommended_app_version}]: ",
+                    default=recommended_app_version
                 )
             self.set_version(VERSION_FILE, version)
         else:
@@ -70,10 +66,7 @@ class SupersetReleaser(BaseReleaser):
 
         new_image_released = self.new_image_released
         if new_image_released is None:
-            new_image_released = (
-                input("Was a new image version released? [y/N]: ").strip().lower()
-                == "y"
-            )
+            new_image_released = self.confirm("Was a new image version released? [y/N]: ", default=False)
 
         if new_image_released:
             print(f"Pushing Superset container images for version {version} ...")
@@ -104,10 +97,7 @@ class SupersetReleaser(BaseReleaser):
         # 2. Bump versions for next development cycle
         new_image_released = self.new_image_released
         if new_image_released is None:
-            new_image_released = (
-                input("Was a new image version released? [y/N]: ").strip().lower()
-                == "y"
-            )
+            new_image_released = self.confirm("Was a new image version released? [y/N]: ", default=False)
 
         updated_files = []
 
@@ -118,11 +108,9 @@ class SupersetReleaser(BaseReleaser):
                 recommended_next_image = f"{recommended_next_image}-alpha"
 
             print(f"Current app version released: {version}")
-            next_app_version = (
-                input(
-                    f"Enter next app development version [{recommended_next_image}]: "
-                ).strip()
-                or recommended_next_image
+            next_app_version = self.prompt(
+                f"Enter next app development version [{recommended_next_image}]: ",
+                default=recommended_next_image
             )
 
             print(f"Starting next app development cycle {next_app_version} ...")
@@ -133,10 +121,7 @@ class SupersetReleaser(BaseReleaser):
 
         # 3. Commit the bump
         if updated_files:
-            confirm = (
-                input("Commit start of next development cycle? [y/N]: ").strip().lower()
-                == "y"
-            )
+            confirm = self.confirm("Commit start of next development cycle? [y/N]: ", default=False, is_git=True)
             if confirm:
                 self.git_commit(
                     files=updated_files,

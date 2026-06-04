@@ -12,8 +12,10 @@ from .superset import SupersetReleaser
 @click.option("--dry-run", is_flag=True, help="Show commands without executing them")
 @click.option("--registry", help="Alternative image registry URL")
 @click.option("--chart-registry", help="Alternative Helm chart registry URL (OCI)")
+@click.option("-y", "--yes", is_flag=True, help="Run in unattended mode (auto-confirm all prompts)")
+@click.option("--auto-tag-and-push", is_flag=True, help="Auto-confirm Git commit/tag/push operations")
 @click.pass_context
-def cli(ctx, dry_run, registry, chart_registry):
+def cli(ctx, dry_run, registry, chart_registry, yes, auto_tag_and_push):
     """MindWeaver Releaser CLI"""
     from .settings import settings
 
@@ -21,6 +23,8 @@ def cli(ctx, dry_run, registry, chart_registry):
     ctx.obj["dry_run"] = dry_run
     ctx.obj["registry"] = registry or settings.registry
     ctx.obj["chart_registry"] = chart_registry or settings.chart_registry
+    ctx.obj["yes"] = yes
+    ctx.obj["auto_tag_and_push"] = auto_tag_and_push
 
 
 @cli.group()
@@ -57,6 +61,8 @@ def create_command(group, releaser_class):
             dry_run=ctx.obj["dry_run"],
             registry=ctx.obj["registry"],
             chart_registry=ctx.obj["chart_registry"],
+            yes=ctx.obj.get("yes", False),
+            auto_tag_and_push=ctx.obj.get("auto_tag_and_push", False),
         )
         releaser.prep(version)
 
@@ -69,6 +75,8 @@ def create_command(group, releaser_class):
             dry_run=ctx.obj["dry_run"],
             registry=ctx.obj["registry"],
             chart_registry=ctx.obj["chart_registry"],
+            yes=ctx.obj.get("yes", False),
+            auto_tag_and_push=ctx.obj.get("auto_tag_and_push", False),
         )
         releaser.push(version)
 
@@ -81,6 +89,8 @@ def create_command(group, releaser_class):
             dry_run=ctx.obj["dry_run"],
             registry=ctx.obj["registry"],
             chart_registry=ctx.obj["chart_registry"],
+            yes=ctx.obj.get("yes", False),
+            auto_tag_and_push=ctx.obj.get("auto_tag_and_push", False),
         )
         releaser.post(version)
 
@@ -92,6 +102,8 @@ def create_command(group, releaser_class):
             dry_run=ctx.obj["dry_run"],
             registry=ctx.obj["registry"],
             chart_registry=ctx.obj["chart_registry"],
+            yes=ctx.obj.get("yes", False),
+            auto_tag_and_push=ctx.obj.get("auto_tag_and_push", False),
         )
         releaser.full()
 

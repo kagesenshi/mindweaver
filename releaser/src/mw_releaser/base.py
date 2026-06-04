@@ -11,13 +11,36 @@ from pathlib import Path
 class BaseReleaser:
     """Base class for releasers with common functionality."""
 
-    def __init__(self, dry_run=False, registry=None, chart_registry=None):
+    def __init__(self, dry_run=False, registry=None, chart_registry=None, yes=False, auto_tag_and_push=False):
         self.dry_run = dry_run
         self.registry = registry
         self.chart_registry = chart_registry
+        self.yes = yes
+        self.auto_tag_and_push = auto_tag_and_push
         # Root dir is parent of releaser directory
         self.root_dir = Path(__file__).parent.parent.parent.parent.absolute()
         os.chdir(self.root_dir)
+
+    def confirm(self, prompt_text, default=True, is_git=False):
+        """Ask for confirmation or auto-confirm if in unattended mode."""
+        if is_git and self.auto_tag_and_push:
+            print(f"{prompt_text} (auto-confirmed: y)")
+            return True
+        if self.yes:
+            print(f"{prompt_text} (auto-confirmed: {'y' if default else 'n'})")
+            return default
+        choice = input(prompt_text).strip().lower()
+        if not choice:
+            return default
+        return choice == "y"
+
+    def prompt(self, prompt_text, default):
+        """Prompt user for input or return default if in unattended mode."""
+        if self.yes:
+            print(f"{prompt_text} (auto-selected: {default})")
+            return default
+        choice = input(prompt_text).strip()
+        return choice or default
 
     def run_command(self, cmd, check=True, cwd=None):
         """Run a shell command and print it."""
@@ -177,8 +200,7 @@ class BaseReleaser:
 
     def git_ops(self, version_files, tag, message, commit=True):
         """Common git operations for release."""
-        confirm = input(f"Commit, tag and push release {tag}? [y/N]: ").strip().lower()
-        if confirm == "y":
+        if self.confirm(f"Commit, tag and push release {tag}? [y/N]: ", default=False, is_git=True):
             print("Staging changes...")
             self.run_command(["git", "add"] + version_files)
 

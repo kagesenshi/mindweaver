@@ -17,20 +17,16 @@ class MindWeaverReleaser(BaseReleaser):
         current_app_version = self.get_version(VERSION_FILE)
         recommended_app_version = current_app_version.replace("-alpha", "")
         if not version:
-            version = (
-                input(
-                    f"Enter app version to release [{recommended_app_version}]: "
-                ).strip()
-                or recommended_app_version
+            version = self.prompt(
+                f"Enter app version to release [{recommended_app_version}]: ",
+                default=recommended_app_version
             )
 
         current_chart_version = self.get_chart_version(CHART_FILE)
         recommended_chart_version = current_chart_version
-        new_chart_version = (
-            input(
-                f"Enter chart version to release [{recommended_chart_version}]: "
-            ).strip()
-            or recommended_chart_version
+        new_chart_version = self.prompt(
+            f"Enter chart version to release [{recommended_chart_version}]: ",
+            default=recommended_chart_version
         )
 
         print(
@@ -97,9 +93,9 @@ class MindWeaverReleaser(BaseReleaser):
             recommended_next = f"{recommended_next}-alpha"
 
         print(f"Current version released: {version}")
-        next_version = (
-            input(f"Enter next development version [{recommended_next}]: ").strip()
-            or recommended_next
+        next_version = self.prompt(
+            f"Enter next development version [{recommended_next}]: ",
+            default=recommended_next
         )
 
         print(f"Starting next development cycle {next_version} ...")
@@ -108,12 +104,12 @@ class MindWeaverReleaser(BaseReleaser):
         self.update_changelog(CHANGELOG_FILE, next_version)
 
         # 3. Commit the bump
-        confirm = (
-            input(f"Commit start of next development cycle {next_version}? [y/N]: ")
-            .strip()
-            .lower()
+        confirm = self.confirm(
+            f"Commit start of next development cycle {next_version}? [y/N]: ",
+            default=False,
+            is_git=True
         )
-        if confirm == "y":
+        if confirm:
             self.git_commit(
                 files=[VERSION_FILE, CHART_FILE, CHANGELOG_FILE],
                 message=f"bump version to {next_version}",
