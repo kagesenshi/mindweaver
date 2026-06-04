@@ -32,6 +32,13 @@ spec:
             ranger.service.name={{ name }}
             ranger.plugin.config.resource=/etc/trino/ranger-trino-security.xml,/etc/trino/ranger-trino-audit.xml
         {% endif %}
+        additionalLogProperties:
+          - io.trino=DEBUG
+          - io.airlift=DEBUG
+          - io.jsonwebtoken=DEBUG
+          - org.jose4j=DEBUG
+          - io.trino.plugin.jwt=DEBUG
+          - io.trino.server.security=DEBUG
         additionalConfigProperties:
           {% if internal_shared_secret %}
           - internal-communication.shared-secret={{ internal_shared_secret }}
@@ -42,6 +49,8 @@ spec:
           - http-server.https.enabled=true
           - http-server.https.port=8443
           - http-server.https.keystore.path=/etc/trino/tls/tls.pem
+          - http-server.log.enabled=true
+          - http-server.log.path=/dev/stdout
         server:
           workers: {{ replica_count }}
           autoscaling:
@@ -60,6 +69,7 @@ spec:
             {% endif %}
             {% if jwt_enabled %}
             http-server.authentication.jwt.key-file={{ jwt_key_file }}
+            http-server.authentication.jwt.principal-field=email
             {% endif %}
           {% endif %}
         
@@ -110,6 +120,7 @@ spec:
               name: https
               protocol: TCP
           additionalJVMConfig:
+            - "-Dlog.enable-console=true"
             - "-Djavax.net.ssl.trustStore=/etc/trino/tls/truststore.jks"
             - "-Djavax.net.ssl.trustStorePassword=changeit"
             - "-Djavax.net.ssl.keyStore=/etc/trino/tls/keystore.jks"
@@ -244,6 +255,7 @@ spec:
 
         worker:
           additionalJVMConfig:
+            - "-Dlog.enable-console=true"
             - "-Djavax.net.ssl.trustStore=/etc/trino/tls/truststore.jks"
             - "-Djavax.net.ssl.trustStorePassword=changeit"
             - "-Djavax.net.ssl.keyStore=/etc/trino/tls/keystore.jks"
