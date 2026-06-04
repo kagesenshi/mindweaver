@@ -204,6 +204,7 @@ async def test_superset_template_rendering(mock_service_dependencies):
         mock_project = MagicMock()
         mock_project.ldap_config_id = 5
         mock_project.ingress_domain = None
+        mock_project.name = "myproject"
         svc.project = AsyncMock(return_value=mock_project)
 
         vars = await svc.template_vars(model)
@@ -230,6 +231,10 @@ async def test_superset_template_rendering(mock_service_dependencies):
         
         # 1. Verify Application
         values = yaml.safe_load(app_doc["spec"]["source"]["helm"]["values"])
+        assert values["extraEnv"]["REQUESTS_CA_BUNDLE"] == "/etc/ssl/certs/mindweaver-ca.crt"
+        assert values["extraEnv"]["SSL_CERT_FILE"] == "/etc/ssl/certs/mindweaver-ca.crt"
+        assert values["extraVolumes"][0]["secret"]["secretName"] == "envoy-myproject"
+        assert values["extraVolumeMounts"][0]["mountPath"] == "/etc/ssl/certs/mindweaver-ca.crt"
         assert values["supersetNode"]["connections"]["db_type"] == "postgresql+asyncpg"
         
         # Verify initscript database auto-cleanup exists in rendered helm values

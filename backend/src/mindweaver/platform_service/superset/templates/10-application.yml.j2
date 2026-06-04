@@ -16,6 +16,24 @@ spec:
     targetRevision: {{ chart_version }}
     helm:
       values: |
+        extraEnv:
+          REQUESTS_CA_BUNDLE: "/etc/ssl/certs/mindweaver-ca.crt"
+          SSL_CERT_FILE: "/etc/ssl/certs/mindweaver-ca.crt"
+
+        extraVolumes:
+          - name: ca-certs
+            secret:
+              secretName: envoy-{{ project_name }}
+              items:
+                - key: ca.crt
+                  path: ca.crt
+
+        extraVolumeMounts:
+          - name: ca-certs
+            mountPath: /etc/ssl/certs/mindweaver-ca.crt
+            subPath: ca.crt
+            readOnly: true
+
         postgresql:
           enabled: false
         

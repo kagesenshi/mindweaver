@@ -137,6 +137,7 @@ class SupersetPlatformService(PlatformService[SupersetPlatform]):
         vars["namespace"] = await self._resolve_namespace(model)
         project = await self.project(model)
         vars["ingress_domain"] = project.ingress_domain
+        vars["project_name"] = project.name
 
         # 0. Decrypt internal secrets
         for field in self.redacted_fields():
