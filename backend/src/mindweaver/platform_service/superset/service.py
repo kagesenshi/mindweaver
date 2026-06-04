@@ -38,11 +38,11 @@ class SupersetPlatformService(PlatformService[SupersetPlatform]):
 
     @classmethod
     def internal_fields(cls) -> list[str]:
-        return super().internal_fields() + ["admin_password", "superset_secret_key"]
+        return super().internal_fields() + ["admin_password", "superset_secret_key", "oidc_client_secret"]
 
     @classmethod
     def redacted_fields(cls) -> list[str]:
-        return ["admin_password", "superset_secret_key"]
+        return ["admin_password", "superset_secret_key", "oidc_client_secret"]
 
     @classmethod
     def widgets(cls) -> dict[str, Any]:
@@ -124,6 +124,11 @@ class SupersetPlatformService(PlatformService[SupersetPlatform]):
                 "label": "Auth Role Mapping",
                 "type": "auth-role-mapping",
                 "roles": ["Admin", "Alpha", "Gamma", "sql_lab", "Public"],
+            },
+            "oidc_enabled": {
+                "order": 26,
+                "label": "Enable OIDC Authentication",
+                "type": "boolean",
             },
         }
 
@@ -247,7 +252,24 @@ class SupersetPlatformService(PlatformService[SupersetPlatform]):
                 merged_mapping[entity].append(role)
         vars["auth_role_mapping"] = merged_mapping
 
+        # 6. OIDC config
+        vars["oidc_enabled"] = model.oidc_enabled
+        vars["oidc_client_id"] = model.name
+        vars["oidc_client_secret"] = vars.get("oidc_client_secret", "")
+        vars["oidc_internal_issuer"] = f"http://dex.{vars['namespace']}.svc.cluster.local:5556/dex"
+        if vars["ingress_domain"]:
+            vars["oidc_external_issuer"] = f"https://dex.{vars['ingress_domain']}/dex"
+        else:
+            vars["oidc_external_issuer"] = vars["oidc_internal_issuer"]
+
         return vars
+
+    async def deploy(self, model: SupersetPlatform):
+        """used to deploy/upgrade the service"""
+        await super().deploy(model)
+        if model.oidc_enabled:
+            from mindweaver.tasks.project_tasks import install_dex_project_task
+            install_dex_project_task.delay(model.project_id)
 
     async def poll_status(self, model: SupersetPlatform):
         kubeconfig = await self.kubeconfig(model)

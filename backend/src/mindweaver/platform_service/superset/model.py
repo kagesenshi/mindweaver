@@ -44,6 +44,10 @@ class SupersetPlatform(PlatformBase, table=True):
     # SUPERSET_SECRET_KEY for flask-session and encryption
     superset_secret_key: str = Field(default_factory=lambda: secrets.token_urlsafe(32))
 
+    # OIDC Login Configuration
+    oidc_enabled: bool = Field(default=False)
+    oidc_client_secret: str = Field(default_factory=lambda: secrets.token_urlsafe(32))
+
     # PostgreSQL dependency (mandatory for Superset metadata)
     platform_pgsql_id: int = Field(foreign_key="mw_pgsql_platform.id")
     

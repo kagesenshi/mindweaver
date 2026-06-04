@@ -25,7 +25,7 @@ spec:
           tag: "{{ image.split(':')[-1] if ':' in image else 'latest' }}"
           {% else %}
           repository: ghcr.io/kagesenshi/mindweaver/superset
-          tag: 5.0.0-rev.3
+          tag: 5.0.0-rev.4
           {% endif %}
           pullPolicy: IfNotPresent
         
@@ -93,6 +93,76 @@ spec:
             AUTH_USER_REGISTRATION_ROLE = "Public"
             AUTH_LDAP_ALLOW_LOCAL_DB = True
             PERMANENT_SESSION_LIFETIME = 1800
+          {% endif %}
+          {% if oidc_enabled %}
+          oidc: |
+            from flask_appbuilder.security.manager import AUTH_OAUTH
+            AUTH_TYPE = AUTH_OAUTH
+            AUTH_USER_REGISTRATION = True
+            AUTH_USER_REGISTRATION_ROLE = "Alpha"
+            ENABLE_PROXY_FIX = True
+            
+            OAUTH_PROVIDERS = [
+                {
+                    'name': 'dex',
+                    'token_key': 'access_token',
+                    'icon': 'fa-key',
+                    'remote_app': {
+                        'client_id': '{{ oidc_client_id }}',
+                        'client_secret': '{{ oidc_client_secret }}',
+                        'api_base_url': '{{ oidc_internal_issuer }}/',
+                        'access_token_url': '{{ oidc_internal_issuer }}/token',
+                        'authorize_url': '{{ oidc_external_issuer }}/auth',
+                        'client_kwargs': {
+                            'scope': 'openid email profile groups'
+                        },
+                        'jwks_uri': '{{ oidc_internal_issuer }}/keys',
+                    }
+                }
+            ]
+
+            from superset.security import SupersetSecurityManager
+
+            class CustomSecurityManager(SupersetSecurityManager):
+                def oauth_user_info(self, provider, response=None):
+                    if provider == 'dex':
+                        remote_app = self.oauth_remotes.get(provider)
+                        if remote_app and response:
+                            # 1. Try parsing OIDC ID token first
+                            try:
+                                data = remote_app.parse_id_token(response)
+                                if data:
+                                    return {
+                                        'username': data.get('preferred_username') or data.get('email') or data.get('sub'),
+                                        'name': data.get('name'),
+                                        'email': data.get('email'),
+                                        'first_name': data.get('given_name') or data.get('name') or '',
+                                        'last_name': data.get('family_name') or '',
+                                        'role_keys': data.get('groups', []),
+                                    }
+                            except Exception as e:
+                                import logging
+                                logging.warning(f"Failed to parse OIDC ID token: {e}")
+
+                            # 2. Fallback to userinfo endpoint with explicit token
+                            try:
+                                me = remote_app.get('userinfo', token=response)
+                                if me and me.status_code == 200:
+                                    data = me.json()
+                                    return {
+                                        'username': data.get('preferred_username') or data.get('email') or data.get('sub'),
+                                        'name': data.get('name'),
+                                        'email': data.get('email'),
+                                        'first_name': data.get('given_name') or data.get('name') or '',
+                                        'last_name': data.get('family_name') or '',
+                                        'role_keys': data.get('groups', []),
+                                    }
+                            except Exception as e:
+                                import logging
+                                logging.error(f"Failed to fetch userinfo from Dex: {e}")
+                    return super().oauth_user_info(provider, response)
+
+            CUSTOM_SECURITY_MANAGER = CustomSecurityManager
           {% endif %}
           {% if auth_role_mapping %}
           role_mapping: |

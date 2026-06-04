@@ -161,6 +161,27 @@ class InstallDexAction(BaseAction):
                 except Exception:
                     bind_password = ldap_config.bind_password
 
+            clean_filter = ldap_config.user_search_filter
+            if clean_filter and "{0}" in clean_filter:
+                import re
+                if re.match(r"^\([\w\-]+=\{0\}\)$", clean_filter.strip()):
+                    clean_filter = None
+                else:
+                    clean_filter = re.sub(r"\([\w\-]+=\{0\}\)", "", clean_filter)
+                    clean_filter = clean_filter.replace("(&)", "").strip()
+                    if not clean_filter:
+                        clean_filter = None
+
+            user_search = {
+                "baseDN": ldap_config.user_search_base,
+                "username": ldap_config.username_attr,
+                "idAttr": ldap_config.username_attr,
+                "emailAttr": ldap_config.username_attr,
+                "nameAttr": ldap_config.username_attr,
+            }
+            if clean_filter:
+                user_search["filter"] = clean_filter
+
             connectors.append({
                 "type": "ldap",
                 "id": "ldap",
@@ -171,14 +192,7 @@ class InstallDexAction(BaseAction):
                     "insecureSkipVerify": not ldap_config.verify_ssl,
                     "bindDN": ldap_config.bind_dn,
                     "bindPW": bind_password,
-                    "userSearch": {
-                        "baseDN": ldap_config.user_search_base,
-                        "filter": ldap_config.user_search_filter,
-                        "username": ldap_config.username_attr,
-                        "idAttr": ldap_config.username_attr,
-                        "emailAttr": ldap_config.username_attr,
-                        "nameAttr": ldap_config.username_attr,
-                    }
+                    "userSearch": user_search
                 }
             })
 
@@ -198,6 +212,37 @@ class InstallDexAction(BaseAction):
         if self.model.ingress_domain:
             issuer_url = f"https://dex.{self.model.ingress_domain}/dex"
 
+        static_clients = []
+        # Find active Superset platforms with oidc_enabled
+        from mindweaver.platform_service.superset.model import SupersetPlatform
+        stmt_superset = select(SupersetPlatform).where(
+            SupersetPlatform.project_id == self.model.id,
+            SupersetPlatform.oidc_enabled == True
+        )
+        res_superset = await self.session.exec(stmt_superset)
+        superset_platforms = res_superset.all()
+        for sp in superset_platforms:
+            redirect_uris = []
+            if self.model.ingress_domain:
+                redirect_uris.append(f"https://{sp.name}.{self.model.ingress_domain}/oauth-authorized/dex")
+                redirect_uris.append(f"http://{sp.name}.{self.model.ingress_domain}/oauth-authorized/dex")
+            else:
+                redirect_uris.append("http://localhost:8088/oauth-authorized/dex")
+            
+            secret_val = ""
+            if sp.oidc_client_secret:
+                try:
+                    secret_val = decrypt_password(sp.oidc_client_secret)
+                except Exception:
+                    secret_val = sp.oidc_client_secret
+            
+            static_clients.append({
+                "id": sp.name,
+                "name": f"Superset {sp.name}",
+                "secret": secret_val,
+                "redirectURIs": redirect_uris,
+            })
+
         dex_values = {
             "config": {
                 "issuer": issuer_url,
@@ -214,6 +259,8 @@ class InstallDexAction(BaseAction):
             dex_values["config"]["staticPasswords"] = static_passwords
         if connectors:
             dex_values["config"]["connectors"] = connectors
+        if static_clients:
+            dex_values["config"]["staticClients"] = static_clients
 
         # Check existing nodePort to persist if not set
         if not self.model.envoy_nodeport:

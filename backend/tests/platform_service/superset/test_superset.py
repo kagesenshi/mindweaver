@@ -34,6 +34,8 @@ def test_superset_resource_defaults():
     assert model.chart_version == "0.15.0"
     assert model.override_image is False
     assert model.image == "ghcr.io/kagesenshi/mindweaver/superset:latest"
+    assert model.oidc_enabled is False
+    assert model.oidc_client_secret is not None
 
 
 def test_superset_validation():
@@ -234,7 +236,7 @@ async def test_superset_template_rendering(mock_service_dependencies):
         assert values["service"]["port"] == 8088
         assert "AUTH_LDAP" in values["configOverrides"]["ldap"]
         assert values["image"]["repository"] == "ghcr.io/kagesenshi/mindweaver/superset"
-        assert values["image"]["tag"] == "5.0.0-rev.3"
+        assert values["image"]["tag"] == "5.0.0-rev.4"
         assert values["redis"]["image"]["repository"] == "bitnamilegacy/redis"
         assert "AUTH_ROLES_MAPPING" in values["configOverrides"]["role_mapping"]
         assert '"admin@mindweaver.io": ["Admin", "Alpha"]' in values["configOverrides"]["role_mapping"]
@@ -266,6 +268,22 @@ async def test_superset_template_rendering(mock_service_dependencies):
         assert route_doc["spec"]["hostnames"] == ["superset-test.132.home.kagesenshi.org"]
         assert route_doc["spec"]["rules"][0]["backendRefs"][0]["name"] == "superset-test"
         assert route_doc["spec"]["rules"][0]["backendRefs"][0]["port"] == 8088
+
+        # 1.3 Verify with oidc_enabled = True
+        model.oidc_enabled = True
+        model.oidc_client_secret = "test-oidc-secret"
+        vars_oidc = await svc.template_vars(model)
+        manifest_oidc = await svc.render_manifests(model)
+        docs_oidc = [d for d in yaml.safe_load_all(manifest_oidc) if d is not None]
+        app_doc_oidc = next(d for d in docs_oidc if d["kind"] == "Application")
+        values_oidc = yaml.safe_load(app_doc_oidc["spec"]["source"]["helm"]["values"])
+        
+        assert "AUTH_OAUTH" in values_oidc["configOverrides"]["oidc"]
+        assert "OAUTH_PROVIDERS" in values_oidc["configOverrides"]["oidc"]
+        assert "CustomSecurityManager" in values_oidc["configOverrides"]["oidc"]
+        assert "https://dex.132.home.kagesenshi.org/dex/auth" in values_oidc["configOverrides"]["oidc"]
+        assert "http://dex.superset-ns.svc.cluster.local:5556/dex/token" in values_oidc["configOverrides"]["oidc"]
+        assert "ENABLE_PROXY_FIX = True" in values_oidc["configOverrides"]["oidc"]
 
     # 3. Verify dual-stack URI derivation in poll_status
     # We need a new mock for this as it's a separate concern from template rendering
