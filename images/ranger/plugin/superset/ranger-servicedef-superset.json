@@ -9,18 +9,21 @@
   },
   "configs": [
     {
+      "itemId": 1,
       "name": "username",
       "type": "string",
       "mandatory": true,
       "label": "Superset Username"
     },
     {
+      "itemId": 2,
       "name": "password",
       "type": "password",
       "mandatory": true,
       "label": "Superset Password"
     },
     {
+      "itemId": 3,
       "name": "superset.url",
       "type": "string",
       "mandatory": true,
@@ -30,6 +33,7 @@
   ],
   "resources": [
     {
+      "itemId": 1,
       "name": "database",
       "type": "string",
       "level": 1,
@@ -47,6 +51,7 @@
       "description": "Superset Database"
     },
     {
+      "itemId": 2,
       "name": "schema",
       "type": "string",
       "level": 2,
@@ -64,6 +69,7 @@
       "description": "Database Schema"
     },
     {
+      "itemId": 3,
       "name": "dataset",
       "type": "string",
       "level": 3,
@@ -81,6 +87,7 @@
       "description": "Superset Dataset"
     },
     {
+      "itemId": 4,
       "name": "dashboard",
       "type": "string",
       "level": 1,
@@ -98,6 +105,7 @@
       "description": "Superset Dashboard"
     },
     {
+      "itemId": 5,
       "name": "chart",
       "type": "string",
       "level": 1,
@@ -115,6 +123,7 @@
       "description": "Superset Chart"
     },
     {
+      "itemId": 6,
       "name": "menu",
       "type": "string",
       "level": 1,
@@ -134,26 +143,32 @@
   ],
   "accessTypes": [
     {
+      "itemId": 1,
       "name": "read",
       "label": "Read"
     },
     {
+      "itemId": 2,
       "name": "write",
       "label": "Write"
     },
     {
+      "itemId": 3,
       "name": "create",
       "label": "Create"
     },
     {
+      "itemId": 4,
       "name": "delete",
       "label": "Delete"
     },
     {
+      "itemId": 5,
       "name": "drilldown",
       "label": "Drill Down"
     },
     {
+      "itemId": 6,
       "name": "execute",
       "label": "Execute"
     }
