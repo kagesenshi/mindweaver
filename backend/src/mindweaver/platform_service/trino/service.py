@@ -8,13 +8,18 @@ import secrets
 import logging
 import asyncio
 import tempfile
+import base64
+import random
+import string
+import yaml
+import jinja2 as j2
 from typing import Any, Optional, Literal
 from kubernetes import client, config
 from pydantic import ValidationError
 
 from mindweaver.fw.exc import FieldValidationError
 from mindweaver.fw.service import before_create, before_delete, VALIDATION_MODE
-from mindweaver.platform_service.base import PlatformService
+from mindweaver.platform_service.base import PlatformService, _get_jinja_env
 from mindweaver.fw.model import ts_now
 from mindweaver.platform_service.hive_metastore.service import (
     HiveMetastorePlatformService,
@@ -426,6 +431,44 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
 
         return vars
 
+    async def render_manifests(self, model: TrinoPlatform) -> str:
+        """
+        Renders the manifests from the template directory, excluding
+        the ranger-sync-job.yaml.j2 template.
+        """
+        if not self.template_directory:
+            raise ValueError(
+                f"template_directory not set for {self.__class__.__name__}"
+            )
+
+        if not os.path.exists(self.template_directory):
+            raise ValueError(
+                f"template_directory {self.template_directory} does not exist"
+            )
+
+        # Load templates
+        env = _get_jinja_env(self.template_directory)
+        templates = env.list_templates()
+
+        rendered_manifests = []
+        vars = await self.template_vars(model)
+
+        for template_name in templates:
+            if not template_name.endswith((".yaml", ".yml", ".yml.j2", ".yaml.j2")):
+                continue
+            # Exclude ranger-sync-job.yaml.j2
+            if "ranger-sync-job.yaml.j2" in template_name:
+                continue
+            template = env.get_template(template_name)
+            rendered = template.render(**vars)
+            rendered_manifests.append(rendered)
+
+        if not rendered_manifests:
+            logger.warning(f"No templates found in {self.template_directory}")
+            return ""
+
+        return "---\n" + "\n---\n".join(rendered_manifests)
+
 
     async def poll_status(self, model: TrinoPlatform):
         kubeconfig = await self.kubeconfig(model)
@@ -625,7 +668,7 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
 
     async def _manage_ranger_service(self, model: TrinoPlatform, action: str):
         """
-        Create or delete a Ranger service definition for the Trino instance.
+        Create or delete a Ranger service definition for the Trino instance using an in-cluster Job.
         """
         if not model.ranger_id:
             return
@@ -643,69 +686,86 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
                 except Exception:
                     admin_password = ranger_model.admin_password
 
-            auth = ("admin", admin_password)
-            
-            async with httpx.AsyncClient(timeout=10.0, verify=False) as client:
-                if action == "create":
-                    # Check if service already exists
-                    url = f"{ranger_url.rstrip('/')}/service/public/v2/api/service/name/{model.name}"
-                    existing_id = None
-                    try:
-                        resp = await client.get(url, auth=auth)
-                        if resp.status_code == 200:
-                            existing_id = resp.json().get("id")
-                            logger.info(f"Ranger service {model.name} already exists with ID {existing_id}. Will update it.")
-                    except Exception as e:
-                        logger.warning(f"Error checking if Ranger service {model.name} exists: {e}")
+            # Resolve credentials and namespace
+            namespace = await self._resolve_namespace(model)
+            ranger_pass = ""
+            if model.ranger_user_password:
+                try:
+                    ranger_pass = decrypt_password(model.ranger_user_password)
+                except Exception:
+                    ranger_pass = model.ranger_user_password
+            if not ranger_pass:
+                ranger_pass = "ranger"
 
-                    # Resolve credentials and namespace
-                    namespace = await self._resolve_namespace(model)
-                    ranger_pass = ""
-                    if model.ranger_user_password:
-                        try:
-                            ranger_pass = decrypt_password(model.ranger_user_password)
-                        except Exception:
-                            ranger_pass = model.ranger_user_password
-                    if not ranger_pass:
-                        ranger_pass = "ranger"
+            auth_str = f"admin:{admin_password}"
+            auth_base64 = base64.b64encode(auth_str.encode()).decode()
 
-                    payload = {
-                        "name": model.name,
-                        "type": "trino",
-                        "configs": {
-                            "username": "ranger",
-                            "password": ranger_pass,
-                            "jdbc.driverClassName": "io.trino.jdbc.TrinoDriver",
-                            "jdbc.url": f"jdbc:trino://{model.name}.{namespace}.svc.cluster.local:8443?SSL=true",
-                            "ranger.plugin.super.users": "trino,ranger",
-                            "commonNameForCertificate": model.name
-                        }
-                    }
+            # Load the python sync script from templates
+            script_path = os.path.join(self.template_directory, "ranger_sync.py")
+            with open(script_path, "r") as sf:
+                script_content = sf.read()
 
-                    if existing_id is not None:
-                        payload["id"] = existing_id
-                        update_url = f"{ranger_url.rstrip('/')}/service/public/v2/api/service/{existing_id}"
-                        resp = await client.put(update_url, json=payload, auth=auth)
-                        if resp.status_code not in (200, 201):
-                            logger.error(f"Failed to update Ranger service {model.name}: {resp.status_code} - {resp.text}")
-                        else:
-                            logger.info(f"Successfully updated Ranger service {model.name} in Ranger.")
-                    else:
-                        create_url = f"{ranger_url.rstrip('/')}/service/public/v2/api/service"
-                        resp = await client.post(create_url, json=payload, auth=auth)
-                        if resp.status_code not in (200, 201):
-                            logger.error(f"Failed to create Ranger service {model.name}: {resp.status_code} - {resp.text}")
-                        else:
-                            logger.info(f"Successfully created Ranger service {model.name} in Ranger.")
+            # Generate random suffix for Job name uniqueness
+            rand_suffix = "".join(random.choices(string.ascii_lowercase + string.digits, k=5))
+            job_name = f"{model.name}-ranger-sync-{rand_suffix}"
 
-                elif action == "delete":
-                    # Delete service
-                    url = f"{ranger_url.rstrip('/')}/service/public/v2/api/service/name/{model.name}"
-                    resp = await client.delete(url, auth=auth)
-                    if resp.status_code not in (200, 204, 404):
-                        logger.error(f"Failed to delete Ranger service {model.name}: {resp.status_code} - {resp.text}")
-                    else:
-                        logger.info(f"Successfully deleted Ranger service {model.name} from Ranger.")
+            # Render the Job template
+            from mindweaver.platform_service.base import _get_jinja_env
+            env = _get_jinja_env(self.template_directory)
+            job_template = env.get_template("ranger-sync-job.yaml.j2")
+            rendered_job = job_template.render(
+                job_name=job_name,
+                namespace=namespace,
+                ranger_sync_script=script_content,
+                ranger_url=ranger_url,
+                ranger_auth_b64=auth_base64,
+                service_name=model.name,
+                action=action,
+                ranger_pass=ranger_pass
+            )
+
+            job_body = yaml.safe_load(rendered_job)
+
+            kubeconfig = await self.kubeconfig(model)
+            if kubeconfig is None:
+                config.load_incluster_config()
+                k8s_client = client.ApiClient()
+            else:
+                with tempfile.NamedTemporaryFile(mode="w") as kf:
+                    kf.write(kubeconfig)
+                    kf.flush()
+                    k8s_client = config.new_client_from_config(config_file=kf.name)
+
+            batch_v1 = client.BatchV1Api(k8s_client)
+
+            # Deploy Job
+            logger.info(f"Creating Ranger sync job {job_name} in namespace {namespace}...")
+            batch_v1.create_namespaced_job(namespace=namespace, body=job_body)
+
+            # Poll for Job completion
+            success = False
+            for _ in range(15):
+                await asyncio.sleep(2)
+                try:
+                    job_status = batch_v1.read_namespaced_job_status(name=job_name, namespace=namespace)
+                    if job_status.status.succeeded:
+                        logger.info(f"Ranger sync job {job_name} succeeded.")
+                        success = True
+                        break
+                    if job_status.status.failed:
+                        logger.error(f"Ranger sync job {job_name} failed.")
+                        break
+                except Exception as poll_err:
+                    logger.warning(f"Error checking job status for {job_name}: {poll_err}")
+
+            # Clean up the Job immediately
+            try:
+                batch_v1.delete_namespaced_job(name=job_name, namespace=namespace, propagation_policy="Background")
+            except Exception as delete_err:
+                logger.warning(f"Failed to delete sync job {job_name}: {delete_err}")
+
+            if not success:
+                logger.error(f"Ranger sync job {job_name} did not succeed within timeout.")
 
         except Exception as e:
             logger.error(f"Failed to {action} Ranger service for Trino {model.name}: {e}")

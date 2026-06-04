@@ -904,7 +904,7 @@ async def test_trino_ranger_integration(mock_service_dependencies):
 
 @pytest.mark.asyncio
 async def test_trino_deploy_decommission_ranger_lifecycle(mock_service_dependencies):
-    """Test that deploying/decommissioning/deleting Trino automatically registers/deletes services in Ranger Admin API."""
+    """Test that deploying/decommissioning/deleting Trino automatically registers/deletes services in Ranger Admin API via Job."""
     request, session = mock_service_dependencies
     svc = TrinoPlatformService(request, session)
     
@@ -935,72 +935,60 @@ async def test_trino_deploy_decommission_ranger_lifecycle(mock_service_dependenc
     mock_ranger_model.admin_password = "ranger_admin_pass"
     mock_ranger_svc.get.return_value = mock_ranger_model
     mock_ranger_svc._resolve_namespace = AsyncMock(return_value="ranger-ns")
+    mock_ranger_svc.get_ranger_url = AsyncMock(return_value="https://my-ranger.ranger-ns.svc.cluster.local:6080")
     
-    # Mock HttpClient calls using patch
-    mock_resp_get = MagicMock()
-    mock_resp_get.status_code = 404  # Service does not exist yet
+    # Mock BatchV1Api
+    mock_batch_api = MagicMock()
+    mock_job_status = MagicMock()
+    mock_job_status.status.succeeded = True
+    mock_job_status.status.failed = False
+    mock_batch_api.read_namespaced_job_status.return_value = mock_job_status
     
-    mock_resp_post = MagicMock()
-    mock_resp_post.status_code = 201
-    
-    mock_resp_delete = MagicMock()
-    mock_resp_delete.status_code = 204
-    
-    mock_client_context = AsyncMock()
-    mock_client_context.get.return_value = mock_resp_get
-    mock_client_context.post.return_value = mock_resp_post
-    mock_client_context.delete.return_value = mock_resp_delete
-
-    mock_client_instance = MagicMock()
-    mock_client_instance.__aenter__.return_value = mock_client_context
-    mock_client_instance.__aexit__ = AsyncMock()
-    
-    # Patch get_service, decrypt_password and httpx.AsyncClient
+    # Patch get_service, decrypt_password, config loader and BatchV1Api
     with patch("mindweaver.platform_service.trino.service.RangerPlatformService.get_service", AsyncMock(return_value=mock_ranger_svc)), \
          patch("mindweaver.platform_service.trino.service.decrypt_password", side_effect=lambda x: x), \
-         patch("mindweaver.platform_service.trino.service.httpx.AsyncClient", return_value=mock_client_instance):
+         patch("mindweaver.platform_service.trino.service.config.new_client_from_config", return_value=MagicMock()), \
+         patch("mindweaver.platform_service.trino.service.client.BatchV1Api", return_value=mock_batch_api):
          
         # 1. Test deploy
         await svc.deploy(model)
         
-        # Verify httpx client calls for create
-        mock_client_context.get.assert_called_once_with(
-            "https://my-ranger.ranger-ns.svc.cluster.local:6080/service/public/v2/api/service/name/trino-ranger-test",
-            auth=("admin", "ranger_admin_pass")
-        )
-        mock_client_context.post.assert_called_once_with(
-            "https://my-ranger.ranger-ns.svc.cluster.local:6080/service/public/v2/api/service",
-            json={
-                "name": "trino-ranger-test",
-                "type": "trino",
-                "configs": {
-                    "username": "ranger",
-                    "password": "ranger",
-                    "jdbc.driverClassName": "io.trino.jdbc.TrinoDriver",
-                    "jdbc.url": "jdbc:trino://trino-ranger-test.trino-ns.svc.cluster.local:8443?SSL=true",
-                    "ranger.plugin.super.users": "trino,ranger",
-                    "commonNameForCertificate": "trino-ranger-test"
-                }
-            },
-            auth=("admin", "ranger_admin_pass")
-        )
+        # Verify Job creation
+        mock_batch_api.create_namespaced_job.assert_called_once()
+        args, kwargs = mock_batch_api.create_namespaced_job.call_args
+        called_namespace = kwargs.get("namespace") or args[0]
+        called_body = kwargs.get("body") or args[1]
+        assert called_namespace == "trino-ns"
+        assert called_body["spec"]["template"]["spec"]["containers"][0]["image"] == "python:3.11-alpine"
+        
+        env_vars = called_body["spec"]["template"]["spec"]["containers"][0]["env"]
+        env_dict = {ev["name"]: ev["value"] for ev in env_vars}
+        assert env_dict["RANGER_URL"] == "https://my-ranger.ranger-ns.svc.cluster.local:6080"
+        assert env_dict["SERVICE_NAME"] == "trino-ranger-test"
+        assert env_dict["ACTION"] == "create"
+        assert env_dict["RANGER_PASS"] == "ranger"
         
         # Reset mock calls for decommission test
-        mock_client_context.get.reset_mock()
-        mock_client_context.post.reset_mock()
+        mock_batch_api.create_namespaced_job.reset_mock()
+        mock_batch_api.delete_namespaced_job.reset_mock()
         
         # 2. Test decommission (should NOT delete the Ranger service)
         await svc.decommission(model)
         
-        # Verify HTTP DELETE was NOT called
-        mock_client_context.delete.assert_not_called()
+        # Verify Job was NOT created/deleted
+        mock_batch_api.create_namespaced_job.assert_not_called()
         
-        # 3. Test before_delete hook (deleting the config/model, should delete Ranger service)
+        # 3. Test before_delete hook (deleting the config/model, should delete Ranger service via Job)
         await svc.delete_ranger_service_on_delete(model)
-        mock_client_context.delete.assert_called_once_with(
-            "https://my-ranger.ranger-ns.svc.cluster.local:6080/service/public/v2/api/service/name/trino-ranger-test",
-            auth=("admin", "ranger_admin_pass")
-        )
+        mock_batch_api.create_namespaced_job.assert_called_once()
+        args, kwargs = mock_batch_api.create_namespaced_job.call_args
+        called_namespace = kwargs.get("namespace") or args[0]
+        called_body = kwargs.get("body") or args[1]
+        assert called_namespace == "trino-ns"
+        
+        env_vars = called_body["spec"]["template"]["spec"]["containers"][0]["env"]
+        env_dict = {ev["name"]: ev["value"] for ev in env_vars}
+        assert env_dict["ACTION"] == "delete"
 
 
 @pytest.mark.asyncio
@@ -1075,7 +1063,7 @@ async def test_trino_ldap_ranger_combined_rendering(mock_service_dependencies):
 
 @pytest.mark.asyncio
 async def test_trino_deploy_ranger_service_update(mock_service_dependencies):
-    """Test that deploying Trino updates the Ranger service definition with a PUT request if it already exists."""
+    """Test that deploying Trino triggers the Ranger sync job with updated credentials."""
     request, session = mock_service_dependencies
     svc = TrinoPlatformService(request, session)
     
@@ -1105,54 +1093,37 @@ async def test_trino_deploy_ranger_service_update(mock_service_dependencies):
     mock_ranger_model.admin_password = "ranger_admin_pass"
     mock_ranger_svc.get.return_value = mock_ranger_model
     mock_ranger_svc._resolve_namespace = AsyncMock(return_value="ranger-ns")
+    mock_ranger_svc.get_ranger_url = AsyncMock(return_value="https://my-ranger.ranger-ns.svc.cluster.local:6080")
     
-    # Mock HttpClient calls using patch
-    mock_resp_get = MagicMock()
-    mock_resp_get.status_code = 200  # Service already exists
-    mock_resp_get.json.return_value = {"id": 123, "name": "trino-ranger-test"}
+    # Mock BatchV1Api
+    mock_batch_api = MagicMock()
+    mock_job_status = MagicMock()
+    mock_job_status.status.succeeded = True
+    mock_job_status.status.failed = False
+    mock_batch_api.read_namespaced_job_status.return_value = mock_job_status
     
-    mock_resp_put = MagicMock()
-    mock_resp_put.status_code = 200
-    
-    mock_client_context = AsyncMock()
-    mock_client_context.get.return_value = mock_resp_get
-    mock_client_context.put.return_value = mock_resp_put
-    
-    mock_client_instance = MagicMock()
-    mock_client_instance.__aenter__.return_value = mock_client_context
-    mock_client_instance.__aexit__ = AsyncMock()
-    
-    # Patch get_service, decrypt_password and httpx.AsyncClient
+    # Patch get_service, decrypt_password, config loader and BatchV1Api
     with patch("mindweaver.platform_service.trino.service.RangerPlatformService.get_service", AsyncMock(return_value=mock_ranger_svc)), \
          patch("mindweaver.platform_service.trino.service.decrypt_password", side_effect=lambda x: x), \
-         patch("mindweaver.platform_service.trino.service.httpx.AsyncClient", return_value=mock_client_instance):
+         patch("mindweaver.platform_service.trino.service.config.new_client_from_config", return_value=MagicMock()), \
+         patch("mindweaver.platform_service.trino.service.client.BatchV1Api", return_value=mock_batch_api):
          
         # Test deploy which triggers _manage_ranger_service("create")
         await svc.deploy(model)
         
-        # Verify HTTP GET was called to check existence
-        mock_client_context.get.assert_called_once_with(
-            "https://my-ranger.ranger-ns.svc.cluster.local:6080/service/public/v2/api/service/name/trino-ranger-test",
-            auth=("admin", "ranger_admin_pass")
-        )
-        # Verify HTTP PUT was called to update the service
-        mock_client_context.put.assert_called_once_with(
-            "https://my-ranger.ranger-ns.svc.cluster.local:6080/service/public/v2/api/service/123",
-            json={
-                "id": 123,
-                "name": "trino-ranger-test",
-                "type": "trino",
-                "configs": {
-                    "username": "ranger",
-                    "password": "my_updated_password",
-                    "jdbc.driverClassName": "io.trino.jdbc.TrinoDriver",
-                    "jdbc.url": "jdbc:trino://trino-ranger-test.trino-ns.svc.cluster.local:8443?SSL=true",
-                    "ranger.plugin.super.users": "trino,ranger",
-                    "commonNameForCertificate": "trino-ranger-test"
-                }
-            },
-            auth=("admin", "ranger_admin_pass")
-        )
+        # Verify Job creation
+        mock_batch_api.create_namespaced_job.assert_called_once()
+        args, kwargs = mock_batch_api.create_namespaced_job.call_args
+        called_namespace = kwargs.get("namespace") or args[0]
+        called_body = kwargs.get("body") or args[1]
+        assert called_namespace == "trino-ns"
+        
+        env_vars = called_body["spec"]["template"]["spec"]["containers"][0]["env"]
+        env_dict = {ev["name"]: ev["value"] for ev in env_vars}
+        assert env_dict["RANGER_URL"] == "https://my-ranger.ranger-ns.svc.cluster.local:6080"
+        assert env_dict["SERVICE_NAME"] == "trino-ranger-test"
+        assert env_dict["ACTION"] == "create"
+        assert env_dict["RANGER_PASS"] == "my_updated_password"
 
 @pytest.mark.asyncio
 async def test_trino_state_credentials(mock_service_dependencies):
