@@ -1,7 +1,6 @@
 {
   "_comment": "SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail\nSPDX-License-Identifier: AGPLv3+",
   "name": "superset",
-  "id": 105,
   "implClass": "org.apache.ranger.services.superset.RangerServiceSuperset",
   "label": "Apache Superset",
   "description": "Apache Superset Policies",

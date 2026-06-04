@@ -157,12 +157,14 @@ else
 
   cd ${RANGER_HOME}/admin && ./ews/ranger-admin-services.sh start
 
-  if [ "${SETUP_RANGER}" == "true" ]
-  then
-    # Wait for Ranger Admin to become ready
-    sleep 30
+  # Wait for Ranger Admin to become ready and register services asynchronously
+  (
+    for i in {1..30}; do
+      curl -s -k http://localhost:6080 > /dev/null && break
+      sleep 2
+    done
     python3 ${RANGER_SCRIPTS}/create-ranger-services.py
-  fi
+  ) &
 
   RANGER_ADMIN_PID=$(ps -ef | grep -v grep | grep -i "org.apache.ranger.server.tomcat.EmbeddedServer" | awk '{print $2}')
 
