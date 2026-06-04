@@ -117,18 +117,32 @@ const ServiceView = ({
             bg: "bg-purple-500/10"
         },
         {
-            name: "Spark",
-            icon: Activity,
-            count: projectState?.spark || 0,
-            color: "text-orange-500",
-            bg: "bg-orange-500/10"
+            name: "Hive Metastore",
+            icon: Database,
+            count: projectState?.hive_metastore || 0,
+            color: "text-amber-500",
+            bg: "bg-amber-500/10"
         },
         {
-            name: "Airflow",
+            name: "Superset",
             icon: Activity,
-            count: projectState?.airflow || 0,
-            color: "text-teal-500",
-            bg: "bg-teal-500/10"
+            count: projectState?.superset || 0,
+            color: "text-rose-500",
+            bg: "bg-rose-500/10"
+        },
+        {
+            name: "Ranger",
+            icon: Shield,
+            count: projectState?.ranger || 0,
+            color: "text-emerald-500",
+            bg: "bg-emerald-500/10"
+        },
+        {
+            name: "OpenSearch",
+            icon: Server,
+            count: projectState?.opensearch || 0,
+            color: "text-cyan-500",
+            bg: "bg-cyan-500/10"
         }
     ];
 
@@ -176,7 +190,7 @@ const ServiceView = ({
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
                 {resourceCards.map((card, i) => {
                     const Icon = card.icon;
                     return (

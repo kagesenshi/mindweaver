@@ -20,22 +20,49 @@ class ProjectState(BaseState):
             PgSqlPlatform,
             PgSqlPlatformState,
         )
+        from mindweaver.platform_service.trino import (
+            TrinoPlatform,
+            TrinoPlatformState,
+        )
+        from mindweaver.platform_service.hive_metastore import (
+            HiveMetastorePlatform,
+            HiveMetastorePlatformState,
+        )
+        from mindweaver.platform_service.superset import (
+            SupersetPlatform,
+            SupersetPlatformState,
+        )
+        from mindweaver.platform_service.ranger import (
+            RangerPlatform,
+            RangerPlatformState,
+        )
+        from mindweaver.platform_service.opensearch import (
+            OpenSearchPlatform,
+            OpenSearchPlatformState,
+        )
         from mindweaver.service.k8s_cluster import K8sClusterStatus
 
-        # Get service counts (legacy from views.py)
-        stmt = (
-            select(func.count(PgSqlPlatform.id))
-            .join(
-                PgSqlPlatformState,
-                PgSqlPlatform.id == PgSqlPlatformState.platform_id,
-                isouter=True,
+        # Helper to get counts
+        async def _get_count(plat_cls, state_cls):
+            stmt = (
+                select(func.count(plat_cls.id))
+                .join(
+                    state_cls,
+                    plat_cls.id == state_cls.platform_id,
+                    isouter=True,
+                )
+                .where(plat_cls.project_id == self.model.id)
+                .where(state_cls.active == True)
             )
-            .where(PgSqlPlatform.project_id == self.model.id)
-            .where(PgSqlPlatformState.active == True)
-        )
+            res = await self.svc.session.exec(stmt)
+            return res.one_or_none() or 0
 
-        result = await self.svc.session.exec(stmt)
-        pgsql_count = result.one_or_none() or 0
+        pgsql_count = await _get_count(PgSqlPlatform, PgSqlPlatformState)
+        trino_count = await _get_count(TrinoPlatform, TrinoPlatformState)
+        hive_metastore_count = await _get_count(HiveMetastorePlatform, HiveMetastorePlatformState)
+        superset_count = await _get_count(SupersetPlatform, SupersetPlatformState)
+        ranger_count = await _get_count(RangerPlatform, RangerPlatformState)
+        opensearch_count = await _get_count(OpenSearchPlatform, OpenSearchPlatformState)
 
         # Get cluster status
         status_data = {}
@@ -166,7 +193,11 @@ class ProjectState(BaseState):
 
         return {
             "pgsql": pgsql_count,
-            "trino": 0,
+            "trino": trino_count,
+            "hive_metastore": hive_metastore_count,
+            "superset": superset_count,
+            "ranger": ranger_count,
+            "opensearch": opensearch_count,
             "spark": 0,
             "airflow": 0,
             "cluster": status_data,

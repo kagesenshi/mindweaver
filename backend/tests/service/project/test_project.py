@@ -198,6 +198,10 @@ def test_project_state(
     state_data = resp.json()
     assert state_data["pgsql"] == 0
     assert state_data["trino"] == 0
+    assert state_data["hive_metastore"] == 0
+    assert state_data["superset"] == 0
+    assert state_data["ranger"] == 0
+    assert state_data["opensearch"] == 0
 
     # Create PgSql platform
     headers_p1 = {"X-Project-ID": str(p1["id"])}
