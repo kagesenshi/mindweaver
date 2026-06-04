@@ -1,0 +1,30 @@
+# SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
+# SPDX-License-Identifier: AGPLv3+
+
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: envoy-{{ name }}
+  namespace: {{ namespace }}
+spec:
+  secretName: envoy-{{ name }}
+  duration: 2160h # 90d
+  renewBefore: 360h # 15d
+  subject:
+    organizations:
+      - mindweaver
+  isCA: false
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 2048
+  usages:
+    - server auth
+    - client auth
+  dnsNames:
+    - "{{ ingress_domain }}"
+    - "*.{{ ingress_domain }}"
+  issuerRef:
+    name: mindweaver-selfsigned-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io

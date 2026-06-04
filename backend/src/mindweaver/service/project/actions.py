@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: AGPLv3+
 
 import asyncio
+import functools
+import jinja2 as j2
 import logging
 import os
 import tempfile
@@ -63,143 +65,32 @@ async def _get_existing_nodeport(cluster, namespace: str) -> Optional[int]:
     return await asyncio.to_thread(_get)
 
 
-def _generate_gateway_manifest(model, namespace: str, nodeport: Optional[int] = None) -> str:
-    """Generate Gateway and Certificate manifests, optionally including EnvoyProxy for custom nodePort."""
-    envoy_proxy_manifest = ""
-    gateway_spec_infrastructure = ""
+@functools.lru_cache(maxsize=32)
+def _get_jinja_env() -> j2.Environment:
+    template_directory = os.path.join(os.path.dirname(__file__), "templates")
+    env = j2.Environment(loader=j2.FileSystemLoader(template_directory))
+    return env
 
-    if nodeport:
-        envoy_proxy_manifest = f"""apiVersion: gateway.envoyproxy.io/v1alpha1
-kind: EnvoyProxy
-metadata:
-  name: project-envoy-proxy-config
-  namespace: {namespace}
-spec:
-  provider:
-    type: Kubernetes
-    kubernetes:
-      envoyService:
-        type: NodePort
-      patch:
-        type: StrategicMerge
-        value:
-          spec:
-            ports:
-              - name: https
-                port: 443
-                nodePort: {nodeport}
----
-"""
-        gateway_spec_infrastructure = """  infrastructure:
-    parametersRef:
-      group: gateway.envoyproxy.io
-      kind: EnvoyProxy
-      name: project-envoy-proxy-config
-"""
 
-    return f"""{envoy_proxy_manifest}apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: dex-tls
-  namespace: {namespace}
-spec:
-  secretName: dex-tls
-  duration: 2160h # 90d
-  renewBefore: 360h # 15d
-  subject:
-    organizations:
-      - mindweaver
-  isCA: false
-  privateKey:
-    algorithm: RSA
-    encoding: PKCS1
-    size: 2048
-  usages:
-    - server auth
-    - client auth
-  dnsNames:
-    - dex.{model.ingress_domain}
-  issuerRef:
-    name: mindweaver-selfsigned-issuer
-    kind: ClusterIssuer
-    group: cert-manager.io
----
-apiVersion: gateway.networking.k8s.io/v1
-kind: Gateway
-metadata:
-  name: project-gateway
-  namespace: {namespace}
-spec:
-  gatewayClassName: envoy-gateway
-{gateway_spec_infrastructure}  listeners:
-    - name: https
-      protocol: HTTPS
-      port: 443
-      hostname: "dex.{model.ingress_domain}"
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - group: ""
-            kind: Secret
-            name: dex-tls
-    - name: wildcard-https
-      protocol: HTTPS
-      port: 443
-      hostname: "*.{model.ingress_domain}"
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - group: ""
-            kind: Secret
-            name: envoy-{model.name}
----
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: dex-route
-  namespace: {namespace}
-spec:
-  parentRefs:
-    - name: project-gateway
-  hostnames:
-    - "dex.{model.ingress_domain}"
-  rules:
-    - matches:
-        - path:
-            type: PathPrefix
-            value: /
-      backendRefs:
-        - name: dex
-          port: 5556
----
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: envoy-{model.name}
-  namespace: {namespace}
-spec:
-  secretName: envoy-{model.name}
-  duration: 2160h # 90d
-  renewBefore: 360h # 15d
-  subject:
-    organizations:
-      - mindweaver
-  isCA: false
-  privateKey:
-    algorithm: RSA
-    encoding: PKCS1
-    size: 2048
-  usages:
-    - server auth
-    - client auth
-  dnsNames:
-    - "{model.ingress_domain}"
-    - "*.{model.ingress_domain}"
-  issuerRef:
-    name: mindweaver-selfsigned-issuer
-    kind: ClusterIssuer
-    group: cert-manager.io
-"""
+def _render_gateway_manifests(model, namespace: str, nodeport: Optional[int] = None) -> str:
+    """Render Gateway and Certificate manifests from YAML templates."""
+    vars = {
+        "name": model.name,
+        "namespace": namespace,
+        "ingress_domain": model.ingress_domain,
+        "nodeport": nodeport,
+    }
+
+    env = _get_jinja_env()
+    templates = sorted(env.list_templates())
+    rendered = []
+    for template_name in templates:
+        if not template_name.endswith((".yaml", ".yml", ".yml.j2", ".yaml.j2")):
+            continue
+        template = env.get_template(template_name)
+        rendered.append(template.render(**vars))
+
+    return "\n---\n".join(r for r in rendered if r.strip())
 
 
 
@@ -335,7 +226,7 @@ class InstallDexAction(BaseAction):
 
         gateway_manifest = ""
         if self.model.ingress_domain:
-            gateway_manifest = _generate_gateway_manifest(
+            gateway_manifest = _render_gateway_manifests(
                 self.model, namespace, self.model.envoy_nodeport
             )
 
@@ -471,7 +362,7 @@ class DeployGatewayAction(BaseAction):
 
         gateway_manifest = ""
         if self.model.ingress_domain:
-            gateway_manifest = _generate_gateway_manifest(
+            gateway_manifest = _render_gateway_manifests(
                 self.model, namespace, self.model.envoy_nodeport
             )
 

@@ -326,8 +326,8 @@ async def test_project_deploy_gateway_with_nodeport(client):
             # But we can also check the helper directly, or verify via mocking tempfile
             
             # Let's test the helper directly to be extremely clean and robust
-            from mindweaver.service.project.actions import _generate_gateway_manifest
-            manifest = _generate_gateway_manifest(project, "test-proj-gw-np", 32111)
+            from mindweaver.service.project.actions import _render_gateway_manifests
+            manifest = _render_gateway_manifests(project, "test-proj-gw-np", 32111)
             assert "EnvoyProxy" in manifest
             assert "project-envoy-proxy-config" in manifest
             assert "nodePort: 32111" in manifest
