@@ -46,10 +46,21 @@ spec:
           workers: {{ replica_count }}
           autoscaling:
             enabled: false
-          {% if password_authenticator_config_files %}
+          {% if password_authenticator_config_files or jwt_enabled %}
           coordinatorExtraConfig: |
+            {% if password_authenticator_config_files and jwt_enabled %}
+            http-server.authentication.type=PASSWORD,JWT
+            {% elif password_authenticator_config_files %}
             http-server.authentication.type=PASSWORD
+            {% elif jwt_enabled %}
+            http-server.authentication.type=JWT
+            {% endif %}
+            {% if password_authenticator_config_files %}
             password-authenticator.config-files={{ password_authenticator_config_files }}
+            {% endif %}
+            {% if jwt_enabled %}
+            http-server.authentication.jwt.key-file={{ jwt_key_file }}
+            {% endif %}
           {% endif %}
         
         initContainers:

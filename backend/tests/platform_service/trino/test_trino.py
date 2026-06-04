@@ -1237,3 +1237,53 @@ async def test_trino_state_ranger_credentials(mock_service_dependencies):
     assert res["ranger_pass"] == "ranger_secret_pass"
 
 
+@pytest.mark.asyncio
+async def test_trino_jwt_rendering(mock_service_dependencies):
+    """Test that JWT authentication is correctly rendered in Trino config"""
+    request, session = mock_service_dependencies
+    svc = TrinoPlatformService(request, session)
+    svc._resolve_namespace = AsyncMock(return_value="trino-ns")
+    
+    # Mock project with LDAP configured to test multiple auth priority rendering
+    mock_project = MagicMock()
+    mock_project.ldap_config_id = None
+    mock_project.ingress_domain = None
+    svc.project = AsyncMock(return_value=mock_project)
+
+    model = TrinoPlatform(
+        name="trino-jwt-test",
+        title="Trino JWT Test",
+        project_id=1,
+        hms_ids=[10],  # Needs at least one catalog
+    )
+
+    # Mock HMS service to avoid failure in template_vars
+    mock_hms_svc = AsyncMock()
+    mock_hms_model = MagicMock()
+    mock_hms_model.name = "test-hms"
+    mock_hms_model.s3_storage_id = None
+    mock_hms_svc.get.return_value = mock_hms_model
+    mock_hms_state = MagicMock()
+    mock_hms_state.active = True
+    mock_hms_state.hms_uri = "thrift://hms:9083"
+    mock_hms_svc.platform_state.return_value = mock_hms_state
+    mock_hms_svc._resolve_namespace.return_value = "hms-ns"
+
+    with patch("mindweaver.platform_service.trino.service.HiveMetastorePlatformService.get_service", AsyncMock(return_value=mock_hms_svc)), \
+         patch("mindweaver.platform_service.trino.service.decrypt_password", lambda x: x):
+        
+        vars = await svc.template_vars(model)
+        manifest = await svc.render_manifests(model)
+
+    assert vars["jwt_enabled"] is True
+    assert vars["jwt_key_file"] == "http://dex.trino-ns.svc.cluster.local:5556/dex/keys"
+
+    docs = list(yaml.safe_load_all(manifest))
+    app = next(d for d in docs if d["kind"] == "Application")
+    values = yaml.safe_load(app["spec"]["source"]["helm"]["values"])
+    
+    assert "http-server.authentication.type=PASSWORD,JWT" in values["server"]["coordinatorExtraConfig"]
+    assert "http-server.authentication.jwt.key-file=http://dex.trino-ns.svc.cluster.local:5556/dex/keys" in values["server"]["coordinatorExtraConfig"]
+
+
+

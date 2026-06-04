@@ -419,6 +419,9 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
         if auth_files:
             vars["password_authenticator_config_files"] = ",".join(auth_files)
 
+        vars["jwt_enabled"] = True
+        vars["jwt_key_file"] = f"http://dex.{vars['namespace']}.svc.cluster.local:5556/dex/keys"
+
         vars["preferred_catalog"] = await self.get_preferred_catalog(model)
 
         return vars
