@@ -7,13 +7,35 @@ from apache_ranger.client.ranger_client import RangerClient
 from json import JSONDecodeError
 
 import json
+import urllib3
 from apache_ranger.model.ranger_service_def import RangerServiceDef
+from requests.exceptions import ConnectionError, SSLError
+
+# Disable insecure request warnings for self-signed SSL certificates
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # Read admin password from environment, fallback to rangerR0cks!
 admin_password = os.environ.get("RANGER_ADMIN_PASSWORD", "rangerR0cks!")
 
-# Use localhost since it runs inside the container
-ranger_client = RangerClient('http://localhost:6080', ('admin', admin_password))
+# Attempt to discover the correct protocol (HTTPS vs HTTP) and initialize the client
+ranger_client = None
+for protocol in ['https', 'http']:
+    url = f"{protocol}://localhost:6080"
+    try:
+        client = RangerClient(url, ('admin', admin_password))
+        client.session.verify = False
+        # Perform a test call to verify connectivity
+        client.get_service_def('tag')
+        ranger_client = client
+        print(f"Successfully connected to Ranger Admin using {url}")
+        break
+    except Exception as e:
+        print(f"Failed connection check on {url}: {e}")
+
+if not ranger_client:
+    print("Warning: Could not verify connection to Ranger Admin. Defaulting to HTTP client.")
+    ranger_client = RangerClient('http://localhost:6080', ('admin', admin_password))
+    ranger_client.session.verify = False
 
 def register_superset_servicedef():
     """Reads the superset service definition JSON and registers it in Ranger Admin."""
