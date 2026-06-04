@@ -64,6 +64,7 @@ spec:
                   cp /tls-secret/keystore.jks /tls/keystore.jks
                   cp /tls-secret/truststore.jks /tls/truststore.jks
                   {% if ranger_enabled %}
+                  rm -f /tls/ranger-link.jceks
                   echo "changeit" | keytool -importpass -alias sslKeyStore -keypass changeit -storepass changeit -keystore /tls/ranger-link.jceks -storetype JCEKS -noprompt
                   echo "changeit" | keytool -importpass -alias sslTrustStore -keypass changeit -storepass changeit -keystore /tls/ranger-link.jceks -storetype JCEKS -noprompt
                   {% endif %}
