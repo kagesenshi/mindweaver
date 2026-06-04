@@ -1,0 +1,164 @@
+{
+  "_comment": "SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail\nSPDX-License-Identifier: AGPLv3+",
+  "name": "superset",
+  "id": 105,
+  "implClass": "org.apache.ranger.services.superset.RangerServiceSuperset",
+  "label": "Apache Superset",
+  "description": "Apache Superset Policies",
+  "options": {
+    "enableDenyAndExceptionsInPolicies": "true"
+  },
+  "configs": [
+    {
+      "name": "username",
+      "type": "string",
+      "mandatory": true,
+      "label": "Superset Username"
+    },
+    {
+      "name": "password",
+      "type": "password",
+      "mandatory": true,
+      "label": "Superset Password"
+    },
+    {
+      "name": "superset.url",
+      "type": "string",
+      "mandatory": true,
+      "label": "Superset Base URL",
+      "defaultValue": "http://superset:8088"
+    }
+  ],
+  "resources": [
+    {
+      "name": "database",
+      "type": "string",
+      "level": 1,
+      "parent": "",
+      "mandatory": false,
+      "lookupSupported": true,
+      "recursiveSupported": false,
+      "excludesSupported": false,
+      "matcher": "org.apache.ranger.plugin.resourcematcher.RangerDefaultResourceMatcher",
+      "matcherOptions": {
+        "wildCard": "true",
+        "ignoreCase": "true"
+      },
+      "label": "Database",
+      "description": "Superset Database"
+    },
+    {
+      "name": "schema",
+      "type": "string",
+      "level": 2,
+      "parent": "database",
+      "mandatory": false,
+      "lookupSupported": true,
+      "recursiveSupported": false,
+      "excludesSupported": false,
+      "matcher": "org.apache.ranger.plugin.resourcematcher.RangerDefaultResourceMatcher",
+      "matcherOptions": {
+        "wildCard": "true",
+        "ignoreCase": "true"
+      },
+      "label": "Schema",
+      "description": "Database Schema"
+    },
+    {
+      "name": "dataset",
+      "type": "string",
+      "level": 3,
+      "parent": "schema",
+      "mandatory": false,
+      "lookupSupported": true,
+      "recursiveSupported": false,
+      "excludesSupported": false,
+      "matcher": "org.apache.ranger.plugin.resourcematcher.RangerDefaultResourceMatcher",
+      "matcherOptions": {
+        "wildCard": "true",
+        "ignoreCase": "true"
+      },
+      "label": "Dataset",
+      "description": "Superset Dataset"
+    },
+    {
+      "name": "dashboard",
+      "type": "string",
+      "level": 1,
+      "parent": "",
+      "mandatory": false,
+      "lookupSupported": true,
+      "recursiveSupported": false,
+      "excludesSupported": false,
+      "matcher": "org.apache.ranger.plugin.resourcematcher.RangerDefaultResourceMatcher",
+      "matcherOptions": {
+        "wildCard": "true",
+        "ignoreCase": "true"
+      },
+      "label": "Dashboard",
+      "description": "Superset Dashboard"
+    },
+    {
+      "name": "chart",
+      "type": "string",
+      "level": 1,
+      "parent": "",
+      "mandatory": false,
+      "lookupSupported": true,
+      "recursiveSupported": false,
+      "excludesSupported": false,
+      "matcher": "org.apache.ranger.plugin.resourcematcher.RangerDefaultResourceMatcher",
+      "matcherOptions": {
+        "wildCard": "true",
+        "ignoreCase": "true"
+      },
+      "label": "Chart",
+      "description": "Superset Chart"
+    },
+    {
+      "name": "menu",
+      "type": "string",
+      "level": 1,
+      "parent": "",
+      "mandatory": false,
+      "lookupSupported": false,
+      "recursiveSupported": false,
+      "excludesSupported": false,
+      "matcher": "org.apache.ranger.plugin.resourcematcher.RangerDefaultResourceMatcher",
+      "matcherOptions": {
+        "wildCard": "true",
+        "ignoreCase": "true"
+      },
+      "label": "Menu / View",
+      "description": "FAB Menu or View Path"
+    }
+  ],
+  "accessTypes": [
+    {
+      "name": "read",
+      "label": "Read"
+    },
+    {
+      "name": "write",
+      "label": "Write"
+    },
+    {
+      "name": "create",
+      "label": "Create"
+    },
+    {
+      "name": "delete",
+      "label": "Delete"
+    },
+    {
+      "name": "drilldown",
+      "label": "Drill Down"
+    },
+    {
+      "name": "execute",
+      "label": "Execute"
+    }
+  ],
+  "contextProviders": [],
+  "policyConditions": []
+}
