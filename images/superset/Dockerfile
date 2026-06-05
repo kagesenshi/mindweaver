@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
 # SPDX-License-Identifier: AGPLv3+
 
-FROM apachesuperset.docker.scarf.sh/apache/superset:5.0.0 AS base
+FROM apachesuperset.docker.scarf.sh/apache/superset:6.0.0 AS base
 
 USER root
 RUN apt-get update && \

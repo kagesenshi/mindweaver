@@ -55,7 +55,7 @@ spec:
           tag: "{{ image.split(':')[-1] if ':' in image else 'latest' }}"
           {% else %}
           repository: ghcr.io/kagesenshi/mindweaver/superset
-          tag: 5.0.0-rev.4
+          tag: 6.0.0-rev.1
           {% endif %}
           pullPolicy: IfNotPresent
         
@@ -187,41 +187,27 @@ spec:
             from superset.security import SupersetSecurityManager
 
             class CustomSecurityManager(SupersetSecurityManager):
-                def _add_sql_lab_role_to_alpha(self, user):
-                    if user:
-                        alpha_role = self.find_role("Alpha")
-                        sql_lab_role = self.find_role("sql_lab")
-                        if alpha_role and sql_lab_role:
-                            if alpha_role in user.roles and sql_lab_role not in user.roles:
-                                user.roles.append(sql_lab_role)
-                                self.get_session.commit()
-                    return user
-
-                def auth_user_oauth(self, userinfo):
-                    user = super().auth_user_oauth(userinfo)
-                    return self._add_sql_lab_role_to_alpha(user)
-
-                def auth_user_ldap(self, username, password):
-                    user = super().auth_user_ldap(username, password)
-                    return self._add_sql_lab_role_to_alpha(user)
-
-                def auth_user_db(self, username, password):
-                    user = super().auth_user_db(username, password)
-                    return self._add_sql_lab_role_to_alpha(user)
-
                 def oauth_user_info(self, provider, response=None):
-                    import logging
-                    logging.info(f"[DEBUG OIDC] Response from provider {provider}: {response}")
-                    if provider == 'dex' and response:
-                        from flask import session
-                        if 'access_token' in response:
-                            session['oauth_access_token'] = response['access_token']
                     if provider == 'dex':
                         remote_app = self.oauth_remotes.get(provider)
                         if remote_app and response:
-                            # 1. Try parsing OIDC ID token first
+                            # 1. Try using already parsed userinfo in response
+                            data = response.get('userinfo')
+                            if data:
+                                return {
+                                    'username': data.get('preferred_username') or data.get('email') or data.get('sub'),
+                                    'name': data.get('name'),
+                                    'email': data.get('email'),
+                                    'first_name': data.get('given_name') or data.get('name') or '',
+                                    'last_name': data.get('family_name') or '',
+                                    'role_keys': data.get('groups', []),
+                                }
+
+                            # 2. Try parsing OIDC ID token
                             try:
-                                data = remote_app.parse_id_token(response)
+                                from flask import session
+                                nonce = session.get(f"_{provider}_authlib_nonce_")
+                                data = remote_app.parse_id_token(response, nonce=nonce)
                                 if data:
                                     return {
                                         'username': data.get('preferred_username') or data.get('email') or data.get('sub'),
@@ -235,7 +221,7 @@ spec:
                                 import logging
                                 logging.warning(f"Failed to parse OIDC ID token: {e}")
 
-                            # 2. Fallback to userinfo endpoint with explicit token
+                            # 3. Fallback to userinfo endpoint with explicit token
                             try:
                                 me = remote_app.get('userinfo', token=response)
                                 if me and me.status_code == 200:
