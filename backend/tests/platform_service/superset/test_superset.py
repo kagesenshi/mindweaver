@@ -36,6 +36,7 @@ def test_superset_resource_defaults():
     assert model.image == "ghcr.io/kagesenshi/mindweaver/superset:latest"
     assert model.oidc_enabled is False
     assert model.oidc_client_secret is not None
+    assert model.sqllab_enabled is True
 
 
 def test_superset_validation():
@@ -127,7 +128,8 @@ async def test_superset_template_rendering(mock_service_dependencies):
         auth_role_mapping=[
             SupersetRoleMapping(entity="admin@mindweaver.io", role="Admin"),
             SupersetRoleMapping(entity="admin@mindweaver.io", role="Alpha"),
-            SupersetRoleMapping(entity="user@mindweaver.io", role="Gamma")
+            SupersetRoleMapping(entity="user@mindweaver.io", role="Gamma"),
+            SupersetRoleMapping(entity="user@mindweaver.io", role="sql_lab")
         ]
     )
 
@@ -213,7 +215,7 @@ async def test_superset_template_rendering(mock_service_dependencies):
         assert vars["db_pass"] == "pass"
         assert vars["ldap"]["server_url"] == "ldap://ldap:389"
         assert vars["auth_role_mapping"]["admin@mindweaver.io"] == ["Admin", "Alpha"]
-        assert vars["auth_role_mapping"]["user@mindweaver.io"] == ["Gamma"]
+        assert vars["auth_role_mapping"]["user@mindweaver.io"] == ["Gamma", "sql_lab"]
         assert len(vars["datasources"]) == 2
         
         ds_pg = next(ds for ds in vars["datasources"] if ds["database_name"] == "mypsql")
@@ -266,7 +268,7 @@ async def test_superset_template_rendering(mock_service_dependencies):
         assert values["redis"]["image"]["repository"] == "bitnamilegacy/redis"
         assert "AUTH_ROLES_MAPPING" in values["configOverrides"]["role_mapping"]
         assert '"admin@mindweaver.io": ["Admin", "Alpha"]' in values["configOverrides"]["role_mapping"]
-        assert '"user@mindweaver.io": ["Gamma"]' in values["configOverrides"]["role_mapping"]
+        assert '"user@mindweaver.io": ["Gamma", "sql_lab"]' in values["configOverrides"]["role_mapping"]
         
         # 1.1 Verify with override_image = True
         model.override_image = True
@@ -312,6 +314,19 @@ async def test_superset_template_rendering(mock_service_dependencies):
         assert "ENABLE_PROXY_FIX = True" in values_oidc["configOverrides"]["oidc"]
         assert "import trino.auth" in values_oidc["configOverrides"]["oidc"]
         assert "ALLOWED_EXTRA_AUTHENTICATIONS" in values_oidc["configOverrides"]["oidc"]
+        # sql_lab role auto-assignment should be rendered because sqllab_enabled is True by default
+        assert 'self.find_role("sql_lab")' in values_oidc["configOverrides"]["oidc"]
+
+        # 1.4 Verify behavior when sqllab_enabled = False
+        model.sqllab_enabled = False
+        vars_no_sqllab = await svc.template_vars(model)
+        assert "sql_lab" not in vars_no_sqllab["auth_role_mapping"]["user@mindweaver.io"]
+
+        manifest_no_sqllab = await svc.render_manifests(model)
+        docs_no_sqllab = [d for d in yaml.safe_load_all(manifest_no_sqllab) if d is not None]
+        app_doc_no_sqllab = next(d for d in docs_no_sqllab if d["kind"] == "Application")
+        values_no_sqllab = yaml.safe_load(app_doc_no_sqllab["spec"]["source"]["helm"]["values"])
+        assert 'self.find_role("sql_lab")' not in values_no_sqllab["configOverrides"]["oidc"]
 
         # Verify Trino datasource has extra connecting args when OIDC is enabled
         assert "import_datasources.yaml" in values_oidc["extraConfigs"]

@@ -130,6 +130,11 @@ class SupersetPlatformService(PlatformService[SupersetPlatform]):
                 "label": "Enable OIDC Authentication",
                 "type": "boolean",
             },
+            "sqllab_enabled": {
+                "order": 27,
+                "label": "Enable SQL Lab",
+                "type": "boolean",
+            },
         }
 
     async def template_vars(self, model: SupersetPlatform) -> dict:
@@ -266,6 +271,9 @@ class SupersetPlatformService(PlatformService[SupersetPlatform]):
             role = getattr(m, "role", None) or (m.get("role") if isinstance(m, dict) else None)
             
             if not entity or not role:
+                continue
+
+            if role == "sql_lab" and not model.sqllab_enabled:
                 continue
 
             if entity not in merged_mapping:

@@ -190,6 +190,7 @@ spec:
                 def update_user_auth_stat(self, user, success=True):
                     if success and user:
                         try:
+                            {% if sqllab_enabled %}
                             sql_lab_role = self.find_role("sql_lab")
                             if sql_lab_role and sql_lab_role not in user.roles:
                                 user.roles.append(sql_lab_role)
@@ -198,6 +199,7 @@ spec:
                                 except AttributeError:
                                     from superset import db
                                     db.session.commit()
+                            {% endif %}
                         except Exception as e:
                             import logging
                             logging.error(f"Failed to auto-assign sql_lab role: {e}")
