@@ -210,8 +210,8 @@ async def test_ranger_render_manifests(mock_service_dependencies):
     with patch("mindweaver.platform_service.ranger.service.PgSqlPlatformService.get_service", AsyncMock(return_value=mock_pgsql_svc)):
         # Default behavior: policymgr_supportedcomponents should be rendered
         manifests = await svc.render_manifests(model)
-        assert "policymgr_supportedcomponents: trino,kafka,elasticsearch,nifi,superset" in manifests
-        assert "ranger.supportedcomponents: trino,kafka,elasticsearch,nifi,superset" in manifests
+        assert "policymgr_supportedcomponents: trino,kafka,elasticsearch,nifi" in manifests
+        assert "ranger.supportedcomponents: trino,kafka,elasticsearch,nifi" in manifests
         # Default behavior: usersync should be disabled
         assert "enabled: false" in manifests
 
@@ -226,7 +226,7 @@ async def test_ranger_render_manifests(mock_service_dependencies):
         assert "ranger.supportedcomponents: kafka,trino" in manifests_custom
         assert "custom.property: value" in manifests_custom
         # Ensure default list doesn't appear when overridden
-        assert "policymgr_supportedcomponents: trino,kafka,elasticsearch,nifi,superset" not in manifests_custom
+        assert "policymgr_supportedcomponents: trino,kafka,elasticsearch,nifi" not in manifests_custom
 
         # Test with SYNC_SOURCE=ldap should enable usersync
         model.additional_properties = {

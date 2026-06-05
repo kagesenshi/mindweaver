@@ -8,8 +8,6 @@ COPY create-ranger-services.py /home/ranger/scripts/create-ranger-services.py
 COPY downloads/LdapUserGroupBuilder.java /tmp/LdapUserGroupBuilder.java
 COPY patch_ldap_builder.py /tmp/patch_ldap_builder.py
 
-COPY plugin/ /tmp/plugin/
-
 USER root
 
 # 1. Install & setup Ranger Usersync
@@ -48,17 +46,5 @@ RUN cp /opt/ranger/usersync/install.properties /home/ranger/scripts/ranger-users
     touch /etc/rc2.d/S99ranger-usersync /etc/rc2.d/K00ranger-usersync /etc/rc3.d/S99ranger-usersync /etc/rc3.d/K00ranger-usersync /usr/bin/ranger-usersync && \
     chown -R ranger:ranger /opt/ranger/ranger-2.8.0-usersync /opt/ranger/usersync /var/run/ranger /var/log/ranger /etc/ranger /etc/init.d/ranger-admin /etc/init.d/ranger-usersync /etc/rc2.d/S99ranger-usersync /etc/rc2.d/K00ranger-usersync /etc/rc3.d/S99ranger-usersync /etc/rc3.d/K00ranger-usersync /usr/bin/ranger-usersync /home/ranger/scripts/ranger-usersync-install.properties && \
     chmod +x /home/ranger/scripts/ranger.sh /home/ranger/scripts/create-ranger-services.py
-
-# 5. Build, install, and configure Superset plugin inside Ranger admin
-RUN mkdir -p /opt/ranger/admin/ews/webapp/WEB-INF/classes/ranger-plugins/superset && \
-    /opt/java/openjdk/bin/javac -cp "/opt/ranger/admin/ews/webapp/WEB-INF/lib/*" -d /opt/ranger/admin/ews/webapp/WEB-INF/classes/ /tmp/plugin/superset/RangerServiceSuperset.java && \
-    chown -R ranger:ranger /opt/ranger/admin/ews/webapp/WEB-INF/classes/ranger-plugins/superset && \
-    mv /tmp/plugin/superset/ranger-servicedef-superset.json /home/ranger/scripts/ranger-servicedef-superset.json && \
-    chown ranger:ranger /home/ranger/scripts/ranger-servicedef-superset.json && \
-    mv /tmp/plugin/superset/superset-icon.svg /opt/ranger/admin/ews/webapp/images/superset-icon.svg && \
-    chown ranger:ranger /opt/ranger/admin/ews/webapp/images/superset-icon.svg && \
-    python3 -c "import glob; path = glob.glob('/opt/ranger/admin/ews/webapp/dist/main.*.js')[0]; code = open(path).read(); code = code.replace('M={4300:', 'M={9999:(e,t,n)=>{\"use strict\";n.r(t),n.d(t,{default:()=>o});const o=\"../images/superset-icon.svg\"},4300:', 1); code = code.replace('var o={\"./atlas/icon.svg\":6556', 'var o={\"./superset/icon.svg\":9999,\"./atlas/icon.svg\":6556', 1); open(path, 'w').write(code);" && \
-    printf '\n.icon-component-superset:before {\n  font-family: "FontAwesome" !important;\n  content: "\\f080";\n}\n' >> /opt/ranger/admin/ews/webapp/styles/xa.css && \
-    rm -rf /tmp/plugin
 
 USER ranger

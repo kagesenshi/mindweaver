@@ -41,33 +41,6 @@ if not ranger_client:
     ranger_client = RangerClient('http://localhost:6080', ('admin', admin_password))
     ranger_client.session.verify = False
 
-def register_superset_servicedef():
-    """Reads the superset service definition JSON and registers it in Ranger Admin."""
-    servicedef_path = '/home/ranger/scripts/ranger-servicedef-superset.json'
-    if not os.path.exists(servicedef_path):
-        print(f"Service definition file not found: {servicedef_path}")
-        return
-
-    try:
-        with open(servicedef_path, 'r') as f:
-            servicedef_data = json.load(f)
-        
-        service_def_name = servicedef_data.get('name')
-        try:
-            existing = ranger_client.get_service_def(service_def_name)
-        except Exception:
-            existing = None
-
-        if existing is None:
-            service_def = RangerServiceDef(servicedef_data)
-            ranger_client.create_service_def(service_def)
-            print(f"Service definition '{service_def_name}' registered successfully!")
-        else:
-            print(f"Service definition '{service_def_name}' already exists.")
-    except Exception as e:
-        print(f"Failed to register service definition: {e}")
-
-register_superset_servicedef()
 
 def update_usersync_password():
     """Update the rangerusersync password in Ranger Admin database via the REST API.
