@@ -468,7 +468,8 @@ async def test_trino_ldap_rendering(mock_service_dependencies):
     assert vars["ldap"]["ldap.group-auth-pattern"] == "(uid=${USER})"
 
     assert "internal-communication.shared-secret=test-shared-secret" in manifest
-    assert "http-server.authentication.type=PASSWORD" in manifest
+    assert "http-server.authentication.type=PASSWORD,JWT,CERTIFICATE" in manifest
+    assert "http-server.authentication.certificate.user-mapping.pattern=.*?(CN=[^,]+).*" in manifest
     assert "additionalConfigFiles:" in manifest
     assert "ldap.properties:" in manifest
     assert "password-authenticator.name=ldap" in manifest
@@ -542,6 +543,8 @@ async def test_trino_https_rendering(mock_service_dependencies):
     assert "http-server.https.enabled=true" in props
     assert "http-server.https.port=8443" in props
     assert "http-server.https.keystore.path=/etc/trino/tls/tls.pem" in props
+    assert "http-server.https.truststore.path=/etc/trino/tls/truststore.jks" in props
+    assert "http-server.https.truststore.key=changeit" in props
     # No keystore.password needed for PEM format
     assert not any("keystore.password" in p for p in props)
 
@@ -861,7 +864,8 @@ async def test_trino_ranger_integration(mock_service_dependencies):
     assert config_files["password.db"].startswith("trino:$2y$")
     assert "ranger:$2y$" in config_files["password.db"]
     assert "password-authenticator.config-files=/etc/trino/file.properties" in values["server"]["coordinatorExtraConfig"]
-    assert "http-server.authentication.type=PASSWORD" in values["server"]["coordinatorExtraConfig"]
+    assert "http-server.authentication.type=PASSWORD,JWT,CERTIFICATE" in values["server"]["coordinatorExtraConfig"]
+    assert "http-server.authentication.certificate.user-mapping.pattern=.*?(CN=[^,]+).*" in values["server"]["coordinatorExtraConfig"]
 
     security_xml = config_files["ranger-trino-security.xml"]
     assert "<name>ranger.plugin.trino.policy.rest.url</name>" in security_xml
@@ -1253,7 +1257,8 @@ async def test_trino_jwt_rendering(mock_service_dependencies):
     app = next(d for d in docs if d["kind"] == "Application")
     values = yaml.safe_load(app["spec"]["source"]["helm"]["values"])
     
-    assert "http-server.authentication.type=PASSWORD,JWT" in values["server"]["coordinatorExtraConfig"]
+    assert "http-server.authentication.type=PASSWORD,JWT,CERTIFICATE" in values["server"]["coordinatorExtraConfig"]
+    assert "http-server.authentication.certificate.user-mapping.pattern=.*?(CN=[^,]+).*" in values["server"]["coordinatorExtraConfig"]
     assert "http-server.authentication.jwt.key-file=http://dex.trino-ns.svc.cluster.local:5556/dex/keys" in values["server"]["coordinatorExtraConfig"]
     assert "http-server.authentication.jwt.principal-field=email" in values["server"]["coordinatorExtraConfig"]
     assert "additionalLogProperties" in values

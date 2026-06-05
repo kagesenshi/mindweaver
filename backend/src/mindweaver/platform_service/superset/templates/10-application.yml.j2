@@ -23,15 +23,27 @@ spec:
         extraVolumes:
           - name: ca-certs
             secret:
-              secretName: envoy-{{ project_name }}
+              secretName: {{ name }}-tls
               items:
                 - key: ca.crt
                   path: ca.crt
+                - key: tls.crt
+                  path: tls.crt
+                - key: tls.key
+                  path: tls.key
 
         extraVolumeMounts:
           - name: ca-certs
             mountPath: /etc/ssl/certs/mindweaver-ca.crt
             subPath: ca.crt
+            readOnly: true
+          - name: ca-certs
+            mountPath: /etc/superset/trino-certs/tls.crt
+            subPath: tls.crt
+            readOnly: true
+          - name: ca-certs
+            mountPath: /etc/superset/trino-certs/tls.key
+            subPath: tls.key
             readOnly: true
 
         postgresql:
@@ -100,24 +112,28 @@ spec:
             if [ -f /app/configs/import_datasources.yaml ]; then
               echo "Importing datasources..."
               superset import_datasources -p /app/configs/import_datasources.yaml
-              echo "Cleaning up removed datasources..."
-              python3 -c "
+            fi
+            echo "Cleaning up removed datasources..."
+            python3 -c "
+            import os
             import yaml
             from superset.app import create_app
             app = create_app()
             with app.app_context():
                 from superset import db
                 from superset.models.core import Database
-                with open('/app/configs/import_datasources.yaml', 'r') as f:
-                    config = yaml.safe_load(f)
-                expected_names = [db_entry['database_name'] for db_entry in config.get('databases', [])] + ['main', 'examples']
+                expected_names = ['main', 'examples']
+                config_path = '/app/configs/import_datasources.yaml'
+                if os.path.exists(config_path):
+                    with open(config_path, 'r') as f:
+                        config = yaml.safe_load(f) or {}
+                    expected_names.extend([db_entry['database_name'] for db_entry in config.get('databases', [])])
                 for d in db.session.query(Database).all():
                     if d.database_name not in expected_names:
                         print(f'Deleting database connection: {d.database_name}')
                         db.session.delete(d)
                 db.session.commit()
             "
-            fi
 
         configOverrides:
           secret_key: |
@@ -167,72 +183,6 @@ spec:
                     }
                 }
             ]
-
-            DATABASE_OAUTH2_UPSTREAM_PROVIDERS = {
-                {% for ds in datasources %}
-                {% if ds.is_trino %}
-                "{{ ds.database_name }}": "dex",
-                {% endif %}
-                {% endfor %}
-            }
-
-            # Monkeypatch to log Trino connection details and access token
-            import logging
-            logger = logging.getLogger("superset.trino.monkeypatch")
-            
-            try:
-                import trino.dbapi
-                original_trino_connect = trino.dbapi.connect
-                def patched_trino_connect(*args, **kwargs):
-                    """Patched trino connect function to log user and auth token, and inject from session if available"""
-                    from flask import session, has_request_context
-                    if has_request_context():
-                        token = None
-                        if 'oauth_access_token' in session:
-                            token = session['oauth_access_token']
-                        elif 'oauth' in session:
-                            oauth_data = session['oauth']
-                            if isinstance(oauth_data, tuple) and len(oauth_data) > 0:
-                                token = oauth_data[0]
-                            elif isinstance(oauth_data, dict):
-                                token = oauth_data.get('access_token') or oauth_data.get('oauth_token')
-                            else:
-                                token = str(oauth_data)
-                        
-                        if token:
-                            import trino.auth
-                            kwargs["auth"] = trino.auth.JWTAuthentication(token)
-                            logger.info(f"[MONKEYPATCH TRINO CONNECT] Injected JWT token from Flask session for user {kwargs.get('user')}")
-                        else:
-                            logger.warning(f"[MONKEYPATCH TRINO CONNECT] No token found in session. Available keys: {list(session.keys())}")
-                    auth = kwargs.get("auth")
-                    token_str = "None"
-                    if auth:
-                        if hasattr(auth, "token"):
-                            token_str = str(auth.token)
-                        elif hasattr(auth, "_token"):
-                            token_str = str(auth._token)
-                        else:
-                            token_str = str(auth)
-                    logger.info(f"[MONKEYPATCH TRINO CONNECT] Connecting with user: {kwargs.get('user')}, auth token: {token_str}, kwargs: {kwargs}")
-                    return original_trino_connect(*args, **kwargs)
-                trino.dbapi.connect = patched_trino_connect
-                logger.info("[MONKEYPATCH TRINO] Successfully patched trino.dbapi.connect")
-            except Exception as e:
-                logger.error(f"[MONKEYPATCH TRINO] Failed to patch trino.dbapi.connect: {e}")
-
-            try:
-                import trino.auth
-                if hasattr(trino.auth, "JWTAuthentication"):
-                    original_jwt_init = trino.auth.JWTAuthentication.__init__
-                    def patched_jwt_init(self, token, *args, **kwargs):
-                        """Patched JWTAuthentication init to log token"""
-                        logger.info(f"[MONKEYPATCH TRINO JWT] JWTAuthentication initialized with token: {token}")
-                        original_jwt_init(self, token, *args, **kwargs)
-                    trino.auth.JWTAuthentication.__init__ = patched_jwt_init
-                    logger.info("[MONKEYPATCH TRINO] Successfully patched trino.auth.JWTAuthentication.__init__")
-            except Exception as e:
-                logger.error(f"[MONKEYPATCH TRINO] Failed to patch JWTAuthentication: {e}")
 
             from superset.security import SupersetSecurityManager
 
@@ -308,7 +258,8 @@ spec:
             import trino.auth
             ALLOWED_EXTRA_AUTHENTICATIONS = {
                 "trino": {
-                    "jwt": trino.auth.JWTAuthentication
+                    "jwt": trino.auth.JWTAuthentication,
+                    "certificate": trino.auth.CertificateAuthentication
                 }
             }
           {% endif %}

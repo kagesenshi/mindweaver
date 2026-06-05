@@ -43,21 +43,17 @@ spec:
           - http-server.https.enabled=true
           - http-server.https.port=8443
           - http-server.https.keystore.path=/etc/trino/tls/tls.pem
+          - http-server.https.truststore.path=/etc/trino/tls/truststore.jks
+          - http-server.https.truststore.key=changeit
           - http-server.log.enabled=true
           - http-server.log.path=/dev/stdout
         server:
           workers: {{ replica_count }}
           autoscaling:
             enabled: false
-          {% if password_authenticator_config_files or jwt_enabled %}
           coordinatorExtraConfig: |
-            {% if password_authenticator_config_files and jwt_enabled %}
-            http-server.authentication.type=PASSWORD,JWT
-            {% elif password_authenticator_config_files %}
-            http-server.authentication.type=PASSWORD
-            {% elif jwt_enabled %}
-            http-server.authentication.type=JWT
-            {% endif %}
+            http-server.authentication.type={% if password_authenticator_config_files %}PASSWORD,{% endif %}{% if jwt_enabled %}JWT,{% endif %}CERTIFICATE
+            http-server.authentication.certificate.user-mapping.pattern=.*?(CN=[^,]+).*
             {% if password_authenticator_config_files %}
             password-authenticator.config-files={{ password_authenticator_config_files }}
             {% endif %}
@@ -65,7 +61,6 @@ spec:
             http-server.authentication.jwt.key-file={{ jwt_key_file }}
             http-server.authentication.jwt.principal-field=email
             {% endif %}
-          {% endif %}
         
         initContainers:
           coordinator:

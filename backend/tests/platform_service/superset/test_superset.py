@@ -222,19 +222,31 @@ async def test_superset_template_rendering(mock_service_dependencies):
         ds_trino = next(ds for ds in vars["datasources"] if ds["database_name"] == "mytrino")
         assert "trino://admin@mytrino.trino-ns.svc.cluster.local:8443" in ds_trino["sqlalchemy_uri"]
 
-        # Verify rendered manifests (Application)
+        # Verify rendered manifests (Application and Certificate)
         docs = [d for d in yaml.safe_load_all(manifest) if d is not None]
-        assert len(docs) == 1
+        assert len(docs) == 2
         
-        app_doc = docs[0]
-        assert app_doc["kind"] == "Application"
+        app_doc = next(d for d in docs if d["kind"] == "Application")
+        cert_doc = next(d for d in docs if d["kind"] == "Certificate")
+        assert cert_doc["metadata"]["name"] == "superset-test-tls"
+        assert cert_doc["spec"]["secretName"] == "superset-test-tls"
+        assert cert_doc["spec"]["commonName"] == "superset-test.superset-ns.svc.cluster.local"
         
         # 1. Verify Application
         values = yaml.safe_load(app_doc["spec"]["source"]["helm"]["values"])
         assert values["extraEnv"]["REQUESTS_CA_BUNDLE"] == "/etc/ssl/certs/mindweaver-ca.crt"
         assert values["extraEnv"]["SSL_CERT_FILE"] == "/etc/ssl/certs/mindweaver-ca.crt"
-        assert values["extraVolumes"][0]["secret"]["secretName"] == "envoy-myproject"
-        assert values["extraVolumeMounts"][0]["mountPath"] == "/etc/ssl/certs/mindweaver-ca.crt"
+        assert values["extraVolumes"][0]["secret"]["secretName"] == "superset-test-tls"
+        # Check items in volume
+        items = values["extraVolumes"][0]["secret"]["items"]
+        assert any(i["key"] == "tls.crt" and i["path"] == "tls.crt" for i in items)
+        assert any(i["key"] == "tls.key" and i["path"] == "tls.key" for i in items)
+        
+        # Check volume mounts
+        mounts = [m["mountPath"] for m in values["extraVolumeMounts"]]
+        assert "/etc/ssl/certs/mindweaver-ca.crt" in mounts
+        assert "/etc/superset/trino-certs/tls.crt" in mounts
+        assert "/etc/superset/trino-certs/tls.key" in mounts
         assert values["supersetNode"]["connections"]["db_type"] == "postgresql+asyncpg"
         
         # Verify initscript database auto-cleanup exists in rendered helm values
@@ -275,8 +287,8 @@ async def test_superset_template_rendering(mock_service_dependencies):
         vars_ingress = await svc.template_vars(model)
         manifest_ingress = await svc.render_manifests(model)
         docs_ingress = [d for d in yaml.safe_load_all(manifest_ingress) if d is not None]
-        # Now there should be 2 docs: Application and HTTPRoute
-        assert len(docs_ingress) == 2
+        # Now there should be 3 docs: Application, HTTPRoute, and Certificate
+        assert len(docs_ingress) == 3
         route_doc = next(d for d in docs_ingress if d["kind"] == "HTTPRoute")
         assert route_doc["metadata"]["name"] == "superset-test-route"
         assert route_doc["spec"]["hostnames"] == ["superset-test.132.home.kagesenshi.org"]
@@ -294,8 +306,6 @@ async def test_superset_template_rendering(mock_service_dependencies):
         
         assert "AUTH_OAUTH" in values_oidc["configOverrides"]["oidc"]
         assert "OAUTH_PROVIDERS" in values_oidc["configOverrides"]["oidc"]
-        assert "DATABASE_OAUTH2_UPSTREAM_PROVIDERS" in values_oidc["configOverrides"]["oidc"]
-        assert "DATABASE_OAUTH2_CLIENTS" not in values_oidc["configOverrides"]["oidc"]
         assert "CustomSecurityManager" in values_oidc["configOverrides"]["oidc"]
         assert "https://dex.132.home.kagesenshi.org/dex/auth" in values_oidc["configOverrides"]["oidc"]
         assert "http://dex.superset-ns.svc.cluster.local:5556/dex/token" in values_oidc["configOverrides"]["oidc"]
@@ -311,6 +321,10 @@ async def test_superset_template_rendering(mock_service_dependencies):
         assert "extra" in trino_ds
         extra_data = yaml.safe_load(trino_ds["extra"])
         assert extra_data["engine_params"]["connect_args"]["http_scheme"] == "https"
+        assert extra_data["engine_params"]["connect_args"]["verify"] == "/etc/ssl/certs/mindweaver-ca.crt"
+        assert extra_data["auth_method"] == "certificate"
+        assert extra_data["auth_params"]["cert"] == "/etc/superset/trino-certs/tls.crt"
+        assert extra_data["auth_params"]["key"] == "/etc/superset/trino-certs/tls.key"
 
     # 3. Verify dual-stack URI derivation in poll_status
     # We need a new mock for this as it's a separate concern from template rendering

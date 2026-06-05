@@ -8,6 +8,7 @@ metadata:
   namespace: {{ namespace }}
 spec:
   secretName: {{ name }}-tls
+  commonName: {{ name }}.{{ namespace }}.svc.cluster.local
   secretTemplate:
     labels:
       cnpg.io/reload: ""
