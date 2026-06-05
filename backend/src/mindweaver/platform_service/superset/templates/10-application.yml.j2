@@ -152,7 +152,7 @@ spec:
             {% endif %}
             # Allow users who are authenticated via LDAP to be registered in Superset
             AUTH_USER_REGISTRATION = True
-            AUTH_USER_REGISTRATION_ROLE = "Public"
+            AUTH_USER_REGISTRATION_ROLE = "Alpha"
             AUTH_LDAP_ALLOW_LOCAL_DB = True
             PERMANENT_SESSION_LIFETIME = 1800
           {% endif %}
@@ -187,6 +187,22 @@ spec:
             from superset.security import SupersetSecurityManager
 
             class CustomSecurityManager(SupersetSecurityManager):
+                def update_user_auth_stat(self, user, success=True):
+                    if success and user:
+                        try:
+                            sql_lab_role = self.find_role("sql_lab")
+                            if sql_lab_role and sql_lab_role not in user.roles:
+                                user.roles.append(sql_lab_role)
+                                try:
+                                    self.session.commit()
+                                except AttributeError:
+                                    from superset import db
+                                    db.session.commit()
+                        except Exception as e:
+                            import logging
+                            logging.error(f"Failed to auto-assign sql_lab role: {e}")
+                    super().update_user_auth_stat(user, success)
+
                 def oauth_user_info(self, provider, response=None):
                     if provider == 'dex':
                         remote_app = self.oauth_remotes.get(provider)
