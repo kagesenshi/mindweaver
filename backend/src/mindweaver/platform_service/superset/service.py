@@ -231,6 +231,9 @@ class SupersetPlatformService(PlatformService[SupersetPlatform]):
                                 "verify": "/etc/ssl/certs/mindweaver-ca.crt"
                             }
                         },
+                        "allow_multi_catalog": True
+                    }
+                    encrypted_extra_dict = {
                         "auth_method": "certificate",
                         "auth_params": {
                             "cert": "/etc/superset/trino-certs/tls.crt",
@@ -244,6 +247,7 @@ class SupersetPlatformService(PlatformService[SupersetPlatform]):
                             "expose_in_sqllab": True,
                             "impersonate_user": True,
                             "extra": extra_dict,
+                            "encrypted_extra": encrypted_extra_dict,
                             "is_trino": True,
                         }
                     )

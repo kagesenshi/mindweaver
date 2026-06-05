@@ -289,6 +289,10 @@ spec:
               extra: |
                 {{ ds.extra | tojson }}
               {% endif %}
+              {% if ds.encrypted_extra %}
+              encrypted_extra: |
+                {{ ds.encrypted_extra | tojson }}
+              {% endif %}
             {% endfor %}
         {% endif %}
 

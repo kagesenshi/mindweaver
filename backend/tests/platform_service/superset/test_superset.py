@@ -322,9 +322,13 @@ async def test_superset_template_rendering(mock_service_dependencies):
         extra_data = yaml.safe_load(trino_ds["extra"])
         assert extra_data["engine_params"]["connect_args"]["http_scheme"] == "https"
         assert extra_data["engine_params"]["connect_args"]["verify"] == "/etc/ssl/certs/mindweaver-ca.crt"
-        assert extra_data["auth_method"] == "certificate"
-        assert extra_data["auth_params"]["cert"] == "/etc/superset/trino-certs/tls.crt"
-        assert extra_data["auth_params"]["key"] == "/etc/superset/trino-certs/tls.key"
+        assert extra_data.get("allow_multi_catalog") is True
+        
+        assert "encrypted_extra" in trino_ds
+        encrypted_extra_data = yaml.safe_load(trino_ds["encrypted_extra"])
+        assert encrypted_extra_data["auth_method"] == "certificate"
+        assert encrypted_extra_data["auth_params"]["cert"] == "/etc/superset/trino-certs/tls.crt"
+        assert encrypted_extra_data["auth_params"]["key"] == "/etc/superset/trino-certs/tls.key"
 
     # 3. Verify dual-stack URI derivation in poll_status
     # We need a new mock for this as it's a separate concern from template rendering
