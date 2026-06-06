@@ -47,6 +47,7 @@ class HMSReleaser(BaseReleaser):
             f"Preparing Hive Metastore release {version} (Chart: {new_chart_version}) ..."
         )
         self.update_chart(CHART_FILE, version=new_chart_version, app_version=version)
+        self.update_values_yaml("charts/hive-metastore/values.yaml", version)
 
         if release_new_image:
             # Download external dependencies
@@ -131,7 +132,7 @@ class HMSReleaser(BaseReleaser):
             self.set_version(RELEASED_VERSION_FILE, version)
 
         self.git_ops(
-            version_files=[VERSION_FILE, CHART_FILE, RELEASED_VERSION_FILE],
+            version_files=[VERSION_FILE, CHART_FILE, RELEASED_VERSION_FILE, "charts/hive-metastore/values.yaml"],
             tag=f"{IMAGE_NAME}-v{current_chart_version}",
             message=f"release {IMAGE_NAME} {current_chart_version} (app: {version})",
         )

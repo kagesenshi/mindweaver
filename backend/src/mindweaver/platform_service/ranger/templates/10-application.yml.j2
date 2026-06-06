@@ -11,9 +11,10 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/kagesenshi/mindweaver.git
-    path: charts/ranger
+    repoURL: 'oci://ghcr.io/kagesenshi/mindweaver/charts/ranger'
     targetRevision: {{ chart_version }}
+    path: .
+
     helm:
       values: |
         replicaCount: {{ replica_count }}

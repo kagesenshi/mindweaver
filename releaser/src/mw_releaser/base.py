@@ -27,12 +27,13 @@ class BaseReleaser:
             print(f"{prompt_text} (auto-confirmed: y)")
             return True
         if self.yes:
-            print(f"{prompt_text} (auto-confirmed: {'y' if default else 'n'})")
-            return default
+            print(f"{prompt_text} (auto-confirmed: y)")
+            return True
         choice = input(prompt_text).strip().lower()
         if not choice:
             return default
         return choice == "y"
+
 
     def prompt(self, prompt_text, default):
         """Prompt user for input or return default if in unattended mode."""

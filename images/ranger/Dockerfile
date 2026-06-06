@@ -14,7 +14,10 @@ USER root
 COPY downloads/ranger-2.8.0-usersync.tar.gz /opt/ranger/
 RUN tar xvfz /opt/ranger/ranger-2.8.0-usersync.tar.gz --directory=/opt/ranger && \
     ln -s /opt/ranger/ranger-2.8.0-usersync /opt/ranger/usersync && \
-    rm -f /opt/ranger/ranger-2.8.0-usersync.tar.gz
+    rm -f /opt/ranger/ranger-2.8.0-usersync.tar.gz && \
+    cp /opt/ranger/ranger-2.8.0-admin/ews/webapp/WEB-INF/lib/ranger-plugins-cred-2.8.0.jar /opt/ranger/usersync/lib/
+
+
 
 # 2. Patch & compile custom LdapUserGroupBuilder
 RUN python3 /tmp/patch_ldap_builder.py /tmp/LdapUserGroupBuilder.java && \
