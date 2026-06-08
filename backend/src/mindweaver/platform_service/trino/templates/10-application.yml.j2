@@ -188,41 +188,13 @@ spec:
                   <value>true</value>
                 </property>
                 <property>
-                  <name>xasecure.audit.destination.elasticsearch</name>
-                  <value>{{ ranger_opensearch_enabled }}</value>
+                  <name>xasecure.audit.destination.solr</name>
+                  <value>{{ ranger_solr_enabled }}</value>
                 </property>
-                {% if ranger_opensearch_enabled == 'true' %}
+                {% if ranger_solr_enabled == 'true' %}
                 <property>
-                  <name>xasecure.audit.destination.elasticsearch.urls</name>
-                  <value>{{ ranger_opensearch_host }}</value>
-                </property>
-                <property>
-                  <name>xasecure.audit.destination.elasticsearch.port</name>
-                  <value>9200</value>
-                </property>
-                <property>
-                  <name>xasecure.audit.destination.elasticsearch.protocol</name>
-                  <value>{{ ranger_opensearch_protocol }}</value>
-                </property>
-                <property>
-                  <name>xasecure.audit.destination.elasticsearch.user</name>
-                  <value>admin</value>
-                </property>
-                <property>
-                  <name>xasecure.audit.destination.elasticsearch.password</name>
-                  <value>{{ ranger_opensearch_password }}</value>
-                </property>
-                <property>
-                  <name>xasecure.audit.destination.elasticsearch.index</name>
-                  <value>ranger_audits</value>
-                </property>
-                <property>
-                  <name>xasecure.audit.destination.elasticsearch.bootstrap.enabled</name>
-                  <value>true</value>
-                </property>
-                <property>
-                  <name>xasecure.audit.destination.elasticsearch.ssl.trustall</name>
-                  <value>false</value>
+                  <name>xasecure.audit.destination.solr.urls</name>
+                  <value>{{ ranger_solr_url }}</value>
                 </property>
                 {% endif %}
                 <property>

@@ -13,7 +13,7 @@ from mindweaver.fw.model import ts_now
 from mindweaver.fw.util import generate_password
 from mindweaver.fw.hooks import before_create
 from mindweaver.platform_service.pgsql.service import PgSqlPlatformService
-from mindweaver.platform_service.opensearch.service import OpenSearchPlatformService
+from mindweaver.platform_service.solr.service import SolrPlatformService
 from mindweaver.service.ldap_config.service import LdapConfigService
 
 from .model import RangerPlatform, RangerPlatformState
@@ -102,9 +102,12 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
                 "label": "Memory Limit (Gi)",
             },
             "database_id": {"order": 20, "label": "PostgreSQL"},
-            "opensearch_id": {
+            "solr_id": {
                 "order": 21,
-                "label": "OpenSearch",
+                "label": "Solr",
+                "type": "relationship",
+                "endpoint": "/api/v1/platform/solr",
+                "field": "id",
             },
 
             "additional_properties": {
@@ -159,44 +162,33 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
 
 
 
-        # Resolve OpenSearch Connection for Audits
-        if model.opensearch_id:
-            opensearch_svc = await OpenSearchPlatformService.get_service(self.request, self.session)
-            opensearch_model = await opensearch_svc.get(model.opensearch_id)
-            opensearch_state = await opensearch_svc.platform_state(opensearch_model)
+        # Resolve Solr Connection for Audits
+        if model.solr_id:
+            solr_svc = await SolrPlatformService.get_service(self.request, self.session)
+            solr_model = await solr_svc.get(model.solr_id)
+            solr_state = await solr_svc.platform_state(solr_model)
 
-            if not opensearch_state or not opensearch_state.active:
+            if not solr_state or not solr_state.active:
                 raise ValueError(
-                    f"Managed OpenSearch cluster {opensearch_model.name} is not active"
+                    f"Managed Solr cluster {solr_model.name} is not active"
                 )
 
-            opensearch_ns = await opensearch_svc._resolve_namespace(opensearch_model)
-            opensearch_host = OpenSearchPlatformService.get_internal_host(
-                opensearch_model, opensearch_state, opensearch_ns
+            solr_ns = await solr_svc._resolve_namespace(solr_model)
+            solr_host = SolrPlatformService.get_internal_host(
+                solr_model, solr_state, solr_ns
             )
 
-            opensearch_url = opensearch_state.opensearch_url or ""
-            opensearch_protocol = "https"
-            if opensearch_url.startswith("http://"):
-                opensearch_protocol = "http"
-
-            opensearch_pass = ""
-            if opensearch_state.admin_password:
+            solr_pass = ""
+            if solr_state.admin_password:
                 try:
-                    opensearch_pass = decrypt_password(opensearch_state.admin_password)
+                    solr_pass = decrypt_password(solr_state.admin_password)
                 except Exception:
-                    opensearch_pass = opensearch_state.admin_password
+                    solr_pass = solr_state.admin_password
 
             additional_props = vars.setdefault("additional_properties", {})
             # Make sure we don't overwrite user custom properties if they exist
-            additional_props.setdefault("audit_store", "elasticsearch")
-            additional_props.setdefault("audit_elasticsearch_urls", opensearch_host)
-            additional_props.setdefault("audit_elasticsearch_port", "9200")
-            additional_props.setdefault("audit_elasticsearch_protocol", opensearch_protocol)
-            additional_props.setdefault("audit_elasticsearch_user", "admin")
-            additional_props.setdefault("audit_elasticsearch_password", opensearch_pass)
-            additional_props.setdefault("audit_elasticsearch_index", "ranger_audits")
-            additional_props.setdefault("audit_elasticsearch_bootstrap_enabled", "true")
+            additional_props.setdefault("audit_store", "solr")
+            additional_props.setdefault("audit_solr_urls", f"http://solr:{solr_pass}@{solr_host}:8983/solr/ranger_audits")
             
         # Set DB root user/pass to be the same as db_user/pass for managed DBs
         vars["db_root_user"] = vars.get("db_user")

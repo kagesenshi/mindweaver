@@ -55,8 +55,8 @@ spec:
             keystorePassword: changeit
           
           # Audit Store Configuration
-          {%- if opensearch_id %}
-          auditStore: elasticsearch
+          {%- if solr_id %}
+          auditStore: solr
           {%- else %}
           auditStore: none
           {%- endif %}

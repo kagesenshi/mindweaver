@@ -10,7 +10,6 @@ from mindweaver.platform_service.hive_metastore import HiveMetastorePlatformServ
 from mindweaver.platform_service.trino import TrinoPlatformService
 from mindweaver.platform_service.superset import SupersetPlatformService
 from mindweaver.platform_service.ranger import RangerPlatformService
-from mindweaver.platform_service.opensearch import OpenSearchPlatformService
 from mindweaver.platform_service.solr import SolrPlatformService
 from mindweaver.config import logger
 from typing import Type
@@ -31,7 +30,6 @@ def poll_all_platforms():
         TrinoPlatformService,
         SupersetPlatformService,
         RangerPlatformService,
-        OpenSearchPlatformService,
         SolrPlatformService,
     ]
 
@@ -70,7 +68,6 @@ async def _poll_platform_status(service_class_name: str, platform_id: int):
         "TrinoPlatformService": TrinoPlatformService,
         "SupersetPlatformService": SupersetPlatformService,
         "RangerPlatformService": RangerPlatformService,
-        "OpenSearchPlatformService": OpenSearchPlatformService,
         "SolrPlatformService": SolrPlatformService,
     }
 

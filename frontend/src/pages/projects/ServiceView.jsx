@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-    Briefcase, Database, Server, Activity, ArrowLeft, Monitor, Users, UserPlus, Edit, Trash2, Shield, RefreshCw, Download
+    Briefcase, Database, Server, Activity, ArrowLeft, Monitor, Users, UserPlus, Edit, Trash2, Shield, RefreshCw, Download, Search
 } from 'lucide-react';
 import { useProjectLocalUsers } from '../../hooks/useResources';
 import Modal from '../../components/Modal';
@@ -138,9 +138,9 @@ const ServiceView = ({
             bg: "bg-emerald-500/10"
         },
         {
-            name: "OpenSearch",
-            icon: Server,
-            count: projectState?.opensearch || 0,
+            name: "Solr",
+            icon: Search,
+            count: projectState?.solr || 0,
             color: "text-cyan-500",
             bg: "bg-cyan-500/10"
         }

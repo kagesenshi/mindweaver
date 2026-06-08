@@ -28,7 +28,7 @@ from mindweaver.datasource_service import DatabaseSourceService
 from mindweaver.service.s3_storage.service import S3StorageService
 from mindweaver.service.ldap_config.service import LdapConfigService
 from mindweaver.platform_service.ranger.service import RangerPlatformService
-from mindweaver.platform_service.opensearch.service import OpenSearchPlatformService
+from mindweaver.platform_service.solr.service import SolrPlatformService
 from mindweaver.crypto import decrypt_password
 from mindweaver.fw.util import generate_password
 
@@ -346,35 +346,32 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
             vars["ranger_url"] = ranger_url
             vars["ranger_service_name"] = model.name
 
-            # OpenSearch auditing config resolution
-            if ranger_model.opensearch_id:
-                opensearch_svc = await OpenSearchPlatformService.get_service(self.request, self.session)
-                opensearch_model = await opensearch_svc.get(ranger_model.opensearch_id)
-                opensearch_state = await opensearch_svc.platform_state(opensearch_model)
+            # Solr auditing config resolution
+            if ranger_model.solr_id:
+                solr_svc = await SolrPlatformService.get_service(self.request, self.session)
+                solr_model = await solr_svc.get(ranger_model.solr_id)
+                solr_state = await solr_svc.platform_state(solr_model)
 
-                if not opensearch_state or not opensearch_state.active:
+                if not solr_state or not solr_state.active:
                     raise ValueError(
-                        f"Managed OpenSearch cluster {opensearch_model.name} is not active"
+                        f"Managed Solr cluster {solr_model.name} is not active"
                     )
 
-                opensearch_ns = await opensearch_svc._resolve_namespace(opensearch_model)
-                vars["ranger_opensearch_enabled"] = "true"
-                vars["ranger_opensearch_host"] = OpenSearchPlatformService.get_internal_host(
-                    opensearch_model, opensearch_state, opensearch_ns
+                solr_ns = await solr_svc._resolve_namespace(solr_model)
+                vars["ranger_solr_enabled"] = "true"
+                solr_host = SolrPlatformService.get_internal_host(
+                    solr_model, solr_state, solr_ns
                 )
-                
-                opensearch_url = opensearch_state.opensearch_url or ""
-                vars["ranger_opensearch_protocol"] = "http" if opensearch_url.startswith("http://") else "https"
-                
-                opensearch_pass = ""
-                if opensearch_state.admin_password:
+
+                solr_pass = ""
+                if solr_state.admin_password:
                     try:
-                        opensearch_pass = decrypt_password(opensearch_state.admin_password)
+                        solr_pass = decrypt_password(solr_state.admin_password)
                     except Exception:
-                        opensearch_pass = opensearch_state.admin_password
-                vars["ranger_opensearch_password"] = opensearch_pass
+                        solr_pass = solr_state.admin_password
+                vars["ranger_solr_url"] = f"http://solr:{solr_pass}@{solr_host}:8983/solr/ranger_audits"
             else:
-                vars["ranger_opensearch_enabled"] = "false"
+                vars["ranger_solr_enabled"] = "false"
 
             # S3 auditing config resolution
             vars["ranger_audit_s3_enabled"] = "false"

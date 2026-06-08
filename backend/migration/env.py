@@ -18,7 +18,6 @@ from mindweaver.platform_service.hive_metastore.model import HiveMetastorePlatfo
 from mindweaver.platform_service.trino.model import TrinoPlatform, TrinoPlatformState
 from mindweaver.platform_service.superset.model import SupersetPlatform, SupersetPlatformState
 from mindweaver.platform_service.ranger.model import RangerPlatform, RangerPlatformState
-from mindweaver.platform_service.opensearch.model import OpenSearchPlatform, OpenSearchPlatformState
 from mindweaver.platform_service.solr.model import SolrPlatform, SolrPlatformState
 from mindweaver.service.ldap_config.model import LdapConfig
 from mindweaver.fw.auth import User

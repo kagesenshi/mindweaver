@@ -11,7 +11,7 @@ from pydantic import ValidationError
 from mindweaver.platform_service.trino import TrinoPlatform, TrinoPlatformService, TrinoState, TrinoPlatformState
 from mindweaver.platform_service.hive_metastore import HiveMetastorePlatformState, HiveMetastorePlatform
 from mindweaver.platform_service.ranger.model import RangerPlatform, RangerPlatformState
-from mindweaver.platform_service.opensearch.model import OpenSearchPlatform, OpenSearchPlatformState
+from mindweaver.platform_service.solr.model import SolrPlatform, SolrPlatformState
 from mindweaver.service.s3_storage.model import S3Storage
 from mindweaver.fw.model import AsyncSession
 
@@ -797,7 +797,7 @@ async def test_trino_ranger_integration(mock_service_dependencies):
     mock_ranger_svc = AsyncMock()
     mock_ranger_model = MagicMock(spec=RangerPlatform)
     mock_ranger_model.name = "my-ranger"
-    mock_ranger_model.opensearch_id = 200
+    mock_ranger_model.solr_id = 200
     mock_ranger_svc.get.return_value = mock_ranger_model
     mock_ranger_svc._resolve_namespace = AsyncMock(return_value="ranger-ns")
     mock_ranger_svc.get_ranger_url = AsyncMock(return_value="https://my-ranger.ranger-ns.svc.cluster.local:6080")
@@ -806,23 +806,22 @@ async def test_trino_ranger_integration(mock_service_dependencies):
     mock_ranger_state.ranger_url = "https://my-ranger.ranger-ns.svc.cluster.local:6080"
     mock_ranger_svc.platform_state = AsyncMock(return_value=mock_ranger_state)
 
-    # Mock OpenSearch service
-    mock_opensearch_svc = AsyncMock()
-    mock_opensearch_model = MagicMock(spec=OpenSearchPlatform)
-    mock_opensearch_model.name = "my-opensearch"
-    mock_opensearch_svc.get.return_value = mock_opensearch_model
-    mock_opensearch_svc._resolve_namespace = AsyncMock(return_value="opensearch-ns")
+    # Mock Solr service
+    mock_solr_svc = AsyncMock()
+    mock_solr_model = MagicMock(spec=SolrPlatform)
+    mock_solr_model.name = "my-solr"
+    mock_solr_svc.get.return_value = mock_solr_model
+    mock_solr_svc._resolve_namespace = AsyncMock(return_value="solr-ns")
     
-    mock_opensearch_state = MagicMock(spec=OpenSearchPlatformState)
-    mock_opensearch_state.active = True
-    mock_opensearch_state.opensearch_url = "https://my-opensearch.opensearch-ns.svc.cluster.local:9200"
-    mock_opensearch_state.admin_password = "opensearch_admin_pass"
-    mock_opensearch_svc.platform_state = AsyncMock(return_value=mock_opensearch_state)
+    mock_solr_state = MagicMock(spec=SolrPlatformState)
+    mock_solr_state.active = True
+    mock_solr_state.admin_password = "solr_password"
+    mock_solr_svc.platform_state.return_value = mock_solr_state
 
     # Patch all required services
     with patch("mindweaver.platform_service.trino.service.HiveMetastorePlatformService.get_service", AsyncMock(return_value=mock_hms_svc)), \
          patch("mindweaver.platform_service.trino.service.RangerPlatformService.get_service", AsyncMock(return_value=mock_ranger_svc)), \
-         patch("mindweaver.platform_service.trino.service.OpenSearchPlatformService.get_service", AsyncMock(return_value=mock_opensearch_svc)), \
+         patch("mindweaver.platform_service.trino.service.SolrPlatformService.get_service", AsyncMock(return_value=mock_solr_svc)), \
          patch("mindweaver.platform_service.trino.service.decrypt_password", side_effect=lambda x: x):
          
         vars = await svc.template_vars(model)
@@ -833,10 +832,8 @@ async def test_trino_ranger_integration(mock_service_dependencies):
     assert vars.get("ranger_url") == "https://my-ranger.ranger-ns.svc.cluster.local:6080"
     assert vars.get("ranger_service_name") == "trino-ranger-test"
     
-    assert vars.get("ranger_opensearch_enabled") == "true"
-    assert vars.get("ranger_opensearch_host") == "my-opensearch-cluster-master.opensearch-ns.svc.cluster.local"
-    assert vars.get("ranger_opensearch_protocol") == "https"
-    assert vars.get("ranger_opensearch_password") == "opensearch_admin_pass"
+    assert vars.get("ranger_solr_enabled") == "true"
+    assert vars.get("ranger_solr_url") == "http://solr:solr_password@my-solr-solrcloud-common.solr-ns.svc.cluster.local:8983/solr/ranger_audits"
 
     assert vars.get("ranger_audit_s3_enabled") == "false"
 
@@ -889,15 +886,11 @@ async def test_trino_ranger_integration(mock_service_dependencies):
     assert "<name>xasecure.audit.is.enabled</name>" in audit_xml
     assert "<value>true</value>" in audit_xml
     
-    # OpenSearch assertions in XML
-    assert "<name>xasecure.audit.destination.elasticsearch</name>" in audit_xml
+    # Solr assertions in XML
+    assert "<name>xasecure.audit.destination.solr</name>" in audit_xml
     assert "<value>true</value>" in audit_xml
-    assert "<name>xasecure.audit.destination.elasticsearch.urls</name>" in audit_xml
-    assert "<value>my-opensearch-cluster-master.opensearch-ns.svc.cluster.local</value>" in audit_xml
-    assert "<name>xasecure.audit.destination.elasticsearch.password</name>" in audit_xml
-    assert "<value>opensearch_admin_pass</value>" in audit_xml
-    assert "<name>xasecure.audit.destination.elasticsearch.ssl.trustall</name>" in audit_xml
-    assert "<value>true</value>" in audit_xml
+    assert "<name>xasecure.audit.destination.solr.urls</name>" in audit_xml
+    assert "<value>http://solr:solr_password@my-solr-solrcloud-common.solr-ns.svc.cluster.local:8983/solr/ranger_audits</value>" in audit_xml
 
     # S3 assertions in XML
     assert "<name>xasecure.audit.hdfs.is.enabled</name>" in audit_xml
@@ -1028,7 +1021,7 @@ async def test_trino_ldap_ranger_combined_rendering(mock_service_dependencies):
     mock_ranger_svc = AsyncMock()
     mock_ranger_model = MagicMock(spec=RangerPlatform)
     mock_ranger_model.name = "my-ranger"
-    mock_ranger_model.opensearch_id = None
+    mock_ranger_model.solr_id = None
     mock_ranger_model.s3_storage_id = None
     mock_ranger_svc.get.return_value = mock_ranger_model
     mock_ranger_svc.get_ranger_url = AsyncMock(return_value="http://ranger:6080")

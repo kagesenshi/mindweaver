@@ -36,9 +36,9 @@ class ProjectState(BaseState):
             RangerPlatform,
             RangerPlatformState,
         )
-        from mindweaver.platform_service.opensearch import (
-            OpenSearchPlatform,
-            OpenSearchPlatformState,
+        from mindweaver.platform_service.solr import (
+            SolrPlatform,
+            SolrPlatformState,
         )
         from mindweaver.service.k8s_cluster import K8sClusterStatus
 
@@ -62,7 +62,7 @@ class ProjectState(BaseState):
         hive_metastore_count = await _get_count(HiveMetastorePlatform, HiveMetastorePlatformState)
         superset_count = await _get_count(SupersetPlatform, SupersetPlatformState)
         ranger_count = await _get_count(RangerPlatform, RangerPlatformState)
-        opensearch_count = await _get_count(OpenSearchPlatform, OpenSearchPlatformState)
+        solr_count = await _get_count(SolrPlatform, SolrPlatformState)
 
         # Get cluster status
         status_data = {}
@@ -197,7 +197,7 @@ class ProjectState(BaseState):
             "hive_metastore": hive_metastore_count,
             "superset": superset_count,
             "ranger": ranger_count,
-            "opensearch": opensearch_count,
+            "solr": solr_count,
             "spark": 0,
             "airflow": 0,
             "cluster": status_data,

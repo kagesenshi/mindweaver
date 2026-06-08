@@ -21,7 +21,6 @@ const HiveMetastorePage = lazy(() => import('./pages/hive_metastore/Page'))
 const TrinoPage = lazy(() => import('./pages/trino/Page'))
 const SupersetPage = lazy(() => import('./pages/superset/Page'))
 const RangerPage = lazy(() => import('./pages/ranger/Page'))
-const OpenSearchPage = lazy(() => import('./pages/opensearch/Page'))
 const SolrPage = lazy(() => import('./pages/solr/Page'))
 
 import { ProtectedRoute } from './components/ProtectedRoute'
@@ -92,10 +91,6 @@ const router = createBrowserRouter([
       {
         path: 'platform/ranger',
         element: <RangerPage />,
-      },
-      {
-        path: 'platform/opensearch',
-        element: <OpenSearchPage />,
       },
       {
         path: 'platform/solr',
