@@ -155,6 +155,15 @@ else
     fi
   fi
 
+  # Inject SSL keystore and truststore properties directly into ranger-admin-site.xml
+  RANGER_CONF_XML="${RANGER_HOME}/admin/conf/ranger-admin-site.xml"
+  if [ -f "${RANGER_CONF_XML}" ]; then
+    /home/ranger/scripts/set_xml_property.py "${RANGER_CONF_XML}" "ranger.keystore.file" "/etc/ranger/tls/keystore.jks"
+    /home/ranger/scripts/set_xml_property.py "${RANGER_CONF_XML}" "ranger.keystore.password" "changeit"
+    /home/ranger/scripts/set_xml_property.py "${RANGER_CONF_XML}" "ranger.truststore.file" "/etc/ranger/truststore/truststore.jks"
+    /home/ranger/scripts/set_xml_property.py "${RANGER_CONF_XML}" "ranger.truststore.password" "changeit"
+  fi
+
   cd ${RANGER_HOME}/admin && ./ews/ranger-admin-services.sh start
 
   # Wait for Ranger Admin to become ready and register services asynchronously

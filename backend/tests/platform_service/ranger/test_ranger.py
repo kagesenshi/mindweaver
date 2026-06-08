@@ -93,6 +93,10 @@ async def test_ranger_template_vars(mock_service_dependencies):
         assert vars["additional_properties"]["ranger.test.prop"] == "value1"
         assert vars["additional_properties"]["another.prop"] == "value2"
         assert vars["additional_properties"]["policymgr_http_enabled"] == "false"
+        assert vars["additional_properties"]["ranger.keystore.file"] == "/etc/ranger/tls/keystore.jks"
+        assert vars["additional_properties"]["ranger.keystore.password"] == "changeit"
+        assert vars["additional_properties"]["ranger.truststore.file"] == "/etc/ranger/truststore/truststore.jks"
+        assert vars["additional_properties"]["ranger.truststore.password"] == "changeit"
 
 
 @pytest.mark.asyncio
@@ -212,6 +216,7 @@ async def test_ranger_render_manifests(mock_service_dependencies):
         manifests = await svc.render_manifests(model)
         assert "policymgr_supportedcomponents: trino,kafka,elasticsearch,nifi" in manifests
         assert "ranger.supportedcomponents: trino,kafka,elasticsearch,nifi" in manifests
+        assert "javaOpts:" in manifests
         # Default behavior: usersync should be disabled
         assert "enabled: false" in manifests
 

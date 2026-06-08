@@ -18,6 +18,7 @@ spec:
     helm:
       values: |
         replicaCount: {{ replica_count }}
+        fullnameOverride: {{ name }}
         {% if override_image %}
         image:
           repository: "{{ image.rsplit(':', 1)[0] if ':' in image else image }}"
@@ -53,6 +54,9 @@ spec:
           ssl:
             enabled: true
             keystorePassword: changeit
+          javaOpts: >-
+            -Djavax.net.ssl.keyStore=/etc/ranger/tls/keystore.jks
+            -Djavax.net.ssl.keyStorePassword=changeit
           
           # Audit Store Configuration
           {%- if solr_id %}

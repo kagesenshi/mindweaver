@@ -137,6 +137,10 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
         additional_props.setdefault("policymgr_https_keystore_file", "/etc/ranger/tls/keystore.jks")
         additional_props.setdefault("policymgr_https_keystore_password", "changeit")
         additional_props.setdefault("policymgr_https_keystore_keyalias", "certificate")
+        additional_props.setdefault("ranger.keystore.file", "/etc/ranger/tls/keystore.jks")
+        additional_props.setdefault("ranger.keystore.password", "changeit")
+        additional_props.setdefault("ranger.truststore.file", "/etc/ranger/truststore/truststore.jks")
+        additional_props.setdefault("ranger.truststore.password", "changeit")
 
         # Resolve Database Connection
         pgsql_svc = await PgSqlPlatformService.get_service(self.request, self.session)
