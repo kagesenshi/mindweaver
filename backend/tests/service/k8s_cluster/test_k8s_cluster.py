@@ -485,4 +485,51 @@ async def test_install_envoy_gateway_with_loadbalancer():
         assert found_kubectl
 
 
+@pytest.mark.asyncio
+async def test_install_solr_operator():
+    from mindweaver.service.k8s_cluster.model import K8sCluster, K8sClusterType
+
+    cluster = K8sCluster(
+        name="test-cluster-solr-op",
+        title="Test Cluster Solr Op",
+        type=K8sClusterType.REMOTE,
+        kubeconfig="fake-kubeconfig",
+    )
+
+    mock_svc = MagicMock()
+    mock_svc.kubeconfig = pytest.importorskip("unittest.mock").AsyncMock(
+        return_value="fake-kubeconfig"
+    )
+
+    from mindweaver.service.k8s_cluster.actions import InstallSolrOperatorAction
+
+    with patch("asyncio.create_subprocess_exec") as mock_exec:
+        mock_proc = MagicMock()
+        mock_proc.returncode = 0
+        mock_proc.communicate = pytest.importorskip("unittest.mock").AsyncMock(
+            return_value=(b"success", b"")
+        )
+        mock_exec.return_value = mock_proc
+
+        action = InstallSolrOperatorAction(cluster, mock_svc)
+        await action.run()
+
+        # Verify helm upgrade --install with Solr Operator chart
+        assert mock_exec.call_count >= 3  # add, update, upgrade
+
+        calls = [call[0] for call in mock_exec.call_args_list]
+        found_upgrade = False
+        for call_args in calls:
+            if "upgrade" in call_args and "--install" in call_args:
+                if "solr-operator" in call_args:
+                    found_upgrade = True
+                    assert "apache-solr/solr-operator" in call_args
+                    assert "--kubeconfig" in call_args
+                    assert "zookeeper-operator.crd.create=true" in " ".join(call_args)
+                    assert "installCRDs=true" in " ".join(call_args)
+
+        assert found_upgrade
+
+
+
 

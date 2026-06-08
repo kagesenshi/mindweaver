@@ -208,6 +208,30 @@ class K8sClusterService(Service[K8sCluster]):
                 except Exception as e:
                     logger.warning(f"Failed to check Envoy Gateway presence: {e}")
 
+                # Check Solr Operator
+                solr_operator_installed = False
+                solr_operator_version = None
+                try:
+                    for secret in secrets.items:
+                        if secret.metadata.name.startswith("sh.helm.release.v1.solr-operator"):
+                            solr_operator_installed = True
+                            break
+                    if not solr_operator_installed:
+                        svcs = core_v1.list_service_for_all_namespaces(
+                            label_selector="app.kubernetes.io/name=solr-operator"
+                        )
+                        if svcs.items:
+                            solr_operator_installed = True
+
+                    if solr_operator_installed:
+                        pods = core_v1.list_pod_for_all_namespaces(
+                            label_selector="app.kubernetes.io/name=solr-operator"
+                        )
+                        if pods.items:
+                            solr_operator_version = _get_version(pods.items[0])
+                except Exception as e:
+                    logger.warning(f"Failed to check Solr Operator presence: {e}")
+
                 return {
                     "k8s_version": k8s_version,
                     "node_count": node_count,
@@ -223,6 +247,8 @@ class K8sClusterService(Service[K8sCluster]):
                     "cluster_issuer_installed": cluster_issuer_installed,
                     "envoy_gateway_installed": envoy_gateway_installed,
                     "envoy_gateway_version": envoy_gateway_version,
+                    "solr_operator_installed": solr_operator_installed,
+                    "solr_operator_version": solr_operator_version,
                     "node_ips": node_ips,
                 }
 
@@ -254,6 +280,8 @@ class K8sClusterService(Service[K8sCluster]):
             status_model.cluster_issuer_installed = info["cluster_issuer_installed"]
             status_model.envoy_gateway_installed = info["envoy_gateway_installed"]
             status_model.envoy_gateway_version = info["envoy_gateway_version"]
+            status_model.solr_operator_installed = info["solr_operator_installed"]
+            status_model.solr_operator_version = info["solr_operator_version"]
             status_model.node_ips = info["node_ips"]
             status_model.last_update = ts_now()
             status_model.message = None

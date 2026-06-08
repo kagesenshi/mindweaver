@@ -474,7 +474,7 @@ class SyncCoreIntegrationsAction(InstallArgoCDAction):
         if not status.argocd_installed:
             logger.info("Sync: Installing ArgoCD...")
             from .actions import InstallArgoCDAction
-            action = InstallArgoCDAction(self.model, self.service)
+            action = InstallArgoCDAction(self.model, self.svc)
             action.session = self.session
             await action.run()
             status.argocd_installed = True
@@ -484,7 +484,7 @@ class SyncCoreIntegrationsAction(InstallArgoCDAction):
         if not status.cert_manager_installed:
             logger.info("Sync: Installing Cert Manager...")
             from .actions import InstallCertManagerAction
-            action = InstallCertManagerAction(self.model, self.service)
+            action = InstallCertManagerAction(self.model, self.svc)
             action.session = self.session
             await action.run()
             status.cert_manager_installed = True
@@ -494,7 +494,7 @@ class SyncCoreIntegrationsAction(InstallArgoCDAction):
         if not status.cnpg_installed:
             logger.info("Sync: Installing CNPG Operator...")
             from .actions import InstallCNPGAction
-            action = InstallCNPGAction(self.model, self.service)
+            action = InstallCNPGAction(self.model, self.svc)
             action.session = self.session
             await action.run()
             status.cnpg_installed = True
@@ -503,7 +503,7 @@ class SyncCoreIntegrationsAction(InstallArgoCDAction):
         # 4. Install Envoy Gateway or update config if envoy gateway is already installed
         logger.info("Sync: Deploying/updating Envoy Gateway config...")
         from .actions import InstallEnvoyGatewayAction
-        action = InstallEnvoyGatewayAction(self.model, self.service)
+        action = InstallEnvoyGatewayAction(self.model, self.svc)
         action.session = self.session
         await action.run()
         status.envoy_gateway_installed = True
@@ -513,11 +513,69 @@ class SyncCoreIntegrationsAction(InstallArgoCDAction):
         if status.cert_manager_installed and not status.cluster_issuer_installed:
             logger.info("Sync: Installing Self-signed Issuer...")
             from .actions import InstallSelfSignedIssuerAction
-            action = InstallSelfSignedIssuerAction(self.model, self.service)
+            action = InstallSelfSignedIssuerAction(self.model, self.svc)
             action.session = self.session
             await action.run()
             status.cluster_issuer_installed = True
             await self.session.flush()
+
+        # 6. Install Solr Operator if missing
+        if not status.solr_operator_installed:
+            logger.info("Sync: Installing Solr Operator...")
+            from .actions import InstallSolrOperatorAction
+            action = InstallSolrOperatorAction(self.model, self.svc)
+            action.session = self.session
+            await action.run()
+            status.solr_operator_installed = True
+            await self.session.flush()
+
+
+@K8sClusterService.register_action("install_solr_operator")
+class InstallSolrOperatorAction(InstallArgoCDAction):
+
+    async def available(self) -> bool:
+        stmt = select(K8sClusterStatus).where(
+            K8sClusterStatus.k8s_cluster_id == self.model.id
+        )
+        result = await self.session.exec(stmt)
+        status = result.one_or_none()
+        return not (status and status.solr_operator_installed)
+
+    async def __call__(self, **kwargs):
+        from mindweaver.tasks.k8s_cluster_status import install_solr_operator_task
+
+        stmt = select(K8sClusterStatus).where(
+            K8sClusterStatus.k8s_cluster_id == self.model.id
+        )
+        result = await self.session.exec(stmt)
+        status_model = result.one_or_none()
+        if not status_model:
+            status_model = K8sClusterStatus(k8s_cluster_id=self.model.id)
+            self.session.add(status_model)
+        status_model.solr_operator_installed = True
+        await self.session.flush()
+
+        install_solr_operator_task.delay(self.model.id)
+        return {
+            "status": "success",
+            "message": "Solr Operator installation triggered and status being refreshed.",
+        }
+
+    async def run(self):
+        """Install Solr Operator to the cluster using Helm chart"""
+        logger.info(f"Installing Solr Operator for cluster {self.model.name}")
+
+        await self._install_helm_chart(
+            repo_name="apache-solr",
+            repo_url="https://solr.apache.org/charts",
+            release_name="solr-operator",
+            chart_name="apache-solr/solr-operator",
+            namespace="solr-operator",
+            set_vals={
+                "installCRDs": "true",
+                "zookeeper-operator.crd.create": "true",
+            },
+        )
 
 
 

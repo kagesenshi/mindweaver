@@ -11,6 +11,7 @@ from mindweaver.platform_service.trino import TrinoPlatformService
 from mindweaver.platform_service.superset import SupersetPlatformService
 from mindweaver.platform_service.ranger import RangerPlatformService
 from mindweaver.platform_service.opensearch import OpenSearchPlatformService
+from mindweaver.platform_service.solr import SolrPlatformService
 from mindweaver.config import logger
 from typing import Type
 from .base import run_async
@@ -31,6 +32,7 @@ def poll_all_platforms():
         SupersetPlatformService,
         RangerPlatformService,
         OpenSearchPlatformService,
+        SolrPlatformService,
     ]
 
     for svc_cls in services:
@@ -69,6 +71,7 @@ async def _poll_platform_status(service_class_name: str, platform_id: int):
         "SupersetPlatformService": SupersetPlatformService,
         "RangerPlatformService": RangerPlatformService,
         "OpenSearchPlatformService": OpenSearchPlatformService,
+        "SolrPlatformService": SolrPlatformService,
     }
 
     svc_cls = mapping.get(service_class_name)

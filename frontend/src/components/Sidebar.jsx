@@ -57,6 +57,7 @@ const INFRA_ITEMS = [
     { name: 'Apache Superset', to: '/platform/superset', icon: BarChart3 },
     { name: 'Apache Ranger', to: '/platform/ranger', icon: ShieldCheck },
     { name: 'OpenSearch', to: '/platform/opensearch', icon: Search },
+    { name: 'Apache Solr', to: '/platform/solr', icon: Search },
     { name: 'Apache Kafka', to: '/platform/kafka', icon: RefreshCcw },
 ];
 

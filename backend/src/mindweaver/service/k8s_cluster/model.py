@@ -85,6 +85,9 @@ class K8sClusterStatus(Base, table=True):
     envoy_gateway_installed: bool = Field(default=False)
     envoy_gateway_version: Optional[str] = Field(default=None)
 
+    solr_operator_installed: bool = Field(default=False)
+    solr_operator_version: Optional[str] = Field(default=None)
+
     last_update: datetime = Field(
         default_factory=ts_now, sa_type=DateTime(timezone=True)
     )

@@ -1,0 +1,69 @@
+# SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
+# SPDX-License-Identifier: AGPLv3+
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ name }}
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://solr.apache.org/charts
+    chart: solr
+    targetRevision: {{ chart_version }}
+    helm:
+      values: |
+        replicas: {{ replica_count }}
+
+        {% if override_image %}
+        image:
+          repository: "{{ image }}"
+          tag: "{{ image_tag }}"
+        {% endif %}
+
+        solrOptions:
+          security:
+            authenticationType: "Basic"
+
+        zk:
+          provided:
+            replicas: 1
+            persistence:
+              spec:
+                resources:
+                  requests:
+                    storage: "5Gi"
+
+        resources:
+          requests:
+            cpu: "{{ cpu_request }}"
+            memory: "{{ mem_request }}Gi"
+          limits:
+            cpu: "{{ cpu_limit }}"
+            memory: "{{ mem_limit }}Gi"
+
+        persistence:
+          enabled: true
+          size: "{{ storage_size }}"
+
+        # If additional properties are provided, add them under solrOptions/additional configuration
+        {% if additional_properties %}
+        solrOptions:
+          javaOpts: >-
+            {% for key, val in additional_properties.items() %}
+            -D{{ key }}={{ val }}
+            {% endfor %}
+        {% endif %}
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ namespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
