@@ -15,7 +15,7 @@ class RangerPlatform(PlatformBase, table=True):
     replica_count: int = Field(default=1)
 
     # Chart version selection (targetRevision in Application manifest)
-    chart_version: str = Field(default="0.1.32")
+    chart_version: str = Field(default="0.1.33")
 
     # Image override
     override_image: bool = Field(default=False)
