@@ -206,6 +206,10 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
                 additional_props.setdefault("xasecure.audit.solr.is.basicauth.enabled", "true")
                 additional_props.setdefault("ranger.audit.solr.basic.auth.user", "solr")
                 additional_props.setdefault("ranger.audit.solr.basic.auth.password", solr_user_pass)
+                additional_props.setdefault("ranger.solr.audit.user", "solr")
+                additional_props.setdefault("ranger.solr.audit.user.password", solr_user_pass)
+                additional_props.setdefault("audit_solr_user", "solr")
+                additional_props.setdefault("audit_solr_password", solr_user_pass)
 
             # Expose Solr connection details as top-level template vars for the init container
             # that creates the ranger_audits collection before Ranger admin starts.

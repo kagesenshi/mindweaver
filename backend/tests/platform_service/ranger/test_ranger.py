@@ -306,6 +306,10 @@ async def test_ranger_template_vars_with_solr(mock_service_dependencies):
         assert vars["additional_properties"]["ranger.audit.solr.basic.auth.user"] == "solr"
         # Must use the 'solr' user password, NOT the admin password
         assert vars["additional_properties"]["ranger.audit.solr.basic.auth.password"] == "solr-user-password"
+        assert vars["additional_properties"]["ranger.solr.audit.user"] == "solr"
+        assert vars["additional_properties"]["ranger.solr.audit.user.password"] == "solr-user-password"
+        assert vars["additional_properties"]["audit_solr_user"] == "solr"
+        assert vars["additional_properties"]["audit_solr_password"] == "solr-user-password"
         # Init container template vars
         assert vars["solr_audit_url"] == "https://test-solr-solrcloud-common.solr-ns.svc.cluster.local:8983"
         assert vars["solr_audit_admin_password"] == "solr-admin-password"
@@ -585,6 +589,10 @@ async def test_ranger_render_manifests_with_solr_initcontainer(mock_service_depe
     assert "solr-admin-pass" in manifest
     # Must use curl with -k for self-signed TLS
     assert "curl -sk" in manifest
+    # Must check if already configured
+    assert 'if echo "${AUTH_CONFIG}" | grep -A 5 \'"name":"update"\' | grep -q \'"users"\'; then' in manifest
+    # Must update global update permission to allow users role
+    assert '\'{"update-permission": {"index": 10, "name": "update", "role": ["admin", "users"]}}\'' in manifest
 
 
 @pytest.mark.asyncio

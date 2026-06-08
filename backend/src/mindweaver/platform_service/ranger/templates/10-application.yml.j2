@@ -85,7 +85,7 @@ spec:
         {%- if solr_id %}
         initContainers:
           - name: create-ranger-audits-collection
-            image: curlimages/curl:8.11.0
+            image: {{ image if override_image else "ghcr.io/kagesenshi/mindweaver/ranger:2.8.0-rev.31" }}
             command:
               - sh
               - -c
@@ -104,23 +104,51 @@ spec:
                 done
                 echo "Solr is ready."
 
+                # Create zip package of Solr configset using python
+                echo "Creating configset package..."
+                python3 -c "import zipfile, os; z = zipfile.ZipFile('/tmp/solr_conf.zip', 'w'); [z.write(os.path.join(r, f), os.path.relpath(os.path.join(r, f), '/opt/ranger/ranger-2.8.0-admin/contrib/solr_for_audit_setup/conf')) for r, d, fs in os.walk('/opt/ranger/ranger-2.8.0-admin/contrib/solr_for_audit_setup/conf') for f in fs]; z.close()"
+
+                # Check if configset already exists
+                echo "Checking if Solr configset '${COLLECTION}' exists..."
+                if curl -sk -u "${ADMIN_USER}:${ADMIN_PASS}" "${SOLR_URL}/solr/admin/configs?action=LIST" | grep -q "\"${COLLECTION}\""; then
+                  echo "Configset '${COLLECTION}' already exists."
+                else
+                  echo "Uploading Solr configset '${COLLECTION}'..."
+                  curl -sk -u "${ADMIN_USER}:${ADMIN_PASS}" \
+                    -X POST \
+                    --header "Content-Type:application/octet-stream" \
+                    --data-binary @/tmp/solr_conf.zip \
+                    "${SOLR_URL}/solr/admin/configs?action=UPLOAD&name=${COLLECTION}"
+                fi
+
                 echo "Creating Solr collection '${COLLECTION}'..."
                 RESPONSE=$(curl -sk -u "${ADMIN_USER}:${ADMIN_PASS}" \
                     -X POST \
-                    "${SOLR_URL}/solr/admin/collections?action=CREATE&name=${COLLECTION}&numShards=1&replicationFactor=1" \
+                    "${SOLR_URL}/solr/admin/collections?action=CREATE&name=${COLLECTION}&collection.configName=${COLLECTION}&numShards=1&replicationFactor=1" \
                     -w "\n%{http_code}" 2>&1)
                 HTTP_CODE=$(echo "${RESPONSE}" | tail -1)
                 BODY=$(echo "${RESPONSE}" | head -n -1)
 
                 if echo "${BODY}" | grep -qi "already exists"; then
                   echo "Collection '${COLLECTION}' already exists, continuing."
-                  exit 0
                 elif [ "${HTTP_CODE}" = "200" ]; then
                   echo "Collection '${COLLECTION}' created successfully."
-                  exit 0
                 else
                   echo "Failed to create collection '${COLLECTION}'. HTTP ${HTTP_CODE}: ${BODY}"
                   exit 1
+                fi
+
+                echo "Checking Solr authorization configuration..."
+                AUTH_CONFIG=$(curl -sk -u "${ADMIN_USER}:${ADMIN_PASS}" "${SOLR_URL}/solr/admin/authorization")
+                if echo "${AUTH_CONFIG}" | grep -A 5 '"name":"update"' | grep -q '"users"'; then
+                  echo "Solr authorization update rule already configured for users, skipping."
+                else
+                  echo "Updating Solr authorization update rule to allow users..."
+                  curl -sk -u "${ADMIN_USER}:${ADMIN_PASS}" \
+                    -H 'Content-type:application/json' \
+                    -d '{"update-permission": {"index": 10, "name": "update", "role": ["admin", "users"]}}' \
+                    -X POST \
+                    "${SOLR_URL}/solr/admin/authorization"
                 fi
         {%- endif %}
 
