@@ -93,26 +93,32 @@ const ServiceView = ({
         }
 
         const ports = [];
-        if (supersetUriObj) {
-            const hostname = supersetUriObj.hostname;
-            const port = supersetUriObj.port ? parseInt(supersetUriObj.port) : (supersetUriObj.protocol === 'https:' ? 443 : 80);
-            const scheme = supersetUriObj.protocol.replace(':', '');
-            const ingressDomain = platformState?.extra_data?.ingress_domain;
+        let isIngressUsed = false;
+        const ingressDomain = platformState?.extra_data?.ingress_domain;
 
-            if (ingressDomain && hostname.endsWith(ingressDomain)) {
-                ports.push({
-                    label: 'Superset UI (Envoy Ingress)',
-                    load_balancer_ips: [hostname],
-                    port: port,
-                    scheme: scheme
-                });
-            } else {
-                ports.push({
-                    label: 'Superset UI (NodePort)',
-                    node_port: port,
-                    scheme: scheme
-                });
-            }
+        if (supersetUriObj && ingressDomain && supersetUriObj.hostname.endsWith(ingressDomain)) {
+            ports.push({
+                label: 'Superset UI (Envoy Ingress)',
+                load_balancer_ips: [supersetUriObj.hostname],
+                port: supersetUriObj.port ? parseInt(supersetUriObj.port) : (supersetUriObj.protocol === 'https:' ? 443 : 80),
+                scheme: supersetUriObj.protocol.replace(':', '')
+            });
+            isIngressUsed = true;
+        }
+
+        const httpPort = platformState?.node_ports?.find(np => np.port === 8088);
+        if (httpPort) {
+            ports.push({
+                label: 'Superset UI (NodePort)',
+                node_port: httpPort.node_port,
+                scheme: supersetUriObj ? supersetUriObj.protocol.replace(':', '') : 'http'
+            });
+        } else if (!isIngressUsed && supersetUriObj) {
+            ports.push({
+                label: 'Superset UI (NodePort)',
+                node_port: supersetUriObj.port ? parseInt(supersetUriObj.port) : 8088,
+                scheme: supersetUriObj.protocol.replace(':', '')
+            });
         }
 
         return (

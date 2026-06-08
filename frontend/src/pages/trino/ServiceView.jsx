@@ -93,26 +93,32 @@ const ServiceView = ({
         }
 
         const ports = [];
-        if (trinoUriObj) {
-            const hostname = trinoUriObj.hostname;
-            const port = trinoUriObj.port ? parseInt(trinoUriObj.port) : (trinoUriObj.protocol === 'https:' ? 443 : 80);
-            const scheme = trinoUriObj.protocol.replace(':', '');
-            const ingressDomain = platformState?.extra_data?.ingress_domain;
+        let isIngressUsed = false;
+        const ingressDomain = platformState?.extra_data?.ingress_domain;
 
-            if (ingressDomain && hostname.endsWith(ingressDomain)) {
-                ports.push({
-                    label: 'Trino UI / API (Envoy Ingress)',
-                    load_balancer_ips: [hostname],
-                    port: port,
-                    scheme: scheme
-                });
-            } else {
-                ports.push({
-                    label: 'Trino UI / API (NodePort)',
-                    node_port: port,
-                    scheme: scheme
-                });
-            }
+        if (trinoUriObj && ingressDomain && trinoUriObj.hostname.endsWith(ingressDomain)) {
+            ports.push({
+                label: 'Trino UI / API (Envoy Ingress)',
+                load_balancer_ips: [trinoUriObj.hostname],
+                port: trinoUriObj.port ? parseInt(trinoUriObj.port) : (trinoUriObj.protocol === 'https:' ? 443 : 80),
+                scheme: trinoUriObj.protocol.replace(':', '')
+            });
+            isIngressUsed = true;
+        }
+
+        const httpPort = platformState?.node_ports?.find(np => np.name?.endsWith('https-nodeport') || np.port === 8443);
+        if (httpPort) {
+            ports.push({
+                label: 'Trino UI / API (NodePort)',
+                node_port: httpPort.node_port,
+                scheme: trinoUriObj ? trinoUriObj.protocol.replace(':', '') : 'https'
+            });
+        } else if (!isIngressUsed && trinoUriObj) {
+            ports.push({
+                label: 'Trino UI / API (NodePort)',
+                node_port: trinoUriObj.port ? parseInt(trinoUriObj.port) : 8443,
+                scheme: trinoUriObj.protocol.replace(':', '')
+            });
         }
 
         const externalUri = platformState?.trino_uri || (trinoUriObj ? trinoUriObj.toString() : null);

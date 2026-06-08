@@ -96,26 +96,32 @@ const ServiceView = ({
         }
 
         const ports = [];
-        if (opensearchUrlObj) {
-            const hostname = opensearchUrlObj.hostname;
-            const port = opensearchUrlObj.port ? parseInt(opensearchUrlObj.port) : (opensearchUrlObj.protocol === 'https:' ? 443 : 80);
-            const scheme = opensearchUrlObj.protocol.replace(':', '');
-            const ingressDomain = platformState?.extra_data?.ingress_domain;
+        let isIngressUsed = false;
+        const ingressDomain = platformState?.extra_data?.ingress_domain;
 
-            if (ingressDomain && hostname.endsWith(ingressDomain)) {
-                ports.push({
-                    label: 'OpenSearch API (Envoy Ingress)',
-                    load_balancer_ips: [hostname],
-                    port: port,
-                    scheme: scheme
-                });
-            } else {
-                ports.push({
-                    label: 'OpenSearch API (NodePort)',
-                    node_port: port,
-                    scheme: scheme
-                });
-            }
+        if (opensearchUrlObj && ingressDomain && opensearchUrlObj.hostname.endsWith(ingressDomain)) {
+            ports.push({
+                label: 'OpenSearch API (Envoy Ingress)',
+                load_balancer_ips: [opensearchUrlObj.hostname],
+                port: opensearchUrlObj.port ? parseInt(opensearchUrlObj.port) : (opensearchUrlObj.protocol === 'https:' ? 443 : 80),
+                scheme: opensearchUrlObj.protocol.replace(':', '')
+            });
+            isIngressUsed = true;
+        }
+
+        const httpPort = platformState?.node_ports?.find(np => np.port === 9200);
+        if (httpPort) {
+            ports.push({
+                label: 'OpenSearch API (NodePort)',
+                node_port: httpPort.node_port,
+                scheme: opensearchUrlObj ? opensearchUrlObj.protocol.replace(':', '') : 'https'
+            });
+        } else if (!isIngressUsed && opensearchUrlObj) {
+            ports.push({
+                label: 'OpenSearch API (NodePort)',
+                node_port: opensearchUrlObj.port ? parseInt(opensearchUrlObj.port) : 9200,
+                scheme: opensearchUrlObj.protocol.replace(':', '')
+            });
         }
 
         return (

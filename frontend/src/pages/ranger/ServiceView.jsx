@@ -96,26 +96,32 @@ const ServiceView = ({
         }
 
         const ports = [];
-        if (rangerUrlObj) {
-            const hostname = rangerUrlObj.hostname;
-            const port = rangerUrlObj.port ? parseInt(rangerUrlObj.port) : (rangerUrlObj.protocol === 'https:' ? 443 : 80);
-            const scheme = rangerUrlObj.protocol.replace(':', '');
-            const ingressDomain = platformState?.extra_data?.ingress_domain;
+        let isIngressUsed = false;
+        const ingressDomain = platformState?.extra_data?.ingress_domain;
 
-            if (ingressDomain && hostname.endsWith(ingressDomain)) {
-                ports.push({
-                    label: 'Ranger Admin UI (Envoy Ingress)',
-                    load_balancer_ips: [hostname],
-                    port: port,
-                    scheme: scheme
-                });
-            } else {
-                ports.push({
-                    label: 'Ranger Admin UI (NodePort)',
-                    node_port: port,
-                    scheme: scheme
-                });
-            }
+        if (rangerUrlObj && ingressDomain && rangerUrlObj.hostname.endsWith(ingressDomain)) {
+            ports.push({
+                label: 'Ranger Admin UI (Envoy Ingress)',
+                load_balancer_ips: [rangerUrlObj.hostname],
+                port: rangerUrlObj.port ? parseInt(rangerUrlObj.port) : (rangerUrlObj.protocol === 'https:' ? 443 : 80),
+                scheme: rangerUrlObj.protocol.replace(':', '')
+            });
+            isIngressUsed = true;
+        }
+
+        const httpPort = platformState?.node_ports?.find(np => np.port === 6080);
+        if (httpPort) {
+            ports.push({
+                label: 'Ranger Admin UI (NodePort)',
+                node_port: httpPort.node_port,
+                scheme: rangerUrlObj ? rangerUrlObj.protocol.replace(':', '') : 'https'
+            });
+        } else if (!isIngressUsed && rangerUrlObj) {
+            ports.push({
+                label: 'Ranger Admin UI (NodePort)',
+                node_port: rangerUrlObj.port ? parseInt(rangerUrlObj.port) : 6080,
+                scheme: rangerUrlObj.protocol.replace(':', '')
+            });
         }
 
         return (

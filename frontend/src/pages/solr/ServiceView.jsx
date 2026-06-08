@@ -97,26 +97,32 @@ const ServiceView = ({
         }
 
         const ports = [];
-        if (solrUrlObj) {
-            const hostname = solrUrlObj.hostname;
-            const port = solrUrlObj.port ? parseInt(solrUrlObj.port) : (solrUrlObj.protocol === 'https:' ? 443 : 80);
-            const scheme = solrUrlObj.protocol.replace(':', '');
-            const ingressDomain = platformState?.extra_data?.ingress_domain;
+        let isIngressUsed = false;
+        const ingressDomain = platformState?.extra_data?.ingress_domain;
 
-            if (ingressDomain && hostname.endsWith(ingressDomain)) {
-                ports.push({
-                    label: 'Solr API (Envoy Ingress)',
-                    load_balancer_ips: [hostname],
-                    port: port,
-                    scheme: scheme
-                });
-            } else {
-                ports.push({
-                    label: 'Solr API (NodePort)',
-                    node_port: port,
-                    scheme: scheme
-                });
-            }
+        if (solrUrlObj && ingressDomain && solrUrlObj.hostname.endsWith(ingressDomain)) {
+            ports.push({
+                label: 'Solr API (Envoy Ingress)',
+                load_balancer_ips: [solrUrlObj.hostname],
+                port: solrUrlObj.port ? parseInt(solrUrlObj.port) : (solrUrlObj.protocol === 'https:' ? 443 : 80),
+                scheme: solrUrlObj.protocol.replace(':', '')
+            });
+            isIngressUsed = true;
+        }
+
+        const httpPort = platformState?.node_ports?.find(np => np.port === 8983);
+        if (httpPort) {
+            ports.push({
+                label: 'Solr API (NodePort)',
+                node_port: httpPort.node_port,
+                scheme: solrUrlObj ? solrUrlObj.protocol.replace(':', '') : 'http'
+            });
+        } else if (!isIngressUsed && solrUrlObj) {
+            ports.push({
+                label: 'Solr API (NodePort)',
+                node_port: solrUrlObj.port ? parseInt(solrUrlObj.port) : 8983,
+                scheme: solrUrlObj.protocol.replace(':', '')
+            });
         }
 
         return (
