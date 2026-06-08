@@ -45,8 +45,6 @@ spec:
           - http-server.https.keystore.path=/etc/trino/tls/tls.pem
           - http-server.https.truststore.path=/etc/trino/tls/truststore.jks
           - http-server.https.truststore.key=changeit
-          - http-server.log.enabled=true
-          - http-server.log.path=/dev/stdout
         server:
           workers: {{ replica_count }}
           autoscaling:
@@ -195,6 +193,14 @@ spec:
                 <property>
                   <name>xasecure.audit.destination.solr.urls</name>
                   <value>{{ ranger_solr_url }}</value>
+                </property>
+                <property>
+                  <name>xasecure.audit.destination.solr.user</name>
+                  <value>solr</value>
+                </property>
+                <property>
+                  <name>xasecure.audit.destination.solr.password</name>
+                  <value>{{ ranger_solr_password }}</value>
                 </property>
                 {% endif %}
                 <property>
