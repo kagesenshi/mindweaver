@@ -5,13 +5,12 @@ import os
 import logging
 import asyncio
 import tempfile
+import base64
 from typing import Any, Optional
 from kubernetes import client, config
 from mindweaver.platform_service.base import PlatformService
 from mindweaver.crypto import decrypt_password, encrypt_password
 from mindweaver.fw.model import ts_now
-from mindweaver.fw.util import generate_password
-from mindweaver.fw.hooks import before_create
 
 from .model import SolrPlatform, SolrPlatformState
 
@@ -115,11 +114,6 @@ class SolrPlatformService(PlatformService[SolrPlatform]):
         if not service_name:
             service_name = f"{model.name}-solrcloud-common"
         return f"{service_name}.{namespace}.svc.cluster.local"
-
-    @before_create(before="_handle_redacted_create")
-    async def generate_passwords(self, model: SolrPlatform):
-        """Autogenerate a strong random password for the admin user."""
-        model.admin_password = generate_password()
 
     async def template_vars(self, model: SolrPlatform) -> dict:
         vars = model.model_dump()
@@ -267,8 +261,7 @@ class SolrPlatformService(PlatformService[SolrPlatform]):
                     name=f"{model.name}-solrcloud-security-bootstrap",
                     namespace=namespace,
                 )
-                import base64
-                encoded_pw = secret.data.get("admin-password")
+                encoded_pw = secret.data.get("admin") or secret.data.get("admin-password")
                 if encoded_pw:
                     admin_password = base64.b64decode(encoded_pw).decode("utf-8")
             except Exception as e:
