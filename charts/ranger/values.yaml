@@ -8,7 +8,7 @@ image:
   repository: ghcr.io/kagesenshi/mindweaver/ranger
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "2.8.0-rev.27"
+  tag: "2.8.0-rev.28"
 
 imagePullSecrets: []
 nameOverride: ""
@@ -24,6 +24,8 @@ serviceAccount:
   name: ""
 
 podAnnotations: {}
+
+initContainers: []
 
 podSecurityContext: {}
   # fsGroup: 2000
@@ -145,6 +147,7 @@ usersync:
   enabled: false
   replicaCount: 1
   resources: {}
+  initContainers: []
 
 # Kerberos Configuration
 kerberos:
