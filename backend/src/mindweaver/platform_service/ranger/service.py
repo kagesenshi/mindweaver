@@ -177,12 +177,21 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
                     f"Managed Solr cluster {solr_model.name} is not active"
                 )
 
-            solr_pass = ""
+            # admin_password: used by the init container to create ranger_audits collection
+            solr_admin_pass = ""
             if solr_state.admin_password:
                 try:
-                    solr_pass = decrypt_password(solr_state.admin_password)
+                    solr_admin_pass = decrypt_password(solr_state.admin_password)
                 except Exception:
-                    solr_pass = solr_state.admin_password
+                    solr_admin_pass = solr_state.admin_password
+
+            # solr_user_password: used by Ranger admin to write audit logs (solr user)
+            solr_user_pass = ""
+            if solr_state.solr_user_password:
+                try:
+                    solr_user_pass = decrypt_password(solr_state.solr_user_password)
+                except Exception:
+                    solr_user_pass = solr_state.solr_user_password
 
             additional_props = vars.setdefault("additional_properties", {})
             # Make sure we don't overwrite user custom properties if they exist
@@ -193,10 +202,16 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
             if not solr_url.startswith("https://"):
                 solr_url = f"https://{solr_url}"
             additional_props.setdefault("audit_solr_urls", f"{solr_url}/solr/ranger_audits")
-            if solr_pass:
+            if solr_user_pass:
                 additional_props.setdefault("xasecure.audit.solr.is.basicauth.enabled", "true")
                 additional_props.setdefault("ranger.audit.solr.basic.auth.user", "solr")
-                additional_props.setdefault("ranger.audit.solr.basic.auth.password", solr_pass)
+                additional_props.setdefault("ranger.audit.solr.basic.auth.password", solr_user_pass)
+
+            # Expose Solr connection details as top-level template vars for the init container
+            # that creates the ranger_audits collection before Ranger admin starts.
+            vars["solr_audit_url"] = solr_url
+            vars["solr_audit_admin_password"] = solr_admin_pass
+            vars["solr_audit_solr_password"] = solr_user_pass
             
         # Set DB root user/pass to be the same as db_user/pass for managed DBs
         vars["db_root_user"] = vars.get("db_user")

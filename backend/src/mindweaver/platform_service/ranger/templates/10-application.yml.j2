@@ -82,6 +82,52 @@ spec:
         usersync:
           enabled: {{ 'true' if additional_properties and additional_properties.get('SYNC_SOURCE') == 'ldap' else 'false' }}
 
+        {%- if solr_id %}
+        # Init container: create ranger_audits Solr collection before Ranger admin starts.
+        # Uses admin credentials; curl -k handles self-signed cluster TLS.
+        initContainers:
+          admin:
+            - name: create-ranger-audits-collection
+              image: curlimages/curl:8.11.0
+              command:
+                - sh
+                - -c
+                - |
+                  SOLR_URL="{{ solr_audit_url }}"
+                  ADMIN_USER="admin"
+                  ADMIN_PASS="{{ solr_audit_admin_password }}"
+                  COLLECTION="ranger_audits"
+
+                  echo "Waiting for Solr to become reachable..."
+                  until curl -sk -u "${ADMIN_USER}:${ADMIN_PASS}" \
+                      "${SOLR_URL}/solr/admin/info/system" \
+                      --max-time 5 -o /dev/null -w "%{http_code}" | grep -q "^200"; do
+                    echo "Solr not ready, retrying in 5s..."
+                    sleep 5
+                  done
+                  echo "Solr is ready."
+
+                  echo "Creating Solr collection '${COLLECTION}'..."
+                  RESPONSE=$(curl -sk -u "${ADMIN_USER}:${ADMIN_PASS}" \
+                      -X POST \
+                      "${SOLR_URL}/solr/admin/collections?action=CREATE&name=${COLLECTION}&numShards=1&replicationFactor=1" \
+                      -w "\n%{http_code}" 2>&1)
+                  HTTP_CODE=$(echo "${RESPONSE}" | tail -1)
+                  BODY=$(echo "${RESPONSE}" | head -n -1)
+
+                  if echo "${BODY}" | grep -qi "already exists"; then
+                    echo "Collection '${COLLECTION}' already exists, continuing."
+                    exit 0
+                  elif [ "${HTTP_CODE}" = "200" ]; then
+                    echo "Collection '${COLLECTION}' created successfully."
+                    exit 0
+                  else
+                    echo "Failed to create collection '${COLLECTION}'. HTTP ${HTTP_CODE}: ${BODY}"
+                    exit 1
+                  fi
+        {%- endif %}
+
+
         resources:
           requests:
             cpu: {{ cpu_request }}
@@ -93,6 +139,7 @@ spec:
         service:
           type: NodePort
           port: 6080
+
 
   destination:
     server: https://kubernetes.default.svc

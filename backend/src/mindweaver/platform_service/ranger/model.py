@@ -15,7 +15,7 @@ class RangerPlatform(PlatformBase, table=True):
     replica_count: int = Field(default=1)
 
     # Chart version selection (targetRevision in Application manifest)
-    chart_version: str = Field(default="0.1.27")
+    chart_version: str = Field(default="0.1.31")
 
     # Image override
     override_image: bool = Field(default=False)
@@ -31,9 +31,7 @@ class RangerPlatform(PlatformBase, table=True):
     database_id: int = Field(foreign_key="mw_pgsql_platform.id")
 
     # Solr Configuration (Audit store/search)
-    solr_id: Optional[int] = Field(
-        default=None, foreign_key="mw_solr_platform.id"
-    )
+    solr_id: Optional[int] = Field(default=None, foreign_key="mw_solr_platform.id")
 
     # Credentials (Encrypted)
     admin_password: str = Field(default=None)

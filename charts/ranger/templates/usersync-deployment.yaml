@@ -24,8 +24,9 @@ spec:
         {{- include "ranger.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: usersync
     spec:
-      {{- if .Values.admin.ssl.enabled }}
+      {{- if or .Values.admin.ssl.enabled (not (empty .Values.usersync.initContainers)) }}
       initContainers:
+        {{- if .Values.admin.ssl.enabled }}
         - name: prepare-truststore
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           command:
@@ -41,6 +42,10 @@ spec:
               readOnly: true
             - name: truststore-volume
               mountPath: /etc/ranger/truststore
+        {{- end }}
+        {{- if not (empty .Values.usersync.initContainers) }}
+        {{- toYaml .Values.usersync.initContainers | nindent 8 }}
+        {{- end }}
       {{- end }}
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
