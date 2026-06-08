@@ -83,8 +83,37 @@ const ServiceView = ({
             });
         }
 
-        const ingressDomain = platformState?.extra_data?.ingress_domain;
-        const httpPort = platformState?.node_ports?.find(np => np.port === 8088);
+        let supersetUriObj = null;
+        if (platformState?.superset_uri) {
+            try {
+                supersetUriObj = new URL(platformState.superset_uri);
+            } catch (e) {
+                console.error("Failed to parse superset_uri:", e);
+            }
+        }
+
+        const ports = [];
+        if (supersetUriObj) {
+            const hostname = supersetUriObj.hostname;
+            const port = supersetUriObj.port ? parseInt(supersetUriObj.port) : (supersetUriObj.protocol === 'https:' ? 443 : 80);
+            const scheme = supersetUriObj.protocol.replace(':', '');
+            const ingressDomain = platformState?.extra_data?.ingress_domain;
+
+            if (ingressDomain && hostname.endsWith(ingressDomain)) {
+                ports.push({
+                    label: 'Superset UI (Envoy Ingress)',
+                    load_balancer_ips: [hostname],
+                    port: port,
+                    scheme: scheme
+                });
+            } else {
+                ports.push({
+                    label: 'Superset UI (NodePort)',
+                    node_port: port,
+                    scheme: scheme
+                });
+            }
+        }
 
         return (
             <div className="space-y-6">
@@ -96,22 +125,10 @@ const ServiceView = ({
                     />
                 )}
 
-                {(ingressDomain || httpPort) && (
+                {ports.length > 0 && (
                     <ExternalNetworkAccessBlock
                         darkMode={darkMode}
-                        ports={[
-                            ...(ingressDomain ? [{
-                                label: 'Superset UI (Envoy Ingress)',
-                                load_balancer_ips: [`${selectedPlatform.name}.${ingressDomain}`],
-                                port: 443,
-                                scheme: 'https'
-                            }] : []),
-                            ...(httpPort ? [{
-                                label: 'Superset UI (NodePort)',
-                                node_port: httpPort.node_port,
-                                scheme: 'http'
-                            }] : [])
-                        ]}
+                        ports={ports}
                         clusterNodes={platformState.cluster_nodes}
                         icon={LayoutDashboard}
                         iconColorClass="text-indigo-500"

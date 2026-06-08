@@ -83,11 +83,39 @@ const ServiceView = ({
             });
         }
 
-        const ingressDomain = platformState?.extra_data?.ingress_domain;
-        const httpsPort = platformState?.node_ports?.find(np => np.name.endsWith('https-nodeport'));
-        const externalUri = ingressDomain 
-            ? `https://${selectedPlatform.name}.${ingressDomain}`
-            : (platformState?.trino_uri || (httpsPort && platformState.cluster_nodes?.[0]?.ipv4 ? `https://${platformState.cluster_nodes[0].ipv4}:${httpsPort.node_port}` : null));
+        let trinoUriObj = null;
+        if (platformState?.trino_uri) {
+            try {
+                trinoUriObj = new URL(platformState.trino_uri);
+            } catch (e) {
+                console.error("Failed to parse trino_uri:", e);
+            }
+        }
+
+        const ports = [];
+        if (trinoUriObj) {
+            const hostname = trinoUriObj.hostname;
+            const port = trinoUriObj.port ? parseInt(trinoUriObj.port) : (trinoUriObj.protocol === 'https:' ? 443 : 80);
+            const scheme = trinoUriObj.protocol.replace(':', '');
+            const ingressDomain = platformState?.extra_data?.ingress_domain;
+
+            if (ingressDomain && hostname.endsWith(ingressDomain)) {
+                ports.push({
+                    label: 'Trino UI / API (Envoy Ingress)',
+                    load_balancer_ips: [hostname],
+                    port: port,
+                    scheme: scheme
+                });
+            } else {
+                ports.push({
+                    label: 'Trino UI / API (NodePort)',
+                    node_port: port,
+                    scheme: scheme
+                });
+            }
+        }
+
+        const externalUri = platformState?.trino_uri || (trinoUriObj ? trinoUriObj.toString() : null);
 
         return (
             <div className="space-y-6">
@@ -99,22 +127,10 @@ const ServiceView = ({
                     />
                 )}
 
-                {(ingressDomain || httpsPort) && (
+                {ports.length > 0 && (
                     <ExternalNetworkAccessBlock
                         darkMode={darkMode}
-                        ports={[
-                            ...(ingressDomain ? [{
-                                label: 'Trino UI / API (Envoy Ingress)',
-                                load_balancer_ips: [`${selectedPlatform.name}.${ingressDomain}`],
-                                port: 443,
-                                scheme: 'https'
-                            }] : []),
-                            ...(httpsPort ? [{
-                                label: 'Trino UI / API (NodePort)',
-                                node_port: httpsPort.node_port,
-                                scheme: 'https'
-                            }] : [])
-                        ]}
+                        ports={ports}
                         clusterNodes={platformState.cluster_nodes}
                         cliInfo={{
                             command: `trino --server ${externalUri || 'https://[NODE_IP]:[NODE_PORT]'} --catalog ${platformState?.extra_data?.preferred_catalog || 'hive'} --schema default`,

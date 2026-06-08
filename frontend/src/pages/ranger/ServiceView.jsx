@@ -86,8 +86,37 @@ const ServiceView = ({
             });
         }
 
-        const ingressDomain = platformState?.extra_data?.ingress_domain;
-        const httpPort = platformState?.node_ports?.find(np => np.port === 6080);
+        let rangerUrlObj = null;
+        if (platformState?.ranger_url) {
+            try {
+                rangerUrlObj = new URL(platformState.ranger_url);
+            } catch (e) {
+                console.error("Failed to parse ranger_url:", e);
+            }
+        }
+
+        const ports = [];
+        if (rangerUrlObj) {
+            const hostname = rangerUrlObj.hostname;
+            const port = rangerUrlObj.port ? parseInt(rangerUrlObj.port) : (rangerUrlObj.protocol === 'https:' ? 443 : 80);
+            const scheme = rangerUrlObj.protocol.replace(':', '');
+            const ingressDomain = platformState?.extra_data?.ingress_domain;
+
+            if (ingressDomain && hostname.endsWith(ingressDomain)) {
+                ports.push({
+                    label: 'Ranger Admin UI (Envoy Ingress)',
+                    load_balancer_ips: [hostname],
+                    port: port,
+                    scheme: scheme
+                });
+            } else {
+                ports.push({
+                    label: 'Ranger Admin UI (NodePort)',
+                    node_port: port,
+                    scheme: scheme
+                });
+            }
+        }
 
         return (
             <div className="space-y-6">
@@ -98,22 +127,10 @@ const ServiceView = ({
                         endpoints={endpoints}
                     />
                 )}
-                {(ingressDomain || httpPort) && (
+                {ports.length > 0 && (
                     <ExternalNetworkAccessBlock
                         darkMode={darkMode}
-                        ports={[
-                            ...(ingressDomain ? [{
-                                label: 'Ranger Admin UI (Envoy Ingress)',
-                                load_balancer_ips: [`${selectedPlatform.name}.${ingressDomain}`],
-                                port: 443,
-                                scheme: 'https'
-                            }] : []),
-                            ...(httpPort ? [{
-                                label: 'Ranger Admin UI (NodePort)',
-                                node_port: httpPort.node_port,
-                                scheme: 'https'
-                            }] : [])
-                        ]}
+                        ports={ports}
                         clusterNodes={platformState.cluster_nodes}
                         icon={ShieldCheck}
                         iconColorClass="text-blue-400"

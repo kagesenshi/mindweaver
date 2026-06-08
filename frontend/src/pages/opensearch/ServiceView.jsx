@@ -86,8 +86,37 @@ const ServiceView = ({
             });
         }
 
-        const ingressDomain = platformState?.extra_data?.ingress_domain;
-        const httpPort = platformState?.node_ports?.find(np => np.port === 9200);
+        let opensearchUrlObj = null;
+        if (platformState?.opensearch_url) {
+            try {
+                opensearchUrlObj = new URL(platformState.opensearch_url);
+            } catch (e) {
+                console.error("Failed to parse opensearch_url:", e);
+            }
+        }
+
+        const ports = [];
+        if (opensearchUrlObj) {
+            const hostname = opensearchUrlObj.hostname;
+            const port = opensearchUrlObj.port ? parseInt(opensearchUrlObj.port) : (opensearchUrlObj.protocol === 'https:' ? 443 : 80);
+            const scheme = opensearchUrlObj.protocol.replace(':', '');
+            const ingressDomain = platformState?.extra_data?.ingress_domain;
+
+            if (ingressDomain && hostname.endsWith(ingressDomain)) {
+                ports.push({
+                    label: 'OpenSearch API (Envoy Ingress)',
+                    load_balancer_ips: [hostname],
+                    port: port,
+                    scheme: scheme
+                });
+            } else {
+                ports.push({
+                    label: 'OpenSearch API (NodePort)',
+                    node_port: port,
+                    scheme: scheme
+                });
+            }
+        }
 
         return (
             <div className="space-y-6">
@@ -98,22 +127,10 @@ const ServiceView = ({
                         endpoints={endpoints}
                     />
                 )}
-                {(ingressDomain || httpPort) && (
+                {ports.length > 0 && (
                     <ExternalNetworkAccessBlock
                         darkMode={darkMode}
-                        ports={[
-                            ...(ingressDomain ? [{
-                                label: 'OpenSearch API (Envoy Ingress)',
-                                load_balancer_ips: [`${selectedPlatform.name}.${ingressDomain}`],
-                                port: 443,
-                                scheme: 'https'
-                            }] : []),
-                            ...(httpPort ? [{
-                                label: 'OpenSearch API (NodePort)',
-                                node_port: httpPort.node_port,
-                                scheme: 'https'
-                            }] : [])
-                        ]}
+                        ports={ports}
                         clusterNodes={platformState.cluster_nodes}
                         icon={Search}
                         iconColorClass="text-blue-400"
