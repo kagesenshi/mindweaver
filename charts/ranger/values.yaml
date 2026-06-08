@@ -8,7 +8,7 @@ image:
   repository: ghcr.io/kagesenshi/mindweaver/ranger
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "2.8.0-rev.29"
+  tag: "2.8.0-rev.30"
 
 imagePullSecrets: []
 nameOverride: ""
