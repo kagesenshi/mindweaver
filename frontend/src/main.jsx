@@ -22,6 +22,7 @@ const TrinoPage = lazy(() => import('./pages/trino/Page'))
 const SupersetPage = lazy(() => import('./pages/superset/Page'))
 const RangerPage = lazy(() => import('./pages/ranger/Page'))
 const SolrPage = lazy(() => import('./pages/solr/Page'))
+const ZookeeperPage = lazy(() => import('./pages/zookeeper/Page'))
 
 import { ProtectedRoute } from './components/ProtectedRoute'
 
@@ -95,6 +96,10 @@ const router = createBrowserRouter([
       {
         path: 'platform/solr',
         element: <SolrPage />,
+      },
+      {
+        path: 'platform/zookeeper',
+        element: <ZookeeperPage />,
       },
       {
         path: 'platform/:service',

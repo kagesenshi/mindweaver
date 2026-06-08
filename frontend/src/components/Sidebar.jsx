@@ -20,6 +20,7 @@ import {
     Boxes,
     Globe,
     Search,
+    Network,
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { useAuth } from '../providers/AuthProvider';
@@ -57,6 +58,7 @@ const INFRA_ITEMS = [
     { name: 'Apache Superset', to: '/platform/superset', icon: BarChart3 },
     { name: 'Apache Ranger', to: '/platform/ranger', icon: ShieldCheck },
     { name: 'Apache Solr', to: '/platform/solr', icon: Search },
+    { name: 'ZooKeeper', to: '/platform/zookeeper', icon: Network },
     { name: 'Apache Kafka', to: '/platform/kafka', icon: RefreshCcw },
 ];
 

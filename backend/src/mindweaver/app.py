@@ -27,6 +27,7 @@ from .platform_service.trino import router as trino_router
 from .platform_service.superset import router as superset_router
 from .platform_service.ranger import router as ranger_router
 from .platform_service.solr import router as solr_router
+from .platform_service.zookeeper import router as zookeeper_router
 
 from .fw.model import get_engine, get_session
 from sqlmodel import select
@@ -193,6 +194,7 @@ app.include_router(trino_router, prefix="/api/v1")
 app.include_router(superset_router, prefix="/api/v1")
 app.include_router(ranger_router, prefix="/api/v1")
 app.include_router(solr_router, prefix="/api/v1")
+app.include_router(zookeeper_router, prefix="/api/v1")
 app.include_router(s3_router, prefix="/api/v1")
 app.include_router(ldap_config_router, prefix="/api/v1")
 

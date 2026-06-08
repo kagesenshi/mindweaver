@@ -9,9 +9,10 @@ import {
     Wind,
     LayoutDashboard,
     ShieldCheck,
-    Search
+    Search,
+    Network
 } from 'lucide-react';
-import { usePgSql, useHiveMetastore, useTrino, useSuperset, useRanger, useSolr } from '../hooks/useResources';
+import { usePgSql, useHiveMetastore, useTrino, useSuperset, useRanger, useSolr, useZookeeper } from '../hooks/useResources';
 import PageLayout from '../components/PageLayout';
 import ListingItem from '../components/ListingItem';
 
@@ -23,10 +24,11 @@ const HomePage = () => {
     const { platforms: supersetPlatforms, loading: supersetLoading } = useSuperset();
     const { platforms: rangerPlatforms, loading: rangerLoading } = useRanger();
     const { platforms: solrPlatforms, loading: solrLoading } = useSolr();
+    const { platforms: zkPlatforms, loading: zkLoading } = useZookeeper();
     const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
 
-    const loading = pgsqlLoading || hmsLoading || trinoLoading || supersetLoading || rangerLoading || solrLoading;
+    const loading = pgsqlLoading || hmsLoading || trinoLoading || supersetLoading || rangerLoading || solrLoading || zkLoading;
 
     const allInstances = [
         ...pgsqlPlatforms.map(p => ({ ...p, type: 'pgsql' })),
@@ -34,7 +36,8 @@ const HomePage = () => {
         ...trinoPlatforms.map(p => ({ ...p, type: 'trino' })),
         ...supersetPlatforms.map(p => ({ ...p, type: 'superset' })),
         ...rangerPlatforms.map(p => ({ ...p, type: 'ranger' })),
-        ...solrPlatforms.map(p => ({ ...p, type: 'solr' }))
+        ...solrPlatforms.map(p => ({ ...p, type: 'solr' })),
+        ...zkPlatforms.map(p => ({ ...p, type: 'zookeeper' }))
     ];
 
     const filteredInstances = allInstances.filter(inst => {
@@ -64,10 +67,10 @@ const HomePage = () => {
                 {filteredInstances.map(inst => (
                     <ListingItem
                         key={`${inst.type}-${inst.id}`}
-                        icon={inst.type === 'hms' ? Boxes : inst.type === 'trino' ? Wind : inst.type === 'superset' ? LayoutDashboard : inst.type === 'ranger' ? ShieldCheck : inst.type === 'solr' ? Search : Database}
+                        icon={inst.type === 'hms' ? Boxes : inst.type === 'trino' ? Wind : inst.type === 'superset' ? LayoutDashboard : inst.type === 'ranger' ? ShieldCheck : inst.type === 'solr' ? Search : inst.type === 'zookeeper' ? Network : Database}
                         title={inst.title || inst.name}
                         badges={[{ 
-                            text: inst.type === 'hms' ? "Hive Metastore" : inst.type === 'trino' ? "Trino Cluster" : inst.type === 'superset' ? "Apache Superset" : inst.type === 'ranger' ? "Apache Ranger" : inst.type === 'solr' ? "Solr" : "CloudNative PG", 
+                            text: inst.type === 'hms' ? "Hive Metastore" : inst.type === 'trino' ? "Trino Cluster" : inst.type === 'superset' ? "Apache Superset" : inst.type === 'ranger' ? "Apache Ranger" : inst.type === 'solr' ? "Solr" : inst.type === 'zookeeper' ? "ZooKeeper" : "CloudNative PG", 
                             variant: "mw-badge-neutral" 
                         }]}
                         subtitle={inst.id}
@@ -77,6 +80,7 @@ const HomePage = () => {
                             else if (inst.type === 'superset') navigate('/platform/superset');
                             else if (inst.type === 'ranger') navigate('/platform/ranger');
                             else if (inst.type === 'solr') navigate('/platform/solr');
+                            else if (inst.type === 'zookeeper') navigate('/platform/zookeeper');
                             else navigate('/platform/pgsql');
                         }}
                         actions={

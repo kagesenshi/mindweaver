@@ -51,6 +51,11 @@ spec:
           restartOnTLSSecretUpdate: true
 
 
+        {% if zookeeper_connection_string %}
+        zk:
+          address: "{{ zookeeper_connection_string }}"
+          uniqueChroot: true
+        {% else %}
         zk:
           provided:
             replicas: 1
@@ -59,6 +64,7 @@ spec:
                 resources:
                   requests:
                     storage: "5Gi"
+        {% endif %}
 
         resources:
           requests:

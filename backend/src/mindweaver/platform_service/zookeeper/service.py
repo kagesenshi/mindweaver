@@ -5,42 +5,27 @@ import os
 import logging
 import asyncio
 import tempfile
-import base64
 from typing import Any, Optional
 from kubernetes import client, config
 from mindweaver.platform_service.base import PlatformService
-from mindweaver.crypto import decrypt_password, encrypt_password
 from mindweaver.fw.model import ts_now
 
-from .model import SolrPlatform, SolrPlatformState
-from mindweaver.platform_service.zookeeper.service import ZookeeperPlatformService
+from .model import ZookeeperPlatform, ZookeeperPlatformState
 
 logger = logging.getLogger(__name__)
 
 
-class SolrPlatformService(PlatformService[SolrPlatform]):
+class ZookeeperPlatformService(PlatformService[ZookeeperPlatform]):
     template_directory: str = os.path.join(os.path.dirname(__file__), "templates")
-    state_model: type[SolrPlatformState] = SolrPlatformState
+    state_model: type[ZookeeperPlatformState] = ZookeeperPlatformState
 
     @classmethod
-    def model_class(cls) -> type[SolrPlatform]:
-        return SolrPlatform
+    def model_class(cls) -> type[ZookeeperPlatform]:
+        return ZookeeperPlatform
 
     @classmethod
     def service_path(cls) -> str:
-        return "/platform/solr"
-
-    @classmethod
-    def redacted_fields(cls) -> list[str]:
-        return super().redacted_fields() + [
-            "admin_password",
-        ]
-
-    @classmethod
-    def internal_fields(cls) -> list[str]:
-        return super().internal_fields() + [
-            "admin_password",
-        ]
+        return "/platform/zookeeper"
 
     @classmethod
     def widgets(cls) -> dict[str, Any]:
@@ -99,64 +84,16 @@ class SolrPlatformService(PlatformService[SolrPlatform]):
                 "label": "Additional Properties",
                 "type": "key-value",
             },
-            "zookeeper_id": {
-                "order": 15,
-                "label": "Zookeeper",
-                "type": "relationship",
-                "endpoint": "/api/v1/platform/zookeeper",
-                "field": "id",
-            },
         }
 
-    @classmethod
-    def get_internal_host(
-        cls,
-        model: SolrPlatform,
-        state: Optional[SolrPlatformState],
-        namespace: str,
-    ) -> str:
-        """Returns the internal service hostname for Solr."""
-        service_name = None
-        if state and isinstance(getattr(state, "extra_data", None), dict):
-            service_name = state.extra_data.get("service_name")
-        if not service_name:
-            service_name = f"{model.name}-solrcloud-common"
-        return f"{service_name}.{namespace}.svc.cluster.local"
-
-    async def template_vars(self, model: SolrPlatform) -> dict:
+    async def template_vars(self, model: ZookeeperPlatform) -> dict:
         vars = model.model_dump()
         vars["namespace"] = await self._resolve_namespace(model)
         project = await self.project(model)
         vars["ingress_domain"] = project.ingress_domain
-
-        # Decrypt password
-        if model.admin_password:
-            try:
-                decrypted = decrypt_password(model.admin_password)
-            except Exception:
-                decrypted = model.admin_password
-            vars["admin_password"] = decrypted
-
-        # Resolve external Zookeeper connection string if linked
-        if model.zookeeper_id:
-            zk_svc = await ZookeeperPlatformService.get_service(self.request, self.session)
-            zk_model = await zk_svc.get(model.zookeeper_id)
-            zk_state = await zk_svc.platform_state(zk_model)
-
-            if not zk_state or not zk_state.active:
-                raise ValueError(
-                    f"Zookeeper cluster {zk_model.name} is not active"
-                )
-
-            zk_ns = await zk_svc._resolve_namespace(zk_model)
-            zk_client_svc = f"{zk_model.name}-client.{zk_ns}.svc.cluster.local"
-            vars["zookeeper_connection_string"] = f"{zk_client_svc}:2181"
-        else:
-            vars["zookeeper_connection_string"] = None
-
         return vars
 
-    async def poll_status(self, model: SolrPlatform):
+    async def poll_status(self, model: ZookeeperPlatform):
         kubeconfig = await self.kubeconfig(model)
         namespace = await self._resolve_namespace(model)
         state = await self.platform_state(model)
@@ -214,12 +151,12 @@ class SolrPlatformService(PlatformService[SolrPlatform]):
             try:
                 pods = core_v1.list_namespaced_pod(
                     namespace=namespace,
-                    label_selector=f"solrcloud={model.name}",
+                    label_selector=f"release={model.name}",
                 )
                 if not pods.items:
                     pods = core_v1.list_namespaced_pod(
                         namespace=namespace,
-                        label_selector=f"app.kubernetes.io/instance={model.name}",
+                        label_selector=f"app={model.name}",
                     )
                 ready_pods = sum(
                     1
@@ -232,23 +169,17 @@ class SolrPlatformService(PlatformService[SolrPlatform]):
             except Exception as e:
                 logger.error(f"Failed to fetch pods for {model.name}: {e}")
 
-            # 3. Fetch NodePorts for UI and find main service name
+            # 3. Fetch NodePorts for UI
             node_ports = []
             service_name = None
             try:
                 services = core_v1.list_namespaced_service(namespace=namespace)
                 for svc in services.items:
-                    instance_label = svc.metadata.labels.get("solrcloud") if svc.metadata.labels else None
                     if (
-                        svc.metadata.name == model.name
-                        or svc.metadata.name.startswith(model.name)
-                        or svc.metadata.name == f"{model.name}-solrcloud-common"
-                        or instance_label == model.name
+                        svc.metadata.name == f"{model.name}-client"
+                        or svc.metadata.name == model.name
                     ):
-                        has_8983 = any(p.port == 8983 for p in (svc.spec.ports or []))
-                        if has_8983 and svc.spec.cluster_ip != "None":
-                            service_name = svc.metadata.name
-
+                        service_name = svc.metadata.name
                         if svc.spec.type == "NodePort":
                             for port in svc.spec.ports:
                                 node_ports.append(
@@ -279,20 +210,6 @@ class SolrPlatformService(PlatformService[SolrPlatform]):
             except Exception as e:
                 logger.error(f"Failed to fetch nodes: {e}")
 
-            # 5. Fetch generated admin password from Secret
-            admin_password = None
-            try:
-                secret = core_v1.read_namespaced_secret(
-                    name=f"{model.name}-solrcloud-security-bootstrap",
-                    namespace=namespace,
-                )
-                encoded_pw = secret.data.get("admin") or secret.data.get("admin-password")
-                if encoded_pw:
-                    admin_password = base64.b64decode(encoded_pw).decode("utf-8")
-            except Exception as e:
-                # Secret might not be created yet, ignore
-                pass
-
             return (
                 status,
                 message,
@@ -300,10 +217,9 @@ class SolrPlatformService(PlatformService[SolrPlatform]):
                 node_ports,
                 cluster_nodes,
                 service_name,
-                admin_password,
             )
 
-        status, message, argo_status, node_ports, cluster_nodes, service_name, admin_password = (
+        status, message, argo_status, node_ports, cluster_nodes, service_name = (
             await asyncio.to_thread(_poll, is_active)
         )
 
@@ -331,45 +247,14 @@ class SolrPlatformService(PlatformService[SolrPlatform]):
         state.node_ports = node_ports
         state.cluster_nodes = cluster_nodes
 
-        # Derive Solr URL (default API port is 8983)
+        # Derive Zookeeper URL (port 2181)
         if status == "online":
-            if project.ingress_domain:
-                state.solr_url = f"https://{model.name}.{project.ingress_domain}"
-                state.solr_url_ipv6 = None
-            elif cluster_nodes:
-                solr_np = next((np for np in node_ports if np["port"] == 8983), None)
-                if solr_np:
-                    node_v4 = next((n for n in cluster_nodes if n["ipv4"]), None)
-                    if node_v4:
-                        state.solr_url = (
-                            f"https://{node_v4['ipv4']}:{solr_np['node_port']}"
-                        )
-                    else:
-                        state.solr_url = None
-
-                    node_v6 = next((n for n in cluster_nodes if n["ipv6"]), None)
-                    if node_v6:
-                        state.solr_url_ipv6 = (
-                            f"https://[{node_v6['ipv6']}]:{solr_np['node_port']}"
-                        )
-                    else:
-                        state.solr_url_ipv6 = None
-                else:
-                    svc_name = service_name or f"{model.name}-solrcloud-common"
-                    state.solr_url = f"https://{svc_name}.{namespace}.svc.cluster.local:8983"
-                    state.solr_url_ipv6 = None
-            else:
-                svc_name = service_name or f"{model.name}-solrcloud-common"
-                state.solr_url = f"https://{svc_name}.{namespace}.svc.cluster.local:8983"
-                state.solr_url_ipv6 = None
+            svc_name = service_name or f"{model.name}-client"
+            state.zookeeper_url = f"{svc_name}.{namespace}.svc.cluster.local:2181"
+            state.zookeeper_url_ipv6 = None
         else:
-            state.solr_url = None
-            state.solr_url_ipv6 = None
+            state.zookeeper_url = None
+            state.zookeeper_url_ipv6 = None
 
-        if admin_password:
-            model.admin_password = encrypt_password(admin_password)
-
-        state.admin_password = model.admin_password
         state.last_heartbeat = ts_now()
-
         await self.session.flush()

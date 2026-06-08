@@ -7,6 +7,8 @@ from sqlalchemy_utils import JSONType
 from pydantic import model_validator
 from mindweaver.platform_service.base import PlatformBase, PlatformStateBase
 
+# Note: ZookeeperPlatform table name used as FK target to avoid circular imports
+
 
 class SolrPlatform(PlatformBase, table=True):
     __tablename__ = "mw_solr_platform"
@@ -29,6 +31,11 @@ class SolrPlatform(PlatformBase, table=True):
     cpu_limit: float = Field(default=2.0)
     mem_request: float = Field(default=2.0)
     mem_limit: float = Field(default=4.0)
+
+    # External Zookeeper cluster (optional; if set, uses external ZK instead of provided embedded)
+    zookeeper_id: Optional[int] = Field(
+        default=None, foreign_key="mw_zookeeper_platform.id"
+    )
 
     # Credentials (Encrypted)
     admin_password: str = Field(default=None)
