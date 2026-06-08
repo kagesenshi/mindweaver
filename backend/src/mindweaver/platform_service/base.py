@@ -354,7 +354,8 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
 
             dynamic_client = dynamic.DynamicClient(k8s_client)
 
-            for doc in yaml.safe_load_all(manifest):
+            docs = list(yaml.safe_load_all(manifest))
+            for doc in reversed(docs):
                 if not doc:
                     continue
 

@@ -149,7 +149,7 @@ async def test_solr_poll_status(mock_service_dependencies):
             svc.project = AsyncMock(return_value=mock_project_no_ingress)
 
             await svc.poll_status(model)
-            assert mock_state.solr_url == "http://1.2.3.4:30001"
+            assert mock_state.solr_url == "https://1.2.3.4:30001"
             assert mock_state.admin_password == "mock-pass"
 
             # 2. Test with ingress_domain (should derive secure Ingress URL)

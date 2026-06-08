@@ -188,7 +188,11 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
             additional_props = vars.setdefault("additional_properties", {})
             # Make sure we don't overwrite user custom properties if they exist
             additional_props.setdefault("audit_store", "solr")
-            additional_props.setdefault("audit_solr_urls", f"http://solr:{solr_pass}@{solr_host}:8983/solr/ranger_audits")
+            additional_props.setdefault("audit_solr_urls", f"https://{solr_host}:8983/solr/ranger_audits")
+            if solr_pass:
+                additional_props.setdefault("xasecure.audit.solr.is.basicauth.enabled", "true")
+                additional_props.setdefault("ranger.audit.solr.basic.auth.user", "solr")
+                additional_props.setdefault("ranger.audit.solr.basic.auth.password", solr_pass)
             
         # Set DB root user/pass to be the same as db_user/pass for managed DBs
         vars["db_root_user"] = vars.get("db_user")

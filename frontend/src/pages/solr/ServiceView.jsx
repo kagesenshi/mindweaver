@@ -81,8 +81,8 @@ const ServiceView = ({
         if (selectedPlatform && platformState?.extra_data?.namespace) {
             const svcName = platformState.extra_data.service_name || `${selectedPlatform.name}-solrcloud-common`;
             endpoints.push({
-                title: 'Solr Internal HTTP Endpoint',
-                code: `http://${svcName}.${platformState.extra_data.namespace}.svc.cluster.local:8983`,
+                title: 'Solr Internal HTTPS Endpoint',
+                code: `https://${svcName}.${platformState.extra_data.namespace}.svc.cluster.local:8983`,
                 description: 'Internal network URI for accessing the Solr Admin API.'
             });
         }
@@ -115,7 +115,7 @@ const ServiceView = ({
             ports.push({
                 label: 'Solr API (NodePort)',
                 node_port: httpPort.node_port,
-                scheme: solrUrlObj ? solrUrlObj.protocol.replace(':', '') : 'http'
+                scheme: solrUrlObj ? solrUrlObj.protocol.replace(':', '') : 'https'
             });
         } else if (!isIngressUsed && solrUrlObj) {
             ports.push({

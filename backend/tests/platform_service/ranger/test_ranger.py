@@ -291,7 +291,10 @@ async def test_ranger_template_vars_with_solr(mock_service_dependencies):
         assert vars["name"] == "test-ranger"
         assert vars["db_host"] == "test-db-pooler-rw.test-ns.svc.cluster.local"
         assert vars["additional_properties"]["audit_store"] == "solr"
-        assert vars["additional_properties"]["audit_solr_urls"] == "http://solr:solr-password@test-solr-solrcloud-common.solr-ns.svc.cluster.local:8983/solr/ranger_audits"
+        assert vars["additional_properties"]["audit_solr_urls"] == "https://test-solr-solrcloud-common.solr-ns.svc.cluster.local:8983/solr/ranger_audits"
+        assert vars["additional_properties"]["xasecure.audit.solr.is.basicauth.enabled"] == "true"
+        assert vars["additional_properties"]["ranger.audit.solr.basic.auth.user"] == "solr"
+        assert vars["additional_properties"]["ranger.audit.solr.basic.auth.password"] == "solr-password"
 
 
 @pytest.mark.asyncio

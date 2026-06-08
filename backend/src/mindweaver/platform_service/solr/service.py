@@ -317,7 +317,7 @@ class SolrPlatformService(PlatformService[SolrPlatform]):
                     node_v4 = next((n for n in cluster_nodes if n["ipv4"]), None)
                     if node_v4:
                         state.solr_url = (
-                            f"http://{node_v4['ipv4']}:{solr_np['node_port']}"
+                            f"https://{node_v4['ipv4']}:{solr_np['node_port']}"
                         )
                     else:
                         state.solr_url = None
@@ -325,17 +325,17 @@ class SolrPlatformService(PlatformService[SolrPlatform]):
                     node_v6 = next((n for n in cluster_nodes if n["ipv6"]), None)
                     if node_v6:
                         state.solr_url_ipv6 = (
-                            f"http://[{node_v6['ipv6']}]:{solr_np['node_port']}"
+                            f"https://[{node_v6['ipv6']}]:{solr_np['node_port']}"
                         )
                     else:
                         state.solr_url_ipv6 = None
                 else:
                     svc_name = service_name or f"{model.name}-solrcloud-common"
-                    state.solr_url = f"http://{svc_name}.{namespace}.svc.cluster.local:8983"
+                    state.solr_url = f"https://{svc_name}.{namespace}.svc.cluster.local:8983"
                     state.solr_url_ipv6 = None
             else:
                 svc_name = service_name or f"{model.name}-solrcloud-common"
-                state.solr_url = f"http://{svc_name}.{namespace}.svc.cluster.local:8983"
+                state.solr_url = f"https://{svc_name}.{namespace}.svc.cluster.local:8983"
                 state.solr_url_ipv6 = None
         else:
             state.solr_url = None

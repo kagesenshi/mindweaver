@@ -19,5 +19,22 @@ spec:
             value: /
       backendRefs:
         - name: {{ name }}-solrcloud-common
-          port: 80
+          port: 443
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: BackendTLSPolicy
+metadata:
+  name: {{ name }}-tls-policy
+  namespace: {{ namespace }}
+spec:
+  targetRefs:
+    - group: ""
+      kind: Service
+      name: {{ name }}-solrcloud-common
+  validation:
+    hostname: {{ name }}-solrcloud-common.{{ namespace }}.svc.cluster.local
+    caCertificateRefs:
+      - group: ""
+        kind: Secret
+        name: {{ name }}-tls
 {% endif %}

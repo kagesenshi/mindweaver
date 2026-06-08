@@ -369,7 +369,7 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
                         solr_pass = decrypt_password(solr_state.admin_password)
                     except Exception:
                         solr_pass = solr_state.admin_password
-                vars["ranger_solr_url"] = f"http://solr:{solr_pass}@{solr_host}:8983/solr/ranger_audits"
+                vars["ranger_solr_url"] = f"https://solr:{solr_pass}@{solr_host}:8983/solr/ranger_audits"
             else:
                 vars["ranger_solr_enabled"] = "false"
 

@@ -833,7 +833,7 @@ async def test_trino_ranger_integration(mock_service_dependencies):
     assert vars.get("ranger_service_name") == "trino-ranger-test"
     
     assert vars.get("ranger_solr_enabled") == "true"
-    assert vars.get("ranger_solr_url") == "http://solr:solr_password@my-solr-solrcloud-common.solr-ns.svc.cluster.local:8983/solr/ranger_audits"
+    assert vars.get("ranger_solr_url") == "https://solr:solr_password@my-solr-solrcloud-common.solr-ns.svc.cluster.local:8983/solr/ranger_audits"
 
     assert vars.get("ranger_audit_s3_enabled") == "false"
 
@@ -890,7 +890,7 @@ async def test_trino_ranger_integration(mock_service_dependencies):
     assert "<name>xasecure.audit.destination.solr</name>" in audit_xml
     assert "<value>true</value>" in audit_xml
     assert "<name>xasecure.audit.destination.solr.urls</name>" in audit_xml
-    assert "<value>http://solr:solr_password@my-solr-solrcloud-common.solr-ns.svc.cluster.local:8983/solr/ranger_audits</value>" in audit_xml
+    assert "<value>https://solr:solr_password@my-solr-solrcloud-common.solr-ns.svc.cluster.local:8983/solr/ranger_audits</value>" in audit_xml
 
     # S3 assertions in XML
     assert "<name>xasecure.audit.hdfs.is.enabled</name>" in audit_xml

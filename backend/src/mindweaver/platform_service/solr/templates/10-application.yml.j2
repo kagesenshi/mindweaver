@@ -27,6 +27,29 @@ spec:
         solrOptions:
           security:
             authenticationType: "Basic"
+          javaOpts: >-
+            -Dsolr.jetty.ssl.sniHostCheck=false
+            {% if additional_properties %}
+            {% for key, val in additional_properties.items() %}
+            -D{{ key }}={{ val }}
+            {% endfor %}
+            {% endif %}
+
+        solrTLS:
+          pkcs12Secret:
+            name: {{ name }}-tls
+            key: keystore.p12
+          keyStorePasswordSecret:
+            name: {{ name }}-passwords
+            key: pkcs12-password
+          trustStoreSecret:
+            name: {{ name }}-tls
+            key: keystore.p12
+          trustStorePasswordSecret:
+            name: {{ name }}-passwords
+            key: pkcs12-password
+          restartOnTLSSecretUpdate: true
+
 
         zk:
           provided:
@@ -49,14 +72,7 @@ spec:
           enabled: true
           size: "{{ storage_size }}"
 
-        # If additional properties are provided, add them under solrOptions/additional configuration
-        {% if additional_properties %}
-        solrOptions:
-          javaOpts: >-
-            {% for key, val in additional_properties.items() %}
-            -D{{ key }}={{ val }}
-            {% endfor %}
-        {% endif %}
+
 
   destination:
     server: https://kubernetes.default.svc
