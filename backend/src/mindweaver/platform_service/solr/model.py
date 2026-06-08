@@ -68,3 +68,5 @@ class SolrPlatformState(PlatformStateBase, table=True):
 
     # Credentials (Encrypted in database)
     admin_password: Optional[str] = Field(default=None)
+    k8s_oper_password: Optional[str] = Field(default=None)
+    solr_user_password: Optional[str] = Field(default=None)

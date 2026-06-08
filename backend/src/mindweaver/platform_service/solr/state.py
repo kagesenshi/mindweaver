@@ -14,10 +14,15 @@ class SolrState(DefaultPlatformState):
 
         state = await self.svc.platform_state(self.model)
         if state:
-            val = getattr(state, "admin_password", None)
-            if val:
-                try:
-                    state_dict["admin_password"] = decrypt_password(val)
-                except Exception:
-                    pass
+            for field in [
+                "admin_password",
+                "k8s_oper_password",
+                "solr_user_password",
+            ]:
+                val = getattr(state, field, None)
+                if val:
+                    try:
+                        state_dict[field] = decrypt_password(val)
+                    except Exception:
+                        pass
         return state_dict

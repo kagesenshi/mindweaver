@@ -147,9 +147,10 @@ const ServiceView = ({
                     <CredentialBlock
                         darkMode={darkMode}
                         credentials={[
-                            { label: 'Admin Username', value: 'admin', isMasked: false },
-                            { label: 'Admin Password', value: platformState?.admin_password, isMasked: true }
-                        ]}
+                            { label: 'Admin Password', value: platformState?.admin_password, isMasked: true },
+                            { label: 'K8S Oper Password', value: platformState?.k8s_oper_password, isMasked: true },
+                            { label: 'Solr User Password', value: platformState?.solr_user_password, isMasked: true },
+                        ].filter(c => c.value)}
                     />
                 )}
             </div>

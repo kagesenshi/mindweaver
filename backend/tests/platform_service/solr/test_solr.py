@@ -204,7 +204,7 @@ async def test_solr_poll_status(mock_service_dependencies):
         cluster_nodes = [{"hostname": "node1", "ipv4": "1.2.3.4", "ipv6": None}]
 
         async def mock_poll(*args):
-            return "online", "Healthy", {}, node_ports, cluster_nodes, "solr-test-solrcloud-common", "mock-pass"
+            return "online", "Healthy", {}, node_ports, cluster_nodes, "solr-test-solrcloud-common", "mock-pass", "mock-k8soper-pass", "mock-solr-pass"
 
         with patch("mindweaver.platform_service.solr.service.asyncio.to_thread", side_effect=mock_poll), \
              patch("mindweaver.platform_service.solr.service.decrypt_password", side_effect=lambda x: x), \
@@ -218,6 +218,8 @@ async def test_solr_poll_status(mock_service_dependencies):
             await svc.poll_status(model)
             assert mock_state.solr_url == "https://1.2.3.4:30001"
             assert mock_state.admin_password == "mock-pass"
+            assert mock_state.k8s_oper_password == "mock-k8soper-pass"
+            assert mock_state.solr_user_password == "mock-solr-pass"
 
             # 2. Test with ingress_domain (should derive secure Ingress URL)
             mock_project_ingress = MagicMock()
@@ -304,3 +306,133 @@ async def test_solr_poll_status_service_selection_nodeport_exclusion(mock_servic
         assert mock_state.node_ports[0]["node_port"] == 30001
 
 
+
+
+@pytest.mark.asyncio
+async def test_solr_poll_status_all_credentials_fetched(mock_service_dependencies):
+    """Test that admin/solr passwords are read from bootstrap secret and k8s-oper from basic-auth secret."""
+    import base64
+    from mindweaver.platform_service.solr.model import SolrPlatformState
+
+    request, session = mock_service_dependencies
+    svc = SolrPlatformService(request, session)
+
+    model = SolrPlatform(name="solr-test", project_id=1)
+    mock_state = MagicMock(spec=SolrPlatformState)
+    mock_state.active = True
+
+    def _b64(s):
+        return base64.b64encode(s.encode()).decode()
+
+    mock_bootstrap_secret = MagicMock()
+    mock_bootstrap_secret.data = {
+        "admin": _b64("admin-secret"),
+        "solr": _b64("solruser-secret"),
+        "security.json": _b64("{}"),
+    }
+
+    mock_basic_auth_secret = MagicMock()
+    mock_basic_auth_secret.data = {
+        "username": _b64("k8s-oper"),
+        "password": _b64("k8soper-secret"),
+    }
+
+    def _read_secret(name, namespace):
+        if name.endswith("-solrcloud-security-bootstrap"):
+            return mock_bootstrap_secret
+        if name.endswith("-solrcloud-basic-auth"):
+            return mock_basic_auth_secret
+        raise Exception(f"Unexpected secret: {name}")
+
+    mock_core_v1 = MagicMock()
+    mock_core_v1.list_namespaced_pod.return_value = MagicMock(items=[])
+    mock_core_v1.list_namespaced_service.return_value = MagicMock(items=[])
+    mock_core_v1.list_node.return_value = MagicMock(items=[])
+    mock_core_v1.read_namespaced_secret.side_effect = _read_secret
+
+    mock_custom_api = MagicMock()
+    mock_custom_api.get_namespaced_custom_object.return_value = {
+        "status": {"sync": {"status": "Synced"}, "health": {"status": "Healthy"}}
+    }
+
+    with patch.object(svc, "platform_state", AsyncMock(return_value=mock_state)), \
+         patch.object(svc, "kubeconfig", AsyncMock(return_value="mock-kubeconfig")), \
+         patch.object(svc, "_resolve_namespace", AsyncMock(return_value="test-ns")), \
+         patch("mindweaver.platform_service.solr.service.config.new_client_from_config"), \
+         patch("mindweaver.platform_service.solr.service.client.CoreV1Api", return_value=mock_core_v1), \
+         patch("mindweaver.platform_service.solr.service.client.CustomObjectsApi", return_value=mock_custom_api), \
+         patch("mindweaver.platform_service.solr.service.encrypt_password", side_effect=lambda x: x):
+
+        mock_project = MagicMock()
+        mock_project.ingress_domain = None
+        svc.project = AsyncMock(return_value=mock_project)
+
+        await svc.poll_status(model)
+
+    # admin and solr come from bootstrap secret; k8s-oper from basic-auth secret
+    assert mock_state.admin_password == "admin-secret"
+    assert mock_state.k8s_oper_password == "k8soper-secret"
+    assert mock_state.solr_user_password == "solruser-secret"
+
+
+@pytest.mark.asyncio
+async def test_solr_poll_status_missing_credentials_not_overwritten(mock_service_dependencies):
+    """Test that when secrets are missing/absent the existing state values are preserved."""
+    import base64
+    from mindweaver.platform_service.solr.model import SolrPlatformState
+
+    request, session = mock_service_dependencies
+    svc = SolrPlatformService(request, session)
+
+    model = SolrPlatform(name="solr-test", project_id=1)
+    mock_state = MagicMock(spec=SolrPlatformState)
+    mock_state.active = True
+    existing_k8s_oper = "existing-k8soper"
+    existing_solr_user = "existing-solruser"
+    mock_state.k8s_oper_password = existing_k8s_oper
+    mock_state.solr_user_password = existing_solr_user
+
+    def _b64(s):
+        return base64.b64encode(s.encode()).decode()
+
+    # Bootstrap secret only has admin; basic-auth secret is absent (raises exception)
+    mock_bootstrap_secret = MagicMock()
+    mock_bootstrap_secret.data = {
+        "admin": _b64("new-admin"),
+    }
+
+    def _read_secret(name, namespace):
+        if name.endswith("-solrcloud-security-bootstrap"):
+            return mock_bootstrap_secret
+        # basic-auth secret is not yet available
+        raise Exception(f"Not found: {name}")
+
+    mock_core_v1 = MagicMock()
+    mock_core_v1.list_namespaced_pod.return_value = MagicMock(items=[])
+    mock_core_v1.list_namespaced_service.return_value = MagicMock(items=[])
+    mock_core_v1.list_node.return_value = MagicMock(items=[])
+    mock_core_v1.read_namespaced_secret.side_effect = _read_secret
+
+    mock_custom_api = MagicMock()
+    mock_custom_api.get_namespaced_custom_object.return_value = {
+        "status": {"sync": {"status": "Synced"}, "health": {"status": "Healthy"}}
+    }
+
+    with patch.object(svc, "platform_state", AsyncMock(return_value=mock_state)), \
+         patch.object(svc, "kubeconfig", AsyncMock(return_value="mock-kubeconfig")), \
+         patch.object(svc, "_resolve_namespace", AsyncMock(return_value="test-ns")), \
+         patch("mindweaver.platform_service.solr.service.config.new_client_from_config"), \
+         patch("mindweaver.platform_service.solr.service.client.CoreV1Api", return_value=mock_core_v1), \
+         patch("mindweaver.platform_service.solr.service.client.CustomObjectsApi", return_value=mock_custom_api), \
+         patch("mindweaver.platform_service.solr.service.encrypt_password", side_effect=lambda x: x):
+
+        mock_project = MagicMock()
+        mock_project.ingress_domain = None
+        svc.project = AsyncMock(return_value=mock_project)
+
+        await svc.poll_status(model)
+
+    # admin updated from bootstrap; k8s-oper and solr-user remain at pre-existing values
+    assert mock_state.admin_password == "new-admin"
+    assert mock_state.k8s_oper_password == existing_k8s_oper
+    assert mock_state.solr_user_password == existing_solr_user

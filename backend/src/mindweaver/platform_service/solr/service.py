@@ -292,19 +292,60 @@ class SolrPlatformService(PlatformService[SolrPlatform]):
             except Exception as e:
                 logger.error(f"Failed to fetch nodes: {e}")
 
-            # 5. Fetch generated admin password from Secret
+            # 5. Fetch generated credentials from Secrets.
+            # The Solr Operator splits credentials across two secrets:
+            #   - {name}-solrcloud-security-bootstrap: admin and solr user passwords
+            #   - {name}-solrcloud-basic-auth: k8s-oper password
             admin_password = None
+            k8s_oper_password = None
+            solr_user_password = None
             try:
-                secret = core_v1.read_namespaced_secret(
+                bootstrap_secret = core_v1.read_namespaced_secret(
                     name=f"{model.name}-solrcloud-security-bootstrap",
                     namespace=namespace,
                 )
-                encoded_pw = secret.data.get("admin") or secret.data.get("admin-password")
-                if encoded_pw:
-                    admin_password = base64.b64decode(encoded_pw).decode("utf-8")
+                if bootstrap_secret.data:
+                    logger.debug(
+                        f"Bootstrap secret keys for {model.name}: "
+                        f"{list(bootstrap_secret.data.keys())}"
+                    )
+                    encoded_admin = (
+                        bootstrap_secret.data.get("admin")
+                        or bootstrap_secret.data.get("admin-password")
+                    )
+                    if encoded_admin:
+                        admin_password = base64.b64decode(encoded_admin).decode("utf-8")
+                    encoded_solr_user = (
+                        bootstrap_secret.data.get("solr")
+                        or bootstrap_secret.data.get("solr-password")
+                    )
+                    if encoded_solr_user:
+                        solr_user_password = base64.b64decode(encoded_solr_user).decode("utf-8")
             except Exception as e:
-                # Secret might not be created yet, ignore
-                pass
+                logger.debug(f"Could not fetch bootstrap secret for {model.name}: {e}")
+
+            try:
+                basic_auth_secret = core_v1.read_namespaced_secret(
+                    name=f"{model.name}-solrcloud-basic-auth",
+                    namespace=namespace,
+                )
+                if basic_auth_secret.data:
+                    logger.debug(
+                        f"Basic-auth secret keys for {model.name}: "
+                        f"{list(basic_auth_secret.data.keys())}"
+                    )
+                    # The basic-auth secret uses standard k8s opaque secret format:
+                    # 'username' holds the literal username (k8s-oper), 'password' holds the password.
+                    encoded_k8s_oper_pw = basic_auth_secret.data.get("password")
+                    if encoded_k8s_oper_pw:
+                        k8s_oper_password = base64.b64decode(encoded_k8s_oper_pw).decode("utf-8")
+                    else:
+                        logger.warning(
+                            f"'password' key not found in basic-auth secret for {model.name}. "
+                            f"Available keys: {list(basic_auth_secret.data.keys())}"
+                        )
+            except Exception as e:
+                logger.debug(f"Could not fetch basic-auth secret for {model.name}: {e}")
 
             return (
                 status,
@@ -314,9 +355,11 @@ class SolrPlatformService(PlatformService[SolrPlatform]):
                 cluster_nodes,
                 service_name,
                 admin_password,
+                k8s_oper_password,
+                solr_user_password,
             )
 
-        status, message, argo_status, node_ports, cluster_nodes, service_name, admin_password = (
+        status, message, argo_status, node_ports, cluster_nodes, service_name, admin_password, k8s_oper_password, solr_user_password = (
             await asyncio.to_thread(_poll, is_active)
         )
 
@@ -383,6 +426,10 @@ class SolrPlatformService(PlatformService[SolrPlatform]):
 
         if admin_password:
             model.admin_password = encrypt_password(admin_password)
+        if k8s_oper_password:
+            state.k8s_oper_password = encrypt_password(k8s_oper_password)
+        if solr_user_password:
+            state.solr_user_password = encrypt_password(solr_user_password)
 
         state.admin_password = model.admin_password
         state.last_heartbeat = ts_now()
