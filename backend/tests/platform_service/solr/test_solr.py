@@ -298,4 +298,9 @@ async def test_solr_poll_status_service_selection_nodeport_exclusion(mock_servic
         assert mock_state.extra_data["service_name"] == "solr-test-solrcloud-headless"
         # The internal URL should also be derived from the headless service
         assert mock_state.solr_internal_url == "https://solr-test-solrcloud-headless.test-ns.svc.cluster.local:8983"
+        # Verify that the NodePort service port was collected
+        assert len(mock_state.node_ports) == 1
+        assert mock_state.node_ports[0]["name"] == "solr-test-nodeport"
+        assert mock_state.node_ports[0]["node_port"] == 30001
+
 

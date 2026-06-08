@@ -251,6 +251,7 @@ class SolrPlatformService(PlatformService[SolrPlatform]):
                         (
                             svc.metadata.name == model.name
                             or svc.metadata.name.endswith("-headless")
+                            or svc.metadata.name.endswith("-nodeport")
                         )
                         and (
                             svc.metadata.name.startswith(model.name)
@@ -258,7 +259,7 @@ class SolrPlatformService(PlatformService[SolrPlatform]):
                         )
                     ):
                         has_8983 = any(p.port == 8983 for p in (svc.spec.ports or []))
-                        if has_8983:
+                        if has_8983 and not svc.metadata.name.endswith("-nodeport"):
                             service_name = svc.metadata.name
 
                         if svc.spec.type == "NodePort":
