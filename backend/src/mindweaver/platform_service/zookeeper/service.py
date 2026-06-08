@@ -169,28 +169,43 @@ class ZookeeperPlatformService(PlatformService[ZookeeperPlatform]):
             except Exception as e:
                 logger.error(f"Failed to fetch pods for {model.name}: {e}")
 
-            # 3. Fetch NodePorts for UI
+            # 3. Discover ZooKeeper client service (name-pattern + label, namespace-scoped)
+            # The Pravega ZK operator creates services as `{name}-zookeeper-client`
+            # (Helm may also label the release as `{name}-zookeeper`, not `{name}`).
+            # We list all services in the namespace and find the client service by:
+            #   - Name starts with the model name AND contains "client"
+            #   - Secondary: label component=client or headless=false
             node_ports = []
             service_name = None
             try:
                 services = core_v1.list_namespaced_service(namespace=namespace)
-                for svc in services.items:
-                    if (
-                        svc.metadata.name == f"{model.name}-client"
-                        or svc.metadata.name == model.name
-                    ):
-                        service_name = svc.metadata.name
-                        if svc.spec.type == "NodePort":
-                            for port in svc.spec.ports:
-                                node_ports.append(
-                                    {
-                                        "name": svc.metadata.name,
-                                        "port": port.port,
-                                        "node_port": port.node_port,
-                                    }
-                                )
+                candidate_svcs = [
+                    svc for svc in services.items
+                    if svc.metadata.name.startswith(model.name)
+                    and "client" in svc.metadata.name
+                ]
+                if candidate_svcs:
+                    # Prefer services labelled component=client or headless=false
+                    # (Pravega sets headless=false on the client service)
+                    preferred = [
+                        s for s in candidate_svcs
+                        if (s.metadata.labels or {}).get("component") == "client"
+                        or (s.metadata.labels or {}).get("headless") == "false"
+                    ]
+                    chosen = preferred[0] if preferred else candidate_svcs[0]
+                    service_name = chosen.metadata.name
+                    if chosen.spec.type == "NodePort":
+                        for port in chosen.spec.ports:
+                            node_ports.append(
+                                {
+                                    "name": chosen.metadata.name,
+                                    "port": port.port,
+                                    "node_port": port.node_port,
+                                }
+                            )
             except Exception as e:
                 logger.error(f"Failed to fetch services for {model.name}: {e}")
+
 
             # 4. Fetch Nodes for IP info
             cluster_nodes = []

@@ -2,11 +2,11 @@
 # SPDX-License-Identifier: AGPLv3+
 
 import pytest
-import string
 from unittest.mock import MagicMock, AsyncMock, patch
 from fastapi import Request
 from pydantic import ValidationError
 from mindweaver.platform_service.solr import SolrPlatform, SolrPlatformService
+from mindweaver.platform_service.zookeeper.model import ZookeeperPlatform, ZookeeperPlatformState
 from mindweaver.fw.model import AsyncSession
 
 
@@ -73,6 +73,7 @@ def test_solr_validation():
 
 @pytest.mark.asyncio
 async def test_solr_template_vars(mock_service_dependencies):
+    """Test that template_vars returns expected variables without external ZK."""
     request, session = mock_service_dependencies
     svc = SolrPlatformService(request, session)
 
@@ -87,11 +88,76 @@ async def test_solr_template_vars(mock_service_dependencies):
 
     # Resolve variables
     vars = await svc.template_vars(model)
-    
+
     assert vars["name"] == "test-solr"
     assert vars["namespace"] == "test-ns"
     assert vars["admin_password"] == "my-admin-password"
     assert vars["replica_count"] == 1
+    assert vars["zookeeper_connection_string"] is None
+
+
+@pytest.mark.asyncio
+async def test_solr_template_vars_with_external_zk(mock_service_dependencies):
+    """Test that template_vars reads zookeeper_url from ZK state (not constructed)."""
+    request, session = mock_service_dependencies
+    svc = SolrPlatformService(request, session)
+
+    model = SolrPlatform(
+        name="test-solr",
+        project_id=1,
+        zookeeper_id=42,
+    )
+
+    svc._resolve_namespace = AsyncMock(return_value="test-ns")
+    svc.project = AsyncMock(return_value=MagicMock(ingress_domain=None))
+
+    zk_model = ZookeeperPlatform(id=42, name="myzk", project_id=1)
+    zk_state = MagicMock(spec=ZookeeperPlatformState)
+    zk_state.active = True
+    zk_state.zookeeper_url = "myzk-zookeeper-client.myzk-ns.svc.cluster.local:2181"
+
+    mock_zk_svc = MagicMock()
+    mock_zk_svc.get = AsyncMock(return_value=zk_model)
+    mock_zk_svc.platform_state = AsyncMock(return_value=zk_state)
+
+    with patch(
+        "mindweaver.platform_service.solr.service.ZookeeperPlatformService.get_service",
+        AsyncMock(return_value=mock_zk_svc)
+    ):
+        vars = await svc.template_vars(model)
+
+    # The connection string must come from state, not be constructed locally
+    assert vars["zookeeper_connection_string"] == "myzk-zookeeper-client.myzk-ns.svc.cluster.local:2181"
+
+
+@pytest.mark.asyncio
+async def test_solr_template_vars_zk_not_polled(mock_service_dependencies):
+    """Test that template_vars raises a clear error when ZK state has no URL yet."""
+    request, session = mock_service_dependencies
+    svc = SolrPlatformService(request, session)
+
+    model = SolrPlatform(name="test-solr", project_id=1, zookeeper_id=42)
+
+    svc._resolve_namespace = AsyncMock(return_value="test-ns")
+    svc.project = AsyncMock(return_value=MagicMock(ingress_domain=None))
+
+    zk_model = ZookeeperPlatform(id=42, name="myzk", project_id=1)
+    zk_state = MagicMock(spec=ZookeeperPlatformState)
+    zk_state.active = True
+    zk_state.zookeeper_url = None  # Not yet polled
+
+    mock_zk_svc = MagicMock()
+    mock_zk_svc.get = AsyncMock(return_value=zk_model)
+    mock_zk_svc.platform_state = AsyncMock(return_value=zk_state)
+
+    with patch(
+        "mindweaver.platform_service.solr.service.ZookeeperPlatformService.get_service",
+        AsyncMock(return_value=mock_zk_svc)
+    ):
+        with pytest.raises(ValueError, match="has not been polled yet"):
+            await svc.template_vars(model)
+
+
 @pytest.mark.asyncio
 async def test_solr_render_manifests(mock_service_dependencies):
     """Test that manifests render correctly for Solr"""

@@ -137,7 +137,9 @@ class SolrPlatformService(PlatformService[SolrPlatform]):
                 decrypted = model.admin_password
             vars["admin_password"] = decrypted
 
-        # Resolve external Zookeeper connection string if linked
+        # Resolve external Zookeeper connection string if linked.
+        # The actual client service name is discovered at runtime by poll_status
+        # via label-based lookup, so we read it from state rather than guessing.
         if model.zookeeper_id:
             zk_svc = await ZookeeperPlatformService.get_service(self.request, self.session)
             zk_model = await zk_svc.get(model.zookeeper_id)
@@ -145,12 +147,18 @@ class SolrPlatformService(PlatformService[SolrPlatform]):
 
             if not zk_state or not zk_state.active:
                 raise ValueError(
-                    f"Zookeeper cluster {zk_model.name} is not active"
+                    f"Zookeeper cluster '{zk_model.name}' is not active. "
+                    "Please deploy it before deploying Solr."
                 )
 
-            zk_ns = await zk_svc._resolve_namespace(zk_model)
-            zk_client_svc = f"{zk_model.name}-client.{zk_ns}.svc.cluster.local"
-            vars["zookeeper_connection_string"] = f"{zk_client_svc}:2181"
+            if not zk_state.zookeeper_url:
+                raise ValueError(
+                    f"Zookeeper cluster '{zk_model.name}' has not been polled yet "
+                    "(zookeeper_url is empty). Wait for the status poller to run, "
+                    "or use Refresh on the ZooKeeper page, then retry."
+                )
+
+            vars["zookeeper_connection_string"] = zk_state.zookeeper_url
         else:
             vars["zookeeper_connection_string"] = None
 
