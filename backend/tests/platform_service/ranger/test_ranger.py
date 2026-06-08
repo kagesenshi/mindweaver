@@ -281,13 +281,14 @@ async def test_ranger_template_vars_with_solr(mock_service_dependencies):
     mock_solr_state = MagicMock()
     mock_solr_state.active = True
     mock_solr_state.admin_password = "solr-password"
+    mock_solr_state.solr_internal_url = "https://test-solr-solrcloud-common.solr-ns.svc.cluster.local:8983"
     mock_solr_svc.platform_state.return_value = mock_solr_state
 
     with patch("mindweaver.platform_service.ranger.service.PgSqlPlatformService.get_service", AsyncMock(return_value=mock_pgsql_svc)), \
          patch("mindweaver.platform_service.ranger.service.SolrPlatformService.get_service", AsyncMock(return_value=mock_solr_svc)):
-        
+         
         vars = await svc.template_vars(model)
-        
+         
         assert vars["name"] == "test-ranger"
         assert vars["db_host"] == "test-db-pooler-rw.test-ns.svc.cluster.local"
         assert vars["additional_properties"]["audit_store"] == "solr"

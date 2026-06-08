@@ -227,3 +227,74 @@ async def test_solr_poll_status(mock_service_dependencies):
             assert mock_state.solr_url == "https://solr-test.132.home.kagesenshi.org"
             assert mock_state.solr_url_ipv6 is None
             assert mock_state.extra_data["ingress_domain"] == "132.home.kagesenshi.org"
+
+
+@pytest.mark.asyncio
+async def test_solr_poll_status_service_selection_nodeport_exclusion(mock_service_dependencies):
+    """Test that poll_status excludes the -nodeport service and resolves the -headless service."""
+    from mindweaver.platform_service.solr.model import SolrPlatformState
+    request, session = mock_service_dependencies
+    svc = SolrPlatformService(request, session)
+
+    model = SolrPlatform(
+        name="solr-test",
+        project_id=1,
+    )
+
+    mock_state = MagicMock(spec=SolrPlatformState)
+    mock_state.active = True
+
+    # Mock Services returned by Kubernetes API
+    mock_headless_svc = MagicMock()
+    mock_headless_svc.metadata.name = "solr-test-solrcloud-headless"
+    mock_headless_svc.metadata.labels = {"solrcloud": "solr-test"}
+    mock_headless_port = MagicMock()
+    mock_headless_port.port = 8983
+    mock_headless_svc.spec.ports = [mock_headless_port]
+    mock_headless_svc.spec.cluster_ip = "None"
+    mock_headless_svc.spec.type = "ClusterIP"
+
+    mock_nodeport_svc = MagicMock()
+    mock_nodeport_svc.metadata.name = "solr-test-nodeport"
+    mock_nodeport_svc.metadata.labels = {"solrcloud": "solr-test"}
+    mock_nodeport_port = MagicMock()
+    mock_nodeport_port.port = 8983
+    mock_nodeport_port.node_port = 30001
+    mock_nodeport_svc.spec.ports = [mock_nodeport_port]
+    mock_nodeport_svc.spec.cluster_ip = "10.96.0.11"
+    mock_nodeport_svc.spec.type = "NodePort"
+
+    mock_services_list = MagicMock()
+    mock_services_list.items = [mock_headless_svc, mock_nodeport_svc]
+
+    # Mock K8s Client responses
+    mock_core_v1 = MagicMock()
+    mock_core_v1.list_namespaced_pod.return_value = MagicMock(items=[])
+    mock_core_v1.list_namespaced_service.return_value = mock_services_list
+    mock_core_v1.list_node.return_value = MagicMock(items=[])
+    mock_core_v1.read_namespaced_secret.side_effect = Exception("No secret")
+
+    mock_custom_api = MagicMock()
+    mock_custom_api.get_namespaced_custom_object.return_value = {
+        "status": {"sync": {"status": "Synced"}, "health": {"status": "Healthy"}}
+    }
+
+    with patch.object(svc, "platform_state", AsyncMock(return_value=mock_state)), \
+         patch.object(svc, "kubeconfig", AsyncMock(return_value="mock-kubeconfig")), \
+         patch.object(svc, "_resolve_namespace", AsyncMock(return_value="test-ns")), \
+         patch("mindweaver.platform_service.solr.service.config.new_client_from_config"), \
+         patch("mindweaver.platform_service.solr.service.client.CoreV1Api", return_value=mock_core_v1), \
+         patch("mindweaver.platform_service.solr.service.client.CustomObjectsApi", return_value=mock_custom_api):
+
+        # Test project without ingress
+        mock_project = MagicMock()
+        mock_project.ingress_domain = None
+        svc.project = AsyncMock(return_value=mock_project)
+
+        await svc.poll_status(model)
+
+        # Verify that the service_name in extra_data matches the headless service, not the nodeport service
+        assert mock_state.extra_data["service_name"] == "solr-test-solrcloud-headless"
+        # The internal URL should also be derived from the headless service
+        assert mock_state.solr_internal_url == "https://solr-test-solrcloud-headless.test-ns.svc.cluster.local:8983"
+

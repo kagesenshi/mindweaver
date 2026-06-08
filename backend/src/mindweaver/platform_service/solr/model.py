@@ -64,6 +64,7 @@ class SolrPlatformState(PlatformStateBase, table=True):
 
     solr_url: Optional[str] = Field(default=None)
     solr_url_ipv6: Optional[str] = Field(default=None)
+    solr_internal_url: Optional[str] = Field(default=None)
 
     # Credentials (Encrypted in database)
     admin_password: Optional[str] = Field(default=None)

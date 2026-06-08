@@ -173,11 +173,6 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
                     f"Managed Solr cluster {solr_model.name} is not active"
                 )
 
-            solr_ns = await solr_svc._resolve_namespace(solr_model)
-            solr_host = SolrPlatformService.get_internal_host(
-                solr_model, solr_state, solr_ns
-            )
-
             solr_pass = ""
             if solr_state.admin_password:
                 try:
@@ -188,7 +183,12 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
             additional_props = vars.setdefault("additional_properties", {})
             # Make sure we don't overwrite user custom properties if they exist
             additional_props.setdefault("audit_store", "solr")
-            additional_props.setdefault("audit_solr_urls", f"https://{solr_host}:8983/solr/ranger_audits")
+            solr_url = solr_state.solr_internal_url or SolrPlatformService.get_internal_host(
+                solr_model, solr_state, await solr_svc._resolve_namespace(solr_model)
+            )
+            if not solr_url.startswith("https://"):
+                solr_url = f"https://{solr_url}"
+            additional_props.setdefault("audit_solr_urls", f"{solr_url}/solr/ranger_audits")
             if solr_pass:
                 additional_props.setdefault("xasecure.audit.solr.is.basicauth.enabled", "true")
                 additional_props.setdefault("ranger.audit.solr.basic.auth.user", "solr")

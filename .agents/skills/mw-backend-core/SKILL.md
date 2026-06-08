@@ -64,3 +64,12 @@ For models that belong to a project, use the specialized base classes and servic
     ```
 
 This ensures that the `X-Project-ID` header is required and automatically handled for filtering and injection.
+
+## Database Migrations
+
+MindWeaver uses Alembic for database migrations with the following CLI commands:
+
+- **Generate a migration revision**: `uv run mindweaver db revision --autogenerate -m "<description>"`
+- **Apply pending migrations**: `uv run mindweaver db migrate`
+
+When adding new fields to existing models, always generate and apply a migration after updating the model definition.

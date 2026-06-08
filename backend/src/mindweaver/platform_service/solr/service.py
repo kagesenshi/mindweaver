@@ -119,8 +119,8 @@ class SolrPlatformService(PlatformService[SolrPlatform]):
         service_name = None
         if state and isinstance(getattr(state, "extra_data", None), dict):
             service_name = state.extra_data.get("service_name")
-        if not service_name:
-            service_name = f"{model.name}-solrcloud-common"
+        if not service_name or not (service_name.endswith("-headless") or service_name == model.name):
+            service_name = f"{model.name}-solrcloud-headless"
         return f"{service_name}.{namespace}.svc.cluster.local"
 
     async def template_vars(self, model: SolrPlatform) -> dict:
@@ -248,13 +248,17 @@ class SolrPlatformService(PlatformService[SolrPlatform]):
                 for svc in services.items:
                     instance_label = svc.metadata.labels.get("solrcloud") if svc.metadata.labels else None
                     if (
-                        svc.metadata.name == model.name
-                        or svc.metadata.name.startswith(model.name)
-                        or svc.metadata.name == f"{model.name}-solrcloud-common"
-                        or instance_label == model.name
+                        (
+                            svc.metadata.name == model.name
+                            or svc.metadata.name.endswith("-headless")
+                        )
+                        and (
+                            svc.metadata.name.startswith(model.name)
+                            or instance_label == model.name
+                        )
                     ):
                         has_8983 = any(p.port == 8983 for p in (svc.spec.ports or []))
-                        if has_8983 and svc.spec.cluster_ip != "None":
+                        if has_8983:
                             service_name = svc.metadata.name
 
                         if svc.spec.type == "NodePort":
@@ -341,6 +345,9 @@ class SolrPlatformService(PlatformService[SolrPlatform]):
 
         # Derive Solr URL (default API port is 8983)
         if status == "online":
+            svc_name = service_name or f"{model.name}-solrcloud-headless"
+            state.solr_internal_url = f"https://{svc_name}.{namespace}.svc.cluster.local:8983"
+
             if project.ingress_domain:
                 state.solr_url = f"https://{model.name}.{project.ingress_domain}"
                 state.solr_url_ipv6 = None
@@ -363,16 +370,15 @@ class SolrPlatformService(PlatformService[SolrPlatform]):
                     else:
                         state.solr_url_ipv6 = None
                 else:
-                    svc_name = service_name or f"{model.name}-solrcloud-common"
-                    state.solr_url = f"https://{svc_name}.{namespace}.svc.cluster.local:8983"
+                    state.solr_url = state.solr_internal_url
                     state.solr_url_ipv6 = None
             else:
-                svc_name = service_name or f"{model.name}-solrcloud-common"
-                state.solr_url = f"https://{svc_name}.{namespace}.svc.cluster.local:8983"
+                state.solr_url = state.solr_internal_url
                 state.solr_url_ipv6 = None
         else:
             state.solr_url = None
             state.solr_url_ipv6 = None
+            state.solr_internal_url = None
 
         if admin_password:
             model.admin_password = encrypt_password(admin_password)
