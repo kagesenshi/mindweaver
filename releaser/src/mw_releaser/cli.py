@@ -6,6 +6,7 @@ from .mindweaver import MindWeaverReleaser
 from .hms import HMSReleaser
 from .ranger import RangerReleaser
 from .superset import SupersetReleaser
+from .trino import TrinoReleaser
 
 
 @click.group()
@@ -48,6 +49,12 @@ def superset():
 @cli.group()
 def ranger():
     """Ranger release commands"""
+    pass
+
+
+@cli.group()
+def trino():
+    """Trino release commands"""
     pass
 
 
@@ -112,6 +119,7 @@ create_command(mindweaver, MindWeaverReleaser)
 create_command(hms, HMSReleaser)
 create_command(superset, SupersetReleaser)
 create_command(ranger, RangerReleaser)
+create_command(trino, TrinoReleaser)
 
 
 def main():

@@ -42,6 +42,10 @@ spec:
     - {{ name }}.{{ namespace }}
     - {{ name }}.{{ namespace }}.svc
     - {{ name }}.{{ namespace }}.svc.cluster.local
+    - "{{ name }}-ranger-noauth"
+    - "{{ name }}-ranger-noauth.{{ namespace }}"
+    - "{{ name }}-ranger-noauth.{{ namespace }}.svc"
+    - "{{ name }}-ranger-noauth.{{ namespace }}.svc.cluster.local"
   issuerRef:
     name: mindweaver-selfsigned-issuer
     kind: ClusterIssuer

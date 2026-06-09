@@ -20,7 +20,9 @@ def mock_service_dependencies():
 
 def test_ranger_resource_defaults():
     """Test default values for Ranger resource limits"""
-    model = RangerPlatform(name="test-ranger", title="Test Ranger", project_id=1, database_id=10)
+    model = RangerPlatform(
+        name="test-ranger", title="Test Ranger", project_id=1, database_id=10
+    )
     assert model.cpu_request == 1.0
     assert model.cpu_limit == 2.0
     assert model.mem_request == 2.0
@@ -70,7 +72,7 @@ async def test_ranger_template_vars(mock_service_dependencies):
     mock_pgsql_model = MagicMock()
     mock_pgsql_model.name = "test-db"
     mock_pgsql_svc.get.return_value = mock_pgsql_model
-    
+
     mock_pgsql_state = MagicMock()
     mock_pgsql_state.active = True
     mock_pgsql_state.db_user = "user"
@@ -78,9 +80,12 @@ async def test_ranger_template_vars(mock_service_dependencies):
     mock_pgsql_state.db_pass = "pass"
     mock_pgsql_svc.platform_state.return_value = mock_pgsql_state
 
-    with patch("mindweaver.platform_service.ranger.service.PgSqlPlatformService.get_service", AsyncMock(return_value=mock_pgsql_svc)):
+    with patch(
+        "mindweaver.platform_service.ranger.service.PgSqlPlatformService.get_service",
+        AsyncMock(return_value=mock_pgsql_svc),
+    ):
         vars = await svc.template_vars(model)
-        
+
         assert vars["name"] == "test-ranger"
         assert vars["db_host"] == "test-db-pooler-rw.test-ns.svc.cluster.local"
         assert vars["db_user"] == "user"
@@ -88,14 +93,23 @@ async def test_ranger_template_vars(mock_service_dependencies):
         assert vars["admin_password"] == "admin"
 
         # Test with additional_properties
-        model.additional_properties = {"ranger.test.prop": "value1", "another.prop": "value2"}
+        model.additional_properties = {
+            "ranger.test.prop": "value1",
+            "another.prop": "value2",
+        }
         vars = await svc.template_vars(model)
         assert vars["additional_properties"]["ranger.test.prop"] == "value1"
         assert vars["additional_properties"]["another.prop"] == "value2"
         assert vars["additional_properties"]["policymgr_http_enabled"] == "false"
-        assert vars["additional_properties"]["ranger.keystore.file"] == "/etc/ranger/tls/keystore.jks"
+        assert (
+            vars["additional_properties"]["ranger.keystore.file"]
+            == "/etc/ranger/tls/keystore.jks"
+        )
         assert vars["additional_properties"]["ranger.keystore.password"] == "changeit"
-        assert vars["additional_properties"]["ranger.truststore.file"] == "/etc/ranger/truststore/truststore.jks"
+        assert (
+            vars["additional_properties"]["ranger.truststore.file"]
+            == "/etc/ranger/truststore/truststore.jks"
+        )
         assert vars["additional_properties"]["ranger.truststore.password"] == "changeit"
 
 
@@ -155,7 +169,7 @@ async def test_ranger_invalid_db(mock_service_dependencies):
     mock_pgsql_state = MagicMock()
     mock_pgsql_state.active = False
     mock_pgsql_svc.platform_state.return_value = mock_pgsql_state
-    
+
     mock_pgsql_model = MagicMock()
     mock_pgsql_model.name = "test-db"
     mock_pgsql_svc.get.return_value = mock_pgsql_model
@@ -174,7 +188,10 @@ async def test_ranger_invalid_db(mock_service_dependencies):
     mock_project.ldap_config_id = None
     svc.project = AsyncMock(return_value=mock_project)
 
-    with patch("mindweaver.platform_service.ranger.service.PgSqlPlatformService.get_service", AsyncMock(return_value=mock_pgsql_svc)):
+    with patch(
+        "mindweaver.platform_service.ranger.service.PgSqlPlatformService.get_service",
+        AsyncMock(return_value=mock_pgsql_svc),
+    ):
         with pytest.raises(ValueError, match="is not active"):
             await svc.template_vars(model)
 
@@ -203,7 +220,7 @@ async def test_ranger_render_manifests(mock_service_dependencies):
     mock_pgsql_model = MagicMock()
     mock_pgsql_model.name = "test-db"
     mock_pgsql_svc.get.return_value = mock_pgsql_model
-    
+
     mock_pgsql_state = MagicMock()
     mock_pgsql_state.active = True
     mock_pgsql_state.db_user = "user"
@@ -211,10 +228,15 @@ async def test_ranger_render_manifests(mock_service_dependencies):
     mock_pgsql_state.db_pass = "pass"
     mock_pgsql_svc.platform_state.return_value = mock_pgsql_state
 
-    with patch("mindweaver.platform_service.ranger.service.PgSqlPlatformService.get_service", AsyncMock(return_value=mock_pgsql_svc)):
+    with patch(
+        "mindweaver.platform_service.ranger.service.PgSqlPlatformService.get_service",
+        AsyncMock(return_value=mock_pgsql_svc),
+    ):
         # Default behavior: policymgr_supportedcomponents should be rendered
         manifests = await svc.render_manifests(model)
-        assert "policymgr_supportedcomponents: trino,kafka,elasticsearch,nifi" in manifests
+        assert (
+            "policymgr_supportedcomponents: trino,kafka,elasticsearch,nifi" in manifests
+        )
         assert "ranger.supportedcomponents: trino,kafka,elasticsearch,nifi" in manifests
         assert "javaOpts:" in manifests
         # Default behavior: usersync should be disabled
@@ -224,14 +246,17 @@ async def test_ranger_render_manifests(mock_service_dependencies):
         model.additional_properties = {
             "policymgr_supportedcomponents": "kafka,trino",
             "ranger.supportedcomponents": "kafka,trino",
-            "custom.property": "value"
+            "custom.property": "value",
         }
         manifests_custom = await svc.render_manifests(model)
         assert "policymgr_supportedcomponents: kafka,trino" in manifests_custom
         assert "ranger.supportedcomponents: kafka,trino" in manifests_custom
         assert "custom.property: value" in manifests_custom
         # Ensure default list doesn't appear when overridden
-        assert "policymgr_supportedcomponents: trino,kafka,elasticsearch,nifi" not in manifests_custom
+        assert (
+            "policymgr_supportedcomponents: trino,kafka,elasticsearch,nifi"
+            not in manifests_custom
+        )
 
         # Test with SYNC_SOURCE=ldap should enable usersync
         model.additional_properties = {
@@ -268,7 +293,7 @@ async def test_ranger_template_vars_with_solr(mock_service_dependencies):
     mock_pgsql_model = MagicMock()
     mock_pgsql_model.name = "test-db"
     mock_pgsql_svc.get.return_value = mock_pgsql_model
-    
+
     mock_pgsql_state = MagicMock()
     mock_pgsql_state.active = True
     mock_pgsql_state.db_user = "user"
@@ -282,36 +307,43 @@ async def test_ranger_template_vars_with_solr(mock_service_dependencies):
     mock_solr_model.name = "test-solr"
     mock_solr_svc.get.return_value = mock_solr_model
     mock_solr_svc._resolve_namespace = AsyncMock(return_value="solr-ns")
-    
+
     mock_solr_state = MagicMock()
     mock_solr_state.active = True
     # admin_password is used by the init container to create the ranger_audits collection
     mock_solr_state.admin_password = "solr-admin-password"
     # solr_user_password is the password for the 'solr' user, used by Ranger audit writes
     mock_solr_state.solr_user_password = "solr-user-password"
-    mock_solr_state.solr_internal_url = "https://test-solr-solrcloud-common.solr-ns.svc.cluster.local:8983"
+    mock_solr_state.solr_internal_url = (
+        "https://test-solr-solrcloud-common.solr-ns.svc.cluster.local:8983"
+    )
     mock_solr_svc.platform_state.return_value = mock_solr_state
 
-    with patch("mindweaver.platform_service.ranger.service.PgSqlPlatformService.get_service", AsyncMock(return_value=mock_pgsql_svc)), \
-         patch("mindweaver.platform_service.ranger.service.SolrPlatformService.get_service", AsyncMock(return_value=mock_solr_svc)), \
-         patch("mindweaver.platform_service.ranger.service.decrypt_password", side_effect=lambda x: x):
+    with patch(
+        "mindweaver.platform_service.ranger.service.PgSqlPlatformService.get_service",
+        AsyncMock(return_value=mock_pgsql_svc),
+    ), patch(
+        "mindweaver.platform_service.ranger.service.SolrPlatformService.get_service",
+        AsyncMock(return_value=mock_solr_svc),
+    ), patch(
+        "mindweaver.platform_service.ranger.service.decrypt_password",
+        side_effect=lambda x: x,
+    ):
 
         vars = await svc.template_vars(model)
 
         assert vars["name"] == "test-ranger"
         assert vars["db_host"] == "test-db-pooler-rw.test-ns.svc.cluster.local"
         assert vars["additional_properties"]["audit_store"] == "solr"
-        assert vars["additional_properties"]["audit_solr_urls"] == "https://test-solr-solrcloud-common.solr-ns.svc.cluster.local:8983/solr/ranger_audits"
-        assert vars["additional_properties"]["xasecure.audit.solr.is.basicauth.enabled"] == "true"
-        assert vars["additional_properties"]["ranger.audit.solr.basic.auth.user"] == "solr"
-        # Must use the 'solr' user password, NOT the admin password
-        assert vars["additional_properties"]["ranger.audit.solr.basic.auth.password"] == "solr-user-password"
-        assert vars["additional_properties"]["ranger.solr.audit.user"] == "solr"
-        assert vars["additional_properties"]["ranger.solr.audit.user.password"] == "solr-user-password"
-        assert vars["additional_properties"]["audit_solr_user"] == "solr"
-        assert vars["additional_properties"]["audit_solr_password"] == "solr-user-password"
+        assert (
+            vars["additional_properties"]["audit_solr_urls"]
+            == "https://test-solr-solrcloud-common.solr-ns.svc.cluster.local:8983/solr/ranger_audits"
+        )
         # Init container template vars
-        assert vars["solr_audit_url"] == "https://test-solr-solrcloud-common.solr-ns.svc.cluster.local:8983"
+        assert (
+            vars["solr_audit_url"]
+            == "https://test-solr-solrcloud-common.solr-ns.svc.cluster.local:8983"
+        )
         assert vars["solr_audit_admin_password"] == "solr-admin-password"
         assert vars["solr_audit_solr_password"] == "solr-user-password"
 
@@ -354,8 +386,13 @@ async def test_ranger_invalid_solr(mock_service_dependencies):
     mock_solr_state.active = False
     mock_solr_svc.platform_state.return_value = mock_solr_state
 
-    with patch("mindweaver.platform_service.ranger.service.PgSqlPlatformService.get_service", AsyncMock(return_value=mock_pgsql_svc)), \
-         patch("mindweaver.platform_service.ranger.service.SolrPlatformService.get_service", AsyncMock(return_value=mock_solr_svc)):
+    with patch(
+        "mindweaver.platform_service.ranger.service.PgSqlPlatformService.get_service",
+        AsyncMock(return_value=mock_pgsql_svc),
+    ), patch(
+        "mindweaver.platform_service.ranger.service.SolrPlatformService.get_service",
+        AsyncMock(return_value=mock_solr_svc),
+    ):
         with pytest.raises(ValueError, match="is not active"):
             await svc.template_vars(model)
 
@@ -386,7 +423,7 @@ async def test_ranger_template_vars_with_ldap(mock_service_dependencies):
     mock_pgsql_model = MagicMock()
     mock_pgsql_model.name = "test-db"
     mock_pgsql_svc.get.return_value = mock_pgsql_model
-    
+
     mock_pgsql_state = MagicMock()
     mock_pgsql_state.active = True
     mock_pgsql_state.db_user = "user"
@@ -408,24 +445,35 @@ async def test_ranger_template_vars_with_ldap(mock_service_dependencies):
     mock_ldap_config.group_member_attr = "member"
     mock_ldap_svc.get.return_value = mock_ldap_config
 
-    with patch("mindweaver.platform_service.ranger.service.PgSqlPlatformService.get_service", AsyncMock(return_value=mock_pgsql_svc)), \
-         patch("mindweaver.platform_service.ranger.service.LdapConfigService.get_service", AsyncMock(return_value=mock_ldap_svc)), \
-         patch("mindweaver.platform_service.ranger.service.decrypt_password", lambda x: x):
-        
+    with patch(
+        "mindweaver.platform_service.ranger.service.PgSqlPlatformService.get_service",
+        AsyncMock(return_value=mock_pgsql_svc),
+    ), patch(
+        "mindweaver.platform_service.ranger.service.LdapConfigService.get_service",
+        AsyncMock(return_value=mock_ldap_svc),
+    ), patch(
+        "mindweaver.platform_service.ranger.service.decrypt_password", lambda x: x
+    ):
+
         vars = await svc.template_vars(model)
-        
+
         assert vars["name"] == "test-ranger"
         additional_props = vars["additional_properties"]
-        
+
         # Admin authentication properties
         assert additional_props["authentication_method"] == "LDAP"
         assert additional_props["xa_ldap_url"] == "ldap://ldap.example.com:389"
         assert additional_props["xa_ldap_bind_dn"] == "cn=admin,dc=example,dc=com"
         assert additional_props["xa_ldap_bind_password"] == "ldap-secret-password"
         assert additional_props["xa_ldap_base_dn"] == "ou=users,dc=example,dc=com"
-        assert additional_props["xa_ldap_userDNpattern"] == "uid={0},ou=users,dc=example,dc=com"
+        assert (
+            additional_props["xa_ldap_userDNpattern"]
+            == "uid={0},ou=users,dc=example,dc=com"
+        )
         assert additional_props["xa_ldap_userSearchFilter"] == "(uid={0})"
-        assert additional_props["xa_ldap_groupSearchBase"] == "ou=groups,dc=example,dc=com"
+        assert (
+            additional_props["xa_ldap_groupSearchBase"] == "ou=groups,dc=example,dc=com"
+        )
         assert additional_props["xa_ldap_groupSearchFilter"] == "(member={0})"
         assert additional_props["xa_ldap_groupRoleAttribute"] == "member"
 
@@ -435,10 +483,15 @@ async def test_ranger_template_vars_with_ldap(mock_service_dependencies):
         assert additional_props["SYNC_LDAP_BIND_DN"] == "cn=admin,dc=example,dc=com"
         assert additional_props["SYNC_LDAP_BIND_PASSWORD"] == "ldap-secret-password"
         assert additional_props["SYNC_LDAP_SEARCH_BASE"] == "ou=users,dc=example,dc=com"
-        assert additional_props["SYNC_LDAP_USER_SEARCH_BASE"] == "ou=users,dc=example,dc=com"
+        assert (
+            additional_props["SYNC_LDAP_USER_SEARCH_BASE"]
+            == "ou=users,dc=example,dc=com"
+        )
         assert additional_props["SYNC_LDAP_USER_SEARCH_FILTER"] == "(uid=*)"
         assert additional_props["SYNC_LDAP_USER_NAME_ATTRIBUTE"] == "uid"
-        assert additional_props["SYNC_GROUP_SEARCH_BASE"] == "ou=groups,dc=example,dc=com"
+        assert (
+            additional_props["SYNC_GROUP_SEARCH_BASE"] == "ou=groups,dc=example,dc=com"
+        )
         assert additional_props["SYNC_GROUP_SEARCH_FILTER"] == "(member=*)"
         assert additional_props["SYNC_GROUP_MEMBER_ATTRIBUTE_NAME"] == "member"
         assert additional_props["SYNC_GROUP_OBJECT_CLASS"] == "groupofnames"
@@ -469,8 +522,16 @@ async def test_ranger_poll_status_with_ingress_domain(mock_service_dependencies)
     node_ports = []
     cluster_nodes = []
 
-    with patch("mindweaver.platform_service.ranger.service.asyncio.to_thread") as mock_to_thread:
-        mock_to_thread.return_value = ("online", "Healthy", {"argo": "ok"}, node_ports, cluster_nodes)
+    with patch(
+        "mindweaver.platform_service.ranger.service.asyncio.to_thread"
+    ) as mock_to_thread:
+        mock_to_thread.return_value = (
+            "online",
+            "Healthy",
+            {"argo": "ok"},
+            node_ports,
+            cluster_nodes,
+        )
 
         await svc.poll_status(model)
 
@@ -483,6 +544,7 @@ async def test_ranger_poll_status_with_ingress_domain(mock_service_dependencies)
 async def test_ranger_envoy_route_rendering(mock_service_dependencies):
     """Test that Envoy Gateway HTTPRoute and BackendTLSPolicy are rendered for Ranger when ingress_domain is set"""
     import yaml
+
     request, session = mock_service_dependencies
     svc = RangerPlatformService(request, session)
     svc._resolve_namespace = AsyncMock(return_value="ranger-ns")
@@ -509,11 +571,14 @@ async def test_ranger_envoy_route_rendering(mock_service_dependencies):
     mock_pgsql_state.active = True
     mock_pgsql_svc.platform_state.return_value = mock_pgsql_state
 
-    with patch("mindweaver.platform_service.ranger.service.PgSqlPlatformService.get_service", AsyncMock(return_value=mock_pgsql_svc)):
+    with patch(
+        "mindweaver.platform_service.ranger.service.PgSqlPlatformService.get_service",
+        AsyncMock(return_value=mock_pgsql_svc),
+    ):
         manifest = await svc.render_manifests(model)
 
     docs = list(yaml.safe_load_all(manifest))
-    
+
     # Verify HTTPRoute is present
     route = next(d for d in docs if d.get("kind") == "HTTPRoute")
     assert route["metadata"]["name"] == "ranger-envoy-route"
@@ -526,12 +591,20 @@ async def test_ranger_envoy_route_rendering(mock_service_dependencies):
     tls_policy = next(d for d in docs if d.get("kind") == "BackendTLSPolicy")
     assert tls_policy["metadata"]["name"] == "ranger-envoy-tls-policy"
     assert tls_policy["spec"]["targetRefs"][0]["name"] == "ranger-envoy"
-    assert tls_policy["spec"]["validation"]["hostname"] == "ranger-envoy.ranger-ns.svc.cluster.local"
-    assert tls_policy["spec"]["validation"]["caCertificateRefs"][0]["name"] == "ranger-envoy-tls"
+    assert (
+        tls_policy["spec"]["validation"]["hostname"]
+        == "ranger-envoy.ranger-ns.svc.cluster.local"
+    )
+    assert (
+        tls_policy["spec"]["validation"]["caCertificateRefs"][0]["name"]
+        == "ranger-envoy-tls"
+    )
 
 
 @pytest.mark.asyncio
-async def test_ranger_render_manifests_with_solr_initcontainer(mock_service_dependencies):
+async def test_ranger_render_manifests_with_solr_initcontainer(
+    mock_service_dependencies,
+):
     """Test that rendered manifests include the ranger_audits init container when solr_id is set."""
     request, session = mock_service_dependencies
     svc = RangerPlatformService(request, session)
@@ -571,18 +644,30 @@ async def test_ranger_render_manifests_with_solr_initcontainer(mock_service_depe
     mock_solr_state.active = True
     mock_solr_state.admin_password = "solr-admin-pass"
     mock_solr_state.solr_user_password = "solr-user-pass"
-    mock_solr_state.solr_internal_url = "https://test-solr-solrcloud-headless.solr-ns.svc.cluster.local:8983"
+    mock_solr_state.solr_internal_url = (
+        "https://test-solr-solrcloud-headless.solr-ns.svc.cluster.local:8983"
+    )
     mock_solr_svc.platform_state.return_value = mock_solr_state
 
-    with patch("mindweaver.platform_service.ranger.service.PgSqlPlatformService.get_service", AsyncMock(return_value=mock_pgsql_svc)), \
-         patch("mindweaver.platform_service.ranger.service.SolrPlatformService.get_service", AsyncMock(return_value=mock_solr_svc)), \
-         patch("mindweaver.platform_service.ranger.service.decrypt_password", side_effect=lambda x: x):
+    with patch(
+        "mindweaver.platform_service.ranger.service.PgSqlPlatformService.get_service",
+        AsyncMock(return_value=mock_pgsql_svc),
+    ), patch(
+        "mindweaver.platform_service.ranger.service.SolrPlatformService.get_service",
+        AsyncMock(return_value=mock_solr_svc),
+    ), patch(
+        "mindweaver.platform_service.ranger.service.decrypt_password",
+        side_effect=lambda x: x,
+    ):
         manifest = await svc.render_manifests(model)
 
     # Init container must be present
     assert "create-ranger-audits-collection" in manifest
     # Must reference the correct Solr internal URL
-    assert "https://test-solr-solrcloud-headless.solr-ns.svc.cluster.local:8983" in manifest
+    assert (
+        "https://test-solr-solrcloud-headless.solr-ns.svc.cluster.local:8983"
+        in manifest
+    )
     # Must reference the ranger_audits collection name
     assert "ranger_audits" in manifest
     # Must use admin credentials from admin_password
@@ -590,13 +675,21 @@ async def test_ranger_render_manifests_with_solr_initcontainer(mock_service_depe
     # Must use curl with -k for self-signed TLS
     assert "curl -sk" in manifest
     # Must check if already configured
-    assert 'if echo "${AUTH_CONFIG}" | grep -A 5 \'"name":"update"\' | grep -q \'"users"\'; then' in manifest
+    assert (
+        'if echo "${AUTH_CONFIG}" | grep -A 5 \'"name":"update"\' | grep -q \'"users"\'; then'
+        in manifest
+    )
     # Must update global update permission to allow users role
-    assert '\'{"update-permission": {"index": 10, "name": "update", "role": ["admin", "users"]}}\'' in manifest
+    assert (
+        '\'{"update-permission": {"index": 10, "name": "update", "role": ["admin", "users"]}}\''
+        in manifest
+    )
 
 
 @pytest.mark.asyncio
-async def test_ranger_render_manifests_no_solr_no_initcontainer(mock_service_dependencies):
+async def test_ranger_render_manifests_no_solr_no_initcontainer(
+    mock_service_dependencies,
+):
     """Test that no init container is rendered when solr_id is not set."""
     request, session = mock_service_dependencies
     svc = RangerPlatformService(request, session)
@@ -626,7 +719,10 @@ async def test_ranger_render_manifests_no_solr_no_initcontainer(mock_service_dep
     mock_pgsql_state.db_pass = "pass"
     mock_pgsql_svc.platform_state.return_value = mock_pgsql_state
 
-    with patch("mindweaver.platform_service.ranger.service.PgSqlPlatformService.get_service", AsyncMock(return_value=mock_pgsql_svc)):
+    with patch(
+        "mindweaver.platform_service.ranger.service.PgSqlPlatformService.get_service",
+        AsyncMock(return_value=mock_pgsql_svc),
+    ):
         manifest = await svc.render_manifests(model)
 
     # Init container must NOT be present when no Solr is linked

@@ -13,6 +13,7 @@ import random
 import string
 import yaml
 import jinja2 as j2
+
 from typing import Any, Optional, Literal
 from kubernetes import client, config
 from pydantic import ValidationError
@@ -369,7 +370,8 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
                         solr_pass = decrypt_password(solr_state.admin_password)
                     except Exception:
                         solr_pass = solr_state.admin_password
-                vars["ranger_solr_url"] = f"https://solr:{solr_pass}@{solr_host}:8983/solr/ranger_audits"
+                vars["ranger_solr_url"] = f"https://{solr_model.name}-ranger-noauth.{solr_ns}.svc.cluster.local:8443/solr/ranger_audits"
+                vars["ranger_solr_password"] = ""
             else:
                 vars["ranger_solr_enabled"] = "false"
 

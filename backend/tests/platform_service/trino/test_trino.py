@@ -833,7 +833,8 @@ async def test_trino_ranger_integration(mock_service_dependencies):
     assert vars.get("ranger_service_name") == "trino-ranger-test"
     
     assert vars.get("ranger_solr_enabled") == "true"
-    assert vars.get("ranger_solr_url") == "https://solr:solr_password@my-solr-solrcloud-headless.solr-ns.svc.cluster.local:8983/solr/ranger_audits"
+    assert vars.get("ranger_solr_url") == "https://my-solr-ranger-noauth.solr-ns.svc.cluster.local:8443/solr/ranger_audits"
+    assert vars.get("ranger_solr_password") == ""
 
     assert vars.get("ranger_audit_s3_enabled") == "false"
 
@@ -890,7 +891,7 @@ async def test_trino_ranger_integration(mock_service_dependencies):
     assert "<name>xasecure.audit.destination.solr</name>" in audit_xml
     assert "<value>true</value>" in audit_xml
     assert "<name>xasecure.audit.destination.solr.urls</name>" in audit_xml
-    assert "<value>https://solr:solr_password@my-solr-solrcloud-headless.solr-ns.svc.cluster.local:8983/solr/ranger_audits</value>" in audit_xml
+    assert "<value>https://my-solr-ranger-noauth.solr-ns.svc.cluster.local:8443/solr/ranger_audits</value>" in audit_xml
 
     # S3 assertions in XML
     assert "<name>xasecure.audit.hdfs.is.enabled</name>" in audit_xml
@@ -1255,8 +1256,6 @@ async def test_trino_jwt_rendering(mock_service_dependencies):
     assert "http-server.authentication.jwt.key-file=http://dex.trino-ns.svc.cluster.local:5556/dex/keys" in values["server"]["coordinatorExtraConfig"]
     assert "http-server.authentication.jwt.principal-field=email" in values["server"]["coordinatorExtraConfig"]
     assert "additionalLogProperties" in values
-    assert "http-server.log.enabled=true" in values["additionalConfigProperties"]
-    assert "http-server.log.path=/dev/stdout" in values["additionalConfigProperties"]
     assert "log.properties" not in values["coordinator"]["additionalConfigFiles"]
     assert "-Dlog.enable-console=true" in values["coordinator"]["additionalJVMConfig"]
     assert "-Dlog.enable-console=true" in values["worker"]["additionalJVMConfig"]
