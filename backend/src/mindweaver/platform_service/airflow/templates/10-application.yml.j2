@@ -106,7 +106,7 @@ spec:
               memory: {{ mem_limit }}Gi
 
         createUserJob:
-          useHelmHooks: false
+          useHelmHooks: true
           applyCustomEnv: false
           command:
             - "bash"
@@ -116,8 +116,9 @@ spec:
             - name: AIRFLOW_PASSWORD
               value: "{{ admin_password }}"
           ttlSecondsAfterFinished: null
+
         migrateDatabaseJob:
-          useHelmHooks: false
+          useHelmHooks: true
           applyCustomEnv: false
           ttlSecondsAfterFinished: null
         runAirflowMigrations: true
