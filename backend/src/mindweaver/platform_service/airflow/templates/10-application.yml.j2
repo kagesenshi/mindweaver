@@ -23,7 +23,7 @@ spec:
             tag: "{{ image.split(':')[-1] if ':' in image else 'latest' }}"
             {% else %}
             repository: ghcr.io/kagesenshi/mindweaver/airflow
-            tag: 3.2.2-rev.5
+            tag: 3.2.2-rev.6
             {% endif %}
             pullPolicy: IfNotPresent
 
@@ -142,7 +142,7 @@ spec:
         extraEnv: |
           {% if ldap %}
           - name: AIRFLOW__CORE__AUTH_MANAGER
-            value: "airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager"
+            value: "mindweaver_airflow_auth.auth_manager.MindweaverFabAuthManager"
           {% endif %}
           {% if auth_role_mapping %}
           {% for entity, roles in auth_role_mapping.items() %}

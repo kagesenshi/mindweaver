@@ -19,6 +19,9 @@ RUN uv pip install --system \
 RUN FILE=$(python -c "import airflow.providers.fab.auth_manager.security_manager.override; print(airflow.providers.fab.auth_manager.security_manager.override.__file__)") && \
     sed -i 's/^\([[:space:]]*\)import ldap$/\1import ldap\n\1import ldap.filter/' "$FILE"
 
+COPY mindweaver_airflow_auth/ /opt/airflow/mindweaver_airflow_auth/
+ENV PYTHONPATH=/opt/airflow
+
 COPY scripts/create-user.sh /opt/airflow/scripts/create-user.sh
 RUN chmod +x /opt/airflow/scripts/create-user.sh
 
