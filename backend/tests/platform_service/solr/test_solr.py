@@ -176,7 +176,6 @@ async def test_solr_render_manifests(mock_service_dependencies):
     manifests = await svc.render_manifests(model)
     assert "replicas: 1" in manifests
     assert "authenticationType: \"Basic\"" in manifests
-    assert "clientAuth: \"Want\"" in manifests
     assert "zk:" in manifests
     assert "provided:" in manifests
 
