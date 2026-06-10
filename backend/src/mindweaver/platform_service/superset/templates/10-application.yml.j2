@@ -138,6 +138,8 @@ spec:
         configOverrides:
           secret_key: |
             SECRET_KEY = '{{ superset_secret_key }}'
+            RECAPTCHA_PUBLIC_KEY = ''
+            RECAPTCHA_PRIVATE_KEY = ''
           {% if ldap %}
           ldap: |
             from flask_appbuilder.security.manager import AUTH_LDAP
