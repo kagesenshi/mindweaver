@@ -36,7 +36,7 @@ class AirflowPlatform(PlatformBase, table=True):
     chart_version: str = Field(default="1.22.0")
     # Image override - when True, the image field overrides the default image
     override_image: bool = Field(default=False)
-    image: str = Field(default="ghcr.io/kagesenshi/mindweaver/airflow:latest")
+    image: str = Field(default="ghcr.io/kagesenshi/mindweaver/airflow:3.2.2-rev.5")
 
     # Deploy Redis/Valkey for Celery broker by default
     redis_enabled: bool = Field(default=True)

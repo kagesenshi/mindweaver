@@ -14,6 +14,11 @@ RUN uv pip install --system \
     trino pymysql elasticsearch-dbapi oracledb asyncpg pyhive impyla \
     apache-airflow-providers-amazon
 
+# Patch: add missing ldap.filter import for LDAP auth (PR #68226)
+# auth_user_ldap uses ldap.filter.escape_filter_chars but only imports ldap
+RUN FILE=$(python -c "import airflow.providers.fab.auth_manager.security_manager.override; print(airflow.providers.fab.auth_manager.security_manager.override.__file__)") && \
+    sed -i 's/^\([[:space:]]*\)import ldap$/\1import ldap\n\1import ldap.filter/' "$FILE"
+
 COPY scripts/create-user.sh /opt/airflow/scripts/create-user.sh
 RUN chmod +x /opt/airflow/scripts/create-user.sh
 
