@@ -88,9 +88,11 @@ spec:
           env:
             - name: AIRFLOW_PASSWORD
               value: "{{ admin_password }}"
+          ttlSecondsAfterFinished: null
         migrateDatabaseJob:
           useHelmHooks: false
           applyCustomEnv: false
+          ttlSecondsAfterFinished: null
         runAirflowMigrations: true
 
         postgresql:
