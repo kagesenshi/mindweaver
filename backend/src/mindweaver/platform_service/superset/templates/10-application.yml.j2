@@ -55,7 +55,7 @@ spec:
           tag: "{{ image.split(':')[-1] if ':' in image else 'latest' }}"
           {% else %}
           repository: ghcr.io/kagesenshi/mindweaver/superset
-          tag: 6.0.0-rev.1
+          tag: 6.1.0-rev.1
           {% endif %}
           pullPolicy: IfNotPresent
         
