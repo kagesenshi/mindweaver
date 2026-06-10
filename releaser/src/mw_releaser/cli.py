@@ -7,6 +7,7 @@ from .hms import HMSReleaser
 from .ranger import RangerReleaser
 from .superset import SupersetReleaser
 from .trino import TrinoReleaser
+from .airflow import AirflowReleaser
 
 
 @click.group()
@@ -55,6 +56,12 @@ def ranger():
 @cli.group()
 def trino():
     """Trino release commands"""
+    pass
+
+
+@cli.group()
+def airflow():
+    """Apache Airflow release commands"""
     pass
 
 
@@ -120,6 +127,7 @@ create_command(hms, HMSReleaser)
 create_command(superset, SupersetReleaser)
 create_command(ranger, RangerReleaser)
 create_command(trino, TrinoReleaser)
+create_command(airflow, AirflowReleaser)
 
 
 def main():

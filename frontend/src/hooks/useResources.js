@@ -582,6 +582,82 @@ export const useTrino = () => {
     };
 };
 
+export const useAirflow = () => {
+    const [platforms, setPlatforms] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+
+    const fetchPlatforms = useCallback(async () => {
+        setLoading(true);
+        try {
+            const response = await apiClient.get('/platform/airflow');
+            setPlatforms(response.data.data || []);
+        } catch (err) {
+            setError(err);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    const createPlatform = useCallback(async (data) => {
+        const response = await apiClient.post('/platform/airflow', data);
+        await fetchPlatforms();
+        return response.data;
+    }, [fetchPlatforms]);
+
+    const updatePlatformState = useCallback(async (id, state, headers = {}) => {
+        const response = await apiClient.post(`/platform/airflow/${id}/_state`, state, { headers });
+        await fetchPlatforms();
+        return response.data;
+    }, [fetchPlatforms]);
+
+    const deletePlatform = useCallback(async (id, confirmName) => {
+        await apiClient.delete(`/platform/airflow/${id}`, {
+            headers: { 'X-RESOURCE-NAME': confirmName }
+        });
+        await new Promise(resolve => setTimeout(resolve, 500));
+        await fetchPlatforms();
+    }, [fetchPlatforms]);
+
+    const getPlatformState = useCallback(async (id) => {
+        const response = await apiClient.get(`/platform/airflow/${id}/_state`);
+        return response.data;
+    }, []);
+
+    const refreshPlatformState = useCallback(async (id) => {
+        const response = await apiClient.post(`/platform/airflow/${id}/_refresh`);
+        return response.data;
+    }, []);
+
+    const fetchActions = useCallback(async (id) => {
+        const response = await apiClient.get(`/platform/airflow/${id}/_actions`);
+        return response.data.actions || [];
+    }, []);
+
+    const executeAction = useCallback(async (id, action, parameters = {}) => {
+        const response = await apiClient.post(`/platform/airflow/${id}/_actions`, { action, parameters });
+        return response.data;
+    }, []);
+
+    useEffect(() => {
+        fetchPlatforms();
+    }, [fetchPlatforms]);
+
+    return {
+        platforms,
+        loading,
+        error,
+        fetchPlatforms,
+        createPlatform,
+        updatePlatformState,
+        deletePlatform,
+        getPlatformState,
+        refreshPlatformState,
+        fetchActions,
+        executeAction
+    };
+};
+
 export const useSuperset = () => {
     const [platforms, setPlatforms] = useState([]);
     const [loading, setLoading] = useState(false);

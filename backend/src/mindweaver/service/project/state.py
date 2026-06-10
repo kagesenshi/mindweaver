@@ -32,6 +32,10 @@ class ProjectState(BaseState):
             SupersetPlatform,
             SupersetPlatformState,
         )
+        from mindweaver.platform_service.airflow import (
+            AirflowPlatform,
+            AirflowPlatformState,
+        )
         from mindweaver.platform_service.ranger import (
             RangerPlatform,
             RangerPlatformState,
@@ -61,6 +65,7 @@ class ProjectState(BaseState):
         trino_count = await _get_count(TrinoPlatform, TrinoPlatformState)
         hive_metastore_count = await _get_count(HiveMetastorePlatform, HiveMetastorePlatformState)
         superset_count = await _get_count(SupersetPlatform, SupersetPlatformState)
+        airflow_count = await _get_count(AirflowPlatform, AirflowPlatformState)
         ranger_count = await _get_count(RangerPlatform, RangerPlatformState)
         solr_count = await _get_count(SolrPlatform, SolrPlatformState)
 
@@ -196,6 +201,7 @@ class ProjectState(BaseState):
             "trino": trino_count,
             "hive_metastore": hive_metastore_count,
             "superset": superset_count,
+            "airflow": airflow_count,
             "ranger": ranger_count,
             "solr": solr_count,
             "spark": 0,

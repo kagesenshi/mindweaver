@@ -1,0 +1,189 @@
+# SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
+# SPDX-License-Identifier: AGPLv3+
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ name }}
+  namespace: argocd
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: 'https://airflow.apache.org'
+    chart: airflow
+    targetRevision: {{ chart_version }}
+    helm:
+      values: |
+        images:
+          airflow:
+            {% if override_image %}
+            repository: "{{ image.rsplit(':', 1)[0] if ':' in image else image }}"
+            tag: "{{ image.split(':')[-1] if ':' in image else 'latest' }}"
+            {% else %}
+            repository: ghcr.io/kagesenshi/mindweaver/airflow
+            tag: 3.2.2-rev.3
+            {% endif %}
+            pullPolicy: IfNotPresent
+
+        executor: "{{ executor }}"
+
+        data:
+          metadataConnection:
+            protocol: postgresql
+            user: "{{ db_user }}"
+            pass: "{{ db_pass }}"
+            host: "{{ db_host }}"
+            port: {{ db_port }}
+            db: "{{ db_name }}"
+            sslmode: disable
+          brokerUrlSecretName: {{ name }}-broker-url
+
+        fernetKeySecretName: {{ name }}-fernet-key
+        apiSecretKey: "{{ webserver_secret_key }}"
+
+        apiServer:
+          resources:
+            requests:
+              cpu: {{ cpu_request }}
+              memory: {{ mem_request }}Gi
+            limits:
+              cpu: {{ cpu_limit }}
+              memory: {{ mem_limit }}Gi
+          livenessProbe:
+            initialDelaySeconds: 120
+            timeoutSeconds: 30
+            failureThreshold: 10
+            periodSeconds: 30
+            scheme: HTTP
+
+        workers:
+          celery:
+            replicas: 1
+            resources:
+              requests:
+                cpu: {{ cpu_request }}
+                memory: {{ mem_request }}Gi
+              limits:
+                cpu: {{ cpu_limit }}
+                memory: {{ mem_limit }}Gi
+
+        scheduler:
+          resources:
+            requests:
+              cpu: {{ cpu_request }}
+              memory: {{ mem_request }}Gi
+            limits:
+              cpu: {{ cpu_limit }}
+              memory: {{ mem_limit }}Gi
+
+        createUserJob:
+          useHelmHooks: false
+          applyCustomEnv: false
+          command:
+            - "bash"
+            - "/opt/airflow/scripts/create-user.sh"
+          args: []
+          env:
+            - name: AIRFLOW_PASSWORD
+              value: "{{ admin_password }}"
+        migrateDatabaseJob:
+          useHelmHooks: false
+          applyCustomEnv: false
+        runAirflowMigrations: true
+
+        postgresql:
+          enabled: false
+
+        redis:
+          {% if redis_enabled %}
+          enabled: true
+          passwordSecretName: {{ name }}-redis-password
+          {% else %}
+          enabled: false
+          {% endif %}
+
+        ingress:
+          enabled: false
+
+        service:
+          type: NodePort
+
+        extraEnv: |
+          {% if ldap %}
+          - name: AIRFLOW__AUTH__AUTH_TYPE
+            value: "LDAP"
+          - name: AIRFLOW__AUTH_LDAP__URI
+            value: "{{ ldap.server_url }}"
+          - name: AIRFLOW__AUTH_LDAP__BIND_USER
+            value: "{{ ldap.bind_dn }}"
+          - name: AIRFLOW__AUTH_LDAP__BIND_PASSWORD
+            value: "{{ ldap.bind_password }}"
+          - name: AIRFLOW__AUTH_LDAP__SEARCH
+            value: "{{ ldap.user_search_base }}"
+          - name: AIRFLOW__AUTH_LDAP__UID_FIELD
+            value: "{{ ldap.username_attr }}"
+          {% endif %}
+          {% if auth_role_mapping %}
+          {% for entity, roles in auth_role_mapping.items() %}
+          {% for role in roles %}
+          - name: AIRFLOW__AUTH_ROLE_MAPPING__{{ entity | upper }}
+            value: "{{ role }}"
+          {% endfor %}
+          {% endfor %}
+          {% endif %}
+          {% if s3_enabled %}
+          - name: AWS_ACCESS_KEY_ID
+            valueFrom:
+              secretKeyRef:
+                name: {{ name }}-s3
+                key: AWS_ACCESS_KEY_ID
+          - name: AWS_SECRET_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                name: {{ name }}-s3
+                key: AWS_SECRET_ACCESS_KEY
+          - name: AWS_S3_ENDPOINT
+            valueFrom:
+              secretKeyRef:
+                name: {{ name }}-s3
+                key: AWS_S3_ENDPOINT
+          - name: AWS_DEFAULT_REGION
+            valueFrom:
+              secretKeyRef:
+                name: {{ name }}-s3
+                key: AWS_DEFAULT_REGION
+          {% endif %}
+
+        {% if s3_enabled %}
+        config:
+          logging:
+            remote_logging: "True"
+            remote_base_log_folder: "s3://{{ logs_s3_bucket }}/logs/{{ name }}"
+        {% endif %}
+
+        {% if dags_git_sync_enabled %}
+        dags:
+          gitSync:
+            enabled: true
+            repo: {{ dags_git_repo }}
+            branch: {{ dags_git_branch }}
+            subPath: {{ dags_git_subpath }}
+            wait: 60
+        {% endif %}
+
+        logs:
+          persistence:
+            enabled: false
+
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: {{ namespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
+    - RespectIgnoreDifferences=true

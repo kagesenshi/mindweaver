@@ -9,6 +9,7 @@ from mindweaver.platform_service.pgsql import PgSqlPlatformService
 from mindweaver.platform_service.hive_metastore import HiveMetastorePlatformService
 from mindweaver.platform_service.trino import TrinoPlatformService
 from mindweaver.platform_service.superset import SupersetPlatformService
+from mindweaver.platform_service.airflow import AirflowPlatformService
 from mindweaver.platform_service.ranger import RangerPlatformService
 from mindweaver.platform_service.solr import SolrPlatformService
 from mindweaver.platform_service.zookeeper import ZookeeperPlatformService
@@ -30,6 +31,7 @@ def poll_all_platforms():
         HiveMetastorePlatformService,
         TrinoPlatformService,
         SupersetPlatformService,
+        AirflowPlatformService,
         RangerPlatformService,
         SolrPlatformService,
         ZookeeperPlatformService,
@@ -69,6 +71,7 @@ async def _poll_platform_status(service_class_name: str, platform_id: int):
         "HiveMetastorePlatformService": HiveMetastorePlatformService,
         "TrinoPlatformService": TrinoPlatformService,
         "SupersetPlatformService": SupersetPlatformService,
+        "AirflowPlatformService": AirflowPlatformService,
         "RangerPlatformService": RangerPlatformService,
         "SolrPlatformService": SolrPlatformService,
         "ZookeeperPlatformService": ZookeeperPlatformService,

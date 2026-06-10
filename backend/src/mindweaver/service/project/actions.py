@@ -246,6 +246,39 @@ class InstallDexAction(BaseAction):
                 "redirectURIs": redirect_uris,
             })
 
+        # Find active Airflow platforms with oidc_enabled
+        from mindweaver.platform_service.airflow.model import AirflowPlatform
+        stmt_airflow = select(AirflowPlatform).where(
+            AirflowPlatform.project_id == self.model.id,
+            AirflowPlatform.oidc_enabled == True
+        )
+        res_airflow = await self.session.exec(stmt_airflow)
+        airflow_platforms = res_airflow.all()
+        for af in airflow_platforms:
+            redirect_uris = []
+            if self.model.ingress_domain:
+                redirect_uris.append(f"https://{af.name}.{self.model.ingress_domain}/oauth-authorized/dex")
+                redirect_uris.append(f"http://{af.name}.{self.model.ingress_domain}/oauth-authorized/dex")
+                redirect_uris.append(f"https://{af.name}.{self.model.ingress_domain}/api/v1/database/oauth2/")
+                redirect_uris.append(f"http://{af.name}.{self.model.ingress_domain}/api/v1/database/oauth2/")
+            else:
+                redirect_uris.append("http://localhost:8080/oauth-authorized/dex")
+                redirect_uris.append("http://localhost:8080/api/v1/database/oauth2/")
+
+            secret_val = ""
+            if af.oidc_client_secret:
+                try:
+                    secret_val = decrypt_password(af.oidc_client_secret)
+                except Exception:
+                    secret_val = af.oidc_client_secret
+
+            static_clients.append({
+                "id": af.name,
+                "name": f"Airflow {af.name}",
+                "secret": secret_val,
+                "redirectURIs": redirect_uris,
+            })
+
         dex_values = {
             "config": {
                 "issuer": issuer_url,

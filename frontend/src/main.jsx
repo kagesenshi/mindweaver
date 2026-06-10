@@ -20,6 +20,7 @@ const LdapConfigPage = lazy(() => import('./pages/ldap_config/Page'))
 const HiveMetastorePage = lazy(() => import('./pages/hive_metastore/Page'))
 const TrinoPage = lazy(() => import('./pages/trino/Page'))
 const SupersetPage = lazy(() => import('./pages/superset/Page'))
+const AirflowPage = lazy(() => import('./pages/airflow/Page'))
 const RangerPage = lazy(() => import('./pages/ranger/Page'))
 const SolrPage = lazy(() => import('./pages/solr/Page'))
 const ZookeeperPage = lazy(() => import('./pages/zookeeper/Page'))
@@ -88,6 +89,10 @@ const router = createBrowserRouter([
       {
         path: 'platform/superset',
         element: <SupersetPage />,
+      },
+      {
+        path: 'platform/airflow',
+        element: <AirflowPage />,
       },
       {
         path: 'platform/ranger',

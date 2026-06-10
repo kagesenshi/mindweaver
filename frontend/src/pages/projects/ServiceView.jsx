@@ -131,6 +131,13 @@ const ServiceView = ({
             bg: "bg-rose-500/10"
         },
         {
+            name: "Airflow",
+            icon: Activity,
+            count: projectState?.airflow || 0,
+            color: "text-cyan-500",
+            bg: "bg-cyan-500/10"
+        },
+        {
             name: "Ranger",
             icon: Shield,
             count: projectState?.ranger || 0,

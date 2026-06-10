@@ -8,11 +8,12 @@ import {
     Boxes,
     Wind,
     LayoutDashboard,
+    Activity,
     ShieldCheck,
     Search,
     Network
 } from 'lucide-react';
-import { usePgSql, useHiveMetastore, useTrino, useSuperset, useRanger, useSolr, useZookeeper } from '../hooks/useResources';
+import { usePgSql, useHiveMetastore, useTrino, useSuperset, useAirflow, useRanger, useSolr, useZookeeper } from '../hooks/useResources';
 import PageLayout from '../components/PageLayout';
 import ListingItem from '../components/ListingItem';
 
@@ -22,19 +23,21 @@ const HomePage = () => {
     const { platforms: hmsPlatforms, loading: hmsLoading } = useHiveMetastore();
     const { platforms: trinoPlatforms, loading: trinoLoading } = useTrino();
     const { platforms: supersetPlatforms, loading: supersetLoading } = useSuperset();
+    const { platforms: airflowPlatforms, loading: airflowLoading } = useAirflow();
     const { platforms: rangerPlatforms, loading: rangerLoading } = useRanger();
     const { platforms: solrPlatforms, loading: solrLoading } = useSolr();
     const { platforms: zkPlatforms, loading: zkLoading } = useZookeeper();
     const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
 
-    const loading = pgsqlLoading || hmsLoading || trinoLoading || supersetLoading || rangerLoading || solrLoading || zkLoading;
+    const loading = pgsqlLoading || hmsLoading || trinoLoading || supersetLoading || airflowLoading || rangerLoading || solrLoading || zkLoading;
 
     const allInstances = [
         ...pgsqlPlatforms.map(p => ({ ...p, type: 'pgsql' })),
         ...hmsPlatforms.map(p => ({ ...p, type: 'hms' })),
         ...trinoPlatforms.map(p => ({ ...p, type: 'trino' })),
         ...supersetPlatforms.map(p => ({ ...p, type: 'superset' })),
+        ...airflowPlatforms.map(p => ({ ...p, type: 'airflow' })),
         ...rangerPlatforms.map(p => ({ ...p, type: 'ranger' })),
         ...solrPlatforms.map(p => ({ ...p, type: 'solr' })),
         ...zkPlatforms.map(p => ({ ...p, type: 'zookeeper' }))
@@ -67,17 +70,18 @@ const HomePage = () => {
                 {filteredInstances.map(inst => (
                     <ListingItem
                         key={`${inst.type}-${inst.id}`}
-                        icon={inst.type === 'hms' ? Boxes : inst.type === 'trino' ? Wind : inst.type === 'superset' ? LayoutDashboard : inst.type === 'ranger' ? ShieldCheck : inst.type === 'solr' ? Search : inst.type === 'zookeeper' ? Network : Database}
+                        icon={inst.type === 'hms' ? Boxes : inst.type === 'trino' ? Wind : inst.type === 'superset' ? LayoutDashboard : inst.type === 'airflow' ? Activity : inst.type === 'ranger' ? ShieldCheck : inst.type === 'solr' ? Search : inst.type === 'zookeeper' ? Network : Database}
                         title={inst.title || inst.name}
                         badges={[{ 
-                            text: inst.type === 'hms' ? "Hive Metastore" : inst.type === 'trino' ? "Trino Cluster" : inst.type === 'superset' ? "Apache Superset" : inst.type === 'ranger' ? "Apache Ranger" : inst.type === 'solr' ? "Solr" : inst.type === 'zookeeper' ? "ZooKeeper" : "CloudNative PG", 
+                            text: inst.type === 'hms' ? "Hive Metastore" : inst.type === 'trino' ? "Trino Cluster" : inst.type === 'superset' ? "Apache Superset" : inst.type === 'airflow' ? "Apache Airflow" : inst.type === 'ranger' ? "Apache Ranger" : inst.type === 'solr' ? "Solr" : inst.type === 'zookeeper' ? "ZooKeeper" : "CloudNative PG", 
                             variant: "mw-badge-neutral" 
                         }]}
                         subtitle={inst.id}
                         onClick={() => {
                             if (inst.type === 'hms') navigate('/platform/hive-metastore');
                             else if (inst.type === 'trino') navigate('/platform/trino');
-                            else if (inst.type === 'superset') navigate('/platform/superset');
+                            else                             if (inst.type === 'superset') navigate('/platform/superset');
+                            else if (inst.type === 'airflow') navigate('/platform/airflow');
                             else if (inst.type === 'ranger') navigate('/platform/ranger');
                             else if (inst.type === 'solr') navigate('/platform/solr');
                             else if (inst.type === 'zookeeper') navigate('/platform/zookeeper');
