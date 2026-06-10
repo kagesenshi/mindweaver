@@ -23,7 +23,7 @@ spec:
             tag: "{{ image.split(':')[-1] if ':' in image else 'latest' }}"
             {% else %}
             repository: ghcr.io/kagesenshi/mindweaver/airflow
-            tag: 3.2.2-rev.6
+            tag: 3.2.2-rev.10
             {% endif %}
             pullPolicy: IfNotPresent
 
