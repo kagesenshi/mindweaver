@@ -6,6 +6,8 @@ import logging
 import tempfile
 import os
 import yaml
+import jinja2 as j2
+from kubernetes import client, config
 
 from sqlmodel import select
 from mindweaver.fw.action import BaseAction
@@ -64,6 +66,69 @@ class InstallArgoCDAction(BaseAction):
             chart_name=chart_name,
             namespace=namespace,
         )
+
+    def _get_kubernetes_clients(self):
+        """Helper to load kubernetes config and return clients"""
+        if self.model.type == K8sClusterType.IN_CLUSTER:
+            config.load_incluster_config()
+            return client.CoreV1Api(), client.ApiextensionsV1Api()
+        else:
+            if not self.model.kubeconfig:
+                raise ValueError(f"Cluster {self.model.name} has no kubeconfig")
+            with tempfile.NamedTemporaryFile(mode="w", delete=False) as kf:
+                kf.write(self.model.kubeconfig)
+                kf.flush()
+                temp_name = kf.name
+            try:
+                api_client = config.new_client_from_config(config_file=temp_name)
+                return client.CoreV1Api(api_client), client.ApiextensionsV1Api(api_client)
+            finally:
+                try:
+                    os.unlink(temp_name)
+                except Exception:
+                    pass
+
+    async def _wait_for_crd_and_namespace(self, crd_names: list[str], namespace: str = None, timeout: int = 60):
+        """Wait for specified CRDs and optionally a namespace to be registered and exist"""
+        logger.info(f"Waiting for CRDs {crd_names} and namespace {namespace} to be ready...")
+        try:
+            core_api, ext_api = self._get_kubernetes_clients()
+        except Exception as e:
+            logger.warning(f"Could not load kubernetes clients to wait: {e}")
+            return
+
+        for _ in range(int(timeout / 2)):
+            try:
+                ns_ready = True
+                if namespace:
+                    try:
+                        core_api.read_namespace(namespace)
+                    except Exception:
+                        ns_ready = False
+                
+                crds_ready = True
+                for crd in crd_names:
+                    try:
+                        ext_api.read_custom_resource_definition(crd)
+                    except Exception:
+                        crds_ready = False
+                        break
+                
+                if ns_ready and crds_ready:
+                    logger.info("CRDs and namespace are ready!")
+                    return
+            except Exception as e:
+                logger.warning(f"Error checking CRDs/namespace: {e}")
+            await asyncio.sleep(2)
+        logger.warning(f"Timed out waiting for CRDs {crd_names} and namespace {namespace}")
+
+    async def _apply_template(self, template_name: str, **kwargs):
+        """Load, render and apply a manifest template from the templates directory"""
+        template_dir = os.path.join(os.path.dirname(__file__), "templates")
+        env = j2.Environment(loader=j2.FileSystemLoader(template_dir))
+        template = env.get_template(template_name)
+        manifest = template.render(**kwargs)
+        await self._apply_yaml(manifest)
 
     async def _install_helm_chart(
         self,
@@ -215,17 +280,10 @@ class InstallCertManagerAction(InstallArgoCDAction):
         }
 
     async def run(self):
-        """Install Cert Manager to the cluster using Helm chart"""
+        """Install Cert Manager to the cluster using ArgoCD Application"""
         logger.info(f"Installing Cert Manager for cluster {self.model.name}")
 
-        await self._install_helm_chart(
-            repo_name="jetstack",
-            repo_url="https://charts.jetstack.io",
-            release_name="cert-manager",
-            chart_name="jetstack/cert-manager",
-            namespace="cert-manager",
-            set_vals={"installCRDs": "true"},
-        )
+        await self._apply_template("cert-manager.yml.j2")
 
 
 @K8sClusterService.register_action("install_cnpg_operator")
@@ -262,16 +320,10 @@ class InstallCNPGAction(InstallArgoCDAction):
         }
 
     async def run(self):
-        """Install CNPG Operator to the cluster using Helm chart"""
+        """Install CNPG Operator to the cluster using ArgoCD Application"""
         logger.info(f"Installing CNPG Operator for cluster {self.model.name}")
 
-        await self._install_helm_chart(
-            repo_name="cnpg",
-            repo_url="https://cloudnative-pg.github.io/charts",
-            release_name="cnpg",
-            chart_name="cnpg/cloudnative-pg",
-            namespace="cnpg-system",
-        )
+        await self._apply_template("cnpg.yml.j2")
 
 
 @K8sClusterService.register_action("install_self_signed_issuer")
@@ -311,40 +363,12 @@ class InstallSelfSignedIssuerAction(InstallArgoCDAction):
         """Install self-signed ClusterIssuer to the cluster"""
         logger.info(f"Installing Self-signed ClusterIssuer for cluster {self.model.name}")
 
-        manifest = """
-apiVersion: cert-manager.io/v1
-kind: ClusterIssuer
-metadata:
-  name: mindweaver-bootstrap-issuer
-spec:
-  selfSigned: {}
----
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: mindweaver-ca-cert
-  namespace: cert-manager
-spec:
-  isCA: true
-  commonName: mindweaver-ca
-  secretName: mindweaver-ca-secret
-  privateKey:
-    algorithm: ECDSA
-    size: 256
-  issuerRef:
-    name: mindweaver-bootstrap-issuer
-    kind: ClusterIssuer
-    group: cert-manager.io
----
-apiVersion: cert-manager.io/v1
-kind: ClusterIssuer
-metadata:
-  name: mindweaver-selfsigned-issuer
-spec:
-  ca:
-    secretName: mindweaver-ca-secret
-"""
-        await self._apply_yaml(manifest)
+        await self._wait_for_crd_and_namespace(
+            ["clusterissuers.cert-manager.io", "certificates.cert-manager.io"],
+            "cert-manager"
+        )
+
+        await self._apply_template("self-signed-issuer.yml.j2")
 
 
 
@@ -382,45 +406,19 @@ class InstallEnvoyGatewayAction(InstallArgoCDAction):
         }
 
     async def run(self):
-        """Install Envoy Gateway to the cluster using Helm chart and configured service type"""
+        """Install Envoy Gateway to the cluster using ArgoCD Application and configured service type"""
         logger.info(f"Installing Envoy Gateway for cluster {self.model.name}")
 
-        await self._install_helm_chart(
-            repo_name="eg",
-            repo_url="oci://docker.io/envoyproxy",
-            release_name="eg",
-            chart_name="oci://docker.io/envoyproxy/gateway-helm",
-            namespace="envoy-gateway-system",
+        await self._apply_template("envoy-gateway.yml.j2")
+
+        await self._wait_for_crd_and_namespace(
+            ["envoyproxies.gateway.envoyproxy.io", "gatewayclasses.gateway.networking.k8s.io"],
+            "envoy-gateway-system"
         )
 
         # Deploy global GatewayClass and EnvoyProxy resources
-        global_manifest = f"""
-apiVersion: gateway.networking.k8s.io/v1
-kind: GatewayClass
-metadata:
-  name: envoy-gateway
-spec:
-  controllerName: gateway.envoyproxy.io/gatewayclass-controller
-  parametersRef:
-    group: gateway.envoyproxy.io
-    kind: EnvoyProxy
-    name: envoy-gateway-config
-    namespace: envoy-gateway-system
----
-apiVersion: gateway.envoyproxy.io/v1alpha1
-kind: EnvoyProxy
-metadata:
-  name: envoy-gateway-config
-  namespace: envoy-gateway-system
-spec:
-  provider:
-    type: Kubernetes
-    kubernetes:
-      envoyService:
-        type: {self.model.envoy_gateway_service_type}
-"""
         logger.info("Applying global Envoy GatewayClass and EnvoyProxy configuration")
-        await self._apply_yaml(global_manifest)
+        await self._apply_template("envoy-gateway-config.yml.j2", service_type=self.model.envoy_gateway_service_type)
 
 
 @K8sClusterService.register_action("sync_core_integrations")
@@ -480,27 +478,25 @@ class SyncCoreIntegrationsAction(InstallArgoCDAction):
             status.argocd_installed = True
             await self.session.flush()
 
-        # 2. Install Cert Manager if missing
-        if not status.cert_manager_installed:
-            logger.info("Sync: Installing Cert Manager...")
-            from .actions import InstallCertManagerAction
-            action = InstallCertManagerAction(self.model, self.svc)
-            action.session = self.session
-            await action.run()
-            status.cert_manager_installed = True
-            await self.session.flush()
+        # 2. Deploy/update Cert Manager Application manifest
+        logger.info("Sync: Deploying/updating Cert Manager...")
+        from .actions import InstallCertManagerAction
+        action = InstallCertManagerAction(self.model, self.svc)
+        action.session = self.session
+        await action.run()
+        status.cert_manager_installed = True
+        await self.session.flush()
 
-        # 3. Install CNPG Operator if missing
-        if not status.cnpg_installed:
-            logger.info("Sync: Installing CNPG Operator...")
-            from .actions import InstallCNPGAction
-            action = InstallCNPGAction(self.model, self.svc)
-            action.session = self.session
-            await action.run()
-            status.cnpg_installed = True
-            await self.session.flush()
+        # 3. Deploy/update CNPG Operator Application manifest
+        logger.info("Sync: Deploying/updating CNPG Operator...")
+        from .actions import InstallCNPGAction
+        action = InstallCNPGAction(self.model, self.svc)
+        action.session = self.session
+        await action.run()
+        status.cnpg_installed = True
+        await self.session.flush()
 
-        # 4. Install Envoy Gateway or update config if envoy gateway is already installed
+        # 4. Deploy/update Envoy Gateway or update config if envoy gateway is already installed
         logger.info("Sync: Deploying/updating Envoy Gateway config...")
         from .actions import InstallEnvoyGatewayAction
         action = InstallEnvoyGatewayAction(self.model, self.svc)
@@ -509,25 +505,23 @@ class SyncCoreIntegrationsAction(InstallArgoCDAction):
         status.envoy_gateway_installed = True
         await self.session.flush()
 
-        # 5. Install Self-signed Issuer if CM is installed and issuer is missing
-        if status.cert_manager_installed and not status.cluster_issuer_installed:
-            logger.info("Sync: Installing Self-signed Issuer...")
-            from .actions import InstallSelfSignedIssuerAction
-            action = InstallSelfSignedIssuerAction(self.model, self.svc)
-            action.session = self.session
-            await action.run()
-            status.cluster_issuer_installed = True
-            await self.session.flush()
+        # 5. Deploy/update Self-signed Issuer
+        logger.info("Sync: Deploying/updating Self-signed Issuer...")
+        from .actions import InstallSelfSignedIssuerAction
+        action = InstallSelfSignedIssuerAction(self.model, self.svc)
+        action.session = self.session
+        await action.run()
+        status.cluster_issuer_installed = True
+        await self.session.flush()
 
-        # 6. Install Solr Operator if missing
-        if not status.solr_operator_installed:
-            logger.info("Sync: Installing Solr Operator...")
-            from .actions import InstallSolrOperatorAction
-            action = InstallSolrOperatorAction(self.model, self.svc)
-            action.session = self.session
-            await action.run()
-            status.solr_operator_installed = True
-            await self.session.flush()
+        # 6. Deploy/update Solr Operator Application manifest
+        logger.info("Sync: Deploying/updating Solr Operator...")
+        from .actions import InstallSolrOperatorAction
+        action = InstallSolrOperatorAction(self.model, self.svc)
+        action.session = self.session
+        await action.run()
+        status.solr_operator_installed = True
+        await self.session.flush()
 
 
 @K8sClusterService.register_action("install_solr_operator")
@@ -562,20 +556,10 @@ class InstallSolrOperatorAction(InstallArgoCDAction):
         }
 
     async def run(self):
-        """Install Solr Operator to the cluster using Helm chart"""
+        """Install Solr Operator to the cluster using ArgoCD Application"""
         logger.info(f"Installing Solr Operator for cluster {self.model.name}")
 
-        await self._install_helm_chart(
-            repo_name="apache-solr",
-            repo_url="https://solr.apache.org/charts",
-            release_name="solr-operator",
-            chart_name="apache-solr/solr-operator",
-            namespace="solr-operator",
-            set_vals={
-                "installCRDs": "true",
-                "zookeeper-operator.crd.create": "true",
-            },
-        )
+        await self._apply_template("solr-operator.yml.j2")
 
 
 

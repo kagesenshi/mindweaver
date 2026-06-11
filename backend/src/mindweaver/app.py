@@ -29,6 +29,7 @@ from .platform_service.zookeeper import router as zookeeper_router
 from .service.name_tracker import router as name_tracker_router
 from .service.ssh_key import router as ssh_key_router
 from .service.git_repo import router as git_repo_router
+from .service.container_registry import router as container_registry_router
 
 from .fw.model import get_engine, get_session
 from sqlmodel import select
@@ -206,6 +207,7 @@ app.include_router(ldap_config_router, prefix="/api/v1")
 app.include_router(name_tracker_router, prefix="/api/v1")
 app.include_router(ssh_key_router, prefix="/api/v1")
 app.include_router(git_repo_router, prefix="/api/v1")
+app.include_router(container_registry_router, prefix="/api/v1")
 
 if settings.experimental_data_source:
     app.include_router(db_router, prefix="/api/v1/database-sources")

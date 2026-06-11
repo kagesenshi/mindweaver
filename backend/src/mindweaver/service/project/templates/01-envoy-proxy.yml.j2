@@ -1,7 +1,6 @@
 # SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
 # SPDX-License-Identifier: AGPLv3+
 
-{% if nodeport %}
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: EnvoyProxy
 metadata:
@@ -12,7 +11,8 @@ spec:
     type: Kubernetes
     kubernetes:
       envoyService:
-        type: NodePort
+        type: {{ service_type }}
+        {%- if service_type == "NodePort" and nodeport %}
         patch:
           type: StrategicMerge
           value:
@@ -21,5 +21,4 @@ spec:
                 - name: https
                   port: 443
                   nodePort: {{ nodeport }}
-{% endif %}
-
+        {%- endif %}

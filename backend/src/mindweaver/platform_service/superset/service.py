@@ -286,7 +286,7 @@ class SupersetPlatformService(PlatformService[SupersetPlatform]):
         vars["oidc_enabled"] = model.oidc_enabled
         vars["oidc_client_id"] = model.name
         vars["oidc_client_secret"] = vars.get("oidc_client_secret", "")
-        vars["oidc_internal_issuer"] = f"http://dex.{vars['namespace']}.svc.cluster.local:5556/dex"
+        vars["oidc_internal_issuer"] = f"http://{project.name}-dex.{vars['namespace']}.svc.cluster.local:5556/dex"
         if vars["ingress_domain"]:
             vars["oidc_external_issuer"] = f"https://dex.{vars['ingress_domain']}/dex"
         else:

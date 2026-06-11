@@ -228,41 +228,45 @@ export const ExternalNetworkAccessBlock = ({
                     })}
                 </div>
 
-                {cliInfo && (
+                {(guideText || cliInfo) && (
                     <div className="space-y-4">
-                        <div className="flex items-start gap-4 p-4 rounded-xl bg-blue-500/5 border border-blue-500/10">
-                            <AlertCircle className="text-blue-500 shrink-0 mt-0.5" size={20} />
-                            <div>
-                                <p className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">{guideTitle}</p>
-                                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 leading-relaxed" dangerouslySetInnerHTML={{ __html: guideText }} />
-                            </div>
-                        </div>
-
-                        <div className={cn(
-                            "flex flex-col rounded-2xl border overflow-hidden",
-                            darkMode ? 'bg-slate-950/80 border-slate-800' : 'bg-slate-900 border-slate-700'
-                        )}>
-                            <div className={cn("flex border-b p-1 items-center justify-between", darkMode ? 'border-slate-800' : 'border-slate-700')}>
-                                <div className="flex p-1 gap-1">
-                                    <button className="px-4 py-1.5 text-xs font-bold uppercase rounded-lg bg-slate-700 text-white shadow-inner">{cliLanguage}</button>
-                                    {cliInfo.languageButtons && cliInfo.languageButtons.map((btn, i) => (
-                                        <button key={i} className="px-4 py-1.5 text-xs font-bold uppercase rounded-lg text-slate-500 hover:text-slate-300">{btn}</button>
-                                    ))}
+                        {guideText && (
+                            <div className="flex items-start gap-4 p-4 rounded-xl bg-blue-500/5 border border-blue-500/10">
+                                <AlertCircle className="text-blue-500 shrink-0 mt-0.5" size={20} />
+                                <div>
+                                    <p className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">{guideTitle}</p>
+                                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 leading-relaxed" dangerouslySetInnerHTML={{ __html: guideText }} />
                                 </div>
-                                <div className="px-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">{cliTitle}</div>
                             </div>
-                            <div className="p-6 relative group">
-                                <pre className="text-sm font-mono text-blue-400 leading-relaxed overflow-x-auto whitespace-pre-wrap">
-                                    {cliInfo.command}
-                                </pre>
-                                <button
-                                    onClick={() => navigator.clipboard.writeText(cliInfo.copyValue || cliInfo.command)}
-                                    className="absolute top-4 right-4 p-2 text-slate-500 hover:text-white opacity-0 group-hover:opacity-100 transition-all"
-                                >
-                                    <Copy size={16} />
-                                </button>
+                        )}
+
+                        {cliInfo && (
+                            <div className={cn(
+                                "flex flex-col rounded-2xl border overflow-hidden",
+                                darkMode ? 'bg-slate-950/80 border-slate-800' : 'bg-slate-900 border-slate-700'
+                            )}>
+                                <div className={cn("flex border-b p-1 items-center justify-between", darkMode ? 'border-slate-800' : 'border-slate-700')}>
+                                    <div className="flex p-1 gap-1">
+                                        <button className="px-4 py-1.5 text-xs font-bold uppercase rounded-lg bg-slate-700 text-white shadow-inner">{cliLanguage}</button>
+                                        {cliInfo.languageButtons && cliInfo.languageButtons.map((btn, i) => (
+                                            <button key={i} className="px-4 py-1.5 text-xs font-bold uppercase rounded-lg text-slate-500 hover:text-slate-300">{btn}</button>
+                                        ))}
+                                    </div>
+                                    <div className="px-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">{cliTitle}</div>
+                                </div>
+                                <div className="p-6 relative group">
+                                    <pre className="text-sm font-mono text-blue-400 leading-relaxed overflow-x-auto whitespace-pre-wrap">
+                                        {cliInfo.command}
+                                    </pre>
+                                    <button
+                                        onClick={() => navigator.clipboard.writeText(cliInfo.copyValue || cliInfo.command)}
+                                        className="absolute top-4 right-4 p-2 text-slate-500 hover:text-white opacity-0 group-hover:opacity-100 transition-all"
+                                    >
+                                        <Copy size={16} />
+                                    </button>
+                                </div>
                             </div>
-                        </div>
+                        )}
                     </div>
                 )}
             </div>

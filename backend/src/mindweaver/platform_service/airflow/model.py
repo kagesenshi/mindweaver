@@ -65,10 +65,9 @@ class AirflowPlatform(PlatformBase, table=True):
 
     # DAGs git-sync configuration
     dags_git_sync_enabled: bool = Field(default=False)
-    dags_git_repo: str = Field(default="")
+    git_repo_id: Optional[int] = Field(default=None, foreign_key="mw_git_repo.id")
     dags_git_branch: str = Field(default="main")
     dags_git_subpath: str = Field(default="dags")
-    dags_git_secret: Optional[str] = Field(default=None)
 
     # Resource configuration
     cpu_request: float = Field(default=0.5)

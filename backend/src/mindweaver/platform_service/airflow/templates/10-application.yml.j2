@@ -278,10 +278,20 @@ spec:
         dags:
           gitSync:
             enabled: true
-            repo: {{ dags_git_repo }}
-            branch: {{ dags_git_branch }}
-            subPath: {{ dags_git_subpath }}
+            repo: "{{ dags_git_repo }}"
+            branch: "{{ dags_git_branch }}"
+            subPath: "{{ dags_git_subpath }}"
             wait: 60
+            {% if git_repo %}
+            {% if git_repo.username or git_repo.password %}
+            credentialsSecret: "{{ name }}-git-sync"
+            {% endif %}
+            {% if ssh_key %}
+            sshKeySecret: "{{ name }}-git-sync"
+            knownHosts: ""
+            sshKnownHosts: ""
+            {% endif %}
+            {% endif %}
         {% endif %}
 
         logs:

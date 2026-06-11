@@ -309,7 +309,7 @@ async def test_superset_template_rendering(mock_service_dependencies):
         assert "OAUTH_PROVIDERS" in values_oidc["configOverrides"]["oidc"]
         assert "CustomSecurityManager" in values_oidc["configOverrides"]["oidc"]
         assert "https://dex.132.home.kagesenshi.org/dex/auth" in values_oidc["configOverrides"]["oidc"]
-        assert "http://dex.superset-ns.svc.cluster.local:5556/dex/token" in values_oidc["configOverrides"]["oidc"]
+        assert "http://myproject-dex.superset-ns.svc.cluster.local:5556/dex/token" in values_oidc["configOverrides"]["oidc"]
         assert "ENABLE_PROXY_FIX = True" in values_oidc["configOverrides"]["oidc"]
         assert "import trino.auth" in values_oidc["configOverrides"]["oidc"]
         assert "ALLOWED_EXTRA_AUTHENTICATIONS" in values_oidc["configOverrides"]["oidc"]

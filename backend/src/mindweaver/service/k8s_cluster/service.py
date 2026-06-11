@@ -93,14 +93,20 @@ class K8sClusterService(Service[K8sCluster]):
                 # Check ArgoCD
                 argocd_installed = False
                 argocd_version = None
+                secrets = None
                 try:
                     secrets = core_v1.list_secret_for_all_namespaces(
                         label_selector="owner=helm"
                     )
-                    for secret in secrets.items:
-                        if secret.metadata.name.startswith("sh.helm.release.v1.argocd"):
-                            argocd_installed = True
-                            break
+                except Exception as e:
+                    logger.warning(f"Failed to list Helm secrets: {e}")
+
+                try:
+                    if secrets:
+                        for secret in secrets.items:
+                            if secret.metadata.name.startswith("sh.helm.release.v1.argocd"):
+                                argocd_installed = True
+                                break
 
                     if not argocd_installed:
                         svcs = core_v1.list_service_for_all_namespaces(
@@ -122,12 +128,13 @@ class K8sClusterService(Service[K8sCluster]):
                 cert_manager_installed = False
                 cert_manager_version = None
                 try:
-                    for secret in secrets.items:
-                        if secret.metadata.name.startswith(
-                            "sh.helm.release.v1.cert-manager"
-                        ):
-                            cert_manager_installed = True
-                            break
+                    if secrets:
+                        for secret in secrets.items:
+                            if secret.metadata.name.startswith(
+                                "sh.helm.release.v1.cert-manager"
+                            ):
+                                cert_manager_installed = True
+                                break
                     if not cert_manager_installed:
                         svcs = core_v1.list_service_for_all_namespaces(
                             label_selector="app.kubernetes.io/name=cert-manager"
@@ -148,10 +155,11 @@ class K8sClusterService(Service[K8sCluster]):
                 cnpg_installed = False
                 cnpg_version = None
                 try:
-                    for secret in secrets.items:
-                        if secret.metadata.name.startswith("sh.helm.release.v1.cnpg"):
-                            cnpg_installed = True
-                            break
+                    if secrets:
+                        for secret in secrets.items:
+                            if secret.metadata.name.startswith("sh.helm.release.v1.cnpg-operator"):
+                                cnpg_installed = True
+                                break
                     if not cnpg_installed:
                         svcs = core_v1.list_service_for_all_namespaces(
                             label_selector="app.kubernetes.io/name=cloudnative-pg"
@@ -188,21 +196,38 @@ class K8sClusterService(Service[K8sCluster]):
                 envoy_gateway_installed = False
                 envoy_gateway_version = None
                 try:
-                    for secret in secrets.items:
-                        if secret.metadata.name.startswith("sh.helm.release.v1.eg") or secret.metadata.name.startswith("sh.helm.release.v1.envoy-gateway"):
-                            envoy_gateway_installed = True
-                            break
+                    if secrets:
+                        for secret in secrets.items:
+                            if secret.metadata.name.startswith("sh.helm.release.v1.eg") or secret.metadata.name.startswith("sh.helm.release.v1.envoy-gateway"):
+                                envoy_gateway_installed = True
+                                break
                     if not envoy_gateway_installed:
                         svcs = core_v1.list_service_for_all_namespaces(
-                            label_selector="app.kubernetes.io/name=envoy-gateway"
+                            label_selector="control-plane=envoy-gateway"
                         )
+                        if not svcs.items:
+                            svcs = core_v1.list_service_for_all_namespaces(
+                                label_selector="app.kubernetes.io/name=gateway-helm"
+                            )
+                        if not svcs.items:
+                            svcs = core_v1.list_service_for_all_namespaces(
+                                label_selector="app.kubernetes.io/name=envoy-gateway"
+                            )
                         if svcs.items:
                             envoy_gateway_installed = True
 
                     if envoy_gateway_installed:
                         pods = core_v1.list_pod_for_all_namespaces(
-                            label_selector="app.kubernetes.io/name=envoy-gateway"
+                            label_selector="control-plane=envoy-gateway"
                         )
+                        if not pods.items:
+                            pods = core_v1.list_pod_for_all_namespaces(
+                                label_selector="app.kubernetes.io/name=gateway-helm"
+                            )
+                        if not pods.items:
+                            pods = core_v1.list_pod_for_all_namespaces(
+                                label_selector="app.kubernetes.io/name=envoy-gateway"
+                            )
                         if pods.items:
                             envoy_gateway_version = _get_version(pods.items[0])
                 except Exception as e:
@@ -212,22 +237,21 @@ class K8sClusterService(Service[K8sCluster]):
                 solr_operator_installed = False
                 solr_operator_version = None
                 try:
-                    for secret in secrets.items:
-                        if secret.metadata.name.startswith("sh.helm.release.v1.solr-operator"):
-                            solr_operator_installed = True
-                            break
+                    if secrets:
+                        for secret in secrets.items:
+                            if secret.metadata.name.startswith("sh.helm.release.v1.solr-operator"):
+                                solr_operator_installed = True
+                                break
                     if not solr_operator_installed:
-                        svcs = core_v1.list_service_for_all_namespaces(
-                            label_selector="app.kubernetes.io/name=solr-operator"
-                        )
-                        if svcs.items:
-                            solr_operator_installed = True
-
-                    if solr_operator_installed:
                         pods = core_v1.list_pod_for_all_namespaces(
-                            label_selector="app.kubernetes.io/name=solr-operator"
+                            label_selector="control-plane=solr-operator"
                         )
+                        if not pods.items:
+                            pods = core_v1.list_pod_for_all_namespaces(
+                                label_selector="app.kubernetes.io/name=solr-operator"
+                            )
                         if pods.items:
+                            solr_operator_installed = True
                             solr_operator_version = _get_version(pods.items[0])
                 except Exception as e:
                     logger.warning(f"Failed to check Solr Operator presence: {e}")

@@ -91,10 +91,12 @@ class AirflowPlatformService(PlatformService[AirflowPlatform]):
                 "label": "Enable Git-Sync for DAGs",
                 "type": "boolean",
             },
-            "dags_git_repo": {
+            "git_repo_id": {
                 "order": 16,
-                "label": "DAGs Git Repository URL",
-                "type": "string",
+                "label": "DAGs Git Repository",
+                "type": "relationship",
+                "endpoint": "/api/v1/git_repos",
+                "field": "name",
             },
             "dags_git_branch": {
                 "order": 17,
@@ -232,7 +234,7 @@ class AirflowPlatformService(PlatformService[AirflowPlatform]):
         vars["oidc_enabled"] = model.oidc_enabled
         vars["oidc_client_id"] = model.name
         vars["oidc_client_secret"] = vars.get("oidc_client_secret", "")
-        vars["oidc_internal_issuer"] = f"http://dex.{vars['namespace']}.svc.cluster.local:5556/dex"
+        vars["oidc_internal_issuer"] = f"http://{project.name}-dex.{vars['namespace']}.svc.cluster.local:5556/dex"
         if vars["ingress_domain"]:
             vars["oidc_external_issuer"] = f"https://dex.{vars['ingress_domain']}/dex"
         else:
@@ -240,9 +242,37 @@ class AirflowPlatformService(PlatformService[AirflowPlatform]):
 
         # 6. DAGs git-sync config
         vars["dags_git_sync_enabled"] = model.dags_git_sync_enabled
-        vars["dags_git_repo"] = model.dags_git_repo
         vars["dags_git_branch"] = model.dags_git_branch
         vars["dags_git_subpath"] = model.dags_git_subpath
+        vars["git_repo"] = None
+        vars["ssh_key"] = None
+        vars["dags_git_repo"] = ""
+
+        if model.dags_git_sync_enabled and model.git_repo_id:
+            from mindweaver.service.git_repo.service import GitRepoService
+            git_repo_svc = await GitRepoService.get_service(self.request, self.session)
+            git_repo = await git_repo_svc.get(model.git_repo_id)
+            vars["dags_git_repo"] = git_repo.url
+
+            git_repo_dict = git_repo.model_dump()
+            if git_repo.password:
+                try:
+                    git_repo_dict["password"] = decrypt_password(git_repo.password)
+                except Exception:
+                    git_repo_dict["password"] = git_repo.password
+            vars["git_repo"] = git_repo_dict
+
+            if git_repo.ssh_key_id:
+                from mindweaver.service.ssh_key.service import SSHKeyService
+                ssh_key_svc = await SSHKeyService.get_service(self.request, self.session)
+                ssh_key = await ssh_key_svc.get(git_repo.ssh_key_id)
+                ssh_key_dict = ssh_key.model_dump()
+                if ssh_key.private_key:
+                    try:
+                        ssh_key_dict["private_key"] = decrypt_password(ssh_key.private_key)
+                    except Exception:
+                        ssh_key_dict["private_key"] = ssh_key.private_key
+                vars["ssh_key"] = ssh_key_dict
 
         # 7. Executor (always CeleryExecutor)
         vars["executor"] = "CeleryExecutor"

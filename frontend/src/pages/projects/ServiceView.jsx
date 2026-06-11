@@ -282,11 +282,13 @@ const ServiceView = ({
                                 ipv4: ip,
                                 hostname: `Node ${idx + 1}`
                             })) || []}
-                            guideTitle="HAProxy Ingress Gateway Configuration"
-                            guideText="To route external HTTPS (port 443) traffic to the Envoy Gateway NodePorts, configure your external HAProxy load balancer using SSL Termination (HTTP mode) with your custom SSL certificate."
-                            cliLanguage="haproxy"
-                            cliTitle="HAProxy Configuration"
-                            cliInfo={{
+                            guideTitle={projectState.envoy_gateway_service_type === 'LoadBalancer' ? "DNS Ingress Domain Setup" : "HAProxy Ingress Gateway Configuration"}
+                            guideText={projectState.envoy_gateway_service_type === 'LoadBalancer' 
+                                ? `To route external traffic to your project, configure a CNAME or A record for your domain <strong>${selectedProject.ingress_domain}</strong> to point to the LoadBalancer IP/hostname.`
+                                : "To route external HTTPS (port 443) traffic to the Envoy Gateway NodePorts, configure your external HAProxy load balancer using SSL Termination (HTTP mode) with your custom SSL certificate."}
+                            cliLanguage={projectState.envoy_gateway_service_type === 'LoadBalancer' ? undefined : "haproxy"}
+                            cliTitle={projectState.envoy_gateway_service_type === 'LoadBalancer' ? undefined : "HAProxy Configuration"}
+                            cliInfo={projectState.envoy_gateway_service_type === 'LoadBalancer' ? undefined : {
                                 command: `global
     log /dev/log local0
     log /dev/log local1 notice

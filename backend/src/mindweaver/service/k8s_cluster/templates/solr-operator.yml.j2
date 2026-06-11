@@ -1,0 +1,33 @@
+# SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
+# SPDX-License-Identifier: AGPLv3+
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: solr-operator
+  namespace: argocd
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://solr.apache.org/charts
+    chart: solr-operator
+    targetRevision: 0.9.1
+    helm:
+      values: |
+        installCRDs: true
+        zookeeper-operator:
+          crd:
+            create: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: solr-operator
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
+    - RespectIgnoreDifferences=true
+    - ServerSideApply=true

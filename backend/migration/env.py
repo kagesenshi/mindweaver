@@ -24,6 +24,8 @@ from mindweaver.service.ldap_config.model import LdapConfig
 from mindweaver.fw.auth import User
 from mindweaver.service.project_user.model import ProjectLocalUser
 from mindweaver.service.name_tracker.model import NameTracker
+from mindweaver.service.ssh_key.model import SSHKey
+from mindweaver.service.git_repo.model import GitRepo
 
 # from mindweaver.auth.model import User # If exists
 

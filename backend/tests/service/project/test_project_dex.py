@@ -79,7 +79,7 @@ async def test_project_install_dex(client):
             action.session = session
             await action.run()
 
-            assert mock_exec.call_count >= 3
+            assert mock_exec.call_count >= 1
             mock_dump.assert_called_once()
             called_values = mock_dump.call_args[0][0]
             assert called_values["config"]["enablePasswordDB"] is True
@@ -167,8 +167,8 @@ async def test_project_install_dex_with_ingress_domain(client):
             action.session = session
             await action.run()
 
-            # Verify helm was executed, and also kubectl apply was executed
-            assert mock_exec.call_count >= 4
+            # Verify kubectl apply was executed for both Dex app and gateway
+            assert mock_exec.call_count >= 3
             called_values = mock_dump.call_args[0][0]
             assert called_values["config"]["issuer"] == "https://dex.ingress.test.local/dex"
 

@@ -72,12 +72,18 @@ def _get_jinja_env() -> j2.Environment:
     return env
 
 
-def _render_gateway_manifests(model, namespace: str, nodeport: Optional[int] = None) -> str:
+def _render_gateway_manifests(model, namespace: str, service_type: str = "NodePort", nodeport: Optional[int] = None) -> str:
     """Render Gateway and Certificate manifests from YAML templates."""
+    # Handle older test calls passing nodeport as the 3rd positional argument
+    if isinstance(service_type, int):
+        nodeport = service_type
+        service_type = "NodePort"
+
     vars = {
         "name": model.name,
         "namespace": namespace,
         "ingress_domain": model.ingress_domain,
+        "service_type": service_type,
         "nodeport": nodeport,
     }
 
@@ -85,7 +91,7 @@ def _render_gateway_manifests(model, namespace: str, nodeport: Optional[int] = N
     templates = sorted(env.list_templates())
     rendered = []
     for template_name in templates:
-        if not template_name.endswith((".yaml", ".yml", ".yml.j2", ".yaml.j2")):
+        if not template_name.endswith((".yaml", ".yml", ".yml.j2", ".yaml.j2")) or "dex-app" in template_name:
             continue
         template = env.get_template(template_name)
         rendered.append(template.render(**vars))
@@ -310,14 +316,12 @@ class InstallDexAction(BaseAction):
         gateway_manifest = ""
         if self.model.ingress_domain:
             gateway_manifest = _render_gateway_manifests(
-                self.model, namespace, self.model.envoy_nodeport
+                self.model, namespace, cluster.envoy_gateway_service_type, self.model.envoy_nodeport
             )
 
-
-        # 6. Install Dex using Helm and values file
+        # 6. Install Dex using ArgoCD Application
         kubeconfig_path = None
         temp_kf = None
-        temp_values = None
 
         try:
             if cluster.type == K8sClusterType.REMOTE:
@@ -329,78 +333,17 @@ class InstallDexAction(BaseAction):
                 temp_kf.close()
                 kubeconfig_path = temp_kf.name
 
-            # Write values to a temporary file
-            temp_values = tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False)
-            yaml.safe_dump(dex_values, temp_values)
-            temp_values.flush()
-            temp_values.close()
-
-            async def run_helm(*args):
-                cmd = ["helm"]
-                if kubeconfig_path:
-                    cmd.extend(["--kubeconfig", kubeconfig_path])
-                cmd.extend(args)
-                logger.debug(f"Running Helm command: {' '.join(cmd)}")
-                proc = await asyncio.create_subprocess_exec(
-                    *cmd,
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE,
-                )
-                stdout, stderr = await proc.communicate()
-                if proc.returncode != 0:
-                    raise RuntimeError(f"Helm command failed: {stderr.decode()}")
-                return stdout.decode()
-
-            # Ensure repo is added
-            await run_helm("repo", "add", "dex", "https://charts.dexidp.io")
-            await run_helm("repo", "update")
-
-            # Install
-            await run_helm(
-                "upgrade",
-                "--install",
-                "dex",
-                "dex/dex",
-                "--namespace",
-                namespace,
-                "--create-namespace",
-                "--wait",
-                "-f",
-                temp_values.name,
-            )
-
-            if gateway_manifest:
-                async def run_kubectl(manifest: str):
-                    temp_m = None
-                    try:
-                        temp_m = tempfile.NamedTemporaryFile(mode="w", delete=False)
-                        temp_m.write(manifest)
-                        temp_m.flush()
-                        temp_m.close()
-                        cmd = ["kubectl"]
-                        if kubeconfig_path:
-                            cmd.extend(["--kubeconfig", kubeconfig_path])
-                        cmd.extend(["apply", "-f", temp_m.name])
-                        proc = await asyncio.create_subprocess_exec(
-                            *cmd,
-                            stdout=asyncio.subprocess.PIPE,
-                            stderr=asyncio.subprocess.PIPE,
-                        )
-                        stdout, stderr = await proc.communicate()
-                        if proc.returncode != 0:
-                            raise RuntimeError(f"Kubectl command failed: {stderr.decode()}")
-                    finally:
-                        if temp_m:
-                            try:
-                                os.unlink(temp_m.name)
-                            except Exception:
-                                pass
-
-                async def run_kubectl_simple(*args):
+            async def run_kubectl(manifest: str):
+                temp_m = None
+                try:
+                    temp_m = tempfile.NamedTemporaryFile(mode="w", delete=False)
+                    temp_m.write(manifest)
+                    temp_m.flush()
+                    temp_m.close()
                     cmd = ["kubectl"]
                     if kubeconfig_path:
                         cmd.extend(["--kubeconfig", kubeconfig_path])
-                    cmd.extend(args)
+                    cmd.extend(["apply", "-f", temp_m.name])
                     proc = await asyncio.create_subprocess_exec(
                         *cmd,
                         stdout=asyncio.subprocess.PIPE,
@@ -409,8 +352,40 @@ class InstallDexAction(BaseAction):
                     stdout, stderr = await proc.communicate()
                     if proc.returncode != 0:
                         raise RuntimeError(f"Kubectl command failed: {stderr.decode()}")
-                    return stdout.decode()
+                finally:
+                    if temp_m:
+                        try:
+                            os.unlink(temp_m.name)
+                        except Exception:
+                            pass
 
+            async def run_kubectl_simple(*args):
+                cmd = ["kubectl"]
+                if kubeconfig_path:
+                    cmd.extend(["--kubeconfig", kubeconfig_path])
+                cmd.extend(args)
+                proc = await asyncio.create_subprocess_exec(
+                    *cmd,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+                stdout, stderr = await proc.communicate()
+                if proc.returncode != 0:
+                    raise RuntimeError(f"Kubectl command failed: {stderr.decode()}")
+                return stdout.decode()
+
+            # Render and apply Dex ArgoCD Application manifest
+            env = _get_jinja_env()
+            template = env.get_template("dex-app.yml.j2")
+            dex_manifest = template.render(
+                name=self.model.name,
+                namespace=namespace,
+                dex_values=yaml.safe_dump(dex_values)
+            )
+
+            await run_kubectl(dex_manifest)
+
+            if gateway_manifest:
                 # Ensure the dex certificate secret is recreated if deleted
                 await run_kubectl_simple(
                     "delete", "certificate", "-n", namespace,
@@ -419,12 +394,11 @@ class InstallDexAction(BaseAction):
                 await run_kubectl(gateway_manifest)
 
         finally:
-            for f in [temp_kf, temp_values]:
-                if f:
-                    try:
-                        os.unlink(f.name)
-                    except Exception:
-                        pass
+            if temp_kf:
+                try:
+                    os.unlink(temp_kf.name)
+                except Exception:
+                    pass
 
 
 @ProjectService.register_action("deploy_gateway")
@@ -466,7 +440,7 @@ class DeployGatewayAction(BaseAction):
         gateway_manifest = ""
         if self.model.ingress_domain:
             gateway_manifest = _render_gateway_manifests(
-                self.model, namespace, self.model.envoy_nodeport
+                self.model, namespace, cluster.envoy_gateway_service_type, self.model.envoy_nodeport
             )
 
 

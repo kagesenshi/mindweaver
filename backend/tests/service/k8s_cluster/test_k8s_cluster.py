@@ -112,6 +112,17 @@ def mock_k8s():
         yield {"core": mock_core, "version": mock_version}
 
 
+@pytest.fixture(autouse=True)
+def mock_get_kubernetes_clients():
+    with patch(
+        "mindweaver.service.k8s_cluster.actions.InstallArgoCDAction._get_kubernetes_clients"
+    ) as mock_clients:
+        mock_core = MagicMock()
+        mock_ext = MagicMock()
+        mock_clients.return_value = (mock_core, mock_ext)
+        yield mock_clients
+
+
 def test_poll_k8s_cluster_status(client: TestClient, mock_k8s):
     # Create cluster
     p1 = client.post(
@@ -194,6 +205,7 @@ async def test_install_argocd():
 @pytest.mark.asyncio
 async def test_install_cert_manager():
     from mindweaver.service.k8s_cluster.model import K8sCluster, K8sClusterType
+    import os
 
     cluster = K8sCluster(
         name="test-cluster-cm",
@@ -209,37 +221,40 @@ async def test_install_cert_manager():
 
     from mindweaver.service.k8s_cluster.actions import InstallCertManagerAction
 
-    with patch("asyncio.create_subprocess_exec") as mock_exec:
+    applied_manifests = []
+
+    def mock_subprocess(*args, **kwargs):
+        cmd = args
+        if len(cmd) > 0 and "kubectl" in cmd:
+            path = cmd[-1]
+            if os.path.exists(path):
+                with open(path, "r") as f:
+                    applied_manifests.append(f.read())
         mock_proc = MagicMock()
         mock_proc.returncode = 0
         mock_proc.communicate = pytest.importorskip("unittest.mock").AsyncMock(
             return_value=(b"success", b"")
         )
-        mock_exec.return_value = mock_proc
+        return mock_proc
 
+    with patch("asyncio.create_subprocess_exec", side_effect=mock_subprocess) as mock_exec:
         action = InstallCertManagerAction(cluster, mock_svc)
         await action.run()
 
-        # Verify helm repo add
-        # Verify helm upgrade --install
-        assert mock_exec.call_count >= 3  # add, update, upgrade
-
-        calls = [call[0] for call in mock_exec.call_args_list]
-        found_upgrade = False
-        for call_args in calls:
-            if "upgrade" in call_args and "--install" in call_args:
-                if "cert-manager" in call_args:
-                    found_upgrade = True
-                    assert "jetstack/cert-manager" in call_args
-                    assert "--kubeconfig" in call_args
-                    assert "installCRDs=true" in " ".join(call_args)
-
-        assert found_upgrade
+        assert len(applied_manifests) == 1
+        manifest = applied_manifests[0]
+        assert "kind: Application" in manifest
+        assert "name: cert-manager" in manifest
+        assert "repoURL: https://charts.jetstack.io" in manifest
+        assert "chart: cert-manager" in manifest
+        assert "targetRevision: v1.20.0" in manifest
+        assert "installCRDs: true" in manifest
 
 
 @pytest.mark.asyncio
 async def test_install_cnpg():
     from mindweaver.service.k8s_cluster.model import K8sCluster, K8sClusterType
+    import os
 
     cluster = K8sCluster(
         name="test-cluster-cnpg",
@@ -255,31 +270,33 @@ async def test_install_cnpg():
 
     from mindweaver.service.k8s_cluster.actions import InstallCNPGAction
 
-    with patch("asyncio.create_subprocess_exec") as mock_exec:
+    applied_manifests = []
+
+    def mock_subprocess(*args, **kwargs):
+        cmd = args
+        if len(cmd) > 0 and "kubectl" in cmd:
+            path = cmd[-1]
+            if os.path.exists(path):
+                with open(path, "r") as f:
+                    applied_manifests.append(f.read())
         mock_proc = MagicMock()
         mock_proc.returncode = 0
         mock_proc.communicate = pytest.importorskip("unittest.mock").AsyncMock(
             return_value=(b"success", b"")
         )
-        mock_exec.return_value = mock_proc
+        return mock_proc
 
+    with patch("asyncio.create_subprocess_exec", side_effect=mock_subprocess) as mock_exec:
         action = InstallCNPGAction(cluster, mock_svc)
         await action.run()
 
-        # Verify helm repo add
-        # Verify helm upgrade --install
-        assert mock_exec.call_count >= 3  # add, update, upgrade
-
-        calls = [call[0] for call in mock_exec.call_args_list]
-        found_upgrade = False
-        for call_args in calls:
-            if "upgrade" in call_args and "--install" in call_args:
-                if "cnpg" in call_args:
-                    found_upgrade = True
-                    assert "cnpg/cloudnative-pg" in call_args
-                    assert "--kubeconfig" in call_args
-
-        assert found_upgrade
+        assert len(applied_manifests) == 1
+        manifest = applied_manifests[0]
+        assert "kind: Application" in manifest
+        assert "name: cnpg" in manifest
+        assert "repoURL: https://cloudnative-pg.github.io/charts" in manifest
+        assert "chart: cloudnative-pg" in manifest
+        assert "targetRevision: 0.27.1" in manifest
 
 
 def test_poll_k8s_cluster_error(client: TestClient):
@@ -341,6 +358,7 @@ def test_install_argocd_action_triggers_task(client: TestClient):
 @pytest.mark.asyncio
 async def test_install_envoy_gateway():
     from mindweaver.service.k8s_cluster.model import K8sCluster, K8sClusterType
+    import os
 
     cluster = K8sCluster(
         name="test-cluster-eg",
@@ -356,35 +374,41 @@ async def test_install_envoy_gateway():
 
     from mindweaver.service.k8s_cluster.actions import InstallEnvoyGatewayAction
 
-    with patch("asyncio.create_subprocess_exec") as mock_exec:
+    applied_manifests = []
+
+    def mock_subprocess(*args, **kwargs):
+        cmd = args
+        if len(cmd) > 0 and "kubectl" in cmd:
+            path = cmd[-1]
+            if os.path.exists(path):
+                with open(path, "r") as f:
+                    applied_manifests.append(f.read())
         mock_proc = MagicMock()
         mock_proc.returncode = 0
         mock_proc.communicate = pytest.importorskip("unittest.mock").AsyncMock(
             return_value=(b"success", b"")
         )
-        mock_exec.return_value = mock_proc
+        return mock_proc
 
+    with patch("asyncio.create_subprocess_exec", side_effect=mock_subprocess) as mock_exec:
         action = InstallEnvoyGatewayAction(cluster, mock_svc)
         await action.run()
 
-        # Verify helm upgrade --install with OCI chart and kubectl apply
-        assert mock_exec.call_count == 2
+        # Verify that kubectl apply applied the Envoy Gateway Application and the global GatewayClass/EnvoyProxy config
+        assert len(applied_manifests) == 2
 
-        calls = [call[0] for call in mock_exec.call_args_list]
-        found_upgrade = False
-        found_kubectl = False
-        for call_args in calls:
-            if "upgrade" in call_args and "--install" in call_args:
-                if "eg" in call_args:
-                    found_upgrade = True
-                    assert "oci://docker.io/envoyproxy/gateway-helm" in call_args
-                    assert "--kubeconfig" in call_args
-                    assert "envoy-gateway-system" in call_args
-            elif "kubectl" in call_args and "apply" in call_args:
-                found_kubectl = True
+        # Manifest 1: ArgoCD Application
+        app_manifest = applied_manifests[0]
+        assert "kind: Application" in app_manifest
+        assert "name: envoy-gateway" in app_manifest
+        assert "repoURL: docker.io/envoyproxy" in app_manifest
+        assert "chart: gateway-helm" in app_manifest
+        assert "targetRevision: 1.8.1" in app_manifest
 
-        assert found_upgrade
-        assert found_kubectl
+        # Manifest 2: Envoy Gateway configuration
+        config_manifest = applied_manifests[1]
+        assert "kind: GatewayClass" in config_manifest
+        assert "kind: EnvoyProxy" in config_manifest
 
 
 def test_install_envoy_gateway_action_triggers_task(client: TestClient):
@@ -447,6 +471,7 @@ def test_sync_core_integrations_action_triggers_task(client: TestClient):
 @pytest.mark.asyncio
 async def test_install_envoy_gateway_with_loadbalancer():
     from mindweaver.service.k8s_cluster.model import K8sCluster, K8sClusterType, EnvoyGatewayServiceType
+    import os
 
     cluster = K8sCluster(
         name="test-cluster-eg-lb",
@@ -463,31 +488,36 @@ async def test_install_envoy_gateway_with_loadbalancer():
 
     from mindweaver.service.k8s_cluster.actions import InstallEnvoyGatewayAction
 
-    with patch("asyncio.create_subprocess_exec") as mock_exec:
+    applied_manifests = []
+
+    def mock_subprocess(*args, **kwargs):
+        cmd = args
+        if len(cmd) > 0 and "kubectl" in cmd:
+            path = cmd[-1]
+            if os.path.exists(path):
+                with open(path, "r") as f:
+                    applied_manifests.append(f.read())
         mock_proc = MagicMock()
         mock_proc.returncode = 0
         mock_proc.communicate = pytest.importorskip("unittest.mock").AsyncMock(
             return_value=(b"success", b"")
         )
-        mock_exec.return_value = mock_proc
+        return mock_proc
 
+    with patch("asyncio.create_subprocess_exec", side_effect=mock_subprocess) as mock_exec:
         action = InstallEnvoyGatewayAction(cluster, mock_svc)
         await action.run()
 
-        # Verify that kubectl apply applied LoadBalancer service type
-        assert mock_exec.call_count == 2
-        calls = [call[0] for call in mock_exec.call_args_list]
-        found_kubectl = False
-        for call_args in calls:
-            if "kubectl" in call_args and "apply" in call_args:
-                found_kubectl = True
-
-        assert found_kubectl
+        # Verify that kubectl apply applied both the Application and EnvoyProxy LoadBalancer type
+        assert len(applied_manifests) == 2
+        config_manifest = applied_manifests[1]
+        assert "type: LoadBalancer" in config_manifest
 
 
 @pytest.mark.asyncio
 async def test_install_solr_operator():
     from mindweaver.service.k8s_cluster.model import K8sCluster, K8sClusterType
+    import os
 
     cluster = K8sCluster(
         name="test-cluster-solr-op",
@@ -503,32 +533,35 @@ async def test_install_solr_operator():
 
     from mindweaver.service.k8s_cluster.actions import InstallSolrOperatorAction
 
-    with patch("asyncio.create_subprocess_exec") as mock_exec:
+    applied_manifests = []
+
+    def mock_subprocess(*args, **kwargs):
+        cmd = args
+        if len(cmd) > 0 and "kubectl" in cmd:
+            path = cmd[-1]
+            if os.path.exists(path):
+                with open(path, "r") as f:
+                    applied_manifests.append(f.read())
         mock_proc = MagicMock()
         mock_proc.returncode = 0
         mock_proc.communicate = pytest.importorskip("unittest.mock").AsyncMock(
             return_value=(b"success", b"")
         )
-        mock_exec.return_value = mock_proc
+        return mock_proc
 
+    with patch("asyncio.create_subprocess_exec", side_effect=mock_subprocess) as mock_exec:
         action = InstallSolrOperatorAction(cluster, mock_svc)
         await action.run()
 
-        # Verify helm upgrade --install with Solr Operator chart
-        assert mock_exec.call_count >= 3  # add, update, upgrade
-
-        calls = [call[0] for call in mock_exec.call_args_list]
-        found_upgrade = False
-        for call_args in calls:
-            if "upgrade" in call_args and "--install" in call_args:
-                if "solr-operator" in call_args:
-                    found_upgrade = True
-                    assert "apache-solr/solr-operator" in call_args
-                    assert "--kubeconfig" in call_args
-                    assert "zookeeper-operator.crd.create=true" in " ".join(call_args)
-                    assert "installCRDs=true" in " ".join(call_args)
-
-        assert found_upgrade
+        assert len(applied_manifests) == 1
+        manifest = applied_manifests[0]
+        assert "kind: Application" in manifest
+        assert "name: solr-operator" in manifest
+        assert "repoURL: https://solr.apache.org/charts" in manifest
+        assert "chart: solr-operator" in manifest
+        assert "targetRevision: 0.9.1" in manifest
+        assert "installCRDs: true" in manifest
+        assert "zookeeper-operator" in manifest
 
 
 
