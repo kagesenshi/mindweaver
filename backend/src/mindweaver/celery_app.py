@@ -8,7 +8,12 @@ app = Celery(
     "mindweaver",
     broker=settings.celery_broker_url,
     backend=settings.celery_result_backend,
-    include=["mindweaver.tasks.platform_status", "mindweaver.tasks.k8s_cluster_status", "mindweaver.tasks.project_tasks"],
+    include=[
+        "mindweaver.tasks.platform_status",
+        "mindweaver.tasks.k8s_cluster_status",
+        "mindweaver.tasks.project_tasks",
+        "mindweaver.tasks.name_tracker",
+    ],
 )
 
 app.conf.update(
@@ -25,6 +30,10 @@ app.conf.update(
         "poll-all-k8s-clusters-15s": {
             "task": "mindweaver.tasks.k8s_cluster_status.poll_all_k8s_clusters",
             "schedule": 15.0,
+        },
+        "scan-and-clean-names-daily": {
+            "task": "mindweaver.tasks.name_tracker.scan_and_clean_names_task",
+            "schedule": 86400.0,
         },
     },
 )

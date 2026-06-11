@@ -17,7 +17,7 @@ from mindweaver.fw.exc import ModelValidationError
 from mindweaver.service.base import ProjectScopedNamedBase, ProjectScopedService
 from mindweaver.service.project import Project
 from mindweaver.service.k8s_cluster import K8sCluster, K8sClusterType
-from mindweaver.fw.service import after_update, before_delete
+from mindweaver.fw.service import after_update, before_delete, before_create, after_create
 from mindweaver.fw.state import BaseState
 import os
 import pydantic
@@ -203,6 +203,38 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
         To be overridden by subclasses.
         """
         pass
+
+    @before_create()
+    async def _validate_name_availability(self, data: T):
+        """Ensure the name is not already in use in the NameTracker"""
+        from mindweaver.service.name_tracker.model import NameTracker
+        stmt = select(NameTracker).where(NameTracker.name == data.name)
+        result = await self.session.exec(stmt)
+        if result.first():
+            raise ModelValidationError(
+                message=f"Name '{data.name}' is already in use"
+            )
+
+    @after_create()
+    async def _track_name_on_create(self, model: T):
+        """Automatically insert new infrastructure component names into the tracker"""
+        from mindweaver.service.name_tracker.model import NameTracker
+        from mindweaver.fw.model import ts_now
+        stmt = select(NameTracker).where(NameTracker.name == model.name)
+        result = await self.session.exec(stmt)
+        tracker = result.first()
+        if not tracker:
+            tracker = NameTracker(
+                name=model.name,
+                module=self.model_class().__tablename__,
+                last_seen=ts_now(),
+            )
+            self.session.add(tracker)
+            await self.session.flush()
+        else:
+            tracker.last_seen = ts_now()
+            tracker.module = self.model_class().__tablename__
+            await self.session.flush()
 
     @before_delete()
     async def _delete_associated_state(self, model: T):

@@ -23,6 +23,7 @@ from mindweaver.platform_service.solr.model import SolrPlatform, SolrPlatformSta
 from mindweaver.service.ldap_config.model import LdapConfig
 from mindweaver.fw.auth import User
 from mindweaver.service.project_user.model import ProjectLocalUser
+from mindweaver.service.name_tracker.model import NameTracker
 
 # from mindweaver.auth.model import User # If exists
 

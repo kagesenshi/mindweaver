@@ -26,6 +26,7 @@ from .platform_service.airflow import router as airflow_router
 from .platform_service.ranger import router as ranger_router
 from .platform_service.solr import router as solr_router
 from .platform_service.zookeeper import router as zookeeper_router
+from .service.name_tracker import router as name_tracker_router
 
 from .fw.model import get_engine, get_session
 from sqlmodel import select
@@ -43,6 +44,10 @@ from contextlib import asynccontextmanager
 
 @asynccontextmanager
 async def lifespan(app: fastapi.FastAPI):
+    import asyncio
+    from mindweaver.tasks.name_tracker import scan_and_clean_names
+    asyncio.create_task(scan_and_clean_names())
+
     if settings.default_admin_username and settings.default_admin_password:
         async for session in get_session(get_engine()):
             statement = select(User).where(User.name == settings.default_admin_username)
@@ -196,6 +201,7 @@ app.include_router(solr_router, prefix="/api/v1")
 app.include_router(zookeeper_router, prefix="/api/v1")
 app.include_router(s3_router, prefix="/api/v1")
 app.include_router(ldap_config_router, prefix="/api/v1")
+app.include_router(name_tracker_router, prefix="/api/v1")
 
 if settings.experimental_data_source:
     app.include_router(db_router, prefix="/api/v1/database-sources")

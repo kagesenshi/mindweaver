@@ -61,6 +61,13 @@ const DynamicForm = ({
                         if (widget?.default_value !== undefined) {
                             defaults[key] = widget.default_value;
                         }
+                        // Default name proposal for platform services at UI level
+                        if (key === 'name' && entityPath && entityPath.includes('/platform/') && !initialData.name) {
+                            const serviceName = entityPath.split('/').pop().toLowerCase().replace(/[^a-z0-9-]/g, '');
+                            const timeHash = Math.floor(Date.now() / 1000).toString(36).slice(-4);
+                            const randPart = Math.random().toString(36).slice(2, 6);
+                            defaults[key] = `${serviceName}-${timeHash}${randPart}`;
+                        }
                     });
                     setFormData(prev => ({ ...defaults, ...prev }));
                 }
@@ -135,6 +142,7 @@ const DynamicForm = ({
         };
 
         fetchSchema();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [entityPath, mode]); // Removed initialData from dependencies to prevent infinite loop
 
     const handleSubmit = async (e) => {
