@@ -29,7 +29,7 @@ const ListingView = ({ context, projectsHook, onSelectProject }) => {
     );
 
     const renderActions = (proj, state, { onDelete }) => {
-        const resourceCount = (state.pgsql || 0) + (state.trino || 0) + (state.spark || 0) + (state.airflow || 0);
+        const resourceCount = (state.pgsql || 0) + (state.trino || 0) + (state.airflow || 0);
         const cluster = state.cluster || {};
 
         return (

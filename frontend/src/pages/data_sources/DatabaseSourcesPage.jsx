@@ -23,7 +23,7 @@ const DatabaseSourcesPage = () => {
             darkMode={darkMode}
             hook={hook}
             title="Database Sources"
-            description="Manage external databases for Trino catalogs and Spark jobs."
+            description="Manage external databases for Trino catalogs."
             entityPath="/database-sources"
             icon={Database}
             renderSubtitle={renderSubtitle}

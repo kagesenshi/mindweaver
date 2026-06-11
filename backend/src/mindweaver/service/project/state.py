@@ -204,8 +204,6 @@ class ProjectState(BaseState):
             "airflow": airflow_count,
             "ranger": ranger_count,
             "solr": solr_count,
-            "spark": 0,
-            "airflow": 0,
             "cluster": status_data,
             "dex_installed": dex_installed,
             "dex_version": dex_version,
