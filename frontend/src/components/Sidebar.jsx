@@ -46,6 +46,7 @@ const CONNECTIVITY_ITEMS = [
     { name: 'S3 Storages', to: '/s3-storages', icon: HardDrive },
     { name: 'SSH Keys', to: '/ssh-keys', icon: Key },
     { name: 'Git Repositories', to: '/git-repos', icon: GitBranch },
+    { name: 'Container Registry', to: '/container-registries', icon: Layers },
 ];
 
 

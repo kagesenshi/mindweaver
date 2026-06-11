@@ -1055,3 +1055,53 @@ export const useGitRepos = () => {
     return { repos, loading, error, fetchRepos, createRepo, updateRepo, deleteRepo, testConnection };
 };
 
+export const useContainerRegistries = () => {
+    const [registries, setRegistries] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+
+    const fetchRegistries = useCallback(async () => {
+        setLoading(true);
+        try {
+            const response = await apiClient.get('/container_registries');
+            setRegistries(response.data.data || []);
+        } catch (err) {
+            setError(err);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    const createRegistry = useCallback(async (data) => {
+        const response = await apiClient.post('/container_registries', data);
+        await fetchRegistries();
+        return response.data;
+    }, [fetchRegistries]);
+
+    const updateRegistry = useCallback(async (id, data) => {
+        const response = await apiClient.put(`/container_registries/${id}`, data);
+        await fetchRegistries();
+        return response.data;
+    }, [fetchRegistries]);
+
+    const deleteRegistry = useCallback(async (id, confirmName) => {
+        await apiClient.delete(`/container_registries/${id}`, {
+            headers: { 'X-RESOURCE-NAME': confirmName }
+        });
+        await new Promise(resolve => setTimeout(resolve, 500));
+        await fetchRegistries();
+    }, [fetchRegistries]);
+
+    const testConnection = useCallback(async (data) => {
+        const response = await apiClient.post('/container_registries/_test-connection', data);
+        return response.data;
+    }, []);
+
+    useEffect(() => {
+        fetchRegistries();
+    }, [fetchRegistries]);
+
+    return { registries, loading, error, fetchRegistries, createRegistry, updateRegistry, deleteRegistry, testConnection };
+};
+
+
