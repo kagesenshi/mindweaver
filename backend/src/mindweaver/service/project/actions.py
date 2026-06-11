@@ -257,8 +257,8 @@ class InstallDexAction(BaseAction):
         for af in airflow_platforms:
             redirect_uris = []
             if self.model.ingress_domain:
-                redirect_uris.append(f"https://{af.name}.{self.model.ingress_domain}/oauth-authorized/dex")
-                redirect_uris.append(f"http://{af.name}.{self.model.ingress_domain}/oauth-authorized/dex")
+                redirect_uris.append(f"https://{af.name}.{self.model.ingress_domain}/auth/oauth-authorized/dex")
+                redirect_uris.append(f"http://{af.name}.{self.model.ingress_domain}/auth/oauth-authorized/dex")
                 redirect_uris.append(f"https://{af.name}.{self.model.ingress_domain}/api/v1/database/oauth2/")
                 redirect_uris.append(f"http://{af.name}.{self.model.ingress_domain}/api/v1/database/oauth2/")
             else:
@@ -396,6 +396,26 @@ class InstallDexAction(BaseAction):
                             except Exception:
                                 pass
 
+                async def run_kubectl_simple(*args):
+                    cmd = ["kubectl"]
+                    if kubeconfig_path:
+                        cmd.extend(["--kubeconfig", kubeconfig_path])
+                    cmd.extend(args)
+                    proc = await asyncio.create_subprocess_exec(
+                        *cmd,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE,
+                    )
+                    stdout, stderr = await proc.communicate()
+                    if proc.returncode != 0:
+                        raise RuntimeError(f"Kubectl command failed: {stderr.decode()}")
+                    return stdout.decode()
+
+                # Ensure the dex certificate secret is recreated if deleted
+                await run_kubectl_simple(
+                    "delete", "certificate", "-n", namespace,
+                    "dex-tls", "--ignore-not-found"
+                )
                 await run_kubectl(gateway_manifest)
 
         finally:

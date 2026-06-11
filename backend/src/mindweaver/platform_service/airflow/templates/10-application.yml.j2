@@ -57,7 +57,96 @@ spec:
             failureThreshold: 10
             periodSeconds: 30
             scheme: HTTP
-          {% if ldap %}
+          {% if oidc_enabled %}
+          apiServerConfig: |
+            import logging
+            from flask_appbuilder.security.manager import AUTH_OAUTH
+            
+            log = logging.getLogger("airflow.security")
+            
+            try:
+                from airflow.providers.fab.auth_manager.security_manager.override import FabAirflowSecurityManagerOverride as BaseSecurityManager
+            except ImportError:
+                try:
+                    from airflow.providers.fab.auth_manager.security_manager import FabSecurityManager as BaseSecurityManager
+                except ImportError:
+                    from flask_appbuilder.security.sqla.manager import SecurityManager as BaseSecurityManager
+            
+            class CustomSecurityManager(BaseSecurityManager):
+                def _extract_user_info(self, provider):
+                    try:
+                        remote_app = self.appbuilder.sm.oauth_remotes.get(provider)
+                        if not remote_app:
+                            log.error("DEBUG OIDC: No remote app found for provider: %s", provider)
+                            return {}
+                        userinfo_resp = remote_app.get('userinfo')
+                        userinfo_data = userinfo_resp.json()
+                        username = userinfo_data.get('preferred_username') or userinfo_data.get('sub') or userinfo_data.get('email')
+                        email = userinfo_data.get('email')
+                        name = userinfo_data.get('name') or username
+                        first_name = userinfo_data.get('given_name') or (name.split()[0] if name else '') or username
+                        last_name = userinfo_data.get('family_name') or (name.split()[1] if name and len(name.split()) > 1 else '')
+                        return {
+                            'username': username,
+                            'email': email,
+                            'first_name': first_name,
+                            'last_name': last_name,
+                            'role_keys': userinfo_data.get('groups', [])
+                        }
+                    except Exception:
+                        log.exception("DEBUG OIDC: Failed to extract user info directly from provider %s", provider)
+                        raise
+
+                def oauth_user_info(self, provider, response=None):
+                    func = getattr(super(), 'oauth_user_info', None)
+                    if func and callable(func):
+                        try:
+                            user_info = func(provider, response)
+                            if user_info:
+                                return user_info
+                        except Exception:
+                            log.exception("DEBUG OIDC: super().oauth_user_info failed, falling back to direct extraction")
+                    return self._extract_user_info(provider)
+
+                def get_oauth_user_info(self, provider, response):
+                    func = getattr(super(), 'get_oauth_user_info', None)
+                    if func and callable(func):
+                        try:
+                            user_info = func(provider, response)
+                            if user_info:
+                                return user_info
+                        except Exception:
+                            log.exception("DEBUG OIDC: super().get_oauth_user_info failed, falling back to direct extraction")
+                    return self._extract_user_info(provider)
+
+            SECURITY_MANAGER_CLASS = CustomSecurityManager
+            
+            AUTH_TYPE = AUTH_OAUTH
+            OAUTH_PROVIDERS = [
+                {
+                    'name': 'dex',
+                    'token_key': 'access_token',
+                    'icon': 'fa-key',
+                    'save_token': True,
+                    'remote_app': {
+                        'client_id': '{{ oidc_client_id }}',
+                        'client_secret': '{{ oidc_client_secret }}',
+                        'api_base_url': '{{ oidc_internal_issuer }}/',
+                        'access_token_url': '{{ oidc_internal_issuer }}/token',
+                        'authorize_url': '{{ oidc_external_issuer }}/auth',
+                        'userinfo_endpoint': '{{ oidc_internal_issuer }}/userinfo',
+                        'jwks_uri': '{{ oidc_internal_issuer }}/keys',
+                        'client_kwargs': {
+                            'scope': 'openid email profile groups'
+                        },
+                    }
+                }
+            ]
+            AUTH_USER_REGISTRATION = True
+            AUTH_USER_REGISTRATION_ROLE = "Viewer"
+            AUTH_ROLES_SYNC_AT_LOGIN = True
+            PERMANENT_SESSION_LIFETIME = 1800
+          {% elif ldap %}
           {% set sf = ldap.user_search_filter %}
           {% if '{0}' in sf %}{% set sf = '' %}{% endif %}
           apiServerConfig: |
@@ -106,8 +195,11 @@ spec:
               memory: {{ mem_limit }}Gi
 
         createUserJob:
-          useHelmHooks: true
+          useHelmHooks: false
           applyCustomEnv: false
+          jobAnnotations:
+            argocd.argoproj.io/hook: PreSync
+            argocd.argoproj.io/hook-delete-policy: hook-succeeded
           command:
             - "bash"
             - "/opt/airflow/scripts/create-user.sh"
@@ -118,7 +210,10 @@ spec:
           ttlSecondsAfterFinished: null
 
         migrateDatabaseJob:
-          useHelmHooks: true
+          useHelmHooks: false
+          jobAnnotations:
+            argocd.argoproj.io/hook: PreSync
+            argocd.argoproj.io/hook-delete-policy: hook-succeeded
           applyCustomEnv: false
           ttlSecondsAfterFinished: null
         runAirflowMigrations: true
