@@ -118,9 +118,6 @@ const createGenericSourceHook = (endpoint) => {
 };
 
 export const useDatabaseSources = createGenericSourceHook('/database-sources');
-export const useWebSources = createGenericSourceHook('/web-sources');
-export const useApiSources = createGenericSourceHook('/api-sources');
-export const useStreamingSources = createGenericSourceHook('/streaming-sources');
 
 export const usePgSql = () => {
     const [platforms, setPlatforms] = useState([]);

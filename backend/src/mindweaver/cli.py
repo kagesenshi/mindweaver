@@ -12,9 +12,6 @@ from sqlmodel import SQLModel, Session, select
 import mindweaver.fw.model
 from mindweaver.datasource_service import (
     DatabaseSource,
-    WebSource,
-    APISource,
-    StreamingSource,
 )
 from mindweaver.crypto import generate_fernet_key, rotate_key, EncryptionError
 import asyncio
@@ -158,7 +155,7 @@ def handle_crypto_rotate_key(args: CryptoRotateKeyArgs):
 
     try:
         with Session(engine) as session:
-            source_models = [DatabaseSource, WebSource, APISource, StreamingSource]
+            source_models = [DatabaseSource]
             rotated_count = 0
             total_count = 0
 

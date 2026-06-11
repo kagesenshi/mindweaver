@@ -11,9 +11,6 @@ const CallbackPage = lazy(() => import('./pages/CallbackPage'))
 const ProjectsPage = lazy(() => import('./pages/projects/Page'))
 const K8sClustersPage = lazy(() => import('./pages/k8s_clusters/Page'))
 const DatabaseSourcesPage = lazy(() => import('./pages/data_sources/DatabaseSourcesPage'))
-const WebSourcesPage = lazy(() => import('./pages/data_sources/WebSourcesPage'))
-const ApiSourcesPage = lazy(() => import('./pages/data_sources/ApiSourcesPage'))
-const StreamingSourcesPage = lazy(() => import('./pages/data_sources/StreamingSourcesPage'))
 const PgSqlPage = lazy(() => import('./pages/pgsql/Page'))
 const S3StoragePage = lazy(() => import('./pages/s3_storage/Page'))
 const LdapConfigPage = lazy(() => import('./pages/ldap_config/Page'))
@@ -52,18 +49,6 @@ const router = createBrowserRouter([
       {
         path: 'database-sources',
         element: <DatabaseSourcesPage />,
-      },
-      {
-        path: 'web-sources',
-        element: <WebSourcesPage />,
-      },
-      {
-        path: 'api-sources',
-        element: <ApiSourcesPage />,
-      },
-      {
-        path: 'streaming-sources',
-        element: <StreamingSourcesPage />,
       },
       {
         path: 's3-storages',

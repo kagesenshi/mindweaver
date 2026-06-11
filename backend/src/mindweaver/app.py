@@ -10,9 +10,6 @@ from .service.k8s_cluster import router as k8s_cluster_router
 from .service.project_user import router as project_user_router
 from .datasource_service import (
     db_router,
-    web_router,
-    api_router,
-    streaming_router,
 )
 from .fw.auth import (
     router as auth_router,
@@ -202,6 +199,3 @@ app.include_router(ldap_config_router, prefix="/api/v1")
 
 if settings.experimental_data_source:
     app.include_router(db_router, prefix="/api/v1/database-sources")
-    app.include_router(web_router, prefix="/api/v1/web-sources")
-    app.include_router(api_router, prefix="/api/v1/api-sources")
-    app.include_router(streaming_router, prefix="/api/v1/streaming-sources")

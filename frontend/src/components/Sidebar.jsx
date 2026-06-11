@@ -39,9 +39,6 @@ const ENVIRONMENT_ITEMS = [
 
 const DATA_SOURCE_ITEMS = [
     { name: 'Database Sources', to: '/database-sources', icon: Database },
-    { name: 'Web Sources', to: '/web-sources', icon: Globe },
-    { name: 'API Sources', to: '/api-sources', icon: Layers },
-    { name: 'Streaming Sources', to: '/streaming-sources', icon: RefreshCcw },
 ];
 
 const CONNECTIVITY_ITEMS = [
