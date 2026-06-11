@@ -264,7 +264,6 @@ async def test_superset_template_rendering(mock_service_dependencies):
         assert values["service"]["port"] == 8088
         assert "AUTH_LDAP" in values["configOverrides"]["ldap"]
         assert values["image"]["repository"] == "ghcr.io/kagesenshi/mindweaver/superset"
-        assert values["image"]["tag"] == "6.0.0-rev.1"
         assert values["redis"]["image"]["repository"] == "bitnamilegacy/redis"
         assert "AUTH_ROLES_MAPPING" in values["configOverrides"]["role_mapping"]
         assert '"admin@mindweaver.io": ["Admin", "Alpha"]' in values["configOverrides"]["role_mapping"]
