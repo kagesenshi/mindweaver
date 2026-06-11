@@ -1,5 +1,6 @@
 {
     "yaml.validate": false,
     "python.terminal.useEnvFile": true,
-    "python.terminal.activateEnvironment": false
+    "python.terminal.activateEnvironment": false,
+    "editor.formatOnSave": false
 }
