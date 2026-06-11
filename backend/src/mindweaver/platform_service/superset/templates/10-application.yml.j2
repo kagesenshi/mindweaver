@@ -279,6 +279,24 @@ spec:
 
             AUTH_ROLES_SYNC_AT_LOGIN = True
           {% endif %}
+          {% if ldap or oidc_enabled %}
+          bootstrap_overrides: |
+            from flask_appbuilder.security.manager import AUTH_LDAP, AUTH_OAUTH
+
+            def common_bootstrap_overrides(bootstrap_data: dict) -> dict:
+                conf = bootstrap_data.get("conf", {})
+                if conf.get("AUTH_TYPE") in (AUTH_LDAP, AUTH_OAUTH):
+                    return {
+                        **bootstrap_data,
+                        "conf": {
+                            **conf,
+                            "AUTH_USER_REGISTRATION": False,
+                        },
+                    }
+                return bootstrap_data
+
+            COMMON_BOOTSTRAP_OVERRIDES_FUNC = common_bootstrap_overrides
+          {% endif %}
 
         {% if datasources %}
         extraConfigs:
