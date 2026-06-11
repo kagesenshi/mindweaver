@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
+// SPDX-License-Identifier: AGPLv3+
+
 import { NavLink, useLocation } from 'react-router-dom';
 import {
     Monitor,
@@ -52,13 +55,13 @@ const CONNECTIVITY_ITEMS = [
 
 const INFRA_ITEMS = [
     { name: 'PostgreSQL', to: '/platform/pgsql', icon: Database },
+    { name: 'ZooKeeper', to: '/platform/zookeeper', icon: Network },
+    { name: 'Apache Solr', to: '/platform/solr', icon: Search },
+    { name: 'Apache Ranger', to: '/platform/ranger', icon: ShieldCheck },
     { name: 'Hive Metastore', to: '/platform/hive-metastore', icon: Boxes },
     { name: 'Trino', to: '/platform/trino', icon: Wind },
-    { name: 'Apache Airflow', to: '/platform/airflow', icon: Activity },
     { name: 'Apache Superset', to: '/platform/superset', icon: BarChart3 },
-    { name: 'Apache Ranger', to: '/platform/ranger', icon: ShieldCheck },
-    { name: 'Apache Solr', to: '/platform/solr', icon: Search },
-    { name: 'ZooKeeper', to: '/platform/zookeeper', icon: Network },
+    { name: 'Apache Airflow', to: '/platform/airflow', icon: Activity },
 ];
 
 const Sidebar = ({ darkMode, isCollapsed, toggleSidebar, onNavItemClick }) => {
