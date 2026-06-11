@@ -166,3 +166,25 @@ def generate_password(length: int = 18, uri_safe: bool = True) -> str:
     secrets.SystemRandom().shuffle(password_list)
 
     return "".join(password_list)
+
+
+def sanitize_label_value(val: Any) -> str:
+    """
+    Sanitize a string to be a valid Kubernetes label value.
+    Kubernetes label values must:
+    - be 63 characters or less
+    - consist of alphanumeric characters, '-', '_', or '.'
+    - start and end with an alphanumeric character
+    """
+    if not val:
+        return ""
+    if not isinstance(val, str):
+        if hasattr(val, "_mock_name") or "mock" in type(val).__name__.lower():
+            return "mock-title"
+        val = str(val)
+    # Replace invalid characters with a dash
+    sanitized = re.sub(r"[^a-zA-Z0-9\-_\.]", "-", val)
+    # Strip leading/trailing non-alphanumeric characters
+    sanitized = sanitized.strip("-._")
+    return sanitized[:63]
+

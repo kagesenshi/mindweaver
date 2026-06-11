@@ -6,6 +6,14 @@ kind: Application
 metadata:
   name: cnpg-operator
   namespace: argocd
+  labels:
+    {% if project_title %}
+    project: "{{ project_title }}"
+    {% endif %}
+    {% if service_title %}
+    service: "{{ service_title }}"
+    {% endif %}
+    manager: mindweaver
   finalizers:
   - resources-finalizer.argocd.argoproj.io
 spec:

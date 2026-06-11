@@ -11,7 +11,7 @@ import jinja2 as j2
 import kubernetes
 from kubernetes import client, config, utils, dynamic
 import logging
-from mindweaver.fw.util import format_k8s_resource
+from mindweaver.fw.util import format_k8s_resource, sanitize_label_value
 from mindweaver.fw.model import Base
 from mindweaver.fw.exc import ModelValidationError
 from mindweaver.service.base import ProjectScopedNamedBase, ProjectScopedService
@@ -120,6 +120,9 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
 
         rendered_manifests = []
         vars = await self.template_vars(model)
+        project = await self.project(model)
+        vars["project_title"] = sanitize_label_value(project.title)
+        vars["service_title"] = sanitize_label_value(model.title)
 
         for template_name in templates:
             if not template_name.endswith((".yaml", ".yml", ".yml.j2", ".yaml.j2")):

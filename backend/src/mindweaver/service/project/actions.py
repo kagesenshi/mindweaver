@@ -18,6 +18,7 @@ from mindweaver.service.k8s_cluster import K8sCluster, K8sClusterType
 from mindweaver.service.project_user.model import ProjectLocalUser
 from mindweaver.service.ldap_config.service import LdapConfigService
 from mindweaver.crypto import decrypt_password
+from mindweaver.fw.util import sanitize_label_value
 
 logger = logging.getLogger(__name__)
 
@@ -380,7 +381,9 @@ class InstallDexAction(BaseAction):
             dex_manifest = template.render(
                 name=self.model.name,
                 namespace=namespace,
-                dex_values=yaml.safe_dump(dex_values)
+                dex_values=yaml.safe_dump(dex_values),
+                project_title=sanitize_label_value(self.model.title),
+                service_title="Dex"
             )
 
             await run_kubectl(dex_manifest)
