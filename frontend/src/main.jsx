@@ -14,6 +14,8 @@ const DatabaseSourcesPage = lazy(() => import('./pages/data_sources/DatabaseSour
 const PgSqlPage = lazy(() => import('./pages/pgsql/Page'))
 const S3StoragePage = lazy(() => import('./pages/s3_storage/Page'))
 const LdapConfigPage = lazy(() => import('./pages/ldap_config/Page'))
+const SSHKeysPage = lazy(() => import('./pages/ssh_keys/Page'))
+const GitReposPage = lazy(() => import('./pages/git_repos/Page'))
 const HiveMetastorePage = lazy(() => import('./pages/hive_metastore/Page'))
 const TrinoPage = lazy(() => import('./pages/trino/Page'))
 const SupersetPage = lazy(() => import('./pages/superset/Page'))
@@ -57,6 +59,14 @@ const router = createBrowserRouter([
       {
         path: 'ldap-configs',
         element: <LdapConfigPage />,
+      },
+      {
+        path: 'ssh-keys',
+        element: <SSHKeysPage />,
+      },
+      {
+        path: 'git-repos',
+        element: <GitReposPage />,
       },
 
       {

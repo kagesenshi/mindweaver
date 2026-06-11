@@ -961,3 +961,97 @@ export const useZookeeper = () => {
         executeAction
     };
 };
+
+export const useSSHKeys = () => {
+    const [keys, setKeys] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+
+    const fetchKeys = useCallback(async () => {
+        setLoading(true);
+        try {
+            const response = await apiClient.get('/ssh_keys');
+            setKeys(response.data.data || []);
+        } catch (err) {
+            setError(err);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    const createKey = useCallback(async (data) => {
+        const response = await apiClient.post('/ssh_keys', data);
+        await fetchKeys();
+        return response.data;
+    }, [fetchKeys]);
+
+    const updateKey = useCallback(async (id, data) => {
+        const response = await apiClient.put(`/ssh_keys/${id}`, data);
+        await fetchKeys();
+        return response.data;
+    }, [fetchKeys]);
+
+    const deleteKey = useCallback(async (id, confirmName) => {
+        await apiClient.delete(`/ssh_keys/${id}`, {
+            headers: { 'X-RESOURCE-NAME': confirmName }
+        });
+        await new Promise(resolve => setTimeout(resolve, 500));
+        await fetchKeys();
+    }, [fetchKeys]);
+
+    useEffect(() => {
+        fetchKeys();
+    }, [fetchKeys]);
+
+    return { keys, loading, error, fetchKeys, createKey, updateKey, deleteKey };
+};
+
+export const useGitRepos = () => {
+    const [repos, setRepos] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+
+    const fetchRepos = useCallback(async () => {
+        setLoading(true);
+        try {
+            const response = await apiClient.get('/git_repos');
+            setRepos(response.data.data || []);
+        } catch (err) {
+            setError(err);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    const createRepo = useCallback(async (data) => {
+        const response = await apiClient.post('/git_repos', data);
+        await fetchRepos();
+        return response.data;
+    }, [fetchRepos]);
+
+    const updateRepo = useCallback(async (id, data) => {
+        const response = await apiClient.put(`/git_repos/${id}`, data);
+        await fetchRepos();
+        return response.data;
+    }, [fetchRepos]);
+
+    const deleteRepo = useCallback(async (id, confirmName) => {
+        await apiClient.delete(`/git_repos/${id}`, {
+            headers: { 'X-RESOURCE-NAME': confirmName }
+        });
+        await new Promise(resolve => setTimeout(resolve, 500));
+        await fetchRepos();
+    }, [fetchRepos]);
+
+    const testConnection = useCallback(async (data) => {
+        const response = await apiClient.post('/git_repos/_test-connection', data);
+        return response.data;
+    }, []);
+
+    useEffect(() => {
+        fetchRepos();
+    }, [fetchRepos]);
+
+    return { repos, loading, error, fetchRepos, createRepo, updateRepo, deleteRepo, testConnection };
+};
+

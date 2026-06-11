@@ -20,6 +20,8 @@ import {
     Globe,
     Search,
     Network,
+    Key,
+    GitBranch,
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { useAuth } from '../providers/AuthProvider';
@@ -42,6 +44,8 @@ const DATA_SOURCE_ITEMS = [
 
 const CONNECTIVITY_ITEMS = [
     { name: 'S3 Storages', to: '/s3-storages', icon: HardDrive },
+    { name: 'SSH Keys', to: '/ssh-keys', icon: Key },
+    { name: 'Git Repositories', to: '/git-repos', icon: GitBranch },
 ];
 
 
