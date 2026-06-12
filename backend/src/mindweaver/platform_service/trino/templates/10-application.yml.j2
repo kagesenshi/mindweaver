@@ -24,6 +24,7 @@ spec:
     targetRevision: {{ chart_version }}
     helm:
       values: |
+        fullnameOverride: {{ name }}
         env:
           - name: HADOOP_CREDSTORE_PASSWORD
             value: changeit

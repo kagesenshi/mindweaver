@@ -1215,6 +1215,7 @@ async def test_trino_jwt_rendering(mock_service_dependencies):
     
     # Mock project with LDAP configured to test multiple auth priority rendering
     mock_project = MagicMock()
+    mock_project.name = "myproject"
     mock_project.ldap_config_id = None
     mock_project.ingress_domain = None
     svc.project = AsyncMock(return_value=mock_project)
@@ -1245,7 +1246,7 @@ async def test_trino_jwt_rendering(mock_service_dependencies):
         manifest = await svc.render_manifests(model)
 
     assert vars["jwt_enabled"] is True
-    assert vars["jwt_key_file"] == "http://dex.trino-ns.svc.cluster.local:5556/dex/keys"
+    assert vars["jwt_key_file"] == "http://myproject-dex.trino-ns.svc.cluster.local:5556/dex/keys"
 
     docs = list(yaml.safe_load_all(manifest))
     app = next(d for d in docs if d["kind"] == "Application")
@@ -1253,7 +1254,7 @@ async def test_trino_jwt_rendering(mock_service_dependencies):
     
     assert "http-server.authentication.type=PASSWORD,JWT,CERTIFICATE" in values["server"]["coordinatorExtraConfig"]
     assert "http-server.authentication.certificate.user-mapping.pattern=.*?(CN=[^,]+).*" in values["server"]["coordinatorExtraConfig"]
-    assert "http-server.authentication.jwt.key-file=http://dex.trino-ns.svc.cluster.local:5556/dex/keys" in values["server"]["coordinatorExtraConfig"]
+    assert "http-server.authentication.jwt.key-file=http://myproject-dex.trino-ns.svc.cluster.local:5556/dex/keys" in values["server"]["coordinatorExtraConfig"]
     assert "http-server.authentication.jwt.principal-field=email" in values["server"]["coordinatorExtraConfig"]
     assert "additionalLogProperties" in values
     assert "log.properties" not in values["coordinator"]["additionalConfigFiles"]

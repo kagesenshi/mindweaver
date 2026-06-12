@@ -11,6 +11,8 @@ from kubernetes import client, config
 from mindweaver.platform_service.base import PlatformService
 from mindweaver.crypto import decrypt_password, encrypt_password
 from mindweaver.fw.model import ts_now
+from mindweaver.fw.util import generate_password
+from mindweaver.fw.hooks import before_create
 
 from .model import SolrPlatform, SolrPlatformState
 from mindweaver.platform_service.zookeeper.service import ZookeeperPlatformService
@@ -21,6 +23,12 @@ logger = logging.getLogger(__name__)
 class SolrPlatformService(PlatformService[SolrPlatform]):
     template_directory: str = os.path.join(os.path.dirname(__file__), "templates")
     state_model: type[SolrPlatformState] = SolrPlatformState
+
+    @before_create(before="_handle_redacted_create")
+    async def generate_passwords(self, model: SolrPlatform):
+        """Autogenerate random password for Solr admin if not provided."""
+        if not model.admin_password:
+            model.admin_password = generate_password()
 
     @classmethod
     def model_class(cls) -> type[SolrPlatform]:
@@ -115,13 +123,13 @@ class SolrPlatformService(PlatformService[SolrPlatform]):
         state: Optional[SolrPlatformState],
         namespace: str,
     ) -> str:
-        """Returns the internal service hostname for Solr."""
+        """Returns the internal service hostname with port for Solr."""
         service_name = None
         if state and isinstance(getattr(state, "extra_data", None), dict):
             service_name = state.extra_data.get("service_name")
         if not service_name or not (service_name.endswith("-headless") or service_name == model.name):
             service_name = f"{model.name}-solrcloud-headless"
-        return f"{service_name}.{namespace}.svc.cluster.local"
+        return f"{service_name}.{namespace}.svc.cluster.local:8983"
 
     async def template_vars(self, model: SolrPlatform) -> dict:
         vars = model.model_dump()

@@ -38,7 +38,7 @@ class SolrPlatform(PlatformBase, table=True):
     )
 
     # Credentials (Encrypted)
-    admin_password: str = Field(default=None)
+    admin_password: Optional[str] = Field(default=None)
 
     additional_properties: dict[str, str] = Field(
         default_factory=dict,

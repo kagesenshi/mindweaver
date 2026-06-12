@@ -146,7 +146,9 @@ def generate_password(length: int = 18, uri_safe: bool = True) -> str:
         # We use a subset of safe symbols
         symbols = "-_.~"
     else:
-        symbols = "!@#$%^&*()_+-=[]{}|;:,.<>?"
+        # Avoid characters that cause issues with configparser (%, $, #, ;, [, ])
+        # and HTTP URLs/curl (@, :, /, ?, =, &, \)
+        symbols = "!^*()_+-{}|,.~"
 
     all_chars = lowercase + uppercase + digits + symbols
 
