@@ -457,3 +457,20 @@ async def test_superset_state_view(mock_service_dependencies):
     
     assert state["status"] == "online"
     assert state["extra_data"]["namespace"] == "test-ns"
+
+
+def test_superset_feature_flag_schema_filtering(monkeypatch):
+    """Test that superset schema filters out OIDC fields when feature flag is False"""
+    from mindweaver.config import settings
+    # 1. When ENABLE_SUPERSET_OIDC is False
+    monkeypatch.setattr(settings, "enable_superset_oidc", False)
+    schema = SupersetPlatformService.schema_class()
+    assert "oidc_enabled" not in schema.model_fields
+    assert "oidc_client_secret" not in schema.model_fields
+
+    # 2. When ENABLE_SUPERSET_OIDC is True
+    monkeypatch.setattr(settings, "enable_superset_oidc", True)
+    schema = SupersetPlatformService.schema_class()
+    assert "oidc_enabled" in schema.model_fields
+    assert "oidc_client_secret" in schema.model_fields
+

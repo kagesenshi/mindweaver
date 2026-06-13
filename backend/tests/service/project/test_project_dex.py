@@ -89,7 +89,10 @@ async def test_project_install_dex(client):
             assert called_values["config"]["connectors"][0]["config"]["host"] == "ldap-proj.example.com:389"
 
 
-def test_project_install_dex_action_triggers_task(client: TestClient):
+def test_project_install_dex_action_triggers_task(client: TestClient, monkeypatch):
+    from mindweaver.config import settings
+    monkeypatch.setattr(settings, "enable_dex", True)
+
     # Create cluster and project
     cluster_data = client.post(
         "/api/v1/k8s_clusters",
@@ -434,6 +437,26 @@ def test_download_haproxy_cert_view(client: TestClient):
         assert resp.headers["Content-Disposition"] == f"attachment; filename=envoy-{project_data['name']}.pem"
         assert b"MOCK CERTIFICATE CONTENT" in resp.content
         assert b"MOCK PRIVATE KEY CONTENT" in resp.content
+
+
+@pytest.mark.asyncio
+async def test_project_install_dex_action_availability(monkeypatch):
+    """Test InstallDexAction availability based on settings.enable_dex"""
+    from mindweaver.config import settings
+    mock_project = MagicMock()
+    mock_project.k8s_cluster_id = 1
+    mock_svc = MagicMock()
+    
+    # 1. When enable_dex is False
+    monkeypatch.setattr(settings, "enable_dex", False)
+    action = InstallDexAction(mock_project, mock_svc)
+    assert await action.available() is False
+
+    # 2. When enable_dex is True
+    monkeypatch.setattr(settings, "enable_dex", True)
+    action = InstallDexAction(mock_project, mock_svc)
+    assert await action.available() is True
+
 
 
 

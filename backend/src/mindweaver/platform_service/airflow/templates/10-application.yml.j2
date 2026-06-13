@@ -31,7 +31,7 @@ spec:
             tag: "{{ image.split(':')[-1] if ':' in image else 'latest' }}"
             {% else %}
             repository: ghcr.io/kagesenshi/mindweaver/airflow
-            tag: 3.2.2-rev.10
+            tag: 3.2.2-rev.9
             {% endif %}
             pullPolicy: IfNotPresent
 
@@ -206,7 +206,7 @@ spec:
           useHelmHooks: false
           applyCustomEnv: false
           jobAnnotations:
-            argocd.argoproj.io/hook: PreSync
+            argocd.argoproj.io/hook: Sync
             argocd.argoproj.io/hook-delete-policy: hook-succeeded
           command:
             - "bash"
@@ -220,7 +220,7 @@ spec:
         migrateDatabaseJob:
           useHelmHooks: false
           jobAnnotations:
-            argocd.argoproj.io/hook: PreSync
+            argocd.argoproj.io/hook: Sync
             argocd.argoproj.io/hook-delete-policy: hook-succeeded
           applyCustomEnv: false
           ttlSecondsAfterFinished: null

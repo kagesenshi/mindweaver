@@ -317,3 +317,20 @@ async def test_airflow_template_vars_git_sync(client: TestClient, test_project):
         assert vars_res["dags_git_repo"] == "git@github.com:org/repo.git"
         assert vars_res["ssh_key"]["private_key"] == "ssh-private-key-data"
         assert vars_res["ssh_key"]["public_key"] == "ssh-rsa-pubkey"
+
+
+def test_airflow_feature_flag_schema_filtering(monkeypatch):
+    """Test that airflow schema filters out OIDC fields when feature flag is False"""
+    from mindweaver.config import settings
+    # 1. When ENABLE_AIRFLOW_OIDC is False
+    monkeypatch.setattr(settings, "enable_airflow_oidc", False)
+    schema = AirflowPlatformService.schema_class()
+    assert "oidc_enabled" not in schema.model_fields
+    assert "oidc_client_secret" not in schema.model_fields
+
+    # 2. When ENABLE_AIRFLOW_OIDC is True
+    monkeypatch.setattr(settings, "enable_airflow_oidc", True)
+    schema = AirflowPlatformService.schema_class()
+    assert "oidc_enabled" in schema.model_fields
+    assert "oidc_client_secret" in schema.model_fields
+

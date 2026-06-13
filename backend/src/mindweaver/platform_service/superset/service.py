@@ -12,7 +12,8 @@ from pydantic import ValidationError
 
 from mindweaver.fw.exc import FieldValidationError
 from mindweaver.platform_service.base import PlatformService
-from mindweaver.fw.model import ts_now
+from mindweaver.fw.model import ts_now, NamedBase
+from mindweaver.fw.service import redefine_model
 from mindweaver.platform_service.pgsql.service import PgSqlPlatformService
 from mindweaver.service.ldap_config.service import LdapConfigService
 from mindweaver.datasource_service import DatabaseSourceService
@@ -27,6 +28,21 @@ logger = logging.getLogger(__name__)
 class SupersetPlatformService(PlatformService[SupersetPlatform]):
     template_directory: str = os.path.join(os.path.dirname(__file__), "templates")
     state_model: type[SupersetPlatformState] = SupersetPlatformState
+
+    @classmethod
+    def schema_class(cls) -> type[NamedBase]:
+        """
+        Provide custom schema class, filtering out OIDC fields if they are disabled.
+        """
+        from mindweaver.config import settings
+        exclude_fields = []
+        if not settings.enable_superset_oidc:
+            exclude_fields.extend(["oidc_enabled", "oidc_client_secret"])
+        return redefine_model(
+            f"{cls.model_class().__name__}Schema",
+            cls.model_class(),
+            exclude=exclude_fields
+        )
 
     @classmethod
     def model_class(cls) -> type[SupersetPlatform]:

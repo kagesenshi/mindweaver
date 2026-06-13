@@ -109,8 +109,11 @@ class InstallDexAction(BaseAction):
 
     async def available(self) -> bool:
         """
-        Action is available only if the project is associated with a cluster.
+        Action is available only if the project is associated with a cluster and dex is enabled.
         """
+        from mindweaver.config import settings
+        if not settings.enable_dex:
+            return False
         return self.model.k8s_cluster_id is not None
 
     async def __call__(self, **kwargs):

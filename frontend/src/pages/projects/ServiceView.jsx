@@ -52,6 +52,24 @@ const ServiceView = ({
     const [deleteItem, setDeleteItem] = useState(null);
     const [isInstallingDex, setIsInstallingDex] = useState(false);
     const [isDeployingGateway, setIsDeployingGateway] = useState(false);
+    const [enableDex, setEnableDex] = useState(false);
+
+    useEffect(() => {
+        const fetchFeatureFlags = async () => {
+            try {
+                const baseUrl = apiClient.defaults.baseURL;
+                const rootUrl = baseUrl.replace(/\/api\/v1\/?$/, '');
+                const response = await fetch(`${rootUrl}/feature-flags`);
+                if (response.ok) {
+                    const data = await response.json();
+                    setEnableDex(data.enable_dex ?? false);
+                }
+            } catch (err) {
+                console.error("Failed to fetch feature flags in ServiceView:", err);
+            }
+        };
+        fetchFeatureFlags();
+    }, []);
 
     const handleDeployGateway = async () => {
         setIsDeployingGateway(true);
@@ -325,137 +343,141 @@ ${projectState.cluster_node_ips?.map((ip, idx) => `    server node${idx + 1} ${i
             </div>
 
             {/* Dex OIDC Integration */}
-            <div className="mw-card p-8 space-y-6 animate-in slide-in-from-bottom duration-700">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <div className="mw-icon-box text-indigo-500">
-                            <Shield size={24} />
+            {enableDex && (
+                <div className="mw-card p-8 space-y-6 animate-in slide-in-from-bottom duration-700">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className="mw-icon-box text-indigo-500">
+                                <Shield size={24} />
+                            </div>
+                            <div>
+                                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Dex OIDC Integration</h3>
+                                <p className="text-sm text-slate-500 font-medium uppercase tracking-tight">Federated identity provider for project components</p>
+                            </div>
                         </div>
-                        <div>
-                            <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Dex OIDC Integration</h3>
-                            <p className="text-sm text-slate-500 font-medium uppercase tracking-tight">Federated identity provider for project components</p>
-                        </div>
-                    </div>
-                    {projectState?.dex_installed ? (
-                        <div className="flex items-center gap-3">
-                            <span className="text-sm font-bold bg-green-500/10 text-green-500 px-3 py-1.5 rounded-xl border border-green-500/20 flex items-center gap-1.5">
-                                <span className="w-2 h-2 rounded-full bg-green-500" />
-                                {projectState.dex_version || "ACTIVE"}
-                            </span>
+                        {projectState?.dex_installed ? (
+                            <div className="flex items-center gap-3">
+                                <span className="text-sm font-bold bg-green-500/10 text-green-500 px-3 py-1.5 rounded-xl border border-green-500/20 flex items-center gap-1.5">
+                                    <span className="w-2 h-2 rounded-full bg-green-500" />
+                                    {projectState.dex_version || "ACTIVE"}
+                                </span>
+                                <button
+                                    onClick={handleInstallDex}
+                                    disabled={isInstallingDex}
+                                    className="mw-btn-secondary px-6 py-2.5 flex items-center gap-2"
+                                >
+                                    {isInstallingDex ? <RefreshCw size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+                                    UPDATE DEX
+                                </button>
+                            </div>
+                        ) : (
                             <button
                                 onClick={handleInstallDex}
                                 disabled={isInstallingDex}
-                                className="mw-btn-secondary px-6 py-2.5 flex items-center gap-2"
+                                className="mw-btn-primary px-6 py-2.5 flex items-center gap-2"
                             >
-                                {isInstallingDex ? <RefreshCw size={16} className="animate-spin" /> : <RefreshCw size={16} />}
-                                UPDATE DEX
+                                {isInstallingDex ? <RefreshCw size={16} className="animate-spin" /> : <Shield size={16} />}
+                                {isInstallingDex ? 'INSTALLING...' : 'INSTALL DEX OIDC'}
                             </button>
-                        </div>
-                    ) : (
-                        <button
-                            onClick={handleInstallDex}
-                            disabled={isInstallingDex}
-                            className="mw-btn-primary px-6 py-2.5 flex items-center gap-2"
-                        >
-                            {isInstallingDex ? <RefreshCw size={16} className="animate-spin" /> : <Shield size={16} />}
-                            {isInstallingDex ? 'INSTALLING...' : 'INSTALL DEX OIDC'}
-                        </button>
-                    )}
-                </div>
+                        )}
+                    </div>
 
-                {projectState?.dex_installed && (
-                    <div className="mt-6 border-t border-slate-100 dark:border-slate-800/80 pt-6 space-y-4" id="dex-connection-details">
-                        <h4 className="text-sm font-bold uppercase tracking-wider text-slate-400">Connection Details</h4>
-                        <div className="grid grid-cols-1 gap-4">
-                            <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800/50">
-                                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">OIDC Discovery URL</span>
-                                <div className="mt-1 flex items-center justify-between gap-2">
-                                    <a
-                                        href={selectedProject.ingress_domain 
-                                            ? `https://dex.${selectedProject.ingress_domain}/dex/.well-known/openid-configuration` 
-                                            : `http://dex.${selectedProject.k8s_namespace || selectedProject.name}.svc.cluster.local:5556/dex/.well-known/openid-configuration`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-sm font-mono text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300 break-all transition-colors"
-                                    >
-                                        {selectedProject.ingress_domain 
-                                            ? `https://dex.${selectedProject.ingress_domain}/dex/.well-known/openid-configuration` 
-                                            : `http://dex.${selectedProject.k8s_namespace || selectedProject.name}.svc.cluster.local:5556/dex/.well-known/openid-configuration`}
-                                    </a>
+                    {projectState?.dex_installed && (
+                        <div className="mt-6 border-t border-slate-100 dark:border-slate-800/80 pt-6 space-y-4" id="dex-connection-details">
+                            <h4 className="text-sm font-bold uppercase tracking-wider text-slate-400">Connection Details</h4>
+                            <div className="grid grid-cols-1 gap-4">
+                                <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800/50">
+                                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400">OIDC Discovery URL</span>
+                                    <div className="mt-1 flex items-center justify-between gap-2">
+                                        <a
+                                            href={selectedProject.ingress_domain 
+                                                ? `https://dex.${selectedProject.ingress_domain}/dex/.well-known/openid-configuration` 
+                                                : `http://dex.${selectedProject.k8s_namespace || selectedProject.name}.svc.cluster.local:5556/dex/.well-known/openid-configuration`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-sm font-mono text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300 break-all transition-colors"
+                                        >
+                                            {selectedProject.ingress_domain 
+                                                ? `https://dex.${selectedProject.ingress_domain}/dex/.well-known/openid-configuration` 
+                                                : `http://dex.${selectedProject.k8s_namespace || selectedProject.name}.svc.cluster.local:5556/dex/.well-known/openid-configuration`}
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                )}
-            </div>
+                    )}
+                </div>
+            )}
 
             {/* Project Local Users Management */}
-            <div className="mw-card p-8 space-y-8 animate-in slide-in-from-bottom duration-700">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <div className="mw-icon-box text-indigo-500">
-                            <Users size={24} />
+            {enableDex && (
+                <div className="mw-card p-8 space-y-8 animate-in slide-in-from-bottom duration-700">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className="mw-icon-box text-indigo-500">
+                                <Users size={24} />
+                            </div>
+                            <div>
+                                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Local User Management</h3>
+                                <p className="text-sm text-slate-500 font-medium uppercase tracking-tight">Manage project-scoped credentials for OIDC integration</p>
+                            </div>
                         </div>
-                        <div>
-                            <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Local User Management</h3>
-                            <p className="text-sm text-slate-500 font-medium uppercase tracking-tight">Manage project-scoped credentials for OIDC integration</p>
-                        </div>
+                        <button
+                            onClick={() => setIsCreateOpen(true)}
+                            className="mw-btn-primary px-6 py-2.5 flex items-center gap-2"
+                        >
+                            <UserPlus size={16} />
+                            ADD LOCAL USER
+                        </button>
                     </div>
-                    <button
-                        onClick={() => setIsCreateOpen(true)}
-                        className="mw-btn-primary px-6 py-2.5 flex items-center gap-2"
-                    >
-                        <UserPlus size={16} />
-                        ADD LOCAL USER
-                    </button>
-                </div>
 
-                {loadingUsers ? (
-                    <div className="text-center py-8 text-slate-500">
-                        Loading users...
-                    </div>
-                ) : projectUsers.length === 0 ? (
-                    <div className="text-center py-8 text-slate-500">
-                        No local users configured for this project.
-                    </div>
-                ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="border-b border-slate-200 dark:border-slate-800 text-xs font-bold uppercase tracking-widest text-slate-400">
-                                    <th className="py-4 px-6">Username</th>
-                                    <th className="py-4 px-6">Email Address</th>
-                                    <th className="py-4 px-6 text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {projectUsers.map(user => (
-                                    <tr key={user.id} className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-900/20 transition-colors">
-                                        <td className="py-4 px-6 font-semibold text-slate-900 dark:text-white">{user.username}</td>
-                                        <td className="py-4 px-6 text-slate-500 dark:text-slate-400">{user.email}</td>
-                                        <td className="py-4 px-6 text-right flex justify-end gap-2">
-                                            <button
-                                                onClick={() => setEditItem(user)}
-                                                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 hover:text-blue-500 transition-colors"
-                                                title="Edit User"
-                                            >
-                                                <Edit size={16} />
-                                            </button>
-                                            <button
-                                                onClick={() => setDeleteItem(user)}
-                                                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 hover:text-rose-500 transition-colors"
-                                                title="Delete User"
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
-                                        </td>
+                    {loadingUsers ? (
+                        <div className="text-center py-8 text-slate-500">
+                            Loading users...
+                        </div>
+                    ) : projectUsers.length === 0 ? (
+                        <div className="text-center py-8 text-slate-500">
+                            No local users configured for this project.
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="border-b border-slate-200 dark:border-slate-800 text-xs font-bold uppercase tracking-widest text-slate-400">
+                                        <th className="py-4 px-6">Username</th>
+                                        <th className="py-4 px-6">Email Address</th>
+                                        <th className="py-4 px-6 text-right">Actions</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
-            </div>
+                                </thead>
+                                <tbody>
+                                    {projectUsers.map(user => (
+                                        <tr key={user.id} className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-900/20 transition-colors">
+                                            <td className="py-4 px-6 font-semibold text-slate-900 dark:text-white">{user.username}</td>
+                                            <td className="py-4 px-6 text-slate-500 dark:text-slate-400">{user.email}</td>
+                                            <td className="py-4 px-6 text-right flex justify-end gap-2">
+                                                <button
+                                                    onClick={() => setEditItem(user)}
+                                                    className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 hover:text-blue-500 transition-colors"
+                                                    title="Edit User"
+                                                >
+                                                    <Edit size={16} />
+                                                </button>
+                                                <button
+                                                    onClick={() => setDeleteItem(user)}
+                                                    className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 hover:text-rose-500 transition-colors"
+                                                    title="Delete User"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* Create Modal */}
             <Modal
