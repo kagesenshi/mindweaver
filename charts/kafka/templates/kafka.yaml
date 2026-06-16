@@ -6,10 +6,13 @@ kind: Kafka
 metadata:
   name: {{ .Values.fullnameOverride }}
   namespace: {{ .Release.Namespace }}
+  annotations:
+    strimzi.io/kraft: enabled
+    strimzi.io/node-pools: enabled
 spec:
   kafka:
     version: 3.7.0
-    replicas: {{ .Values.controller.replicaCount }}
+    metadataVersion: 3.7-IV0
     {{- if .Values.image }}
     image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
     {{- end }}
@@ -29,39 +32,16 @@ spec:
       default.replication.factor: {{ .Values.controller.replicaCount }}
       min.insync.replicas: 1
       inter.broker.protocol.version: "3.7"
-    storage:
-      type: jbod
-      volumes:
-      - id: 0
-        type: persistent-claim
-        size: {{ .Values.controller.persistence.size }}
-        deleteClaim: false
     resources:
       requests:
         cpu: "{{ .Values.controller.resources.requests.cpu }}"
-        memory: "{{ .Values.controller.resources.requests.memory }}Gi"
+        memory: "{{ .Values.controller.resources.requests.memory }}"
       limits:
         cpu: "{{ .Values.controller.resources.limits.cpu }}"
-        memory: "{{ .Values.controller.resources.limits.memory }}Gi"
+        memory: "{{ .Values.controller.resources.limits.memory }}"
     {{- if .Values.extraEnvVars }}
     template:
       pod:
         env:
           {{- toYaml .Values.extraEnvVars | nindent 10 }}
     {{- end }}
-  zookeeper:
-    replicas: {{ .Values.controller.replicaCount }}
-    {{- if .Values.image }}
-    image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-    {{- end }}
-    storage:
-      type: persistent-claim
-      size: {{ .Values.controller.persistence.size }}
-      deleteClaim: false
-    resources:
-      requests:
-        cpu: "{{ .Values.controller.resources.requests.cpu }}"
-        memory: "{{ .Values.controller.resources.requests.memory }}Gi"
-      limits:
-        cpu: "{{ .Values.controller.resources.limits.cpu }}"
-        memory: "{{ .Values.controller.resources.limits.memory }}Gi"
