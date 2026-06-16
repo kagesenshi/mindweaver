@@ -22,6 +22,7 @@ import mindweaver.platform_service.airflow.model
 import mindweaver.platform_service.ranger.model
 import mindweaver.platform_service.solr.model
 import mindweaver.platform_service.zookeeper.model
+import mindweaver.platform_service.kafka.model
 
 
 async def scan_and_clean_names():

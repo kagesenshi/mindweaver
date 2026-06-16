@@ -13,6 +13,7 @@ from mindweaver.platform_service.airflow import AirflowPlatformService
 from mindweaver.platform_service.ranger import RangerPlatformService
 from mindweaver.platform_service.solr import SolrPlatformService
 from mindweaver.platform_service.zookeeper import ZookeeperPlatformService
+from mindweaver.platform_service.kafka import KafkaPlatformService
 from mindweaver.config import logger
 from typing import Type
 from .base import run_async
@@ -35,6 +36,7 @@ def poll_all_platforms():
         RangerPlatformService,
         SolrPlatformService,
         ZookeeperPlatformService,
+        KafkaPlatformService,
     ]
 
     for svc_cls in services:
@@ -75,6 +77,7 @@ async def _poll_platform_status(service_class_name: str, platform_id: int):
         "RangerPlatformService": RangerPlatformService,
         "SolrPlatformService": SolrPlatformService,
         "ZookeeperPlatformService": ZookeeperPlatformService,
+        "KafkaPlatformService": KafkaPlatformService,
     }
 
     svc_cls = mapping.get(service_class_name)
