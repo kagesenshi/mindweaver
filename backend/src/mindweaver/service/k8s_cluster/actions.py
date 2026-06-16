@@ -523,11 +523,21 @@ class SyncCoreIntegrationsAction(InstallArgoCDAction):
         status.solr_operator_installed = True
         await self.session.flush()
 
+        # 7. Deploy/update Kafka Operator Application manifest
+        logger.info("Sync: Deploying/updating Kafka Operator...")
+        from .actions import InstallKafkaOperatorAction
+        action_kafka = InstallKafkaOperatorAction(self.model, self.svc)
+        action_kafka.session = self.session
+        await action_kafka.run()
+        status.kafka_operator_installed = True
+        await self.session.flush()
+
 
 @K8sClusterService.register_action("install_solr_operator")
 class InstallSolrOperatorAction(InstallArgoCDAction):
 
     async def available(self) -> bool:
+        """Check if Solr Operator action is available (not installed yet)"""
         stmt = select(K8sClusterStatus).where(
             K8sClusterStatus.k8s_cluster_id == self.model.id
         )
@@ -536,6 +546,7 @@ class InstallSolrOperatorAction(InstallArgoCDAction):
         return not (status and status.solr_operator_installed)
 
     async def __call__(self, **kwargs):
+        """Call method to queue Solr Operator installation task asynchronously"""
         from mindweaver.tasks.k8s_cluster_status import install_solr_operator_task
 
         stmt = select(K8sClusterStatus).where(
@@ -560,6 +571,46 @@ class InstallSolrOperatorAction(InstallArgoCDAction):
         logger.info(f"Installing Solr Operator for cluster {self.model.name}")
 
         await self._apply_template("solr-operator.yml.j2")
+
+
+@K8sClusterService.register_action("install_kafka_operator")
+class InstallKafkaOperatorAction(InstallArgoCDAction):
+
+    async def available(self) -> bool:
+        """Check if Kafka Operator action is available (not installed yet)"""
+        stmt = select(K8sClusterStatus).where(
+            K8sClusterStatus.k8s_cluster_id == self.model.id
+        )
+        result = await self.session.exec(stmt)
+        status = result.one_or_none()
+        return not (status and status.kafka_operator_installed)
+
+    async def __call__(self, **kwargs):
+        """Call method to queue Kafka Operator installation task asynchronously"""
+        from mindweaver.tasks.k8s_cluster_status import install_kafka_operator_task
+
+        stmt = select(K8sClusterStatus).where(
+            K8sClusterStatus.k8s_cluster_id == self.model.id
+        )
+        result = await self.session.exec(stmt)
+        status_model = result.one_or_none()
+        if not status_model:
+            status_model = K8sClusterStatus(k8s_cluster_id=self.model.id)
+            self.session.add(status_model)
+        status_model.kafka_operator_installed = True
+        await self.session.flush()
+
+        install_kafka_operator_task.delay(self.model.id)
+        return {
+            "status": "success",
+            "message": "Kafka Operator installation triggered and status being refreshed.",
+        }
+
+    async def run(self):
+        """Install Strimzi Kafka Operator to the cluster using ArgoCD Application"""
+        logger.info(f"Installing Kafka Operator for cluster {self.model.name}")
+
+        await self._apply_template("kafka-operator.yml.j2")
 
 
 

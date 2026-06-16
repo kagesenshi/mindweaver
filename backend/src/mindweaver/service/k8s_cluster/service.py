@@ -256,6 +256,37 @@ class K8sClusterService(Service[K8sCluster]):
                 except Exception as e:
                     logger.warning(f"Failed to check Solr Operator presence: {e}")
 
+                # Check Kafka Operator
+                kafka_operator_installed = False
+                kafka_operator_version = None
+                try:
+                    if secrets:
+                        for secret in secrets.items:
+                            if secret.metadata.name.startswith("sh.helm.release.v1.strimzi-kafka-operator") or secret.metadata.name.startswith("sh.helm.release.v1.kafka-operator"):
+                                kafka_operator_installed = True
+                                break
+                    if not kafka_operator_installed:
+                        pods = core_v1.list_pod_for_all_namespaces(
+                            label_selector="app.kubernetes.io/name=strimzi-kafka-operator"
+                        )
+                        if not pods.items:
+                            pods = core_v1.list_pod_for_all_namespaces(
+                                label_selector="app.kubernetes.io/name=kafka-operator"
+                            )
+                        if not pods.items:
+                            pods = core_v1.list_pod_for_all_namespaces(
+                                label_selector="name=strimzi-cluster-operator"
+                            )
+                        if not pods.items:
+                            pods = core_v1.list_pod_for_all_namespaces(
+                                label_selector="strimzi.io/kind=cluster-operator"
+                            )
+                        if pods.items:
+                            kafka_operator_installed = True
+                            kafka_operator_version = _get_version(pods.items[0])
+                except Exception as e:
+                    logger.warning(f"Failed to check Kafka Operator presence: {e}")
+
                 return {
                     "k8s_version": k8s_version,
                     "node_count": node_count,
@@ -273,6 +304,8 @@ class K8sClusterService(Service[K8sCluster]):
                     "envoy_gateway_version": envoy_gateway_version,
                     "solr_operator_installed": solr_operator_installed,
                     "solr_operator_version": solr_operator_version,
+                    "kafka_operator_installed": kafka_operator_installed,
+                    "kafka_operator_version": kafka_operator_version,
                     "node_ips": node_ips,
                 }
 
@@ -306,6 +339,8 @@ class K8sClusterService(Service[K8sCluster]):
             status_model.envoy_gateway_version = info["envoy_gateway_version"]
             status_model.solr_operator_installed = info["solr_operator_installed"]
             status_model.solr_operator_version = info["solr_operator_version"]
+            status_model.kafka_operator_installed = info["kafka_operator_installed"]
+            status_model.kafka_operator_version = info["kafka_operator_version"]
             status_model.node_ips = info["node_ips"]
             status_model.last_update = ts_now()
             status_model.message = None

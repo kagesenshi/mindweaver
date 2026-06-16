@@ -88,6 +88,9 @@ class K8sClusterStatus(Base, table=True):
     solr_operator_installed: bool = Field(default=False)
     solr_operator_version: Optional[str] = Field(default=None)
 
+    kafka_operator_installed: bool = Field(default=False)
+    kafka_operator_version: Optional[str] = Field(default=None)
+
     last_update: datetime = Field(
         default_factory=ts_now, sa_type=DateTime(timezone=True)
     )

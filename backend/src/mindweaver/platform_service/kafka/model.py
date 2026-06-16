@@ -14,7 +14,7 @@ class KafkaPlatform(PlatformBase, table=True):
     replica_count: int = Field(default=3)
 
     # Chart version selection (targetRevision in Application manifest)
-    chart_version: str = Field(default="32.4.4")
+    chart_version: str = Field(default="0.1.0")
 
     # Image override
     override_image: bool = Field(default=False)

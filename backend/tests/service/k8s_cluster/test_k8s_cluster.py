@@ -70,6 +70,16 @@ def mock_k8s():
         mock_pod_eg.metadata.labels = {"app.kubernetes.io/version": "v1.0.0"}
         mock_pod_eg.spec.containers = [MagicMock(image="envoyproxy/gateway:v1.0.0")]
 
+        # Mock Pods (Solr Operator version)
+        mock_pod_solr = MagicMock()
+        mock_pod_solr.metadata.labels = {"app.kubernetes.io/version": "v0.9.1"}
+        mock_pod_solr.spec.containers = [MagicMock(image="solr-operator:v0.9.1")]
+
+        # Mock Pods (Kafka Operator version)
+        mock_pod_kafka = MagicMock()
+        mock_pod_kafka.metadata.labels = {"app.kubernetes.io/version": "v0.41.0"}
+        mock_pod_kafka.spec.containers = [MagicMock(image="strimzi/operator:v0.41.0")]
+
         def _mock_list_pod_for_all_namespaces(label_selector=None):
             m_list = MagicMock()
             if "argocd-server" in label_selector:
@@ -80,6 +90,10 @@ def mock_k8s():
                 m_list.items = [mock_pod_cnpg]
             elif "envoy-gateway" in label_selector:
                 m_list.items = [mock_pod_eg]
+            elif "solr-operator" in label_selector:
+                m_list.items = [mock_pod_solr]
+            elif "strimzi-kafka-operator" in label_selector or "kafka-operator" in label_selector or "name=strimzi-cluster-operator" in label_selector or "strimzi.io/kind=cluster-operator" in label_selector:
+                m_list.items = [mock_pod_kafka]
             else:
                 m_list.items = []
             return m_list
@@ -97,6 +111,10 @@ def mock_k8s():
         mock_secret_cnpg.metadata.name = "sh.helm.release.v1.cnpg.v1"
         mock_secret_eg = MagicMock()
         mock_secret_eg.metadata.name = "sh.helm.release.v1.eg.v1"
+        mock_secret_solr = MagicMock()
+        mock_secret_solr.metadata.name = "sh.helm.release.v1.solr-operator.v1"
+        mock_secret_kafka = MagicMock()
+        mock_secret_kafka.metadata.name = "sh.helm.release.v1.strimzi-kafka-operator.v1"
 
         mock_secret_list = MagicMock()
         mock_secret_list.items = [
@@ -156,6 +174,10 @@ def test_poll_k8s_cluster_status(client: TestClient, mock_k8s):
     assert data["cnpg_version"] == "1.28.1"
     assert data["envoy_gateway_installed"] is True
     assert data["envoy_gateway_version"] == "v1.0.0"
+    assert data["solr_operator_installed"] is True
+    assert data["solr_operator_version"] == "v0.9.1"
+    assert data["kafka_operator_installed"] is True
+    assert data["kafka_operator_version"] == "v0.41.0"
 
 
 @pytest.mark.asyncio
@@ -562,6 +584,55 @@ async def test_install_solr_operator():
         assert "targetRevision: 0.9.1" in manifest
         assert "installCRDs: true" in manifest
         assert "zookeeper-operator" in manifest
+
+
+@pytest.mark.asyncio
+async def test_install_kafka_operator():
+    from mindweaver.service.k8s_cluster.model import K8sCluster, K8sClusterType
+    import os
+
+    cluster = K8sCluster(
+        name="test-cluster-kafka-op",
+        title="Test Cluster Kafka Op",
+        type=K8sClusterType.REMOTE,
+        kubeconfig="fake-kubeconfig",
+    )
+
+    mock_svc = MagicMock()
+    mock_svc.kubeconfig = pytest.importorskip("unittest.mock").AsyncMock(
+        return_value="fake-kubeconfig"
+    )
+
+    from mindweaver.service.k8s_cluster.actions import InstallKafkaOperatorAction
+
+    applied_manifests = []
+
+    def mock_subprocess(*args, **kwargs):
+        cmd = args
+        if len(cmd) > 0 and "kubectl" in cmd:
+            path = cmd[-1]
+            if os.path.exists(path):
+                with open(path, "r") as f:
+                    applied_manifests.append(f.read())
+        mock_proc = MagicMock()
+        mock_proc.returncode = 0
+        mock_proc.communicate = pytest.importorskip("unittest.mock").AsyncMock(
+            return_value=(b"success", b"")
+        )
+        return mock_proc
+
+    with patch("asyncio.create_subprocess_exec", side_effect=mock_subprocess) as mock_exec:
+        action = InstallKafkaOperatorAction(cluster, mock_svc)
+        await action.run()
+
+        assert len(applied_manifests) == 1
+        manifest = applied_manifests[0]
+        assert "kind: Application" in manifest
+        assert "name: kafka-operator" in manifest
+        assert "repoURL: https://strimzi.io/charts/" in manifest
+        assert "chart: strimzi-kafka-operator" in manifest
+        assert "targetRevision: 0.41.0" in manifest
+
 
 
 

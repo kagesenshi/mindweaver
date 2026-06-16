@@ -19,9 +19,9 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: 'oci://ghcr.io/kagesenshi/mindweaver/charts/kafka'
-    targetRevision: {{ chart_version }}
-    path: .
+    repoURL: 'https://github.com/kagesenshi/mindweaver.git'
+    targetRevision: kafka
+    path: charts/kafka
     helm:
       values: |
         fullnameOverride: {{ name }}

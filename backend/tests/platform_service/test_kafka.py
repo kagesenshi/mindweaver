@@ -27,7 +27,7 @@ def test_kafka_resource_defaults():
     assert model.cpu_limit == 1.0
     assert model.mem_request == 1.0
     assert model.mem_limit == 2.0
-    assert model.chart_version == "32.4.4"
+    assert model.chart_version == "0.1.0"
 
 
 def test_kafka_cpu_validation():
@@ -133,7 +133,7 @@ async def test_kafka_render_manifests(mock_service_dependencies):
     assert "name: test-kafka" in manifests
     assert "replicaCount: 3" in manifests
     assert "charts/kafka" in manifests
-    assert "ghcr.io/kagesenshi/mindweaver" in manifests
+    assert "github.com/kagesenshi/mindweaver" in manifests
     assert "size: \"20Gi\"" in manifests
     assert "namespace: test-ns" in manifests
 
