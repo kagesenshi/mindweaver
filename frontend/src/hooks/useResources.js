@@ -962,6 +962,82 @@ export const useZookeeper = () => {
     };
 };
 
+export const useKafka = () => {
+    const [platforms, setPlatforms] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+
+    const fetchPlatforms = useCallback(async () => {
+        setLoading(true);
+        try {
+            const response = await apiClient.get('/platform/kafka');
+            setPlatforms(response.data.data || []);
+        } catch (err) {
+            setError(err);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    const createPlatform = useCallback(async (data) => {
+        const response = await apiClient.post('/platform/kafka', data);
+        await fetchPlatforms();
+        return response.data;
+    }, [fetchPlatforms]);
+
+    const updatePlatformState = useCallback(async (id, state, headers = {}) => {
+        const response = await apiClient.post(`/platform/kafka/${id}/_state`, state, { headers });
+        await fetchPlatforms();
+        return response.data;
+    }, [fetchPlatforms]);
+
+    const deletePlatform = useCallback(async (id, confirmName) => {
+        await apiClient.delete(`/platform/kafka/${id}`, {
+            headers: { 'X-RESOURCE-NAME': confirmName }
+        });
+        await new Promise(resolve => setTimeout(resolve, 500));
+        await fetchPlatforms();
+    }, [fetchPlatforms]);
+
+    const getPlatformState = useCallback(async (id) => {
+        const response = await apiClient.get(`/platform/kafka/${id}/_state`);
+        return response.data;
+    }, []);
+
+    const refreshPlatformState = useCallback(async (id) => {
+        const response = await apiClient.post(`/platform/kafka/${id}/_refresh`);
+        return response.data;
+    }, []);
+
+    const fetchActions = useCallback(async (id) => {
+        const response = await apiClient.get(`/platform/kafka/${id}/_actions`);
+        return response.data.actions || [];
+    }, []);
+
+    const executeAction = useCallback(async (id, action, parameters = {}) => {
+        const response = await apiClient.post(`/platform/kafka/${id}/_actions`, { action, parameters });
+        return response.data;
+    }, []);
+
+    useEffect(() => {
+        fetchPlatforms();
+    }, [fetchPlatforms]);
+
+    return {
+        platforms,
+        loading,
+        error,
+        fetchPlatforms,
+        createPlatform,
+        updatePlatformState,
+        deletePlatform,
+        getPlatformState,
+        refreshPlatformState,
+        fetchActions,
+        executeAction
+    };
+};
+
 export const useSSHKeys = () => {
     const [keys, setKeys] = useState([]);
     const [loading, setLoading] = useState(false);

@@ -20,6 +20,8 @@ from mindweaver.platform_service.superset.model import SupersetPlatform, Superse
 from mindweaver.platform_service.airflow.model import AirflowPlatform, AirflowPlatformState
 from mindweaver.platform_service.ranger.model import RangerPlatform, RangerPlatformState
 from mindweaver.platform_service.solr.model import SolrPlatform, SolrPlatformState
+from mindweaver.platform_service.zookeeper.model import ZookeeperPlatform, ZookeeperPlatformState
+from mindweaver.platform_service.kafka.model import KafkaPlatform, KafkaPlatformState
 from mindweaver.service.ldap_config.model import LdapConfig
 from mindweaver.fw.auth import User
 from mindweaver.service.project_user.model import ProjectLocalUser

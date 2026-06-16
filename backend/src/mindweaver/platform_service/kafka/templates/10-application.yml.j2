@@ -1,0 +1,60 @@
+# SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
+# SPDX-License-Identifier: AGPLv3+
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ name }}
+  namespace: argocd
+  labels:
+    {% if project_title %}
+    project: "{{ project_title }}"
+    {% endif %}
+    {% if service_title %}
+    service: "{{ service_title }}"
+    {% endif %}
+    manager: mindweaver
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: 'oci://ghcr.io/kagesenshi/mindweaver/charts/kafka'
+    targetRevision: {{ chart_version }}
+    path: .
+    helm:
+      values: |
+        fullnameOverride: {{ name }}
+        controller:
+          replicaCount: {{ replica_count }}
+          resourcesPreset: none
+          resources:
+            requests:
+              cpu: "{{ cpu_request }}"
+              memory: "{{ mem_request }}Gi"
+            limits:
+              cpu: "{{ cpu_limit }}"
+              memory: "{{ mem_limit }}Gi"
+          persistence:
+            size: "{{ storage_size }}"
+        {% if override_image %}
+        image:
+          repository: "{{ image }}"
+          tag: "{{ image_tag }}"
+        {% endif %}
+        {% if additional_properties %}
+        extraEnvVars:
+          {% for key, val in additional_properties.items() %}
+          - name: "{{ key }}"
+            value: "{{ val }}"
+          {% endfor %}
+        {% endif %}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ namespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
