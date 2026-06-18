@@ -15,7 +15,6 @@ from mindweaver.fw.util import generate_password
 from mindweaver.fw.hooks import before_create
 
 from .model import SolrPlatform, SolrPlatformState
-from mindweaver.platform_service.zookeeper.service import ZookeeperPlatformService
 
 logger = logging.getLogger(__name__)
 
@@ -107,13 +106,6 @@ class SolrPlatformService(PlatformService[SolrPlatform]):
                 "label": "Additional Properties",
                 "type": "key-value",
             },
-            "zookeeper_id": {
-                "order": 15,
-                "label": "Zookeeper",
-                "type": "relationship",
-                "endpoint": "/api/v1/platform/zookeeper",
-                "field": "id",
-            },
         }
 
     @classmethod
@@ -145,31 +137,7 @@ class SolrPlatformService(PlatformService[SolrPlatform]):
                 decrypted = model.admin_password
             vars["admin_password"] = decrypted
 
-        # Resolve external Zookeeper connection string if linked.
-        # The actual client service name is discovered at runtime by poll_status
-        # via label-based lookup, so we read it from state rather than guessing.
-        if model.zookeeper_id:
-            zk_svc = await ZookeeperPlatformService.get_service(self.request, self.session)
-            zk_model = await zk_svc.get(model.zookeeper_id)
-            zk_state = await zk_svc.platform_state(zk_model)
-
-            if not zk_state or not zk_state.active:
-                raise ValueError(
-                    f"Zookeeper cluster '{zk_model.name}' is not active. "
-                    "Please deploy it before deploying Solr."
-                )
-
-            if not zk_state.zookeeper_url:
-                raise ValueError(
-                    f"Zookeeper cluster '{zk_model.name}' has not been polled yet "
-                    "(zookeeper_url is empty). Wait for the status poller to run, "
-                    "or use Refresh on the ZooKeeper page, then retry."
-                )
-
-            vars["zookeeper_connection_string"] = zk_state.zookeeper_url
-        else:
-            vars["zookeeper_connection_string"] = None
-
+        vars["zookeeper_connection_string"] = None
         return vars
 
     async def poll_status(self, model: SolrPlatform):

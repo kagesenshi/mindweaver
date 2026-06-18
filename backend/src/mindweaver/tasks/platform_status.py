@@ -12,7 +12,6 @@ from mindweaver.platform_service.superset import SupersetPlatformService
 from mindweaver.platform_service.airflow import AirflowPlatformService
 from mindweaver.platform_service.ranger import RangerPlatformService
 from mindweaver.platform_service.solr import SolrPlatformService
-from mindweaver.platform_service.zookeeper import ZookeeperPlatformService
 from mindweaver.platform_service.kafka import KafkaPlatformService
 from mindweaver.config import logger
 from typing import Type
@@ -35,7 +34,6 @@ def poll_all_platforms():
         AirflowPlatformService,
         RangerPlatformService,
         SolrPlatformService,
-        ZookeeperPlatformService,
         KafkaPlatformService,
     ]
 
@@ -76,7 +74,6 @@ async def _poll_platform_status(service_class_name: str, platform_id: int):
         "AirflowPlatformService": AirflowPlatformService,
         "RangerPlatformService": RangerPlatformService,
         "SolrPlatformService": SolrPlatformService,
-        "ZookeeperPlatformService": ZookeeperPlatformService,
         "KafkaPlatformService": KafkaPlatformService,
     }
 

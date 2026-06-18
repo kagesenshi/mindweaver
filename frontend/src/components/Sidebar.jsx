@@ -22,7 +22,6 @@ import {
     Boxes,
     Globe,
     Search,
-    Network,
     Key,
     GitBranch,
     RefreshCcw,
@@ -56,7 +55,6 @@ const CONNECTIVITY_ITEMS = [
 
 const INFRA_ITEMS = [
     { name: 'PostgreSQL', to: '/platform/pgsql', icon: Database },
-    { name: 'ZooKeeper', to: '/platform/zookeeper', icon: Network },
     { name: 'Apache Solr', to: '/platform/solr', icon: Search },
     { name: 'Apache Kafka', to: '/platform/kafka', icon: RefreshCcw },
     { name: 'Apache Ranger', to: '/platform/ranger', icon: ShieldCheck },

@@ -11,10 +11,9 @@ import {
     Activity,
     ShieldCheck,
     Search,
-    Network,
     RefreshCcw
 } from 'lucide-react';
-import { usePgSql, useHiveMetastore, useTrino, useSuperset, useAirflow, useRanger, useSolr, useZookeeper, useKafka } from '../hooks/useResources';
+import { usePgSql, useHiveMetastore, useTrino, useSuperset, useAirflow, useRanger, useSolr, useKafka } from '../hooks/useResources';
 import PageLayout from '../components/PageLayout';
 import ListingItem from '../components/ListingItem';
 
@@ -27,12 +26,11 @@ const HomePage = () => {
     const { platforms: airflowPlatforms, loading: airflowLoading } = useAirflow();
     const { platforms: rangerPlatforms, loading: rangerLoading } = useRanger();
     const { platforms: solrPlatforms, loading: solrLoading } = useSolr();
-    const { platforms: zkPlatforms, loading: zkLoading } = useZookeeper();
     const { platforms: kafkaPlatforms, loading: kafkaLoading } = useKafka();
     const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
 
-    const loading = pgsqlLoading || hmsLoading || trinoLoading || supersetLoading || airflowLoading || rangerLoading || solrLoading || zkLoading || kafkaLoading;
+    const loading = pgsqlLoading || hmsLoading || trinoLoading || supersetLoading || airflowLoading || rangerLoading || solrLoading || kafkaLoading;
 
     const allInstances = [
         ...pgsqlPlatforms.map(p => ({ ...p, type: 'pgsql' })),
@@ -42,7 +40,6 @@ const HomePage = () => {
         ...airflowPlatforms.map(p => ({ ...p, type: 'airflow' })),
         ...rangerPlatforms.map(p => ({ ...p, type: 'ranger' })),
         ...solrPlatforms.map(p => ({ ...p, type: 'solr' })),
-        ...zkPlatforms.map(p => ({ ...p, type: 'zookeeper' })),
         ...kafkaPlatforms.map(p => ({ ...p, type: 'kafka' }))
     ];
 
@@ -73,10 +70,10 @@ const HomePage = () => {
                 {filteredInstances.map(inst => (
                     <ListingItem
                         key={`${inst.type}-${inst.id}`}
-                        icon={inst.type === 'hms' ? Boxes : inst.type === 'trino' ? Wind : inst.type === 'superset' ? LayoutDashboard : inst.type === 'airflow' ? Activity : inst.type === 'ranger' ? ShieldCheck : inst.type === 'solr' ? Search : inst.type === 'zookeeper' ? Network : inst.type === 'kafka' ? RefreshCcw : Database}
+                        icon={inst.type === 'hms' ? Boxes : inst.type === 'trino' ? Wind : inst.type === 'superset' ? LayoutDashboard : inst.type === 'airflow' ? Activity : inst.type === 'ranger' ? ShieldCheck : inst.type === 'solr' ? Search : inst.type === 'kafka' ? RefreshCcw : Database}
                         title={inst.title || inst.name}
                         badges={[{ 
-                            text: inst.type === 'hms' ? "Hive Metastore" : inst.type === 'trino' ? "Trino Cluster" : inst.type === 'superset' ? "Apache Superset" : inst.type === 'airflow' ? "Apache Airflow" : inst.type === 'ranger' ? "Apache Ranger" : inst.type === 'solr' ? "Solr" : inst.type === 'zookeeper' ? "ZooKeeper" : inst.type === 'kafka' ? "Apache Kafka" : "CloudNative PG", 
+                            text: inst.type === 'hms' ? "Hive Metastore" : inst.type === 'trino' ? "Trino Cluster" : inst.type === 'superset' ? "Apache Superset" : inst.type === 'airflow' ? "Apache Airflow" : inst.type === 'ranger' ? "Apache Ranger" : inst.type === 'solr' ? "Solr" : inst.type === 'kafka' ? "Apache Kafka" : "CloudNative PG", 
                             variant: "mw-badge-neutral" 
                         }]}
                         subtitle={inst.id}
@@ -87,7 +84,6 @@ const HomePage = () => {
                             else if (inst.type === 'airflow') navigate('/platform/airflow');
                             else if (inst.type === 'ranger') navigate('/platform/ranger');
                             else if (inst.type === 'solr') navigate('/platform/solr');
-                            else if (inst.type === 'zookeeper') navigate('/platform/zookeeper');
                             else if (inst.type === 'kafka') navigate('/platform/kafka');
                             else navigate('/platform/pgsql');
                         }}
