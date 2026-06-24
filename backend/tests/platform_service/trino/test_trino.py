@@ -507,7 +507,9 @@ async def test_trino_https_rendering(mock_service_dependencies):
     mock_hms_state.hms_uri = "thrift://hms:9083"
     mock_hms_svc.platform_state.return_value = mock_hms_state
     mock_hms_svc._resolve_namespace.return_value = "hms-ns"
-    svc.project = AsyncMock(return_value=MagicMock(ldap_config_id=None))
+    mock_project = MagicMock(ldap_config_id=None)
+    mock_project.name = "mock-project"
+    svc.project = AsyncMock(return_value=mock_project)
 
     with patch("mindweaver.platform_service.trino.service.HiveMetastorePlatformService.get_service", AsyncMock(return_value=mock_hms_svc)), \
          patch("mindweaver.platform_service.trino.service.decrypt_password", lambda x: x):
@@ -517,15 +519,15 @@ async def test_trino_https_rendering(mock_service_dependencies):
     docs = list(yaml.safe_load_all(manifest))
     assert len(docs) >= 3  # Application + Certificate + NodePort Service
 
-    # Ensure no local Issuer is created (it's cluster-wide now)
+    # Ensure no local Issuer is created (it's cluster-wide now - wait, project-wide)
     issuer_kinds = [d["kind"] for d in docs]
     assert "Issuer" not in issuer_kinds
     assert "Secret" in issuer_kinds
     
     cert = next(d for d in docs if d["kind"] == "Certificate")
     assert cert["metadata"]["name"] == "trino-https-test-tls"
-    assert cert["spec"]["issuerRef"]["name"] == "mindweaver-selfsigned-issuer"
-    assert cert["spec"]["issuerRef"]["kind"] == "ClusterIssuer"
+    assert cert["spec"]["issuerRef"]["name"] == "mock-project-selfsigned-issuer"
+    assert cert["spec"]["issuerRef"]["kind"] == "Issuer"
     assert "keystores" in cert["spec"]
     assert cert["spec"]["keystores"]["jks"]["create"] is True
 

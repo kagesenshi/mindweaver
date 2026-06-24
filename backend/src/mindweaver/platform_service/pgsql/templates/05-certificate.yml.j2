@@ -55,6 +55,6 @@ spec:
     - "*.{{ name }}.{{ namespace }}.svc"
     - "*.{{ name }}.{{ namespace }}.svc.cluster.local"
   issuerRef:
-    name: mindweaver-selfsigned-issuer
-    kind: ClusterIssuer
+    name: {{ project_name }}-selfsigned-issuer
+    kind: Issuer
     group: cert-manager.io

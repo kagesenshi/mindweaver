@@ -25,6 +25,6 @@ spec:
   dnsNames:
     - dex.{{ ingress_domain }}
   issuerRef:
-    name: mindweaver-selfsigned-issuer
-    kind: ClusterIssuer
+    name: {{ name }}-selfsigned-issuer
+    kind: Issuer
     group: cert-manager.io

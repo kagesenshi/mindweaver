@@ -147,7 +147,7 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
         pgsql_model = await pgsql_svc.get(model.database_id)
         pgsql_state = await pgsql_svc.platform_state(pgsql_model)
 
-        if not pgsql_state or not pgsql_state.active:
+        if not getattr(self, "_decommissioning", False) and (not pgsql_state or not pgsql_state.active):
             raise ValueError(
                 f"Managed PostgreSQL cluster {pgsql_model.name} is not active"
             )
@@ -156,13 +156,16 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
             f"{pgsql_model.name}-pooler-rw.{vars['namespace']}.svc.cluster.local"
         )
         vars["db_port"] = 5432
-        vars["db_user"] = pgsql_state.db_user
-        vars["db_name"] = pgsql_state.db_name
-        if pgsql_state.db_pass:
+        vars["db_user"] = pgsql_state.db_user if pgsql_state else "app"
+        vars["db_name"] = pgsql_state.db_name if pgsql_state else "app"
+        db_pass_enc = pgsql_state.db_pass if pgsql_state else ""
+        if db_pass_enc:
             try:
-                vars["db_pass"] = decrypt_password(pgsql_state.db_pass)
+                vars["db_pass"] = decrypt_password(db_pass_enc)
             except Exception:
-                vars["db_pass"] = pgsql_state.db_pass
+                vars["db_pass"] = db_pass_enc
+        else:
+            vars["db_pass"] = ""
 
 
 
@@ -172,7 +175,7 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
             solr_model = await solr_svc.get(model.solr_id)
             solr_state = await solr_svc.platform_state(solr_model)
 
-            if not solr_state or not solr_state.active:
+            if not getattr(self, "_decommissioning", False) and (not solr_state or not solr_state.active):
                 raise ValueError(
                     f"Managed Solr cluster {solr_model.name} is not active"
                 )

@@ -121,6 +121,7 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
         rendered_manifests = []
         vars = await self.template_vars(model)
         project = await self.project(model)
+        vars["project_name"] = project.name
         vars["project_title"] = sanitize_label_value(project.title)
         vars["service_title"] = sanitize_label_value(model.title)
 
@@ -152,9 +153,16 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
         # Deploy to cluster
         await self._deploy_to_cluster(kubeconfig, full_manifest, namespace)
 
+    _decommissioning: bool = False
+
     async def decommission(self, model: T):
         """used to remove the applied components"""
-        full_manifest = await self.render_manifests(model)
+        self._decommissioning = True
+        try:
+            full_manifest = await self.render_manifests(model)
+        finally:
+            self._decommissioning = False
+
         if not full_manifest:
             return
 

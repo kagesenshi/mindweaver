@@ -26,6 +26,6 @@ spec:
     - "{{ ingress_domain }}"
     - "*.{{ ingress_domain }}"
   issuerRef:
-    name: mindweaver-selfsigned-issuer
-    kind: ClusterIssuer
+    name: {{ name }}-selfsigned-issuer
+    kind: Issuer
     group: cert-manager.io

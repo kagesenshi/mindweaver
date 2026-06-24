@@ -58,11 +58,28 @@ export const useProjects = () => {
         return response.data;
     }, []);
 
+    const getProjectCertManager = useCallback(async (id) => {
+        const response = await apiClient.get(`/projects/${id}/_cert_manager`);
+        return response.data;
+    }, []);
+
+    const getProjectIssuerCert = useCallback(async (id, name, kind, namespace) => {
+        const response = await apiClient.get(`/projects/${id}/_issuer_cert`, {
+            params: { name, kind, namespace }
+        });
+        return response.data;
+    }, []);
+
+    const deployProjectIssuer = useCallback(async (id) => {
+        const response = await apiClient.post(`/projects/${id}/_deploy_issuer`);
+        return response.data;
+    }, []);
+
     useEffect(() => {
         fetchProjects();
     }, [fetchProjects]);
 
-    return { projects, loading, error, fetchProjects, createProject, updateProject, deleteProject, getProjectState, refreshProjectState, fetchActions, executeAction };
+    return { projects, loading, error, fetchProjects, createProject, updateProject, deleteProject, getProjectState, refreshProjectState, fetchActions, executeAction, getProjectCertManager, getProjectIssuerCert, deployProjectIssuer };
 };
 
 
@@ -237,18 +254,6 @@ export const useK8sClusters = () => {
         return response.data;
     }, []);
 
-    const getClusterCertManager = useCallback(async (id) => {
-        const response = await apiClient.get(`/k8s_clusters/${id}/_cert_manager`);
-        return response.data;
-    }, []);
-
-    const getClusterIssuerCert = useCallback(async (id, name, kind, namespace) => {
-        const response = await apiClient.get(`/k8s_clusters/${id}/_issuer_cert`, {
-            params: { name, kind, namespace }
-        });
-        return response.data;
-    }, []);
-
     const refreshClusterState = useCallback(async (id) => {
         const response = await apiClient.post(`/k8s_clusters/${id}/_refresh`);
         return response.data;
@@ -272,7 +277,7 @@ export const useK8sClusters = () => {
     return {
         clusters, loading, error,
         fetchClusters, createCluster, updateCluster, deleteCluster,
-        getClusterState, getClusterCertManager, getClusterIssuerCert, refreshClusterState, fetchActions, executeAction
+        getClusterState, refreshClusterState, fetchActions, executeAction
     };
 };
 

@@ -176,21 +176,6 @@ class K8sClusterService(Service[K8sCluster]):
                 except Exception as e:
                     logger.warning(f"Failed to check CNPG presence: {e}")
 
-                # Check Mindweaver Cluster Issuer
-                cluster_issuer_installed = False
-                try:
-                    custom_api = client.CustomObjectsApi()
-                    issuers = custom_api.list_cluster_custom_object(
-                        group="cert-manager.io",
-                        version="v1",
-                        plural="clusterissuers",
-                    )
-                    for issuer in issuers.get("items", []):
-                        if issuer.get("metadata", {}).get("name") == "mindweaver-selfsigned-issuer":
-                            cluster_issuer_installed = True
-                            break
-                except Exception as e:
-                    logger.warning(f"Failed to check Mindweaver Cluster Issuer presence: {e}")
 
                 # Check Envoy Gateway
                 envoy_gateway_installed = False
@@ -332,7 +317,7 @@ class K8sClusterService(Service[K8sCluster]):
                     "cert_manager_version": cert_manager_version,
                     "cnpg_installed": cnpg_installed,
                     "cnpg_version": cnpg_version,
-                    "cluster_issuer_installed": cluster_issuer_installed,
+
                     "envoy_gateway_installed": envoy_gateway_installed,
                     "envoy_gateway_version": envoy_gateway_version,
                     "solr_operator_installed": solr_operator_installed,
@@ -369,7 +354,7 @@ class K8sClusterService(Service[K8sCluster]):
             status_model.cert_manager_version = info["cert_manager_version"]
             status_model.cnpg_installed = info["cnpg_installed"]
             status_model.cnpg_version = info["cnpg_version"]
-            status_model.cluster_issuer_installed = info["cluster_issuer_installed"]
+
             status_model.envoy_gateway_installed = info["envoy_gateway_installed"]
             status_model.envoy_gateway_version = info["envoy_gateway_version"]
             status_model.solr_operator_installed = info["solr_operator_installed"]

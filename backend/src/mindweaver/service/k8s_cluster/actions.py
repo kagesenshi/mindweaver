@@ -326,52 +326,6 @@ class InstallCNPGAction(InstallArgoCDAction):
         await self._apply_template("cnpg.yml.j2")
 
 
-@K8sClusterService.register_action("install_self_signed_issuer")
-class InstallSelfSignedIssuerAction(InstallArgoCDAction):
-
-    async def available(self) -> bool:
-        # Only available if cert-manager is installed and issuer is not
-        stmt = select(K8sClusterStatus).where(
-            K8sClusterStatus.k8s_cluster_id == self.model.id
-        )
-        result = await self.session.exec(stmt)
-        status = result.one_or_none()
-        return status and status.cert_manager_installed and not status.cluster_issuer_installed
-
-    async def __call__(self, **kwargs):
-        from mindweaver.tasks.k8s_cluster_status import install_self_signed_issuer_task
-
-        # Set status to installed immediately so UI reflects it
-        stmt = select(K8sClusterStatus).where(
-            K8sClusterStatus.k8s_cluster_id == self.model.id
-        )
-        result = await self.session.exec(stmt)
-        status_model = result.one_or_none()
-        if not status_model:
-            status_model = K8sClusterStatus(k8s_cluster_id=self.model.id)
-            self.session.add(status_model)
-        status_model.cluster_issuer_installed = True
-        await self.session.flush()
-
-        install_self_signed_issuer_task.delay(self.model.id)
-        return {
-            "status": "success",
-            "message": "Self-signed ClusterIssuer installation triggered.",
-        }
-
-    async def run(self):
-        """Install self-signed ClusterIssuer to the cluster"""
-        logger.info(f"Installing Self-signed ClusterIssuer for cluster {self.model.name}")
-
-        await self._wait_for_crd_and_namespace(
-            ["clusterissuers.cert-manager.io", "certificates.cert-manager.io"],
-            "cert-manager"
-        )
-
-        await self._apply_template("self-signed-issuer.yml.j2")
-
-
-
 
 @K8sClusterService.register_action("install_envoy_gateway")
 class InstallEnvoyGatewayAction(InstallArgoCDAction):
@@ -505,14 +459,6 @@ class SyncCoreIntegrationsAction(InstallArgoCDAction):
         status.envoy_gateway_installed = True
         await self.session.flush()
 
-        # 5. Deploy/update Self-signed Issuer
-        logger.info("Sync: Deploying/updating Self-signed Issuer...")
-        from .actions import InstallSelfSignedIssuerAction
-        action = InstallSelfSignedIssuerAction(self.model, self.svc)
-        action.session = self.session
-        await action.run()
-        status.cluster_issuer_installed = True
-        await self.session.flush()
 
         # 6. Deploy/update Solr Operator Application manifest
         logger.info("Sync: Deploying/updating Solr Operator...")

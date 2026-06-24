@@ -209,15 +209,17 @@ async def test_kafka_ssl_certificate_rendering(mock_service_dependencies):
     )
 
     svc._resolve_namespace = AsyncMock(return_value="custom-ns")
-    svc.project = AsyncMock(return_value=MagicMock(ingress_domain=None))
+    mock_project = MagicMock(ingress_domain=None)
+    mock_project.name = "mock-project"
+    svc.project = AsyncMock(return_value=mock_project)
 
     manifests = await svc.render_manifests(model)
 
     assert "kind: Certificate" in manifests
     assert "name: my-kafka-tls" in manifests
     assert "secretName: my-kafka-tls" in manifests
-    assert "name: mindweaver-selfsigned-issuer" in manifests
-    assert "kind: ClusterIssuer" in manifests
+    assert "name: mock-project-selfsigned-issuer" in manifests
+    assert "kind: Issuer" in manifests
     assert "my-kafka-kafka-external-bootstrap" in manifests
 
 

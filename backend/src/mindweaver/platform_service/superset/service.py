@@ -174,12 +174,12 @@ class SupersetPlatformService(PlatformService[SupersetPlatform]):
         pgsql_model = await pgsql_svc.get(model.platform_pgsql_id)
         pgsql_state = await pgsql_svc.platform_state(pgsql_model)
 
-        if not pgsql_state or not pgsql_state.active:
+        if not getattr(self, "_decommissioning", False) and (not pgsql_state or not pgsql_state.active):
             raise ValueError(f"Selected PostgreSQL {pgsql_model.name} is not active")
 
         # 1.1 Determine Host and Port
         # Prefer pgbouncer if host is available in extra_data
-        vars["db_host"] = pgsql_state.extra_data.get("pgbouncer_host")
+        vars["db_host"] = pgsql_state.extra_data.get("pgbouncer_host") if pgsql_state else None
         if vars["db_host"]:
             vars["db_port"] = 5432  # Default pgbouncer port in our templates
         else:
@@ -189,10 +189,10 @@ class SupersetPlatformService(PlatformService[SupersetPlatform]):
             vars["db_port"] = 5432
 
         # 1.2 Credentials
-        vars["db_user"] = pgsql_state.db_user or "app"
-        vars["db_name"] = pgsql_state.db_name or "app"
+        vars["db_user"] = (pgsql_state.db_user or "app") if pgsql_state else "app"
+        vars["db_name"] = (pgsql_state.db_name or "app") if pgsql_state else "app"
 
-        db_pass_enc = pgsql_state.db_pass or ""
+        db_pass_enc = (pgsql_state.db_pass or "") if pgsql_state else ""
         if db_pass_enc:
             try:
                 vars["db_pass"] = decrypt_password(db_pass_enc)

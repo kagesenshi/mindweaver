@@ -172,6 +172,7 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
         vars = model.model_dump(exclude=self.redacted_fields())
         vars["namespace"] = await self._resolve_namespace(model)
         project = await self.project(model)
+        vars["project_name"] = project.name
         vars["ingress_domain"] = project.ingress_domain
 
         # HTTPS is mandatory
@@ -195,7 +196,7 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
                 hms_model = await hms_svc.get(hms_id)
                 hms_state = await hms_svc.platform_state(hms_model)
 
-                if not hms_state or not hms_state.active:
+                if not getattr(self, "_decommissioning", False) and (not hms_state or not hms_state.active):
                     raise ValueError(
                         f"Managed Hive Metastore {hms_model.name} is not active"
                     )
@@ -353,7 +354,7 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
                 solr_model = await solr_svc.get(ranger_model.solr_id)
                 solr_state = await solr_svc.platform_state(solr_model)
 
-                if not solr_state or not solr_state.active:
+                if not getattr(self, "_decommissioning", False) and (not solr_state or not solr_state.active):
                     raise ValueError(
                         f"Managed Solr cluster {solr_model.name} is not active"
                     )
