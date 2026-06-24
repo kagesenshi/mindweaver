@@ -157,10 +157,10 @@ class NifiPlatformService(PlatformService[NifiPlatform]):
 
             # 2. Fetch Pod Status
             try:
-                # NiFi pods are managed by NiFiKop and usually have app.kubernetes.io/instance label
+                # NiFi pods are managed by NiFiKop and use nifi_cr label
                 pods = core_v1.list_namespaced_pod(
                     namespace=namespace,
-                    label_selector=f"app.kubernetes.io/instance={model.name}",
+                    label_selector=f"nifi_cr={model.name}",
                 )
                 ready_pods = sum(
                     1
@@ -242,24 +242,26 @@ class NifiPlatformService(PlatformService[NifiPlatform]):
         state.node_ports = node_ports
         state.cluster_nodes = cluster_nodes
 
-        # Derive NiFi HTTP/HTTPS URL (Default secure port is 8443)
+        # Derive NiFi HTTP/HTTPS URL
         if status == "online":
             if project.ingress_domain:
                 state.nifi_uri = f"https://{model.name}.{project.ingress_domain}"
             elif cluster_nodes:
                 nifi_np = next(
-                    (np for np in node_ports if np["port"] == 8443), None
+                    (np for np in node_ports if np["port"] in [8080, 8443]), None
                 )
                 if nifi_np:
                     node_v4 = next((n for n in cluster_nodes if n["ipv4"]), None)
                     if node_v4:
-                        state.nifi_uri = f"https://{node_v4['ipv4']}:{nifi_np['node_port']}"
+                        scheme = "https" if nifi_np["port"] == 8443 else "http"
+                        state.nifi_uri = f"{scheme}://{node_v4['ipv4']}:{nifi_np['node_port']}"
                     else:
-                        state.nifi_uri = f"https://{model.name}.{namespace}.svc.cluster.local:8443"
+                        scheme = "https" if nifi_np["port"] == 8443 else "http"
+                        state.nifi_uri = f"{scheme}://{model.name}.{namespace}.svc.cluster.local:{nifi_np['port']}"
                 else:
-                    state.nifi_uri = f"https://{model.name}.{namespace}.svc.cluster.local:8443"
+                    state.nifi_uri = f"http://{model.name}.{namespace}.svc.cluster.local:8080"
             else:
-                state.nifi_uri = f"https://{model.name}.{namespace}.svc.cluster.local:8443"
+                state.nifi_uri = f"http://{model.name}.{namespace}.svc.cluster.local:8080"
         else:
             state.nifi_uri = None
 
