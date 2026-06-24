@@ -88,10 +88,6 @@ class NifiPlatformService(PlatformService[NifiPlatform]):
             },
         }
 
-    async def _resolve_namespace(self, model: NifiPlatform) -> str:
-        """Returns the namespace for NiFi platforms (always 'nifikop')."""
-        return "nifikop"
-
     async def template_vars(self, model: NifiPlatform) -> dict:
         """Resolves template variables required to render Helm/K8s manifests."""
         vars = model.model_dump()

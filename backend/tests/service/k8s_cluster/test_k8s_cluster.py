@@ -692,6 +692,7 @@ async def test_install_nifikop():
         assert "repoURL: ghcr.io/konpyutaika/helm-charts" in manifest
         assert "chart: nifikop" in manifest
         assert "targetRevision: 1.17.0" in manifest
+        assert "namespaces:\n          - \"\"" in manifest
 
 
 def test_install_nifikop_action_triggers_task(client: TestClient):

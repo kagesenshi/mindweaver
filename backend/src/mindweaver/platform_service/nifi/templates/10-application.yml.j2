@@ -19,27 +19,75 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: 'https://github.com/kagesenshi/mindweaver.git'
-    targetRevision: main
-    path: charts/nifi
+    repoURL: ghcr.io/konpyutaika/helm-charts
+    chart: nifi-cluster
+    targetRevision: {{ chart_version }}
     helm:
       values: |
-        fullnameOverride: {{ name }}
-        replicaCount: {{ replica_count }}
-        resources:
-          requests:
-            cpu: "{{ cpu_request }}"
-            memory: "{{ mem_request }}Gi"
-          limits:
-            cpu: "{{ cpu_limit }}"
-            memory: "{{ mem_limit }}Gi"
-        persistence:
-          size: "{{ storage_size }}"
-        {% if override_image %}
-        image:
-          repository: "{{ image }}"
-          tag: "{{ image_tag }}"
-        {% endif %}
+        cluster:
+          fullnameOverride: {{ name }}
+          manager: kubernetes
+          pod:
+            annotations:
+              argocd.argoproj.io/ignore-healthcheck: "true"
+          image:
+            repository: "{{ image }}"
+            tag: "{{ image_tag }}"
+          nodeConfigGroups:
+            default-group:
+              isNode: true
+              serviceAccountName: {{ name }}
+              storageConfigs:
+                - name: data
+                  mountPath: "/opt/nifi/nifi-current/data"
+                  pvcSpec:
+                    accessModes:
+                      - ReadWriteOnce
+                    resources:
+                      requests:
+                        storage: "{{ storage_size }}"
+              resourcesRequirements:
+                requests:
+                  cpu: "{{ cpu_request }}"
+                  memory: "{{ mem_request }}Gi"
+                limits:
+                  cpu: "{{ cpu_limit }}"
+                  memory: "{{ mem_limit }}Gi"
+          nodes:
+            {%- for i in range(replica_count) %}
+            - id: {{ i }}
+              nodeConfigGroup: default-group
+            {%- endfor %}
+          listenersConfig:
+            internalListeners:
+              - containerPort: 8080
+                type: http
+                name: http
+              - containerPort: 6007
+                type: cluster
+                name: cluster
+              - containerPort: 10000
+                type: s2s
+                name: s2s
+              - containerPort: 6342
+                type: load-balance
+                name: load-balance
+          externalServices:
+            - name: {{ name }}-nodeport
+              spec:
+                type: NodePort
+                portConfigs:
+                  - internalListenerName: http
+                    port: 8080
+          nifiProperties:
+            overrideConfigs: |
+              nifi.cluster.leader.election.implementation=KubernetesLeaderElectionManager
+              nifi.cluster.leader.election.kubernetes.lease.prefix={{ name }}
+              nifi.sensitive.props.key=default-sensitive-properties-key-32-chars-long
+          bootstrapProperties:
+            overrideConfigs: |
+              java.arg.addopens.exodus=--add-opens=java.base/sun.nio.ch=ALL-UNNAMED
+            nifiJvmMemory: "512m"
   destination:
     server: https://kubernetes.default.svc
     namespace: {{ namespace }}

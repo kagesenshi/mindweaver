@@ -14,7 +14,7 @@ class NifiPlatform(PlatformBase, table=True):
     replica_count: int = Field(default=1)
     
     # Target revision (chart version, or we can use version tags of operator chart)
-    chart_version: str = Field(default="0.1.0")
+    chart_version: str = Field(default="1.17.0")
 
     override_image: bool = Field(default=False)
     image: str = Field(default="apache/nifi")

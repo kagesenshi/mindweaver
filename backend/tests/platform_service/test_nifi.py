@@ -25,7 +25,7 @@ def test_nifi_resource_defaults():
     assert model.cpu_limit == 2.0
     assert model.mem_request == 2.0
     assert model.mem_limit == 4.0
-    assert model.chart_version == "0.1.0"
+    assert model.chart_version == "1.17.0"
     assert model.image_tag == "2.9.0"
 
 def test_nifi_cpu_validation():
@@ -125,10 +125,9 @@ async def test_nifi_render_manifests(mock_service_dependencies):
     manifests = await svc.render_manifests(model)
 
     assert "name: test-nifi" in manifests
-    assert "replicaCount: 3" in manifests
-    assert "charts/nifi" in manifests
-    assert "github.com/kagesenshi/mindweaver" in manifests
-    assert "size: \"20Gi\"" in manifests
+    assert "chart: nifi-cluster" in manifests
+    assert "repoURL: ghcr.io/konpyutaika/helm-charts" in manifests
+    assert "storage: \"20Gi\"" in manifests
     assert "namespace: test-ns" in manifests
 
 @pytest.mark.asyncio
