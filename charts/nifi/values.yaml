@@ -19,4 +19,4 @@ resources:
 
 persistence:
   size: "10Gi"
-  storageClassName: "standard"
+  storageClassName: ""
