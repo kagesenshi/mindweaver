@@ -25,6 +25,20 @@ spec:
         port: 9093
         type: internal
         tls: true
+        configuration:
+          brokerCertChainAndKey:
+            secretName: {{ .Values.fullnameOverride }}-tls
+            certificate: tls.crt
+            key: tls.key
+      - name: external
+        port: 9094
+        type: nodeport
+        tls: true
+        configuration:
+          brokerCertChainAndKey:
+            secretName: {{ .Values.fullnameOverride }}-tls
+            certificate: tls.crt
+            key: tls.key
     config:
       offsets.topic.replication.factor: {{ .Values.controller.replicaCount }}
       transaction.state.log.replication.factor: {{ .Values.controller.replicaCount }}

@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { RefreshCcw } from 'lucide-react';
 import { useNotification } from '../../providers/NotificationProvider';
 import PlatformServiceView from '../../components/PlatformServiceView';
-import { InternalNetworkAccessBlock } from '../../components/ServiceBlocks';
+import { InternalNetworkAccessBlock, ExternalNetworkAccessBlock } from '../../components/ServiceBlocks';
 
 const ServiceView = ({
     darkMode,
@@ -95,6 +95,8 @@ const ServiceView = ({
             });
         }
 
+        const externalPort = platformState?.node_ports?.find(np => np.port === 9094 || np.name?.endsWith('-external-bootstrap'));
+
         return (
             <div className="space-y-6">
                 {endpoints.length > 0 && (
@@ -102,6 +104,21 @@ const ServiceView = ({
                         darkMode={darkMode}
                         icon={RefreshCcw}
                         endpoints={endpoints}
+                    />
+                )}
+
+                {externalPort && (
+                    <ExternalNetworkAccessBlock
+                        darkMode={darkMode}
+                        ports={[{
+                            label: 'Kafka SSL NodePort',
+                            node_port: externalPort.node_port
+                        }]}
+                        clusterNodes={platformState.cluster_nodes}
+                        cliInfo={{
+                            command: `kafkacat -b ${platformState.cluster_nodes?.[0]?.ipv4 || '[NODE_IP]'}:${externalPort.node_port} -L -X security.protocol=SSL`,
+                            languageButtons: []
+                        }}
                     />
                 )}
             </div>

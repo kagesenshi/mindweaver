@@ -179,21 +179,26 @@ class KafkaPlatformService(PlatformService[KafkaPlatform]):
                 services = core_v1.list_namespaced_service(namespace=namespace)
                 candidate_svcs = [
                     svc for svc in services.items
-                    if svc.metadata.name == model.name
-                    or (svc.metadata.name.startswith(model.name) and svc.metadata.name.endswith("-kafka"))
+                    if svc.metadata.name.startswith(model.name)
                 ]
-                if candidate_svcs:
-                    chosen = candidate_svcs[0]
-                    service_name = chosen.metadata.name
-                    if chosen.spec.type == "NodePort":
-                        for port in chosen.spec.ports:
-                            node_ports.append(
-                                {
-                                    "name": chosen.metadata.name,
-                                    "port": port.port,
-                                    "node_port": port.node_port,
-                                }
-                            )
+                # Determine primary service name
+                bootstrap_svc = next((svc for svc in candidate_svcs if svc.metadata.name == f"{model.name}-kafka-bootstrap" or svc.metadata.name == f"{model.name}-kafka-external-bootstrap"), None)
+                if bootstrap_svc:
+                    service_name = bootstrap_svc.metadata.name
+                elif candidate_svcs:
+                    service_name = next((svc.metadata.name for svc in candidate_svcs if svc.metadata.name == model.name or svc.metadata.name.endswith("-kafka")), candidate_svcs[0].metadata.name)
+
+                for svc in candidate_svcs:
+                    if svc.spec.type == "NodePort":
+                        for port in svc.spec.ports:
+                            if not any(np["name"] == svc.metadata.name and np["port"] == port.port for np in node_ports):
+                                node_ports.append(
+                                    {
+                                        "name": svc.metadata.name,
+                                        "port": port.port,
+                                        "node_port": port.node_port,
+                                    }
+                                )
             except Exception as e:
                 logger.error(f"Failed to fetch services for {model.name}: {e}")
 

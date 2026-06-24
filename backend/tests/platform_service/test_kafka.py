@@ -195,3 +195,64 @@ async def test_kafka_poll_status(mock_service_dependencies):
 
             # Kafka URL should be derived as <service>.<namespace>.svc.cluster.local:9092
             assert mock_state.kafka_url == "test-kafka.test-ns.svc.cluster.local:9092"
+
+
+@pytest.mark.asyncio
+async def test_kafka_ssl_certificate_rendering(mock_service_dependencies):
+    """Test that the cert-manager Certificate is generated and contains the self-signed issuer."""
+    request, session = mock_service_dependencies
+    svc = KafkaPlatformService(request, session)
+
+    model = KafkaPlatform(
+        name="my-kafka",
+        project_id=1,
+    )
+
+    svc._resolve_namespace = AsyncMock(return_value="custom-ns")
+    svc.project = AsyncMock(return_value=MagicMock(ingress_domain=None))
+
+    manifests = await svc.render_manifests(model)
+
+    assert "kind: Certificate" in manifests
+    assert "name: my-kafka-tls" in manifests
+    assert "secretName: my-kafka-tls" in manifests
+    assert "name: mindweaver-selfsigned-issuer" in manifests
+    assert "kind: ClusterIssuer" in manifests
+    assert "my-kafka-kafka-external-bootstrap" in manifests
+
+
+@pytest.mark.asyncio
+async def test_kafka_poll_status_with_nodeports(mock_service_dependencies):
+    """Test that nodeports are populated correctly in poll_status."""
+    from mindweaver.platform_service.kafka.model import KafkaPlatformState
+    request, session = mock_service_dependencies
+    svc = KafkaPlatformService(request, session)
+
+    model = KafkaPlatform(
+        name="test-kafka",
+        project_id=1,
+    )
+
+    mock_state = MagicMock(spec=KafkaPlatformState)
+    mock_state.active = True
+
+    with patch.object(svc, "platform_state", AsyncMock(return_value=mock_state)), \
+         patch.object(svc, "kubeconfig", AsyncMock(return_value="mock-kubeconfig")), \
+         patch.object(svc, "_resolve_namespace", AsyncMock(return_value="test-ns")):
+
+        node_ports = [{"name": "test-kafka-kafka-external-bootstrap", "port": 9094, "node_port": 32094}]
+        cluster_nodes = [{"hostname": "node1", "ipv4": "1.2.3.4", "ipv6": None}]
+
+        async def mock_poll(*args):
+            return "online", "Healthy", {}, node_ports, cluster_nodes, "test-kafka-kafka-external-bootstrap"
+
+        with patch("mindweaver.platform_service.kafka.service.asyncio.to_thread", side_effect=mock_poll):
+            mock_project = MagicMock()
+            mock_project.ingress_domain = None
+            svc.project = AsyncMock(return_value=mock_project)
+
+            await svc.poll_status(model)
+
+            assert mock_state.node_ports == node_ports
+            assert mock_state.cluster_nodes == cluster_nodes
+
