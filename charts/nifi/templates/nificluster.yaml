@@ -61,7 +61,6 @@ spec:
         name: load-balance
   service:
     headlessEnabled: true
-  serviceAccountName: {{ .Values.fullnameOverride }}-sa
   readOnlyConfig:
     nifiProperties:
       overrideConfigs: |
@@ -75,6 +74,7 @@ spec:
   nodeConfigGroups:
     default_group:
       isNode: true
+      serviceAccountName: {{ .Values.fullnameOverride }}-sa
       storageConfigs:
         - name: data
           mountPath: "/opt/nifi/nifi-current/data"
