@@ -277,7 +277,7 @@ export const ExternalNetworkAccessBlock = ({
 export const ExternalAccessBlock = ({ darkMode, links, icon = ExternalLink }) => {
     const IconComponent = icon;
     return (
-        <ServiceBlock darkMode={darkMode} icon={IconComponent} iconColorClass="text-blue-500" iconBgClass="bg-blue-500/10" title="External Web Access">
+        <ServiceBlock darkMode={darkMode} icon={IconComponent} iconColorClass="text-blue-500" iconBgClass="bg-blue-500/10" title="External Network Access">
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {links.map((link, i) => (
                     <div key={i} className="p-5 border rounded-2xl bg-slate-50 border-slate-200 dark:bg-slate-950/50 dark:border-slate-800 flex flex-col group/item relative h-full">

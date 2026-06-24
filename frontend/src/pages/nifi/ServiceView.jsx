@@ -105,18 +105,18 @@ const ServiceView = ({
 
         return (
             <div className="space-y-6">
-                {externalLinks.length > 0 && (
-                    <ExternalAccessBlock
-                        darkMode={darkMode}
-                        links={externalLinks}
-                        icon={ExternalLink}
-                    />
-                )}
                 {endpoints.length > 0 && (
                     <InternalNetworkAccessBlock
                         darkMode={darkMode}
                         icon={Network}
                         endpoints={endpoints}
+                    />
+                )}
+                {externalLinks.length > 0 && (
+                    <ExternalAccessBlock
+                        darkMode={darkMode}
+                        links={externalLinks}
+                        icon={ExternalLink}
                     />
                 )}
             </div>
