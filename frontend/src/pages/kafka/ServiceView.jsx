@@ -116,7 +116,7 @@ const ServiceView = ({
                         }]}
                         clusterNodes={platformState.cluster_nodes}
                         cliInfo={{
-                            command: `kafkacat -b ${platformState.cluster_nodes?.[0]?.ipv4 || '[NODE_IP]'}:${externalPort.node_port} -L -X security.protocol=SSL`,
+                            command: `kcat -b ${platformState.cluster_nodes?.[0]?.ipv4 || '[NODE_IP]'}:${externalPort.node_port} -L -X security.protocol=SSL`,
                             languageButtons: []
                         }}
                     />
