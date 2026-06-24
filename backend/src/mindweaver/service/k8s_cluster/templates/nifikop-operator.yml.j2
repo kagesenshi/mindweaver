@@ -22,6 +22,10 @@ spec:
     repoURL: ghcr.io/konpyutaika/helm-charts
     chart: nifikop
     targetRevision: 1.17.0
+    helm:
+      values: |
+        namespaces:
+          - nifikop
   destination:
     server: https://kubernetes.default.svc
     namespace: nifikop
