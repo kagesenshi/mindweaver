@@ -64,6 +64,8 @@ spec:
         nifi.cluster.leader.election.implementation=KubernetesLeaderElectionManager
         nifi.cluster.leader.election.kubernetes.lease.prefix={{ .Values.fullnameOverride }}
         nifi.sensitive.props.key={{ .Values.sensitivePropsKey }}
+        nifi.web.http.host=0.0.0.0
+        nifi.web.proxy.host=localhost:8080,127.0.0.1:8080,{{ .Values.fullnameOverride }}-headless.{{ .Release.Namespace }}.svc.cluster.local:8080,{{ .Values.fullnameOverride }}-0-node.{{ .Values.fullnameOverride }}-headless.{{ .Release.Namespace }}.svc.cluster.local:8080,{{ .Values.fullnameOverride }}-headless.{{ .Release.Namespace }}.svc:8080,{{ .Values.fullnameOverride }}-headless.{{ .Release.Namespace }}:8080,{{ .Values.fullnameOverride }}-headless:8080,{{ .Values.fullnameOverride }}-0-node:8080
     bootstrapProperties:
       overrideConfigs: |
         java.arg.addopens.exodus=--add-opens=java.base/sun.nio.ch=ALL-UNNAMED
