@@ -42,6 +42,9 @@ metadata:
 spec:
   clusterManager: kubernetes
   clusterImage: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+  pod:
+    annotations:
+      argocd.argoproj.io/ignore-healthcheck: "true"
   listenersConfig:
     internalListeners:
       - containerPort: 8080
