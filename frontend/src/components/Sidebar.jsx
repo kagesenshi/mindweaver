@@ -25,6 +25,7 @@ import {
     Key,
     GitBranch,
     RefreshCcw,
+    Network,
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { useAuth } from '../providers/AuthProvider';
@@ -56,12 +57,13 @@ const CONNECTIVITY_ITEMS = [
 const INFRA_ITEMS = [
     { name: 'PostgreSQL', to: '/platform/pgsql', icon: Database },
     { name: 'Apache Solr', to: '/platform/solr', icon: Search },
-    { name: 'Apache Kafka', to: '/platform/kafka', icon: RefreshCcw },
     { name: 'Apache Ranger', to: '/platform/ranger', icon: ShieldCheck },
     { name: 'Hive Metastore', to: '/platform/hive-metastore', icon: Boxes },
     { name: 'Trino', to: '/platform/trino', icon: Wind },
-    { name: 'Apache Superset', to: '/platform/superset', icon: BarChart3 },
+    { name: 'Apache Kafka', to: '/platform/kafka', icon: RefreshCcw },
+    { name: 'Apache NiFi', to: '/platform/nifi', icon: Network },
     { name: 'Apache Airflow', to: '/platform/airflow', icon: Activity },
+    { name: 'Apache Superset', to: '/platform/superset', icon: BarChart3 },
 ];
 
 const Sidebar = ({ darkMode, isCollapsed, toggleSidebar, onNavItemClick }) => {

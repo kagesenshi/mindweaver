@@ -27,9 +27,9 @@ def upgrade() -> None:
     op.drop_index(op.f('ix_mw_zookeeper_platform_state_status'), table_name='mw_zookeeper_platform_state')
     op.drop_table('mw_zookeeper_platform_state')
     op.drop_index(op.f('ix_mw_zookeeper_platform_project_id'), table_name='mw_zookeeper_platform')
-    op.drop_table('mw_zookeeper_platform')
     op.drop_constraint(op.f('mw_solr_platform_zookeeper_id_fkey'), 'mw_solr_platform', type_='foreignkey')
     op.drop_column('mw_solr_platform', 'zookeeper_id')
+    op.drop_table('mw_zookeeper_platform')
     # ### end Alembic commands ###
 
 

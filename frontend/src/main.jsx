@@ -24,6 +24,7 @@ const AirflowPage = lazy(() => import('./pages/airflow/Page'))
 const RangerPage = lazy(() => import('./pages/ranger/Page'))
 const SolrPage = lazy(() => import('./pages/solr/Page'))
 const KafkaPage = lazy(() => import('./pages/kafka/Page'))
+const NifiPage = lazy(() => import('./pages/nifi/Page'))
 
 import { ProtectedRoute } from './components/ProtectedRoute'
 
@@ -105,6 +106,10 @@ const router = createBrowserRouter([
       {
         path: 'platform/kafka',
         element: <KafkaPage />,
+      },
+      {
+        path: 'platform/nifi',
+        element: <NifiPage />,
       },
       {
         path: 'platform/:service',

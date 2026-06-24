@@ -1,0 +1,9 @@
+# SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
+# SPDX-License-Identifier: AGPLv3+
+
+apiVersion: v2
+name: nifi
+description: A Helm chart to deploy Apache NiFi using NiFiKop operator on Kubernetes
+type: application
+version: 0.1.0
+appVersion: 2.9.0

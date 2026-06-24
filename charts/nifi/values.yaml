@@ -1,0 +1,22 @@
+# SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
+# SPDX-License-Identifier: AGPLv3+
+
+fullnameOverride: ""
+
+replicaCount: 1
+
+image:
+  repository: "apache/nifi"
+  tag: "2.9.0"
+
+resources:
+  requests:
+    cpu: "0.5"
+    memory: "2Gi"
+  limits:
+    cpu: "2.0"
+    memory: "4Gi"
+
+persistence:
+  size: "10Gi"
+  storageClassName: "standard"

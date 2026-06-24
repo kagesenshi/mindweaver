@@ -91,6 +91,9 @@ class K8sClusterStatus(Base, table=True):
     kafka_operator_installed: bool = Field(default=False)
     kafka_operator_version: Optional[str] = Field(default=None)
 
+    nifikop_installed: bool = Field(default=False)
+    nifikop_version: Optional[str] = Field(default=None)
+
     last_update: datetime = Field(
         default_factory=ts_now, sa_type=DateTime(timezone=True)
     )

@@ -80,6 +80,11 @@ def mock_k8s():
         mock_pod_kafka.metadata.labels = {"app.kubernetes.io/version": "v0.41.0"}
         mock_pod_kafka.spec.containers = [MagicMock(image="strimzi/operator:v0.41.0")]
 
+        # Mock Pods (NiFiKop Operator version)
+        mock_pod_nifikop = MagicMock()
+        mock_pod_nifikop.metadata.labels = {"app.kubernetes.io/version": "v1.17.0"}
+        mock_pod_nifikop.spec.containers = [MagicMock(image="konpyutaika/nifikop:v1.17.0")]
+
         def _mock_list_pod_for_all_namespaces(label_selector=None):
             m_list = MagicMock()
             if "argocd-server" in label_selector:
@@ -94,6 +99,8 @@ def mock_k8s():
                 m_list.items = [mock_pod_solr]
             elif "strimzi-kafka-operator" in label_selector or "kafka-operator" in label_selector or "name=strimzi-cluster-operator" in label_selector or "strimzi.io/kind=cluster-operator" in label_selector:
                 m_list.items = [mock_pod_kafka]
+            elif "nifikop" in label_selector:
+                m_list.items = [mock_pod_nifikop]
             else:
                 m_list.items = []
             return m_list
@@ -115,6 +122,8 @@ def mock_k8s():
         mock_secret_solr.metadata.name = "sh.helm.release.v1.solr-operator.v1"
         mock_secret_kafka = MagicMock()
         mock_secret_kafka.metadata.name = "sh.helm.release.v1.strimzi-kafka-operator.v1"
+        mock_secret_nifikop = MagicMock()
+        mock_secret_nifikop.metadata.name = "sh.helm.release.v1.nifikop.v1"
 
         mock_secret_list = MagicMock()
         mock_secret_list.items = [
@@ -122,6 +131,7 @@ def mock_k8s():
             mock_secret_cm,
             mock_secret_cnpg,
             mock_secret_eg,
+            mock_secret_nifikop,
         ]
         mock_core.return_value.list_secret_for_all_namespaces.return_value = (
             mock_secret_list
@@ -178,6 +188,8 @@ def test_poll_k8s_cluster_status(client: TestClient, mock_k8s):
     assert data["solr_operator_version"] == "v0.9.1"
     assert data["kafka_operator_installed"] is True
     assert data["kafka_operator_version"] == "v0.41.0"
+    assert data["nifikop_installed"] is True
+    assert data["nifikop_version"] == "v1.17.0"
 
 
 @pytest.mark.asyncio
@@ -632,6 +644,84 @@ async def test_install_kafka_operator():
         assert "repoURL: https://strimzi.io/charts/" in manifest
         assert "chart: strimzi-kafka-operator" in manifest
         assert "targetRevision: 0.41.0" in manifest
+
+
+@pytest.mark.asyncio
+async def test_install_nifikop():
+    from mindweaver.service.k8s_cluster.model import K8sCluster, K8sClusterType
+    import os
+
+    cluster = K8sCluster(
+        name="test-cluster-nifikop-op",
+        title="Test Cluster NiFiKop Op",
+        type=K8sClusterType.REMOTE,
+        kubeconfig="fake-kubeconfig",
+    )
+
+    mock_svc = MagicMock()
+    mock_svc.kubeconfig = pytest.importorskip("unittest.mock").AsyncMock(
+        return_value="fake-kubeconfig"
+    )
+
+    from mindweaver.service.k8s_cluster.actions import InstallNifikopAction
+
+    applied_manifests = []
+
+    def mock_subprocess(*args, **kwargs):
+        cmd = args
+        if len(cmd) > 0 and "kubectl" in cmd:
+            path = cmd[-1]
+            if os.path.exists(path):
+                with open(path, "r") as f:
+                    applied_manifests.append(f.read())
+        mock_proc = MagicMock()
+        mock_proc.returncode = 0
+        mock_proc.communicate = pytest.importorskip("unittest.mock").AsyncMock(
+            return_value=(b"success", b"")
+        )
+        return mock_proc
+
+    with patch("asyncio.create_subprocess_exec", side_effect=mock_subprocess) as mock_exec:
+        action = InstallNifikopAction(cluster, mock_svc)
+        await action.run()
+
+        assert len(applied_manifests) == 1
+        manifest = applied_manifests[0]
+        assert "kind: Application" in manifest
+        assert "name: nifikop-operator" in manifest
+        assert "repoURL: ghcr.io/konpyutaika/helm-charts" in manifest
+        assert "chart: nifikop" in manifest
+        assert "targetRevision: 1.17.0" in manifest
+
+
+def test_install_nifikop_action_triggers_task(client: TestClient):
+    # Create cluster
+    p1 = client.post(
+        "/api/v1/k8s_clusters",
+        json={
+            "name": "task-test-nifikop",
+            "title": "Task Test NiFiKop",
+            "type": "in-cluster",
+        },
+    ).json()["data"]
+
+    with patch(
+        "mindweaver.tasks.k8s_cluster_status.install_nifikop_task.delay"
+    ) as mock_delay:
+        resp = client.post(
+            f"/api/v1/k8s_clusters/{p1['id']}/_actions",
+            json={"action": "install_nifikop"},
+        )
+        assert resp.status_code == 200
+        assert (
+            resp.json()["message"]
+            == "NiFiKop Operator installation triggered and status being refreshed."
+        )
+        mock_delay.assert_called_once_with(p1["id"])
+
+        # Verify status updated immediately in DB
+        resp_state = client.get(f"/api/v1/k8s_clusters/{p1['id']}/_state")
+        assert resp_state.json()["nifikop_installed"] is True
 
 
 

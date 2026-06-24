@@ -373,6 +373,25 @@ const ServiceView = ({
                             )}
                         </div>
 
+                        {/* NiFi Operator */}
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                            <div className="flex items-center gap-3">
+                                <div className={`p-2 rounded-lg ${clusterState.nifikop_installed ? 'bg-indigo-500 text-white' : 'bg-slate-200 text-slate-400'}`}>
+                                    <Activity size={16} />
+                                </div>
+                                <span className="text-sm font-bold text-slate-700 dark:text-white">NiFi Operator</span>
+                            </div>
+                            {clusterState.nifikop_installed ? (
+                                <span className="text-[10px] font-bold bg-green-500/10 text-green-500 px-2 py-0.5 rounded">
+                                    {clusterState.nifikop_version || "ACTIVE"}
+                                </span>
+                            ) : (
+                                <span className="text-[10px] font-bold bg-slate-100 text-slate-400 px-2 py-0.5 rounded">
+                                    INACTIVE
+                                </span>
+                            )}
+                        </div>
+
                         {/* Self-Signed ClusterIssuer */}
                         <div className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
                             <div className="flex items-center gap-3">

@@ -1,0 +1,71 @@
+# SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
+# SPDX-License-Identifier: AGPLv3+
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Values.fullnameOverride }}-sa
+  namespace: {{ .Release.Namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ .Values.fullnameOverride }}-leader-election-role
+  namespace: {{ .Release.Namespace }}
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["create", "get", "update", "list", "watch"]
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["create", "get", "update", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ .Values.fullnameOverride }}-leader-election-rolebinding
+  namespace: {{ .Release.Namespace }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.fullnameOverride }}-sa
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: Role
+  name: {{ .Values.fullnameOverride }}-leader-election-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: nifi.konpyutaika.com/v1
+kind: NifiCluster
+metadata:
+  name: {{ .Values.fullnameOverride }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  clusterImage: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+  service:
+    headlessEnabled: true
+  serviceAccountName: {{ .Values.fullnameOverride }}-sa
+  readOnlyConfig:
+    nifiProperties:
+      overrideConfigs: |
+        nifi.cluster.leader.election.implementation=KubernetesLeaderElectionManager
+        nifi.cluster.leader.election.kubernetes.lease.prefix={{ .Values.fullnameOverride }}
+  nodeConfigGroups:
+    default_group:
+      isNode: true
+      storageConfigs:
+        - name: data
+          mountPath: "/opt/nifi/nifi-current/data"
+          pvcSpec:
+            accessModes:
+              - ReadWriteOnce
+            storageClassName: "{{ .Values.persistence.storageClassName }}"
+            resources:
+              requests:
+                storage: "{{ .Values.persistence.size }}"
+      resources:
+        requests:
+          cpu: "{{ .Values.resources.requests.cpu }}"
+          memory: "{{ .Values.resources.requests.memory }}"
+        limits:
+          cpu: "{{ .Values.resources.limits.cpu }}"
+          memory: "{{ .Values.resources.limits.memory }}"

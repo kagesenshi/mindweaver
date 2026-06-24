@@ -287,6 +287,39 @@ class K8sClusterService(Service[K8sCluster]):
                 except Exception as e:
                     logger.warning(f"Failed to check Kafka Operator presence: {e}")
 
+                # Check NiFiKop Operator
+                nifikop_installed = False
+                nifikop_version = None
+                try:
+                    if secrets:
+                        for secret in secrets.items:
+                            if secret.metadata.name.startswith("sh.helm.release.v1.nifikop"):
+                                nifikop_installed = True
+                                break
+                    if not nifikop_installed:
+                        pods = core_v1.list_pod_for_all_namespaces(
+                            label_selector="app.kubernetes.io/name=nifikop"
+                        )
+                        if not pods.items:
+                            pods = core_v1.list_pod_for_all_namespaces(
+                                label_selector="control-plane=nifikop"
+                            )
+                        if pods.items:
+                            nifikop_installed = True
+                            nifikop_version = _get_version(pods.items[0])
+                    else:
+                        pods = core_v1.list_pod_for_all_namespaces(
+                            label_selector="app.kubernetes.io/name=nifikop"
+                        )
+                        if not pods.items:
+                            pods = core_v1.list_pod_for_all_namespaces(
+                                label_selector="control-plane=nifikop"
+                            )
+                        if pods.items:
+                            nifikop_version = _get_version(pods.items[0])
+                except Exception as e:
+                    logger.warning(f"Failed to check NiFiKop Operator presence: {e}")
+
                 return {
                     "k8s_version": k8s_version,
                     "node_count": node_count,
@@ -306,6 +339,8 @@ class K8sClusterService(Service[K8sCluster]):
                     "solr_operator_version": solr_operator_version,
                     "kafka_operator_installed": kafka_operator_installed,
                     "kafka_operator_version": kafka_operator_version,
+                    "nifikop_installed": nifikop_installed,
+                    "nifikop_version": nifikop_version,
                     "node_ips": node_ips,
                 }
 
@@ -341,6 +376,8 @@ class K8sClusterService(Service[K8sCluster]):
             status_model.solr_operator_version = info["solr_operator_version"]
             status_model.kafka_operator_installed = info["kafka_operator_installed"]
             status_model.kafka_operator_version = info["kafka_operator_version"]
+            status_model.nifikop_installed = info["nifikop_installed"]
+            status_model.nifikop_version = info["nifikop_version"]
             status_model.node_ips = info["node_ips"]
             status_model.last_update = ts_now()
             status_model.message = None

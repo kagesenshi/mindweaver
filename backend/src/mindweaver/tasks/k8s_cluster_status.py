@@ -313,5 +313,39 @@ async def _install_kafka_operator_task(k8s_cluster_id: int):
             )
 
 
+@app.task
+def install_nifikop_task(k8s_cluster_id: int):
+    """Trigger NiFiKop Operator installation for a cluster."""
+    logger.info(f"Triggering NiFiKop Operator installation for cluster {k8s_cluster_id}")
+    run_async(_install_nifikop_task(k8s_cluster_id))
+
+
+async def _install_nifikop_task(k8s_cluster_id: int):
+    """Async task implementation to deploy the NiFiKop Operator via its install action."""
+    engine = get_engine()
+    async with AsyncSession(engine) as session:
+
+        class MockRequest:
+            headers = {}
+
+        svc = K8sClusterService(MockRequest(), session)
+        try:
+            model = await svc.get(k8s_cluster_id)
+            from mindweaver.service.k8s_cluster.actions import InstallNifikopAction
+
+            action = InstallNifikopAction(model, svc)
+            await action.run()
+            await svc.poll_status(model)
+            await session.commit()
+            logger.info(
+                f"Successfully installed NiFiKop Operator for cluster {k8s_cluster_id}"
+            )
+        except Exception as e:
+            logger.error(
+                f"Error installing NiFiKop Operator for cluster {k8s_cluster_id}: {e}"
+            )
+
+
+
 
 

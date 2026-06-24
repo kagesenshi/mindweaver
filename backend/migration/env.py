@@ -21,6 +21,7 @@ from mindweaver.platform_service.airflow.model import AirflowPlatform, AirflowPl
 from mindweaver.platform_service.ranger.model import RangerPlatform, RangerPlatformState
 from mindweaver.platform_service.solr.model import SolrPlatform, SolrPlatformState
 from mindweaver.platform_service.kafka.model import KafkaPlatform, KafkaPlatformState
+from mindweaver.platform_service.nifi.model import NifiPlatform, NifiPlatformState
 from mindweaver.service.ldap_config.model import LdapConfig
 from mindweaver.fw.auth import User
 from mindweaver.service.project_user.model import ProjectLocalUser

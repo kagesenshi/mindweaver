@@ -1,0 +1,51 @@
+# SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
+# SPDX-License-Identifier: AGPLv3+
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ name }}
+  namespace: argocd
+  labels:
+    {% if project_title %}
+    project: "{{ project_title }}"
+    {% endif %}
+    {% if service_title %}
+    service: "{{ service_title }}"
+    {% endif %}
+    manager: mindweaver
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/kagesenshi/mindweaver.git'
+    targetRevision: main
+    path: charts/nifi
+    helm:
+      values: |
+        fullnameOverride: {{ name }}
+        replicaCount: {{ replica_count }}
+        resources:
+          requests:
+            cpu: "{{ cpu_request }}"
+            memory: "{{ mem_request }}Gi"
+          limits:
+            cpu: "{{ cpu_limit }}"
+            memory: "{{ mem_limit }}Gi"
+        persistence:
+          size: "{{ storage_size }}"
+        {% if override_image %}
+        image:
+          repository: "{{ image }}"
+          tag: "{{ image_tag }}"
+        {% endif %}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ namespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

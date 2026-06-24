@@ -532,6 +532,15 @@ class SyncCoreIntegrationsAction(InstallArgoCDAction):
         status.kafka_operator_installed = True
         await self.session.flush()
 
+        # 8. Deploy/update NiFiKop Operator Application manifest
+        logger.info("Sync: Deploying/updating NiFiKop Operator...")
+        from .actions import InstallNifikopAction
+        action_nifikop = InstallNifikopAction(self.model, self.svc)
+        action_nifikop.session = self.session
+        await action_nifikop.run()
+        status.nifikop_installed = True
+        await self.session.flush()
+
 
 @K8sClusterService.register_action("install_solr_operator")
 class InstallSolrOperatorAction(InstallArgoCDAction):
@@ -613,5 +622,41 @@ class InstallKafkaOperatorAction(InstallArgoCDAction):
         await self._apply_template("kafka-operator.yml.j2")
 
 
+@K8sClusterService.register_action("install_nifikop")
+class InstallNifikopAction(InstallArgoCDAction):
 
+    async def available(self) -> bool:
+        """Check if NiFiKop action is available (not installed yet)"""
+        stmt = select(K8sClusterStatus).where(
+            K8sClusterStatus.k8s_cluster_id == self.model.id
+        )
+        result = await self.session.exec(stmt)
+        status = result.one_or_none()
+        return not (status and status.nifikop_installed)
 
+    async def __call__(self, **kwargs):
+        """Call method to queue NiFiKop installation task asynchronously"""
+        from mindweaver.tasks.k8s_cluster_status import install_nifikop_task
+
+        stmt = select(K8sClusterStatus).where(
+            K8sClusterStatus.k8s_cluster_id == self.model.id
+        )
+        result = await self.session.exec(stmt)
+        status_model = result.one_or_none()
+        if not status_model:
+            status_model = K8sClusterStatus(k8s_cluster_id=self.model.id)
+            self.session.add(status_model)
+        status_model.nifikop_installed = True
+        await self.session.flush()
+
+        install_nifikop_task.delay(self.model.id)
+        return {
+            "status": "success",
+            "message": "NiFiKop Operator installation triggered and status being refreshed.",
+        }
+
+    async def run(self):
+        """Install NiFiKop Operator to the cluster using ArgoCD Application"""
+        logger.info(f"Installing NiFiKop Operator for cluster {self.model.name}")
+
+        await self._apply_template("nifikop-operator.yml.j2")
