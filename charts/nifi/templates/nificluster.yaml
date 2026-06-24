@@ -67,6 +67,9 @@ spec:
         nifi.cluster.leader.election.implementation=KubernetesLeaderElectionManager
         nifi.cluster.leader.election.kubernetes.lease.prefix={{ .Values.fullnameOverride }}
         nifi.sensitive.props.key={{ .Values.sensitivePropsKey }}
+    bootstrapProperties:
+      overrideConfigs: |
+        java.arg.addopens.exodus=--add-opens=java.base/sun.nio.ch=ALL-UNNAMED
   nodes:
     {{- range $i := until (int .Values.replicaCount) }}
     - id: {{ $i }}
