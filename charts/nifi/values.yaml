@@ -20,3 +20,6 @@ resources:
 persistence:
   size: "10Gi"
   storageClassName: ""
+
+sensitivePropsKey: "default-sensitive-properties-key-32-chars-long"
+
