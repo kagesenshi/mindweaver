@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: AGPLv3+
 
 import React, { useState, useEffect } from 'react';
-import { Network, ExternalLink } from 'lucide-react';
+import { Network } from 'lucide-react';
 import { useNotification } from '../../providers/NotificationProvider';
 import PlatformServiceView from '../../components/PlatformServiceView';
-import { InternalNetworkAccessBlock, ExternalAccessBlock } from '../../components/ServiceBlocks';
+import { InternalNetworkAccessBlock, ExternalNetworkAccessBlock } from '../../components/ServiceBlocks';
 
 /**
  * ServiceView displays detail, status, and connection options for a single Apache NiFi platform instance.
@@ -81,7 +81,6 @@ const ServiceView = ({
 
     const renderConnectTab = () => {
         const endpoints = [];
-        const externalLinks = [];
 
         // Internal Service Access
         if (selectedPlatform && platformState?.extra_data?.namespace) {
@@ -94,12 +93,42 @@ const ServiceView = ({
             });
         }
 
-        // Web UI access if nifi_uri is present
+        // External access — build ports array from nifi_uri (ingress) or node_ports
+        const ports = [];
+        let nifiUriObj = null;
         if (platformState?.nifi_uri) {
-            externalLinks.push({
-                label: 'NiFi Web UI',
-                url: platformState.nifi_uri,
-                description: 'Direct link to Apache NiFi Web Console.'
+            try {
+                nifiUriObj = new URL(platformState.nifi_uri);
+            } catch (e) {
+                console.error('Failed to parse nifi_uri:', e);
+            }
+        }
+
+        const ingressDomain = platformState?.extra_data?.ingress_domain;
+        let isIngressUsed = false;
+
+        if (nifiUriObj && ingressDomain && nifiUriObj.hostname.endsWith(ingressDomain)) {
+            ports.push({
+                label: 'NiFi Web UI (Envoy Ingress)',
+                load_balancer_ips: [nifiUriObj.hostname],
+                port: nifiUriObj.port ? parseInt(nifiUriObj.port) : (nifiUriObj.protocol === 'https:' ? 443 : 80),
+                scheme: nifiUriObj.protocol.replace(':', '')
+            });
+            isIngressUsed = true;
+        }
+
+        const httpPort = platformState?.node_ports?.find(np => np.port === 8080);
+        if (httpPort) {
+            ports.push({
+                label: 'NiFi Web UI (NodePort)',
+                node_port: httpPort.node_port,
+                scheme: nifiUriObj ? nifiUriObj.protocol.replace(':', '') : 'http'
+            });
+        } else if (!isIngressUsed && nifiUriObj) {
+            ports.push({
+                label: 'NiFi Web UI (NodePort)',
+                node_port: nifiUriObj.port ? parseInt(nifiUriObj.port) : 8080,
+                scheme: nifiUriObj.protocol.replace(':', '')
             });
         }
 
@@ -112,11 +141,13 @@ const ServiceView = ({
                         endpoints={endpoints}
                     />
                 )}
-                {externalLinks.length > 0 && (
-                    <ExternalAccessBlock
+                {ports.length > 0 && (
+                    <ExternalNetworkAccessBlock
                         darkMode={darkMode}
-                        links={externalLinks}
-                        icon={ExternalLink}
+                        ports={ports}
+                        clusterNodes={platformState?.cluster_nodes}
+                        icon={Network}
+                        iconColorClass="text-orange-400"
                     />
                 )}
             </div>
