@@ -49,6 +49,11 @@ spec:
       overrideConfigs: |
         nifi.cluster.leader.election.implementation=KubernetesLeaderElectionManager
         nifi.cluster.leader.election.kubernetes.lease.prefix={{ .Values.fullnameOverride }}
+  nodes:
+    {{- range $i := until (int .Values.replicaCount) }}
+    - id: {{ $i }}
+      nodeConfigGroup: default_group
+    {{- end }}
   nodeConfigGroups:
     default_group:
       isNode: true
