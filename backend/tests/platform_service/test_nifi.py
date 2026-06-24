@@ -108,7 +108,7 @@ async def test_nifi_template_vars(mock_service_dependencies):
 
 @pytest.mark.asyncio
 async def test_nifi_render_manifests(mock_service_dependencies):
-    """Test that the ArgoCD Application manifests render correctly."""
+    """Test that the ArgoCD Application manifests render correctly without ingress domain."""
     request, session = mock_service_dependencies
     svc = NifiPlatformService(request, session)
 
@@ -129,6 +129,33 @@ async def test_nifi_render_manifests(mock_service_dependencies):
     assert "repoURL: ghcr.io/konpyutaika/helm-charts" in manifests
     assert "storage: \"20Gi\"" in manifests
     assert "namespace: test-ns" in manifests
+    # No ingress domain means no HTTPRoute should be rendered
+    assert "HTTPRoute" not in manifests
+
+
+@pytest.mark.asyncio
+async def test_nifi_render_manifests_with_ingress(mock_service_dependencies):
+    """Test that the HTTPRoute manifest renders correctly when ingress_domain is set."""
+    request, session = mock_service_dependencies
+    svc = NifiPlatformService(request, session)
+
+    model = NifiPlatform(
+        name="test-nifi",
+        project_id=1,
+        replica_count=2,
+        storage_size="10Gi",
+    )
+
+    svc._resolve_namespace = AsyncMock(return_value="test-ns")
+    svc.project = AsyncMock(return_value=MagicMock(ingress_domain="example.com"))
+
+    manifests = await svc.render_manifests(model)
+
+    assert "HTTPRoute" in manifests
+    assert "name: test-nifi-route" in manifests
+    assert "test-nifi.example.com" in manifests
+    assert "name: test-nifi-nodeport" in manifests
+    assert "port: 8080" in manifests
 
 @pytest.mark.asyncio
 async def test_nifi_poll_status(mock_service_dependencies):
