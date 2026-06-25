@@ -97,7 +97,10 @@ async def test_nifi_template_vars(mock_service_dependencies):
     )
 
     svc._resolve_namespace = AsyncMock(return_value="test-ns")
-    svc.project = AsyncMock(return_value=MagicMock(ingress_domain=None))
+    mock_project = MagicMock(ingress_domain=None)
+    mock_project.ldap_config_id = None
+    svc.project = AsyncMock(return_value=mock_project)
+
 
     vars = await svc.template_vars(model)
 
@@ -120,7 +123,10 @@ async def test_nifi_render_manifests(mock_service_dependencies):
     )
 
     svc._resolve_namespace = AsyncMock(return_value="test-ns")
-    svc.project = AsyncMock(return_value=MagicMock(ingress_domain=None))
+    mock_project = MagicMock(ingress_domain=None)
+    mock_project.ldap_config_id = None
+    svc.project = AsyncMock(return_value=mock_project)
+
 
     manifests = await svc.render_manifests(model)
 
@@ -156,7 +162,10 @@ async def test_nifi_render_manifests_with_ingress(mock_service_dependencies):
     )
 
     svc._resolve_namespace = AsyncMock(return_value="test-ns")
-    svc.project = AsyncMock(return_value=MagicMock(ingress_domain="example.com"))
+    mock_project = MagicMock(ingress_domain="example.com")
+    mock_project.ldap_config_id = None
+    svc.project = AsyncMock(return_value=mock_project)
+
 
     manifests = await svc.render_manifests(model)
 
@@ -250,3 +259,47 @@ async def test_nifi_decommission(mock_service_dependencies):
         mock_core_v1.delete_namespaced_secret.assert_called_once_with(
             name="test-nifi-ca-secret", namespace="test-ns"
         )
+
+
+@pytest.mark.asyncio
+async def test_nifi_render_manifests_with_ldap(mock_service_dependencies):
+    """Test that LDAP configuration is correctly retrieved and rendered in the NiFi manifests."""
+    from mindweaver.service.ldap_config.model import LdapConfig
+    request, session = mock_service_dependencies
+    svc = NifiPlatformService(request, session)
+
+    model = NifiPlatform(
+        name="test-nifi",
+        project_id=1,
+        replica_count=1,
+        storage_size="10Gi",
+    )
+
+    mock_project = MagicMock(ingress_domain="example.com", ldap_config_id=42)
+    svc._resolve_namespace = AsyncMock(return_value="test-ns")
+    svc.project = AsyncMock(return_value=mock_project)
+
+    mock_ldap_config = LdapConfig(
+        id=42,
+        name="test-ldap",
+        server_url="ldap://ldap.example.com:389",
+        user_search_base="ou=users,dc=example,dc=com",
+        user_search_filter="(uid={0})",
+        username_attr="uid",
+        verify_ssl=False,
+    )
+    
+    mock_ldap_svc = MagicMock()
+    mock_ldap_svc.get = AsyncMock(return_value=mock_ldap_config)
+    
+    with patch("mindweaver.service.ldap_config.service.LdapConfigService.get_service", AsyncMock(return_value=mock_ldap_svc)):
+        manifests = await svc.render_manifests(model)
+        
+        assert "ldapConfiguration:" in manifests
+        assert "enabled: true" in manifests
+        assert "url: \"ldap://ldap.example.com:389\"" in manifests
+        assert "searchBase: \"ou=users,dc=example,dc=com\"" in manifests
+        assert "searchFilter: \"(uid={0})\"" in manifests
+        assert "authenticationStrategy: \"SIMPLE\"" in manifests
+        assert "nifi.security.needClientAuth=true" in manifests
+

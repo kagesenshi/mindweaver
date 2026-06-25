@@ -22,8 +22,7 @@ spec:
                   port: 443
                   nodePort: {{ nodeport }}
         {%- endif %}
-  backendTLS:
-    clientCertificateRef:
-      name: envoy-{{ name }}
-      kind: Secret
-
+#	backendTLS:
+#		clientCertificateRef:
+#			name: envoy-{{ name }}
+#			kind: Secret

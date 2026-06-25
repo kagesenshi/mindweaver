@@ -92,10 +92,7 @@ spec:
               nifi.cluster.leader.election.implementation=KubernetesLeaderElectionManager
               nifi.cluster.leader.election.kubernetes.lease.prefix={{ name }}
               nifi.sensitive.props.key=default-sensitive-properties-key-32-chars-long
-              nifi.web.https.host=0.0.0.0
-              nifi.web.https.port=8443
-              nifi.web.http.host=
-              nifi.web.http.port=
+              nifi.security.needClientAuth=true
               {% if ingress_domain %}
               nifi.web.proxy.host={{ name }}.{{ ingress_domain }}:443
               {% endif %}
@@ -105,6 +102,21 @@ spec:
               {%- else %}
               []
               {%- endif %}
+          {%- if ldap_enabled %}
+          ldapConfiguration:
+            enabled: true
+            url: "{{ ldap_url }}"
+            searchBase: "{{ ldap_search_base }}"
+            searchFilter: "{{ ldap_search_filter }}"
+            {%- if ldap_manager_dn %}
+            managerDn: "{{ ldap_manager_dn }}"
+            {%- endif %}
+            {%- if ldap_manager_password %}
+            managerPassword: "{{ ldap_manager_password }}"
+            {%- endif %}
+            authenticationStrategy: "{{ ldap_authentication_strategy }}"
+          {%- endif %}
+
           bootstrapProperties:
             overrideConfigs: |
               java.arg.addopens.exodus=--add-opens=java.base/sun.nio.ch=ALL-UNNAMED

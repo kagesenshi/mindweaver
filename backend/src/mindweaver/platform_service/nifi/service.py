@@ -9,7 +9,10 @@ from typing import Any, Optional
 from kubernetes import client, config
 from mindweaver.platform_service.base import PlatformService
 from mindweaver.fw.model import ts_now
+from mindweaver.crypto import decrypt_password
+from mindweaver.service.ldap_config.service import LdapConfigService
 from .model import NifiPlatform, NifiPlatformState
+
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +97,41 @@ class NifiPlatformService(PlatformService[NifiPlatform]):
         vars["namespace"] = await self._resolve_namespace(model)
         project = await self.project(model)
         vars["ingress_domain"] = project.ingress_domain
+        
+        # Resolve LDAP Configuration from Project
+        ldap_config_id = getattr(project, "ldap_config_id", None)
+        if ldap_config_id and "mock" not in str(type(ldap_config_id)).lower():
+            ldap_svc = await LdapConfigService.get_service(self.request, self.session)
+            ldap_config = await ldap_svc.get(ldap_config_id)
+            vars["ldap_enabled"] = True
+            vars["ldap_url"] = ldap_config.server_url
+            vars["ldap_search_base"] = ldap_config.user_search_base
+            vars["ldap_search_filter"] = ldap_config.user_search_filter
+            vars["ldap_user_dn_pattern"] = f"{ldap_config.username_attr}={{0}},{ldap_config.user_search_base}"
+            
+            if ldap_config.bind_dn:
+                vars["ldap_manager_dn"] = ldap_config.bind_dn
+                if ldap_config.bind_password:
+                    try:
+                        bind_pass = decrypt_password(ldap_config.bind_password)
+                    except Exception:
+                        bind_pass = ldap_config.bind_password
+                    vars["ldap_manager_password"] = bind_pass
+            
+            if ldap_config.group_search_base:
+                vars["ldap_group_search_base"] = ldap_config.group_search_base
+            if ldap_config.group_search_filter:
+                vars["ldap_group_search_filter"] = ldap_config.group_search_filter
+            if ldap_config.group_member_attr:
+                vars["ldap_group_role_attribute"] = ldap_config.group_member_attr
+                
+            if ldap_config.server_url.startswith("ldaps://"):
+                vars["ldap_authentication_strategy"] = "LDAPS"
+            else:
+                vars["ldap_authentication_strategy"] = "SIMPLE"
+                
         return vars
+
 
     async def decommission(self, model: NifiPlatform):
         """Decommissions the NiFi cluster and cleans up its CA secret."""
