@@ -176,7 +176,7 @@ async def test_nifi_render_manifests_with_ingress(mock_service_dependencies):
     # BackendTLSPolicy should be present, referencing the project CA secret
     assert "BackendTLSPolicy" in manifests
     assert "name: test-nifi-tls-policy" in manifests
-    assert "hostname: test-nifi.test-ns.svc.cluster.local" in manifests
+    assert "hostname: test-nifi-headless.test-ns.svc.cluster.local" in manifests
     # CA cert referenced from the project CA secret (tlsSecretName = {project_name}-ca-secret)
     assert "ca-secret" in manifests
 

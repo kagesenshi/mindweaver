@@ -32,7 +32,7 @@ spec:
       kind: Service
       name: {{ name }}-nodeport
   validation:
-    hostname: {{ name }}.{{ namespace }}.svc.cluster.local
+    hostname: {{ name }}-headless.{{ namespace }}.svc.cluster.local
     caCertificateRefs:
       - group: ""
         kind: Secret
