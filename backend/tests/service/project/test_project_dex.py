@@ -336,6 +336,10 @@ async def test_project_deploy_gateway_with_nodeport(client):
             assert "nodePort: 32111" in manifest
             assert "infrastructure:" in manifest
             assert "parametersRef:" in manifest
+            assert "backendTLS:" in manifest
+            assert "clientCertificateRef:" in manifest
+            assert "name: envoy-test-proj-gw-np" in manifest
+
 
 
 @pytest.mark.asyncio

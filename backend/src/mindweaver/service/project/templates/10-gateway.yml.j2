@@ -8,13 +8,11 @@ metadata:
   namespace: {{ namespace }}
 spec:
   gatewayClassName: envoy-gateway
-{% if nodeport %}
   infrastructure:
     parametersRef:
       group: gateway.envoyproxy.io
       kind: EnvoyProxy
       name: project-envoy-proxy-config
-{% endif %}
   listeners:
     - name: https
       protocol: HTTPS

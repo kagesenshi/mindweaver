@@ -99,6 +99,12 @@ spec:
               {% if ingress_domain %}
               nifi.web.proxy.host={{ name }}.{{ ingress_domain }}:443
               {% endif %}
+            webProxyHosts:
+              {%- if ingress_domain %}
+              - "{{ name }}.{{ ingress_domain }}"
+              {%- else %}
+              []
+              {%- endif %}
           bootstrapProperties:
             overrideConfigs: |
               java.arg.addopens.exodus=--add-opens=java.base/sun.nio.ch=ALL-UNNAMED
