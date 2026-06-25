@@ -26,6 +26,7 @@ spec:
       values: |
         cluster:
           fullnameOverride: {{ name }}
+          nodeUserIdentityTemplate: "node-%d"
           manager: kubernetes
           pod:
             annotations:
@@ -60,9 +61,9 @@ spec:
             {%- endfor %}
           listenersConfig:
             internalListeners:
-              - containerPort: 8080
-                type: http
-                name: http
+              - containerPort: 8443
+                type: https
+                name: https
               - containerPort: 6007
                 type: cluster
                 name: cluster
@@ -72,18 +73,32 @@ spec:
               - containerPort: 6342
                 type: load-balance
                 name: load-balance
+            sslSecrets:
+              tlsSecretName: "{{ name }}-ca-secret"
+              create: true
+              issuerRef:
+                name: {{ project_name }}-selfsigned-issuer
+                kind: Issuer
+                group: cert-manager.io
           externalServices:
             - name: {{ name }}-nodeport
               spec:
                 type: NodePort
                 portConfigs:
-                  - internalListenerName: http
-                    port: 8080
+                  - internalListenerName: https
+                    port: 8443
           nifiProperties:
             overrideConfigs: |
               nifi.cluster.leader.election.implementation=KubernetesLeaderElectionManager
               nifi.cluster.leader.election.kubernetes.lease.prefix={{ name }}
               nifi.sensitive.props.key=default-sensitive-properties-key-32-chars-long
+              nifi.web.https.host=0.0.0.0
+              nifi.web.https.port=8443
+              nifi.web.http.host=
+              nifi.web.http.port=
+              {% if ingress_domain %}
+              nifi.web.proxy.host={{ name }}.{{ ingress_domain }}:443
+              {% endif %}
           bootstrapProperties:
             overrideConfigs: |
               java.arg.addopens.exodus=--add-opens=java.base/sun.nio.ch=ALL-UNNAMED

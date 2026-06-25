@@ -131,11 +131,20 @@ async def test_nifi_render_manifests(mock_service_dependencies):
     assert "namespace: test-ns" in manifests
     # No ingress domain means no HTTPRoute should be rendered
     assert "HTTPRoute" not in manifests
+    # HTTPS listener should be configured
+    assert "type: https" in manifests
+    assert "containerPort: 8443" in manifests
+    # NiFiKop manages PKI internally via create: true + issuerRef (no standalone Certificate)
+    assert "kind: Certificate" not in manifests
+    assert "create: true" in manifests
+    assert "selfsigned-issuer" in manifests
 
 
 @pytest.mark.asyncio
 async def test_nifi_render_manifests_with_ingress(mock_service_dependencies):
-    """Test that the HTTPRoute manifest renders correctly when ingress_domain is set."""
+    """Test that the HTTPRoute manifest renders correctly when ingress_domain is set.
+    NiFiKop manages PKI internally (create: true + issuerRef); no standalone Certificate resource.
+    BackendTLSPolicy references the NiFiKop-managed CA secret ({name}-ca)."""
     request, session = mock_service_dependencies
     svc = NifiPlatformService(request, session)
 
@@ -151,11 +160,25 @@ async def test_nifi_render_manifests_with_ingress(mock_service_dependencies):
 
     manifests = await svc.render_manifests(model)
 
+    # NiFiKop manages PKI internally — no standalone Certificate resource in manifests
+    assert "kind: Certificate" not in manifests
+    # sslSecrets create:true and issuerRef should be present in the ArgoCD App Helm values
+    assert "create: true" in manifests
+    assert "selfsigned-issuer" in manifests
+
+    # HTTPRoute should route to HTTPS port 8443
     assert "HTTPRoute" in manifests
     assert "name: test-nifi-route" in manifests
     assert "test-nifi.example.com" in manifests
     assert "name: test-nifi-nodeport" in manifests
-    assert "port: 8080" in manifests
+    assert "port: 8443" in manifests
+
+    # BackendTLSPolicy should be present, referencing the project CA secret
+    assert "BackendTLSPolicy" in manifests
+    assert "name: test-nifi-tls-policy" in manifests
+    assert "hostname: test-nifi.test-ns.svc.cluster.local" in manifests
+    # CA cert referenced from the project CA secret (tlsSecretName = {project_name}-ca-secret)
+    assert "ca-secret" in manifests
 
 @pytest.mark.asyncio
 async def test_nifi_poll_status(mock_service_dependencies):
@@ -191,3 +214,39 @@ async def test_nifi_poll_status(mock_service_dependencies):
 
             # NiFi URL should be derived using ingress domain
             assert mock_state.nifi_uri == "https://test-nifi.example.com"
+
+
+@pytest.mark.asyncio
+async def test_nifi_decommission(mock_service_dependencies):
+    """Test that decommissioning calls super method and deletes the CA secret."""
+    request, session = mock_service_dependencies
+    svc = NifiPlatformService(request, session)
+
+    model = NifiPlatform(
+        name="test-nifi",
+        project_id=1,
+    )
+
+    # Mock all the external calls / Kubernetes clients
+    mock_super_decommission = AsyncMock()
+    mock_kubeconfig = AsyncMock(return_value="mock-kubeconfig")
+    mock_resolve_namespace = AsyncMock(return_value="test-ns")
+
+    with patch("mindweaver.platform_service.base.PlatformService.decommission", mock_super_decommission), \
+         patch.object(svc, "kubeconfig", mock_kubeconfig), \
+         patch.object(svc, "_resolve_namespace", mock_resolve_namespace), \
+         patch("mindweaver.platform_service.nifi.service.config.new_client_from_config") as mock_new_client, \
+         patch("mindweaver.platform_service.nifi.service.client.CoreV1Api") as mock_core_v1_class:
+
+        mock_core_v1 = MagicMock()
+        mock_core_v1_class.return_value = mock_core_v1
+
+        await svc.decommission(model)
+
+        # Ensure super.decommission was called
+        mock_super_decommission.assert_called_once_with(model)
+
+        # Ensure secret deletion was attempted with the correct name and namespace
+        mock_core_v1.delete_namespaced_secret.assert_called_once_with(
+            name="test-nifi-ca-secret", namespace="test-ns"
+        )

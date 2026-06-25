@@ -19,8 +19,9 @@ spec:
   commonName: {{ name }}-ca
   secretName: {{ name }}-ca-secret
   privateKey:
-    algorithm: ECDSA
-    size: 256
+    algorithm: RSA
+    encoding: PKCS1
+    size: 2048
   issuerRef:
     name: {{ name }}-bootstrap-issuer
     kind: Issuer

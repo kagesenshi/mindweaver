@@ -37,3 +37,32 @@ spec:
     - CreateNamespace=true
     - RespectIgnoreDifferences=true
     - ServerSideApply=true
+---
+# Supplemental ClusterRole to allow NiFiKop to list/watch Namespaces cluster-wide.
+# Required when namespaces:[""] (watch-all) is configured — the NiFiKop Helm chart
+# omits namespace list permissions from its generated ClusterRole.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: nifikop-namespace-reader
+  labels:
+    manager: mindweaver
+rules:
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: nifikop-namespace-reader-binding
+  labels:
+    manager: mindweaver
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: nifikop-namespace-reader
+subjects:
+  - kind: ServiceAccount
+    name: nifikop
+    namespace: nifikop

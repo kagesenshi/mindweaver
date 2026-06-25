@@ -19,5 +19,22 @@ spec:
             value: /
       backendRefs:
         - name: {{ name }}-nodeport
-          port: 8080
+          port: 8443
+---
+apiVersion: gateway.networking.k8s.io/v1alpha3
+kind: BackendTLSPolicy
+metadata:
+  name: {{ name }}-tls-policy
+  namespace: {{ namespace }}
+spec:
+  targetRefs:
+    - group: ""
+      kind: Service
+      name: {{ name }}-nodeport
+  validation:
+    hostname: {{ name }}.{{ namespace }}.svc.cluster.local
+    caCertificateRefs:
+      - group: ""
+        kind: Secret
+        name: {{ project_name }}-ca-secret
 {% endif %}

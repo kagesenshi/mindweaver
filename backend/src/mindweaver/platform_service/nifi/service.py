@@ -96,6 +96,40 @@ class NifiPlatformService(PlatformService[NifiPlatform]):
         vars["ingress_domain"] = project.ingress_domain
         return vars
 
+    async def decommission(self, model: NifiPlatform):
+        """Decommissions the NiFi cluster and cleans up its CA secret."""
+        await super().decommission(model)
+
+        kubeconfig = await self.kubeconfig(model)
+        namespace = await self._resolve_namespace(model)
+        secret_name = f"{model.name}-ca-secret"
+
+        def _delete_secret():
+            if kubeconfig is None:
+                config.load_incluster_config()
+                k8s_client = client.ApiClient()
+            else:
+                with tempfile.NamedTemporaryFile(mode="w") as kf:
+                    kf.write(kubeconfig)
+                    kf.flush()
+                    k8s_client = config.new_client_from_config(config_file=kf.name)
+
+            core_v1 = client.CoreV1Api(k8s_client)
+            try:
+                core_v1.delete_namespaced_secret(name=secret_name, namespace=namespace)
+                logger.info(f"Deleted CA secret {secret_name} in namespace {namespace}")
+            except client.exceptions.ApiException as e:
+                if e.status == 404:
+                    logger.info(f"CA secret {secret_name} in namespace {namespace} not found, skipping")
+                else:
+                    logger.error(f"Failed to delete CA secret {secret_name}: {e}")
+                    raise
+
+        try:
+            await asyncio.to_thread(_delete_secret)
+        except Exception as e:
+            logger.error(f"Failed to delete CA secret {secret_name} during decommissioning: {e}")
+
     async def poll_status(self, model: NifiPlatform):
         """Polls cluster status (via ArgoCD application and k8s pods) and updates NifiPlatformState."""
         kubeconfig = await self.kubeconfig(model)
@@ -182,6 +216,7 @@ class NifiPlatformService(PlatformService[NifiPlatform]):
                                         "name": svc.metadata.name,
                                         "port": port.port,
                                         "node_port": port.node_port,
+                                        "protocol": "https" if port.port == 8443 else "http",
                                     }
                                 )
             except Exception as e:
@@ -238,26 +273,24 @@ class NifiPlatformService(PlatformService[NifiPlatform]):
         state.node_ports = node_ports
         state.cluster_nodes = cluster_nodes
 
-        # Derive NiFi HTTP/HTTPS URL
+        # Derive NiFi HTTPS URL (NiFi always runs on HTTPS port 8443)
         if status == "online":
             if project.ingress_domain:
                 state.nifi_uri = f"https://{model.name}.{project.ingress_domain}"
             elif cluster_nodes:
                 nifi_np = next(
-                    (np for np in node_ports if np["port"] in [8080, 8443]), None
+                    (np for np in node_ports if np["port"] == 8443), None
                 )
                 if nifi_np:
                     node_v4 = next((n for n in cluster_nodes if n["ipv4"]), None)
                     if node_v4:
-                        scheme = "https" if nifi_np["port"] == 8443 else "http"
-                        state.nifi_uri = f"{scheme}://{node_v4['ipv4']}:{nifi_np['node_port']}"
+                        state.nifi_uri = f"https://{node_v4['ipv4']}:{nifi_np['node_port']}"
                     else:
-                        scheme = "https" if nifi_np["port"] == 8443 else "http"
-                        state.nifi_uri = f"{scheme}://{model.name}.{namespace}.svc.cluster.local:{nifi_np['port']}"
+                        state.nifi_uri = f"https://{model.name}.{namespace}.svc.cluster.local:8443"
                 else:
-                    state.nifi_uri = f"http://{model.name}.{namespace}.svc.cluster.local:8080"
+                    state.nifi_uri = f"https://{model.name}.{namespace}.svc.cluster.local:8443"
             else:
-                state.nifi_uri = f"http://{model.name}.{namespace}.svc.cluster.local:8080"
+                state.nifi_uri = f"https://{model.name}.{namespace}.svc.cluster.local:8443"
         else:
             state.nifi_uri = None
 
