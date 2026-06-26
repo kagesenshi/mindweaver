@@ -17,7 +17,7 @@ metadata:
   finalizers:
   - resources-finalizer.argocd.argoproj.io
 spec:
-  project: default
+  project: {{ project_name }}
   source:
     repoURL: 'https://trinodb.github.io/charts'
     chart: trino

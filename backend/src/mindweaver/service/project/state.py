@@ -90,14 +90,13 @@ class ProjectState(BaseState):
         dex_installed = False
         dex_version = None
         ingress_ports = []
-        envoy_gateway_service_type = "NodePort"
+        envoy_gateway_service_type = self.model.envoy_gateway_service_type
         if self.model.k8s_cluster_id and self.model.k8s_namespace:
             from mindweaver.service.k8s_cluster import K8sCluster, K8sClusterType
             stmt_c = select(K8sCluster).where(K8sCluster.id == self.model.k8s_cluster_id)
             res_c = await self.svc.session.exec(stmt_c)
             cluster_model = res_c.one_or_none()
             if cluster_model:
-                envoy_gateway_service_type = cluster_model.envoy_gateway_service_type
                 import tempfile
                 import asyncio
                 from kubernetes import client, config

@@ -18,11 +18,6 @@ class K8sClusterType(enum.StrEnum):
     REMOTE = "remote"
 
 
-class EnvoyGatewayServiceType(enum.StrEnum):
-    LOAD_BALANCER = "LoadBalancer"
-    NODE_PORT = "NodePort"
-
-
 class K8sCluster(NamedBase, table=True):
     __tablename__ = "mw_k8s_cluster"
     description: str = Field(default="", nullable=True)
@@ -37,18 +32,6 @@ class K8sCluster(NamedBase, table=True):
             ),
             nullable=False,
             server_default=K8sClusterType.REMOTE.value,
-        ),
-    )
-    envoy_gateway_service_type: EnvoyGatewayServiceType = Field(
-        default=EnvoyGatewayServiceType.NODE_PORT,
-        sa_column=Column(
-            SQLEnum(
-                EnvoyGatewayServiceType,
-                native_enum=False,
-                values_callable=lambda x: [i.value for i in x],
-            ),
-            nullable=False,
-            server_default=EnvoyGatewayServiceType.NODE_PORT.value,
         ),
     )
     kubeconfig: Optional[str] = Field(default=None, sa_type=String)

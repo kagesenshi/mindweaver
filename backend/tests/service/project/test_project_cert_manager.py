@@ -191,29 +191,45 @@ def test_get_issuer_ca_cert_failures(client: TestClient, test_cluster: dict, moc
     assert "not found" in resp.json()["detail"]
 
 
-def test_deploy_project_issuer(client: TestClient, test_cluster: dict):
-    project = client.post(
-        "/api/v1/projects",
-        json={
-            "name": "project-deploy-issuer-test",
-            "title": "Project Deploy Issuer Test",
-            "k8s_cluster_id": test_cluster["id"],
-        },
-    ).json()["data"]
+@pytest.mark.asyncio
+async def test_deploy_project_issuer(test_cluster: dict):
+    from mindweaver.service.project.actions import SyncProjectIntegrationsAction
+    from mindweaver.service.project.model import Project
+    from mindweaver.fw.model import get_engine
+    from sqlmodel.ext.asyncio.session import AsyncSession
 
-    with patch("asyncio.create_subprocess_exec") as mock_exec:
-        mock_proc = MagicMock()
-        mock_proc.communicate = AsyncMock(return_value=(b"applied", b""))
-        mock_proc.returncode = 0
-        mock_exec.return_value = mock_proc
+    project = Project(
+        name="project-deploy-issuer-test",
+        title="Project Deploy Issuer Test",
+        k8s_cluster_id=test_cluster["id"],
+        ingress_domain="issuer-test.local",
+    )
 
-        resp = client.post(f"/api/v1/projects/{project['id']}/_deploy_issuer")
-        assert resp.status_code == 200
-        assert resp.json()["status"] == "success"
+    engine = get_engine()
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        session.add(project)
+        await session.commit()
+        await session.refresh(project)
 
-        # Verify kubectl command was run
-        mock_exec.assert_called_once()
-        args = mock_exec.call_args[0]
-        assert "kubectl" in args
-        assert "apply" in args
+        mock_svc = MagicMock()
+        mock_svc.session = session
+        mock_svc.request = MagicMock()
+
+        with patch("asyncio.create_subprocess_exec") as mock_exec:
+            mock_proc = MagicMock()
+            mock_proc.communicate = pytest.importorskip("unittest.mock").AsyncMock(
+                return_value=(b"applied", b"")
+            )
+            mock_proc.returncode = 0
+            mock_exec.return_value = mock_proc
+
+            action = SyncProjectIntegrationsAction(project, mock_svc)
+            action.session = session
+            await action.run()
+
+            # Verify kubectl command was run (ArgoCD project, issuer, and gateway)
+            assert mock_exec.call_count >= 1
+            args = mock_exec.call_args[0]
+            assert "kubectl" in args
+            assert "apply" in args
 

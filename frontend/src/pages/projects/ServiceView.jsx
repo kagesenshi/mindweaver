@@ -18,32 +18,12 @@ const ServiceView = ({
     projectsHook
 }) => {
     const { darkMode } = context || {};
-    const { getProjectState, refreshProjectState, getProjectCertManager, getProjectIssuerCert, deployProjectIssuer } = projectsHook;
+    const { getProjectState, refreshProjectState, getProjectCertManager, getProjectIssuerCert } = projectsHook;
     const [projectState, setProjectState] = useState(null);
     const [certData, setCertData] = useState(null);
     const [selectedCert, setSelectedCert] = useState(null);
     const [isCertModalOpen, setIsCertModalOpen] = useState(false);
-    const [isDeployingIssuer, setIsDeployingIssuer] = useState(false);
     const { showSuccess, showError } = useNotification();
-
-    const handleDeployIssuer = async () => {
-        if (!deployProjectIssuer) return;
-        setIsDeployingIssuer(true);
-        try {
-            await deployProjectIssuer(selectedProjectId);
-            showSuccess("Project issuer deployed successfully.");
-            if (getProjectCertManager) {
-                const cmData = await getProjectCertManager(selectedProjectId);
-                setCertData(cmData);
-            }
-        } catch (e) {
-            console.error(e);
-            const errMsg = e.response?.data?.detail || "Failed to deploy project issuer";
-            showError(errMsg);
-        } finally {
-            setIsDeployingIssuer(false);
-        }
-    };
 
     const handleDownloadCert = async () => {
         try {
@@ -74,7 +54,7 @@ const ServiceView = ({
     const [editItem, setEditItem] = useState(null);
     const [deleteItem, setDeleteItem] = useState(null);
     const [isInstallingDex, setIsInstallingDex] = useState(false);
-    const [isDeployingGateway, setIsDeployingGateway] = useState(false);
+    const [isSyncing, setIsSyncing] = useState(false);
     const [enableDex, setEnableDex] = useState(false);
 
     useEffect(() => {
@@ -94,18 +74,18 @@ const ServiceView = ({
         fetchFeatureFlags();
     }, []);
 
-    const handleDeployGateway = async () => {
-        setIsDeployingGateway(true);
+    const handleSyncIntegrations = async () => {
+        setIsSyncing(true);
         try {
-            await projectsHook.executeAction(selectedProjectId, 'deploy_gateway');
-            showSuccess("Envoy Gateway deployment triggered for this project");
+            await projectsHook.executeAction(selectedProjectId, 'sync_project_integrations');
+            showSuccess("Project integrations sync triggered");
             const newState = await getProjectState(selectedProjectId);
             setProjectState(newState);
         } catch (e) {
             console.error(e);
-            showError("Failed to trigger Envoy Gateway deployment");
+            showError("Failed to trigger integrations sync");
         } finally {
-            setIsDeployingGateway(false);
+            setIsSyncing(false);
         }
     };
 
@@ -324,24 +304,24 @@ const ServiceView = ({
                                 DOWNLOAD PEM CERT
                             </button>
                             <button
-                                onClick={handleDeployGateway}
-                                disabled={isDeployingGateway}
+                                onClick={handleSyncIntegrations}
+                                disabled={isSyncing}
                                 className="mw-btn-secondary px-6 py-2.5 flex items-center gap-2"
                                 id="redeploy-gateway-btn"
                             >
-                                {isDeployingGateway ? <RefreshCw size={16} className="animate-spin" /> : <RefreshCw size={16} />}
-                                UPDATE GATEWAY
+                                {isSyncing ? <RefreshCw size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+                                SYNC INTEGRATIONS
                             </button>
                         </div>
                     ) : (
                         <button
-                            onClick={handleDeployGateway}
-                            disabled={isDeployingGateway || !selectedProject.ingress_domain}
+                            onClick={handleSyncIntegrations}
+                            disabled={isSyncing || !selectedProject.ingress_domain}
                             className="mw-btn-primary px-6 py-2.5 flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
                             id="deploy-gateway-btn"
                         >
-                            {isDeployingGateway ? <RefreshCw size={16} className="animate-spin" /> : <Activity size={16} />}
-                            {isDeployingGateway ? 'DEPLOYING...' : 'DEPLOY ENVOY GATEWAY'}
+                            {isSyncing ? <RefreshCw size={16} className="animate-spin" /> : <Activity size={16} />}
+                            {isSyncing ? 'SYNCING...' : 'SYNC INTEGRATIONS'}
                         </button>
                     )}
                 </div>
@@ -609,16 +589,6 @@ ${projectState.cluster_node_ips?.map((ip, idx) => `    server node${idx + 1} ${i
                                 <p className="text-sm text-slate-500 font-medium uppercase tracking-tight">Active Issuers & Issued Certificates</p>
                             </div>
                         </div>
-                        <button
-                            onClick={handleDeployIssuer}
-                            disabled={isDeployingIssuer}
-                            className="mw-btn-secondary py-2 px-4 text-sm flex items-center gap-2"
-                            id="deploy-project-issuer-btn"
-                            title="Deploy self-signed project issuer resources to the Kubernetes cluster"
-                        >
-                            <Shield size={16} className={isDeployingIssuer ? "animate-spin" : ""} />
-                            {isDeployingIssuer ? "DEPLOYING..." : "DEPLOY ISSUER"}
-                        </button>
                     </div>
 
                     <div className="space-y-6">

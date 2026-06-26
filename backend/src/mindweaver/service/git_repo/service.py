@@ -105,6 +105,6 @@ class GitRepoService(ProjectScopedService[GitRepo]):
                 "type": "relationship",
                 "endpoint": "/api/v1/ssh_keys",
                 "label": "SSH Key",
-                "field": "title",
+                "field": "id",
             },
         }

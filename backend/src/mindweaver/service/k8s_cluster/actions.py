@@ -372,7 +372,7 @@ class InstallEnvoyGatewayAction(InstallArgoCDAction):
 
         # Deploy global GatewayClass and EnvoyProxy resources
         logger.info("Applying global Envoy GatewayClass and EnvoyProxy configuration")
-        await self._apply_template("envoy-gateway-config.yml.j2", service_type=self.model.envoy_gateway_service_type)
+        await self._apply_template("envoy-gateway-config.yml.j2", service_type="LoadBalancer")
 
 
 @K8sClusterService.register_action("sync_core_integrations")

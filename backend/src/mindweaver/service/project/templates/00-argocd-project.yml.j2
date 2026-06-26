@@ -1,0 +1,20 @@
+# SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
+# SPDX-License-Identifier: AGPLv3+
+
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: {{ name }}
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: "ArgoCD Project for Mindweaver project {{ name }}"
+  sourceRepos:
+    - '*'
+  destinations:
+    - namespace: {{ namespace }}
+      server: '*'
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'

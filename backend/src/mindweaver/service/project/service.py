@@ -41,7 +41,15 @@ class ProjectService(Service[Project]):
                 "column_span": 2,
                 "label": "Envoy NodePort",
             },
-
+            "envoy_gateway_service_type": {
+                "order": 9,
+                "type": "select",
+                "options": [
+                    {"label": "LoadBalancer", "value": "LoadBalancer"},
+                    {"label": "NodePort", "value": "NodePort"},
+                ],
+                "label": "Envoy Gateway Service Type",
+            },
             "k8s_cluster_id": {
                 "order": 10,
                 "label": "K8S Cluster",
@@ -58,7 +66,7 @@ class ProjectService(Service[Project]):
                 "label": "Stack",
                 "type": "relationship",
                 "endpoint": "/api/v1/stacks",
-                "field": "title",
+                "field": "id",
             },
         }
 

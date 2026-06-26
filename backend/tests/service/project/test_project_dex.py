@@ -185,7 +185,7 @@ async def test_project_install_dex_with_ingress_domain(client):
 
 @pytest.mark.asyncio
 async def test_project_deploy_gateway(client):
-    from mindweaver.service.project.actions import DeployGatewayAction
+    from mindweaver.service.project.actions import SyncProjectIntegrationsAction as DeployGatewayAction
 
     cluster = K8sCluster(
         name="test-cluster-gw",
@@ -260,23 +260,23 @@ def test_project_deploy_gateway_action_triggers_task(client: TestClient):
     ).json()["data"]
 
     with patch(
-        "mindweaver.tasks.project_tasks.deploy_gateway_project_task.delay"
+        "mindweaver.tasks.project_tasks.sync_project_integrations_task.delay"
     ) as mock_delay:
         resp = client.post(
             f"/api/v1/projects/{project_data['id']}/_actions",
-            json={"action": "deploy_gateway"},
+            json={"action": "sync_project_integrations"},
         )
         assert resp.status_code == 200
         assert (
             resp.json()["message"]
-            == "Project Envoy Gateway deployment triggered."
+            == "Project integrations synchronization triggered."
         )
         mock_delay.assert_called_once_with(project_data["id"])
 
 
 @pytest.mark.asyncio
 async def test_project_deploy_gateway_with_nodeport(client):
-    from mindweaver.service.project.actions import DeployGatewayAction
+    from mindweaver.service.project.actions import SyncProjectIntegrationsAction as DeployGatewayAction
 
     cluster = K8sCluster(
         name="test-cluster-gw-np",
@@ -344,7 +344,7 @@ async def test_project_deploy_gateway_with_nodeport(client):
 
 @pytest.mark.asyncio
 async def test_project_deploy_gateway_dynamic_nodeport_capture(client):
-    from mindweaver.service.project.actions import DeployGatewayAction
+    from mindweaver.service.project.actions import SyncProjectIntegrationsAction as DeployGatewayAction
 
     cluster = K8sCluster(
         name="test-cluster-gw-dyn",

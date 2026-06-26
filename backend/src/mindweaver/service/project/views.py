@@ -319,75 +319,7 @@ async def get_project_issuer_ca_cert(
     return await asyncio.to_thread(_get_issuer_cert)
 
 
-@ProjectService.model_view("POST", "/_deploy_issuer")
-async def deploy_project_issuer_view(
-    id: int, svc: ProjectService = Depends(ProjectService.get_service)
-):
-    """Deploy self-signed issuer resources for the project"""
-    model = await svc.get(id)
-    if not model.k8s_cluster_id:
-        raise HTTPException(status_code=400, detail="Project has no cluster configured")
 
-    from mindweaver.service.k8s_cluster.service import K8sClusterService
-    cluster_svc = K8sClusterService(svc.request, svc.session)
-    cluster = await cluster_svc.get(model.k8s_cluster_id)
-    namespace = model.k8s_namespace or model.name
-
-    # Load and render template
-    env = _get_jinja_env()
-    template = env.get_template("02-self-signed-issuer.yml.j2")
-    manifest = template.render(
-        name=model.name,
-        namespace=namespace,
-    )
-
-    kubeconfig_path = None
-    temp_kf = None
-    try:
-        if cluster.type == K8sClusterType.REMOTE:
-            if not cluster.kubeconfig:
-                raise ValueError(f"Cluster {cluster.name} has no kubeconfig")
-            temp_kf = tempfile.NamedTemporaryFile(mode="w", delete=False)
-            temp_kf.write(cluster.kubeconfig)
-            temp_kf.flush()
-            temp_kf.close()
-            kubeconfig_path = temp_kf.name
-
-        async def run_kubectl(manifest_content: str):
-            temp_m = None
-            try:
-                temp_m = tempfile.NamedTemporaryFile(mode="w", delete=False)
-                temp_m.write(manifest_content)
-                temp_m.flush()
-                temp_m.close()
-                cmd = ["kubectl"]
-                if kubeconfig_path:
-                    cmd.extend(["--kubeconfig", kubeconfig_path])
-                cmd.extend(["apply", "-f", temp_m.name])
-                proc = await asyncio.create_subprocess_exec(
-                    *cmd,
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE,
-                )
-                stdout, stderr = await proc.communicate()
-                if proc.returncode != 0:
-                    raise RuntimeError(f"Kubectl command failed: {stderr.decode()}")
-            finally:
-                if temp_m:
-                    try:
-                        os.unlink(temp_m.name)
-                    except Exception:
-                        pass
-
-        await run_kubectl(manifest)
-    finally:
-        if temp_kf:
-            try:
-                os.unlink(temp_kf.name)
-            except Exception:
-                pass
-
-    return {"status": "success", "message": "Project issuer deployed successfully."}
 
 
 

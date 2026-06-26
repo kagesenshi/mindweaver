@@ -8,7 +8,7 @@ from sqlmodel import select
 
 from mindweaver.service import Service
 from mindweaver.fw.model import ts_now
-from .model import K8sCluster, K8sClusterStatus, K8sClusterType, EnvoyGatewayServiceType
+from .model import K8sCluster, K8sClusterStatus, K8sClusterType
 
 logger = logging.getLogger(__name__)
 
@@ -401,14 +401,5 @@ class K8sClusterService(Service[K8sCluster]):
                 "type": "textarea",
                 "column_span": 2,
                 "label": "Kubeconfig",
-            },
-            "envoy_gateway_service_type": {
-                "order": 12,
-                "type": "select",
-                "options": [
-                    {"label": "LoadBalancer", "value": "LoadBalancer"},
-                    {"label": "NodePort", "value": "NodePort"},
-                ],
-                "label": "Envoy Gateway Service Type",
             },
         }

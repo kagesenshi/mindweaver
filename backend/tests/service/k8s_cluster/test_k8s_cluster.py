@@ -483,7 +483,6 @@ def test_sync_core_integrations_action_triggers_task(client: TestClient):
             "name": "task-test-sync",
             "title": "Task Test Sync",
             "type": "in-cluster",
-            "envoy_gateway_service_type": "LoadBalancer",
         },
     ).json()["data"]
 
@@ -504,7 +503,7 @@ def test_sync_core_integrations_action_triggers_task(client: TestClient):
 
 @pytest.mark.asyncio
 async def test_install_envoy_gateway_with_loadbalancer():
-    from mindweaver.service.k8s_cluster.model import K8sCluster, K8sClusterType, EnvoyGatewayServiceType
+    from mindweaver.service.k8s_cluster.model import K8sCluster, K8sClusterType
     import os
 
     cluster = K8sCluster(
@@ -512,7 +511,6 @@ async def test_install_envoy_gateway_with_loadbalancer():
         title="Test Cluster EG LB",
         type=K8sClusterType.REMOTE,
         kubeconfig="fake-kubeconfig",
-        envoy_gateway_service_type=EnvoyGatewayServiceType.LOAD_BALANCER,
     )
 
     mock_svc = MagicMock()

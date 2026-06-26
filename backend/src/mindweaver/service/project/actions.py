@@ -73,7 +73,7 @@ def _get_jinja_env() -> j2.Environment:
     return env
 
 
-def _render_gateway_manifests(model, namespace: str, service_type: str = "NodePort", nodeport: Optional[int] = None) -> str:
+def _render_gateway_manifests(model, namespace: str, service_type: str = "LoadBalancer", nodeport: Optional[int] = None) -> str:
     """Render Gateway and Certificate manifests from YAML templates."""
     # Handle older test calls passing nodeport as the 3rd positional argument
     if isinstance(service_type, int):
@@ -320,7 +320,7 @@ class InstallDexAction(BaseAction):
         gateway_manifest = ""
         if self.model.ingress_domain:
             gateway_manifest = _render_gateway_manifests(
-                self.model, namespace, cluster.envoy_gateway_service_type, self.model.envoy_nodeport
+                self.model, namespace, self.model.envoy_gateway_service_type, self.model.envoy_nodeport
             )
 
         # 6. Install Dex using ArgoCD Application
@@ -383,6 +383,7 @@ class InstallDexAction(BaseAction):
             template = env.get_template("dex-app.yml.j2")
             dex_manifest = template.render(
                 name=self.model.name,
+                project_name=self.model.name,
                 namespace=namespace,
                 dex_values=yaml.safe_dump(dex_values),
                 project_title=sanitize_label_value(self.model.title),
@@ -407,26 +408,26 @@ class InstallDexAction(BaseAction):
                     pass
 
 
-@ProjectService.register_action("deploy_gateway")
-class DeployGatewayAction(BaseAction):
+@ProjectService.register_action("sync_project_integrations")
+class SyncProjectIntegrationsAction(BaseAction):
     """
-    Action to deploy Envoy Gateway (Gateway / HTTPRoute) resources for this project.
+    Action to sync project integrations: create ArgoCD project, deploy self-signed issuer, and deploy gateway.
     """
 
     async def available(self) -> bool:
         return self.model.k8s_cluster_id is not None and bool(self.model.ingress_domain)
 
     async def __call__(self, **kwargs):
-        from mindweaver.tasks.project_tasks import deploy_gateway_project_task
+        from mindweaver.tasks.project_tasks import sync_project_integrations_task
 
-        deploy_gateway_project_task.delay(self.model.id)
+        sync_project_integrations_task.delay(self.model.id)
         return {
             "status": "success",
-            "message": "Project Envoy Gateway deployment triggered.",
+            "message": "Project integrations synchronization triggered.",
         }
 
     async def run(self):
-        logger.info(f"Deploying Envoy Gateway resources for project {self.model.name}")
+        logger.info(f"Syncing integrations for project {self.model.name}")
 
         stmt_cluster = select(K8sCluster).where(K8sCluster.id == self.model.k8s_cluster_id)
         res_cluster = await self.session.exec(stmt_cluster)
@@ -434,7 +435,7 @@ class DeployGatewayAction(BaseAction):
 
         namespace = self.model.k8s_namespace or self.model.name
 
-        # Check existing nodePort to persist if not set
+        # 1. Check/Persist nodeport
         if not self.model.envoy_nodeport:
             existing_port = await _get_existing_nodeport(cluster, namespace)
             if existing_port:
@@ -443,13 +444,31 @@ class DeployGatewayAction(BaseAction):
                 await self.session.commit()
                 await self.session.refresh(self.model)
 
+        # 2. Render templates
+        env = _get_jinja_env()
+        
+        # 2a. ArgoCD Project
+        argocd_project_template = env.get_template("00-argocd-project.yml.j2")
+        argocd_project_manifest = argocd_project_template.render(
+            name=self.model.name,
+            namespace=namespace,
+        )
+
+        # 2b. Issuer
+        issuer_template = env.get_template("02-self-signed-issuer.yml.j2")
+        issuer_manifest = issuer_template.render(
+            name=self.model.name,
+            namespace=namespace,
+        )
+
+        # 2c. Gateway
         gateway_manifest = ""
         if self.model.ingress_domain:
             gateway_manifest = _render_gateway_manifests(
-                self.model, namespace, cluster.envoy_gateway_service_type, self.model.envoy_nodeport
+                self.model, namespace, self.model.envoy_gateway_service_type, self.model.envoy_nodeport
             )
 
-
+        # 3. Apply manifests
         kubeconfig_path = None
         temp_kf = None
         try:
@@ -463,6 +482,8 @@ class DeployGatewayAction(BaseAction):
                 kubeconfig_path = temp_kf.name
 
             async def run_kubectl(manifest: str):
+                if not manifest.strip():
+                    return
                 temp_m = None
                 try:
                     temp_m = tempfile.NamedTemporaryFile(mode="w", delete=False)
@@ -488,7 +509,11 @@ class DeployGatewayAction(BaseAction):
                         except Exception:
                             pass
 
-            await run_kubectl(gateway_manifest)
+            await run_kubectl(argocd_project_manifest)
+            await run_kubectl(issuer_manifest)
+            if gateway_manifest:
+                await run_kubectl(gateway_manifest)
+
         finally:
             if temp_kf:
                 try:

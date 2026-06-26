@@ -17,7 +17,7 @@ metadata:
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
-  project: default
+  project: {{ project_name }}
   source:
     repoURL: ghcr.io/konpyutaika/helm-charts
     chart: nifi-cluster

@@ -10,6 +10,7 @@ from sqlmodel import SQLModel
 
 # Import all models for autogenerate support
 from mindweaver.service.project.model import Project
+from mindweaver.service.stack.model import Stack
 from mindweaver.service.k8s_cluster.model import K8sClusterStatus
 from mindweaver.datasource_service import DatabaseSource
 from mindweaver.service.s3_storage.model import S3Storage
