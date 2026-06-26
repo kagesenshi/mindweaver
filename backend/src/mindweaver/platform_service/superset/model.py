@@ -34,9 +34,6 @@ class SupersetPlatform(PlatformBase, table=True):
 
     # Chart version selection (targetRevision in Application manifest)
     chart_version: str = Field(default="0.15.0")
-    # Image override - when True, the image field overrides the default image
-    override_image: bool = Field(default=False)
-    image: str = Field(default="ghcr.io/kagesenshi/mindweaver/superset:latest")
 
     # Internal secrets
     # Initial password for the 'admin' user created by init job

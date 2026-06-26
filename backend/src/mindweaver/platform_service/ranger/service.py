@@ -50,7 +50,6 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
             "tagsync_password",
             "usersync_password",
         ]
-
     @classmethod
     def widgets(cls) -> dict[str, Any]:
         return {
@@ -58,12 +57,6 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
                 "order": 3,
                 "label": "Chart Version",
             },
-            "override_image": {
-                "order": 4,
-                "type": "boolean",
-                "label": "Override Image",
-            },
-            "image": {"order": 5, "label": "Image"},
             "replica_count": {
                 "order": 10,
                 "type": "range",
@@ -109,7 +102,6 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
                 "endpoint": "/api/v1/platform/solr",
                 "field": "id",
             },
-
             "additional_properties": {
                 "order": 100,
                 "label": "Additional Properties",
@@ -127,9 +119,15 @@ class RangerPlatformService(PlatformService[RangerPlatform]):
 
     async def template_vars(self, model: RangerPlatform) -> dict:
         vars = model.model_dump()
+        vars["image"], _ = await self.resolve_image(
+            model, "ranger", "docker.io/apache/ranger:2.8.0"
+        )
+        vars["override_image"] = True
         vars["namespace"] = await self._resolve_namespace(model)
         project = await self.project(model)
         vars["ingress_domain"] = project.ingress_domain
+
+
 
         # Force HTTPS / SSL for Ranger Admin
         additional_props = vars.setdefault("additional_properties", {})

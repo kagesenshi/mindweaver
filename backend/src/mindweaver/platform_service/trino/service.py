@@ -68,12 +68,6 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
                 "type": "select",
                 "endpoint": f"{cls.service_path()}/_chart-versions",
             },
-            "override_image": {
-                "order": 7,
-                "label": "Override Image",
-                "type": "boolean",
-            },
-            "image": {"order": 8},
             "process_forwarded": {
                 "order": 9,
                 "label": "Process X-Forwarded Headers",
@@ -125,7 +119,7 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
                 "multiselect": True,
             },
             "database_source_ids": {
-                "order": 22,
+                "order": 21,
                 "label": "Database Sources",
                 "type": "relationship",
                 "endpoint": "/api/v1/database-sources",
@@ -134,7 +128,7 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
             },
             "ranger_id": {
                 "order": 25,
-                "label": "Ranger",
+                "label": "Ranger integration",
                 "type": "relationship",
                 "endpoint": "/api/v1/platform/ranger",
                 "field": "id",
@@ -143,11 +137,9 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
 
     @before_create(before="_handle_redacted_create")
     async def generate_passwords(self, model: TrinoPlatform):
-        """Autogenerate a strong random password for Ranger and Admin users to query Trino."""
-        if not model.ranger_user_password:
-            model.ranger_user_password = generate_password()
-        if not model.admin_password:
-            model.admin_password = generate_password()
+        """Autogenerate random passwords for Trino components."""
+        model.ranger_user_password = generate_password()
+        model.admin_password = generate_password()
 
     async def get_preferred_catalog(self, model: TrinoPlatform) -> Optional[str]:
         """
@@ -170,6 +162,12 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
 
     async def template_vars(self, model: TrinoPlatform) -> dict:
         vars = model.model_dump(exclude=self.redacted_fields())
+        resolved_img, resolved_tag = await self.resolve_image(
+            model, "trino", "trinodb/trino:latest"
+        )
+        vars["image"] = f"{resolved_img}:{resolved_tag}"
+        vars["image_tag"] = resolved_tag
+        vars["override_image"] = True
         vars["namespace"] = await self._resolve_namespace(model)
         project = await self.project(model)
         vars["project_name"] = project.name

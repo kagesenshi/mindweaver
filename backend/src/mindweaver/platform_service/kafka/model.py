@@ -16,10 +16,6 @@ class KafkaPlatform(PlatformBase, table=True):
     # Chart version selection (targetRevision in Application manifest)
     chart_version: str = Field(default="0.1.0")
 
-    # Image override
-    override_image: bool = Field(default=False)
-    image: str = Field(default="apache/kafka")
-    image_tag: str = Field(default="4.0.0-rev.0")
 
     # Storage configuration
     storage_size: str = Field(default="20Gi")

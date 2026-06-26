@@ -147,13 +147,13 @@ async def test_kafka_render_manifests_image_override(mock_service_dependencies):
     model = KafkaPlatform(
         name="test-kafka",
         project_id=1,
-        override_image=True,
-        image="my-custom/kafka",
-        image_tag="custom-1.0",
+        replica_count=3,
+        storage_size="20Gi",
     )
 
     svc._resolve_namespace = AsyncMock(return_value="test-ns")
     svc.project = AsyncMock(return_value=MagicMock(ingress_domain=None))
+    svc.resolve_image = AsyncMock(return_value=("my-custom/kafka", "custom-1.0"))
 
     manifests = await svc.render_manifests(model)
 

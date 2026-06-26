@@ -31,10 +31,8 @@ def test_superset_resource_defaults():
     assert model.cpu_limit == 2.0
     assert model.mem_request == 2.0
     assert model.mem_limit == 4.0
-    assert model.chart_version == "0.15.0"
-    assert model.override_image is False
-    assert model.image == "ghcr.io/kagesenshi/mindweaver/superset:latest"
     assert model.oidc_enabled is False
+
     assert model.oidc_client_secret is not None
     assert model.sqllab_enabled is True
 
@@ -269,19 +267,6 @@ async def test_superset_template_rendering(mock_service_dependencies):
         assert '"admin@mindweaver.io": ["Admin", "Alpha"]' in values["configOverrides"]["role_mapping"]
         assert '"user@mindweaver.io": ["Gamma", "sql_lab"]' in values["configOverrides"]["role_mapping"]
         
-        # 1.1 Verify with override_image = True
-        model.override_image = True
-        model.image = "my-registry/superset:v1.2.3"
-        vars_override = await svc.template_vars(model)
-        manifest_override = await svc.render_manifests(model)
-        docs_override = [d for d in yaml.safe_load_all(manifest_override) if d is not None]
-        app_doc_override = next(d for d in docs_override if d["kind"] == "Application")
-        values_override = yaml.safe_load(app_doc_override["spec"]["source"]["helm"]["values"])
-        
-        assert values_override["image"]["repository"] == "my-registry/superset"
-        assert values_override["image"]["tag"] == "v1.2.3"
-        
-        assert values_override["image"]["tag"] == "v1.2.3"
 
         # 1.2 Verify with ingress_domain set
         mock_project.ingress_domain = "132.home.kagesenshi.org"

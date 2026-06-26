@@ -14,7 +14,7 @@ class PgSqlPlatform(PlatformBase, table=True):
 
     instances: int = Field(default=3)
     storage_size: str = Field(default="1Gi")
-    image: str = Field(default="ghcr.io/cloudnative-pg/postgresql:18")
+
 
     # Resource configuration
     cpu_request: float = Field(default=0.5)

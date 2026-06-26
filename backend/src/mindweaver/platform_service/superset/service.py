@@ -77,11 +77,6 @@ class SupersetPlatformService(PlatformService[SupersetPlatform]):
                 "label": "Override Image",
                 "type": "boolean",
             },
-            "image": {
-                "order": 7,
-                "label": "Custom Image",
-                "type": "string",
-            },
             "platform_pgsql_id": {
                 "order": 10,
                 "label": "PostgreSQL Metadata DB",
@@ -155,6 +150,11 @@ class SupersetPlatformService(PlatformService[SupersetPlatform]):
 
     async def template_vars(self, model: SupersetPlatform) -> dict:
         vars = model.model_dump()
+        resolved_img, resolved_tag = await self.resolve_image(
+            model, "superset", "ghcr.io/kagesenshi/mindweaver/superset:latest"
+        )
+        vars["image"] = f"{resolved_img}:{resolved_tag}"
+        vars["override_image"] = True
         vars["namespace"] = await self._resolve_namespace(model)
         project = await self.project(model)
         vars["ingress_domain"] = project.ingress_domain
@@ -275,9 +275,7 @@ class SupersetPlatformService(PlatformService[SupersetPlatform]):
 
         vars["datasources"] = datasources
 
-        # 4. Handle custom image
-        vars["override_image"] = model.override_image
-        vars["image"] = model.image
+        # 4. Handle custom image (handled above by resolve_image)
 
         # 5. Merge auth_role_mapping by entity
         merged_mapping = {}

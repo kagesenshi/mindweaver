@@ -28,38 +28,6 @@ def test_hms_resource_defaults():
     assert model.mem_limit == 2.0
 
 
-def test_hms_override_image_defaults():
-    """Test that override_image and chart_version have correct defaults"""
-    model = HiveMetastorePlatform(name="test-hms", title="Test HMS", project_id=1, database_id=10)
-    assert model.override_image is False
-    assert model.chart_version == "0.1.8"
-
-
-def test_hms_override_image_flag():
-    """Test that image field can be set independently of override_image flag"""
-    # override_image=False: image is stored but not used in template
-    model = HiveMetastorePlatform.model_validate({
-        "name": "test-hms",
-        "title": "Test HMS",
-        "project_id": 1,
-        "database_id": 10,
-        "override_image": False,
-        "image": "ghcr.io/kagesenshi/mindweaver/hive-metastore:v1.0.0",
-    })
-    assert model.override_image is False
-    assert model.image == "ghcr.io/kagesenshi/mindweaver/hive-metastore:v1.0.0"
-
-    # override_image=True: image should be used in template
-    model2 = HiveMetastorePlatform.model_validate({
-        "name": "test-hms",
-        "title": "Test HMS",
-        "project_id": 1,
-        "database_id": 10,
-        "override_image": True,
-        "image": "ghcr.io/kagesenshi/mindweaver/hive-metastore:v1.0.0",
-    })
-    assert model2.override_image is True
-    assert model2.image == "ghcr.io/kagesenshi/mindweaver/hive-metastore:v1.0.0"
 
 
 def test_hms_validation():
@@ -232,58 +200,6 @@ async def test_hms_manifest_parsing(mock_service_dependencies):
         pytest.fail(f"YAML parsing failed: {e}")
 
 
-@pytest.mark.asyncio
-async def test_hms_override_image_template(mock_service_dependencies):
-    """Test that the image block is rendered only when override_image=True"""
-    request, session = mock_service_dependencies
-    svc = HiveMetastorePlatformService(request, session)
-
-    # Mock PgSqlPlatformService dependencies
-    mock_pgsql_svc = AsyncMock()
-    mock_pgsql_model = MagicMock()
-    mock_pgsql_model.name = "test-pgsql"
-    mock_pgsql_svc.get.return_value = mock_pgsql_model
-    mock_pgsql_state = MagicMock()
-    mock_pgsql_state.active = True
-    mock_pgsql_state.db_user = "hms_user"
-    mock_pgsql_state.db_name = "metastore"
-    mock_pgsql_state.db_pass = "secret"
-    mock_pgsql_svc.platform_state.return_value = mock_pgsql_state
-
-    # Test with override_image=False: image block should NOT appear
-    model_no_override = HiveMetastorePlatform(
-        name="hms-test",
-        title="HMS Test",
-        project_id=1,
-        database_id=10,
-        override_image=False,
-        image="ghcr.io/kagesenshi/mindweaver/hive-metastore:v1.0.0",
-        chart_version="0.1.0",
-    )
-    svc._resolve_namespace = AsyncMock(return_value="hms-ns")
-
-    with patch("mindweaver.platform_service.hive_metastore.service.PgSqlPlatformService.get_service", AsyncMock(return_value=mock_pgsql_svc)):
-        manifest_no_override = await svc.render_manifests(model_no_override)
-
-    assert "targetRevision: 0.1.0" in manifest_no_override
-    assert "repository:" not in manifest_no_override
-
-    # Test with override_image=True: image block should appear
-    model_with_override = HiveMetastorePlatform(
-        name="hms-test",
-        title="HMS Test",
-        project_id=1,
-        database_id=10,
-        override_image=True,
-        image="ghcr.io/kagesenshi/mindweaver/hive-metastore:v1.0.0",
-        chart_version="0.1.0",
-    )
-
-    with patch("mindweaver.platform_service.hive_metastore.service.PgSqlPlatformService.get_service", AsyncMock(return_value=mock_pgsql_svc)):
-        manifest_with_override = await svc.render_manifests(model_with_override)
-
-    assert "repository:" in manifest_with_override
-    assert "v1.0.0" in manifest_with_override
 
 
 @pytest.mark.asyncio

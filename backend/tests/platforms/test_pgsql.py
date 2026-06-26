@@ -422,28 +422,7 @@ async def test_pgsql_image_selection(client: TestClient, test_project):
 
     # 1. Test widgets
     widgets = PgSqlPlatformService.widgets()
-    assert "image" in widgets
-    assert widgets["image"]["type"] == "select"
-    options = widgets["image"]["options"]
-    assert any(
-        opt["value"] == "ghcr.io/cloudnative-pg/postgresql:15" for opt in options
-    )
-    assert any(
-        opt["value"] == "ghcr.io/cloudnative-pg/postgresql:16" for opt in options
-    )
-    # Check that labels are correctly retrieved
-    pg16_opt = next(
-        opt for opt in options if opt["value"] == "ghcr.io/cloudnative-pg/postgresql:16"
-    )
-    assert pg16_opt["label"] == "PostgreSQL 16"
-
-    assert any(
-        opt["value"] == "ghcr.io/cloudnative-pg/postgresql:18" for opt in options
-    )
-    pg18_opt = next(
-        opt for opt in options if opt["value"] == "ghcr.io/cloudnative-pg/postgresql:18"
-    )
-    assert pg18_opt["label"] == "PostgreSQL 18"
+    assert "image" not in widgets
 
     # 2. Test template_vars
     mock_request = MagicMock()
@@ -452,15 +431,14 @@ async def test_pgsql_image_selection(client: TestClient, test_project):
     svc = PgSqlPlatformService(mock_request, mock_session)
     # Mock _resolve_namespace to avoid DB call
     svc._resolve_namespace = AsyncMock(return_value="test-ns")
+    svc.resolve_image = AsyncMock(return_value=("ghcr.io/cloudnative-pg/postgresql", "16"))
 
     model = PgSqlPlatform(
         name="test-pg",
         title="Test PG",
         project_id=test_project["id"],
-        image="ghcr.io/cloudnative-pg/postgresql:16",
     )
 
     vars = await svc.template_vars(model)
 
-    # These are legacy artifacts of template_vars but let's check image_name primarily
     assert vars["image_name"] == "ghcr.io/cloudnative-pg/postgresql:16"

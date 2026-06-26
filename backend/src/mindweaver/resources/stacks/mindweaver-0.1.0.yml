@@ -1,0 +1,50 @@
+name: mindweaver-0.1.0
+title: Mindweaver 0.1.0
+version: 0.1.0
+configuration:
+  components:
+    pgsql:
+      images:
+        main:
+          image: ghcr.io/cloudnative-pg/postgresql
+          tag: "18"
+    nifi:
+      images:
+        main:
+          image: apache/nifi
+          tag: "2.9.0"
+    airflow:
+      images:
+        main:
+          image: ghcr.io/kagesenshi/mindweaver/airflow
+          tag: "3.2.2-rev.5"
+    solr:
+      images:
+        main:
+          image: solr
+          tag: "9.6.0"
+    kafka:
+      images:
+        main:
+          image: apache/kafka
+          tag: "4.0.0-rev.0"
+    ranger:
+      images:
+        main:
+          image: docker.io/apache/ranger
+          tag: "2.8.0"
+    superset:
+      images:
+        main:
+          image: ghcr.io/kagesenshi/mindweaver/superset
+          tag: "latest"
+    hive_metastore:
+      images:
+        main:
+          image: ghcr.io/kagesenshi/mindweaver/hive-metastore
+          tag: "latest"
+    trino:
+      images:
+        main:
+          image: trinodb/trino
+          tag: "latest"

@@ -39,13 +39,6 @@ class KafkaPlatformService(PlatformService[KafkaPlatform]):
                 "order": 3,
                 "label": "Chart Version",
             },
-            "override_image": {
-                "order": 4,
-                "type": "boolean",
-                "label": "Override Image",
-            },
-            "image": {"order": 5, "label": "Image"},
-            "image_tag": {"order": 6, "label": "Image Tag"},
             "storage_size": {"order": 7, "label": "Storage Size"},
             "replica_count": {
                 "order": 10,
@@ -94,10 +87,15 @@ class KafkaPlatformService(PlatformService[KafkaPlatform]):
     async def template_vars(self, model: KafkaPlatform) -> dict:
         """Resolves template variables required for rendering manifests."""
         vars = model.model_dump()
+        vars["image"], vars["image_tag"] = await self.resolve_image(
+            model, "kafka", "apache/kafka", "4.0.0-rev.0"
+        )
+        vars["override_image"] = True
         vars["namespace"] = await self._resolve_namespace(model)
         project = await self.project(model)
         vars["ingress_domain"] = project.ingress_domain
         return vars
+
 
     async def poll_status(self, model: KafkaPlatform):
         """Polls the status of the ArgoCD application and Kubernetes resources."""

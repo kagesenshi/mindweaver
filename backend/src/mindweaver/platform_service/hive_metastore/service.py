@@ -45,12 +45,6 @@ class HiveMetastorePlatformService(PlatformService[HiveMetastorePlatform]):
                 "type": "select",
                 "endpoint": "/api/v1/platform/hive-metastore/_chart-versions",
             },
-            "override_image": {
-                "order": 4,
-                "type": "boolean",
-                "label": "Override Image",
-            },
-            "image": {"order": 5, "label": "Image"},
             "replica_count": {
                 "order": 10,
                 "type": "range",
@@ -103,7 +97,12 @@ class HiveMetastorePlatformService(PlatformService[HiveMetastorePlatform]):
 
     async def template_vars(self, model: HiveMetastorePlatform) -> dict:
         vars = model.model_dump()
+        vars["image"], _ = await self.resolve_image(
+            model, "hive_metastore", "ghcr.io/kagesenshi/mindweaver/hive-metastore:latest"
+        )
+        vars["override_image"] = True
         vars["namespace"] = await self._resolve_namespace(model)
+
 
         # Resolve Database Connection
         pgsql_svc = await PgSqlPlatformService.get_service(self.request, self.session)

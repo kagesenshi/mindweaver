@@ -23,4 +23,8 @@ class Project(NamedBase, table=True):
     envoy_nodeport: Optional[int] = Field(
         default=None, nullable=True
     )
+    stack_id: Optional[int] = Field(
+        default=None, foreign_key="mw_stack.id", index=True
+    )
+
 

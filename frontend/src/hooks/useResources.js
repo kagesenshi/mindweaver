@@ -1185,4 +1185,29 @@ export const useContainerRegistries = () => {
     return { registries, loading, error, fetchRegistries, createRegistry, updateRegistry, deleteRegistry, testConnection };
 };
 
+export const useStacks = () => {
+    const [stacks, setStacks] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+
+    const fetchStacks = useCallback(async () => {
+        setLoading(true);
+        try {
+            const response = await apiClient.get('/stacks');
+            setStacks(response.data.data || []);
+        } catch (err) {
+            setError(err);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchStacks();
+    }, [fetchStacks]);
+
+    return { stacks, loading, error, fetchStacks };
+};
+
+
 

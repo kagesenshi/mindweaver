@@ -59,24 +59,13 @@ class AirflowPlatformService(PlatformService[AirflowPlatform]):
 
     @classmethod
     def widgets(cls) -> dict[str, Any]:
-        return {
-            "chart_version": {
+        return {            "chart_version": {
                 "order": 5,
                 "label": "Chart Version",
                 "type": "select",
                 "options": [
                     {"label": "1.22.0", "value": "1.22.0"},
                 ],
-            },
-            "override_image": {
-                "order": 6,
-                "label": "Override Image",
-                "type": "boolean",
-            },
-            "image": {
-                "order": 7,
-                "label": "Custom Image",
-                "type": "string",
             },
             "redis_enabled": {
                 "order": 8,
@@ -142,7 +131,7 @@ class AirflowPlatformService(PlatformService[AirflowPlatform]):
                 "order": 32,
                 "type": "range",
                 "min": 0.5,
-                "max": 32,
+                "max": 64,
                 "step": 0.5,
                 "label": "Memory Request (Gi)",
             },
@@ -169,10 +158,17 @@ class AirflowPlatformService(PlatformService[AirflowPlatform]):
 
     async def template_vars(self, model: AirflowPlatform) -> dict:
         vars = model.model_dump()
+        resolved_img, resolved_tag = await self.resolve_image(
+            model, "airflow", "ghcr.io/kagesenshi/mindweaver/airflow:3.2.2-rev.5"
+        )
+        vars["image"] = f"{resolved_img}:{resolved_tag}"
+        vars["override_image"] = True
         vars["namespace"] = await self._resolve_namespace(model)
         project = await self.project(model)
         vars["ingress_domain"] = project.ingress_domain
         vars["project_name"] = project.name
+
+
 
         # 0. Decrypt internal secrets
         for field in self.redacted_fields():
@@ -227,9 +223,7 @@ class AirflowPlatformService(PlatformService[AirflowPlatform]):
                 except Exception:
                     vars["ldap"]["bind_password"] = ldap_config.bind_password
 
-        # 3. Handle custom image
-        vars["override_image"] = model.override_image
-        vars["image"] = model.image
+        # 3. Handle custom image (handled above by resolve_image)
 
         # 4. Merge auth_role_mapping by entity
         merged_mapping = {}

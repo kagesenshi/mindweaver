@@ -40,6 +40,7 @@ const ENVIRONMENT_ITEMS = [
     { name: 'K8s Clusters', to: '/k8s_clusters', icon: Server },
     { name: 'LDAP Configs', to: '/ldap-configs', icon: ShieldCheck },
     { name: 'Projects', to: '/projects', icon: Briefcase },
+    { name: 'Stacks', to: '/stacks', icon: Layers },
 ];
 
 const DATA_SOURCE_ITEMS = [

@@ -39,13 +39,6 @@ class NifiPlatformService(PlatformService[NifiPlatform]):
                 "order": 3,
                 "label": "Chart Version",
             },
-            "override_image": {
-                "order": 4,
-                "type": "boolean",
-                "label": "Override Image",
-            },
-            "image": {"order": 5, "label": "Image"},
-            "image_tag": {"order": 6, "label": "Image Tag"},
             "storage_size": {"order": 7, "label": "Storage Size"},
             "replica_count": {
                 "order": 10,
@@ -94,9 +87,15 @@ class NifiPlatformService(PlatformService[NifiPlatform]):
     async def template_vars(self, model: NifiPlatform) -> dict:
         """Resolves template variables required to render Helm/K8s manifests."""
         vars = model.model_dump()
+        vars["image"], vars["image_tag"] = await self.resolve_image(
+            model, "nifi", "apache/nifi", "2.9.0"
+        )
+        # NiFi templates check override_image in some legacy contexts or we can just set it to True
+        vars["override_image"] = True
         vars["namespace"] = await self._resolve_namespace(model)
         project = await self.project(model)
         vars["ingress_domain"] = project.ingress_domain
+
         
         # Resolve LDAP Configuration from Project
         ldap_config_id = getattr(project, "ldap_config_id", None)

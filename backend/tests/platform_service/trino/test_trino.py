@@ -35,7 +35,6 @@ def test_trino_resource_defaults():
 
     # New fields
     assert model.chart_version == "1.41.0"
-    assert model.override_image is False
     assert len(model.internal_shared_secret) == 64 # hex of 32 bytes
 
 
@@ -220,42 +219,25 @@ async def test_trino_template_rendering(mock_service_dependencies):
 
 @pytest.mark.asyncio
 async def test_trino_override_image_template(mock_service_dependencies):
-    """Test that the image block is rendered only when override_image=True"""
+    """Test that custom image is rendered correctly when resolved from stack"""
     request, session = mock_service_dependencies
     svc = TrinoPlatformService(request, session)
     svc._resolve_namespace = AsyncMock(return_value="trino-ns")
     svc.project = AsyncMock(return_value=MagicMock(ldap_config_id=None))
+    svc.resolve_image = AsyncMock(return_value=("custom/trino", "v1.0.0"))
 
-    # Test with override_image=False: image block should NOT appear
-    model_no_override = TrinoPlatform(
+    model = TrinoPlatform(
         name="trino-test",
         title="Trino Test",
         project_id=1,
-        override_image=False,
-        image="custom/trino:v1.0.0",
         chart_version="1.41.0",
     )
 
-    manifest_no_override = await svc.render_manifests(model_no_override)
+    manifest = await svc.render_manifests(model)
 
-    assert "targetRevision: 1.41.0" in manifest_no_override
-    assert "repository:" not in manifest_no_override
-
-    # Test with override_image=True: image block should appear
-    model_with_override = TrinoPlatform(
-        name="trino-test",
-        title="Trino Test",
-        project_id=1,
-        override_image=True,
-        image="custom/trino:v1.0.0",
-        chart_version="1.41.0",
-    )
-
-    manifest_with_override = await svc.render_manifests(model_with_override)
-
-    assert "repository:" in manifest_with_override
-    assert "v1.0.0" in manifest_with_override
-    assert "custom/trino" in manifest_with_override
+    assert "targetRevision: 1.41.0" in manifest
+    assert "repository: \"custom/trino\"" in manifest
+    assert "tag: \"v1.0.0\"" in manifest
 
 
 @pytest.mark.asyncio

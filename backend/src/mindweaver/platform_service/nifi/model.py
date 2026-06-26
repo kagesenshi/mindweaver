@@ -16,10 +16,6 @@ class NifiPlatform(PlatformBase, table=True):
     # Target revision (chart version, or we can use version tags of operator chart)
     chart_version: str = Field(default="1.17.0")
 
-    override_image: bool = Field(default=False)
-    image: str = Field(default="apache/nifi")
-    image_tag: str = Field(default="2.9.0")
-
     # Resource configuration
     cpu_request: float = Field(default=0.5)
     cpu_limit: float = Field(default=2.0)
@@ -39,16 +35,6 @@ class NifiPlatform(PlatformBase, table=True):
             raise ValueError("Memory request cannot be greater than Memory limit")
         return self
 
-    @model_validator(mode="after")
-    def validate_nifi_version(self) -> "NifiPlatform":
-        """Only allow NiFi 2.x versions to be validated"""
-        version = self.image_tag
-        if self.override_image and self.image and ":" in self.image:
-            version = self.image.split(":")[-1]
-        
-        if not version.startswith("2."):
-            raise ValueError("Only NiFi 2.x series is supported")
-        return self
 
 
 class NifiPlatformState(PlatformStateBase, table=True):

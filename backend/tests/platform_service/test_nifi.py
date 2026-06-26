@@ -26,7 +26,6 @@ def test_nifi_resource_defaults():
     assert model.mem_request == 2.0
     assert model.mem_limit == 4.0
     assert model.chart_version == "1.17.0"
-    assert model.image_tag == "2.9.0"
 
 def test_nifi_cpu_validation():
     """Test that CPU request cannot exceed CPU limit."""
@@ -55,33 +54,6 @@ def test_nifi_mem_validation():
             }
         )
     assert "Memory request cannot be greater than Memory limit" in str(excinfo.value)
-
-def test_nifi_version_validation():
-    """Test that only NiFi 2.x versions are allowed."""
-    # Valid NiFi 2.x versions
-    for valid_tag in ["2.0.0", "2.9.0", "2.10.0-RC1"]:
-        model = NifiPlatform.model_validate(
-            {
-                "name": "test-nifi",
-                "title": "Test NiFi",
-                "project_id": 1,
-                "image_tag": valid_tag,
-            }
-        )
-        assert model.image_tag == valid_tag
-
-    # Invalid NiFi versions (1.x, etc.)
-    for invalid_tag in ["1.20.0", "1.19.1", "3.0.0"]:
-        with pytest.raises(ValidationError) as excinfo:
-            NifiPlatform.model_validate(
-                {
-                    "name": "test-nifi",
-                    "title": "Test NiFi",
-                    "project_id": 1,
-                    "image_tag": invalid_tag,
-                }
-            )
-        assert "Only NiFi 2.x series is supported" in str(excinfo.value)
 
 @pytest.mark.asyncio
 async def test_nifi_template_vars(mock_service_dependencies):

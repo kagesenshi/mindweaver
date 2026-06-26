@@ -56,13 +56,6 @@ class SolrPlatformService(PlatformService[SolrPlatform]):
                 "order": 3,
                 "label": "Chart Version",
             },
-            "override_image": {
-                "order": 4,
-                "type": "boolean",
-                "label": "Override Image",
-            },
-            "image": {"order": 5, "label": "Image"},
-            "image_tag": {"order": 6, "label": "Image Tag"},
             "storage_size": {"order": 7, "label": "Storage Size"},
             "replica_count": {
                 "order": 10,
@@ -125,6 +118,10 @@ class SolrPlatformService(PlatformService[SolrPlatform]):
 
     async def template_vars(self, model: SolrPlatform) -> dict:
         vars = model.model_dump()
+        vars["image"], vars["image_tag"] = await self.resolve_image(
+            model, "solr", "solr", "9.6.0"
+        )
+        vars["override_image"] = True
         vars["namespace"] = await self._resolve_namespace(model)
         project = await self.project(model)
         vars["ingress_domain"] = project.ingress_domain
@@ -139,6 +136,7 @@ class SolrPlatformService(PlatformService[SolrPlatform]):
 
         vars["zookeeper_connection_string"] = None
         return vars
+
 
     async def poll_status(self, model: SolrPlatform):
         kubeconfig = await self.kubeconfig(model)

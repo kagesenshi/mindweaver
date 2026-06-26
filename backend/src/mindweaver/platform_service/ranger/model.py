@@ -17,9 +17,6 @@ class RangerPlatform(PlatformBase, table=True):
     # Chart version selection (targetRevision in Application manifest)
     chart_version: str = Field(default="0.1.33")
 
-    # Image override
-    override_image: bool = Field(default=False)
-    image: str = Field(default="docker.io/apache/ranger:2.8.0")
 
     # Resource configuration
     cpu_request: float = Field(default=1.0)

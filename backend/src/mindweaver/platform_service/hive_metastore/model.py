@@ -15,9 +15,6 @@ class HiveMetastorePlatform(PlatformBase, table=True):
     # Chart version selection (used with OCI chart oci://ghcr.io/kagesenshi/mindweaver/charts/hive-metastore)
     chart_version: str = Field(default="0.1.8")
 
-    # Image override - when True, the image field overrides the chart's default image
-    override_image: bool = Field(default=False)
-    image: str = Field(default="ghcr.io/kagesenshi/mindweaver/hive-metastore:latest")
 
     # Resource configuration
     cpu_request: float = Field(default=0.5)

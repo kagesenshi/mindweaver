@@ -14,12 +14,9 @@ class TrinoPlatform(PlatformBase, table=True):
 
     replica_count: int = Field(default=1)
     
-    # Chart version selection (targetRevision in Application manifest)
+    # Target revision (chart version, or we can use version tags of operator chart)
     chart_version: str = Field(default="1.41.0")
 
-    # Image override - when True, the image field overrides the chart's default image
-    override_image: bool = Field(default=False)
-    image: str = Field(default="trinodb/trino:latest")
 
     # Resource configuration
     cpu_request: float = Field(default=0.5)

@@ -53,4 +53,12 @@ class ProjectService(Service[Project]):
                 "endpoint": "/api/v1/ldap_configs",
                 "field": "id",
             },
+            "stack_id": {
+                "order": 12,
+                "label": "Stack",
+                "type": "relationship",
+                "endpoint": "/api/v1/stacks",
+                "field": "title",
+            },
         }
+

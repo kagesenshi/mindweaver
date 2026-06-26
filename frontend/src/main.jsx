@@ -25,6 +25,7 @@ const RangerPage = lazy(() => import('./pages/ranger/Page'))
 const SolrPage = lazy(() => import('./pages/solr/Page'))
 const KafkaPage = lazy(() => import('./pages/kafka/Page'))
 const NifiPage = lazy(() => import('./pages/nifi/Page'))
+const StacksPage = lazy(() => import('./pages/stacks/Page'))
 
 import { ProtectedRoute } from './components/ProtectedRoute'
 
@@ -44,6 +45,10 @@ const router = createBrowserRouter([
       {
         path: 'projects',
         element: <ProjectsPage />,
+      },
+      {
+        path: 'stacks',
+        element: <StacksPage />,
       },
       {
         path: 'k8s_clusters',

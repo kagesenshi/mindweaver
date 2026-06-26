@@ -32,7 +32,6 @@ from .model import PgSqlPlatform, PgSqlPlatformState
 class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
     template_directory: str = os.path.join(os.path.dirname(__file__), "templates")
     state_model: type[PgSqlPlatformState] = PgSqlPlatformState
-    _image_catalog_cache: dict | None = None
 
     @classmethod
     def model_class(cls) -> type[PgSqlPlatform]:
@@ -46,37 +45,13 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
     def immutable_fields(cls) -> list[str]:
         return super().immutable_fields() + [
             "storage_size",
-            "image",
         ]
 
     @classmethod
-    def load_image_catalog(cls) -> dict:
-        """Loads the PostgreSQL image catalog from the configuration file."""
-        if cls._image_catalog_cache is not None:
-            return cls._image_catalog_cache
-
-        config_path = os.path.join(os.path.dirname(__file__), "resources", "images.yml")
-        if not os.path.exists(config_path):
-            cls._image_catalog_cache = {}
-            return cls._image_catalog_cache
-
-        with open(config_path, "r") as f:
-            data = yaml.safe_load(f) or {}
-            cls._image_catalog_cache = data
-            return cls._image_catalog_cache
-
-    @classmethod
     def widgets(cls) -> dict[str, Any]:
-        catalog = cls.load_image_catalog()
-        image_options = []
-        for img in catalog.get("images", []):
-            val = img["image"]
-            label = img.get("label", val)
-            image_options.append({"label": label, "value": val})
-
         return {
-            "image": {"order": 5, "type": "select", "options": image_options},
             "instances": {"order": 10, "type": "range", "min": 1, "max": 9, "step": 2},
+
             "cpu_request": {
                 "order": 11,
                 "type": "range",
@@ -140,17 +115,17 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
         vars["namespace"] = await self._resolve_namespace(model)
 
         # Parse image catalog and version from model
-        image_parts = model.image.split(":")
-        if len(image_parts) == 2:
-            cat_name, major_version = image_parts
-            vars["image_catalog_name"] = cat_name
-            vars["image_major_version"] = int(major_version)
+        image_resolved, tag_resolved = await self.resolve_image(
+            model, "pgsql", "ghcr.io/cloudnative-pg/postgresql:18"
+        )
+        vars["image_name"] = f"{image_resolved}:{tag_resolved}"
+        if tag_resolved.isdigit():
+            vars["image_catalog_name"] = image_resolved
+            vars["image_major_version"] = int(tag_resolved)
         else:
-            # Fallback
             vars["image_catalog_name"] = "default"
-            vars["image_major_version"] = 15
+            vars["image_major_version"] = 18
 
-        vars["image_name"] = model.image
 
         if model.s3_storage_id:
             s3_svc = S3StorageService(self.request, self.session)

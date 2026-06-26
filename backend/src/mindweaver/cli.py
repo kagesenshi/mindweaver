@@ -212,7 +212,61 @@ def handle_crypto_rotate_key(args: CryptoRotateKeyArgs):
         engine.dispose()
 
 
+def handle_stack_import(args):
+    """Import stack configurations from YAML files."""
+    import yaml
+    from mindweaver.service.stack.model import Stack
+
+    path_str = args.path
+    if not path_str:
+        path_str = str(Path(__file__).parent / "resources" / "stacks")
+
+    import_path = Path(path_str)
+    if not import_path.exists() or not import_path.is_dir():
+        logger.error(f"Directory {path_str} does not exist")
+        sys.exit(1)
+
+    engine = sa.create_engine(settings.db_uri)
+    try:
+        with Session(engine) as session:
+            files = list(import_path.glob("*.yaml")) + list(import_path.glob("*.yml"))
+            for yaml_file in files:
+                if not yaml_file.is_file():
+                    continue
+                try:
+                    with open(yaml_file, "r") as f:
+                        data = yaml.safe_load(f)
+                    if not data or "name" not in data or "version" not in data:
+                        logger.warning(f"Skipping invalid stack file: {yaml_file}")
+                        continue
+
+                    stmt = select(Stack).where(Stack.name == data["name"])
+                    stack = session.exec(stmt).first()
+                    if stack:
+                        logger.info(f"Overriding existing stack: {data['name']}")
+                        stack.title = data.get("title", stack.title)
+                        stack.version = data["version"]
+                        stack.configuration = data.get("configuration", {})
+                        session.add(stack)
+                    else:
+                        logger.info(f"Importing new stack: {data['name']}")
+                        stack = Stack(
+                            name=data["name"],
+                            title=data.get("title", data["name"]),
+                            version=data["version"],
+                            configuration=data.get("configuration", {}),
+                        )
+                        session.add(stack)
+                except Exception as e:
+                    logger.error(f"Failed to import {yaml_file}: {e}")
+            session.commit()
+    finally:
+        engine.dispose()
+    logger.info("Import completed.")
+
+
 def run_with_reloader(cmd, watch_dir: str = None):
+
     """
     Run a command and restart it when files in watch_dir change.
     """
@@ -449,7 +503,25 @@ def get_parser() -> argparse.ArgumentParser:
     )
     worker_cmd.set_defaults(handler=handle_worker)
 
+    # stack
+    stack_cmd = subparsers.add_parser("stack", help="Stack operations")
+    stack_cmd_subparser = stack_cmd.add_subparsers(dest="stack_command")
+
+    # stack import
+    stack_import_cmd = stack_cmd_subparser.add_parser(
+        "import", help="Import default stacks from yaml files"
+    )
+    stack_import_cmd.add_argument(
+        "--path",
+        dest="path",
+        type=str,
+        default=None,
+        help="Path to directory containing stack YAML files",
+    )
+    stack_import_cmd.set_defaults(handler=handle_stack_import)
+
     return parser
+
 
 
 class MainArgs(argparse.Namespace):

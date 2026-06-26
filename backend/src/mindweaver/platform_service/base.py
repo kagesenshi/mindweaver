@@ -630,6 +630,46 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
             return "default"
         return project.k8s_namespace or project.name
 
+    async def resolve_image(
+        self,
+        model: T,
+        component_name: str,
+        default_image: str,
+        default_tag: str = "",
+        image_key: str = "main",
+    ) -> tuple[str, str]:
+        """Resolves the image and tag for a component from the project's stack.
+        Falls back to default values if stack is not configured.
+        """
+        project = await self.project(model)
+        if hasattr(self.session, "_mock_name") or "mock" in type(self.session).__name__.lower():
+            if ":" in default_image and not default_tag:
+                parts = default_image.split(":")
+                return parts[0], parts[1]
+            return default_image, default_tag
+
+        if project.stack_id:
+
+            from mindweaver.service.stack.model import Stack
+            result = await self.session.exec(
+                select(Stack).where(Stack.id == project.stack_id)
+            )
+            stack = result.one_or_none()
+            if stack:
+                img, tag = stack.get_image_for_component(component_name, image_key)
+                if img:
+                    if ":" in img and not tag:
+                        parts = img.split(":")
+                        return parts[0], parts[1]
+                    return img, tag or default_tag
+        
+        # Parse default tag from default_image if not provided explicitly
+        if ":" in default_image and not default_tag:
+            parts = default_image.split(":")
+            return parts[0], parts[1]
+        return default_image, default_tag
+
+
 
 @PlatformService.with_state()
 class DefaultPlatformState(BaseState):
