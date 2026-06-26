@@ -26,7 +26,8 @@ def test_nifi_resource_defaults():
     assert model.mem_request == 2.0
     assert model.mem_limit == 4.0
     assert model.chart_version == "1.17.0"
-    assert model.image_tag == "2.9.0"
+    assert model.image_tag == "2.9.0-rev.0"
+    assert model.image == "ghcr.io/kagesenshi/mindweaver/nifi"
 
 def test_nifi_cpu_validation():
     """Test that CPU request cannot exceed CPU limit."""
@@ -302,4 +303,126 @@ async def test_nifi_render_manifests_with_ldap(mock_service_dependencies):
         assert "searchFilter: \"(uid={0})\"" in manifests
         assert "authenticationStrategy: \"SIMPLE\"" in manifests
         assert "nifi.security.needClientAuth=true" in manifests
+
+
+@pytest.mark.asyncio
+async def test_nifi_ranger_template_vars(mock_service_dependencies):
+    """Test that template_vars resolves Ranger variables when ranger_id is set."""
+    from mindweaver.platform_service.ranger.model import RangerPlatform
+    request, session = mock_service_dependencies
+    svc = NifiPlatformService(request, session)
+
+    model = NifiPlatform(
+        name="test-nifi",
+        project_id=1,
+        ranger_id=99,
+    )
+
+    svc._resolve_namespace = AsyncMock(return_value="test-ns")
+    mock_project = MagicMock(ingress_domain="example.com", ldap_config_id=None)
+    svc.project = AsyncMock(return_value=mock_project)
+
+    mock_ranger_model = RangerPlatform(
+        id=99,
+        name="test-ranger",
+        project_id=1,
+        solr_id=None,
+    )
+    mock_ranger_svc = MagicMock()
+    mock_ranger_svc.get = AsyncMock(return_value=mock_ranger_model)
+    mock_ranger_svc.platform_state = AsyncMock(return_value=MagicMock(active=True))
+    mock_ranger_svc._resolve_namespace = AsyncMock(return_value="ranger-ns")
+
+    with patch("mindweaver.platform_service.ranger.service.RangerPlatformService.get_service", AsyncMock(return_value=mock_ranger_svc)):
+        vars = await svc.template_vars(model)
+        assert vars["ranger_enabled"] is True
+        assert vars["ranger_url"] == "https://test-ranger.ranger-ns.svc.cluster.local:6080"
+        assert vars["ranger_service_name"] == "test-nifi"
+        assert vars["ranger_solr_enabled"] == "false"
+
+
+@pytest.mark.asyncio
+async def test_nifi_ranger_deploy_and_delete(mock_service_dependencies):
+    """Test that deploy auto-generates Ranger user password and manages the Ranger service."""
+    request, session = mock_service_dependencies
+    svc = NifiPlatformService(request, session)
+
+    model = NifiPlatform(
+        name="test-nifi",
+        project_id=1,
+        ranger_id=99,
+    )
+
+    svc.kubeconfig = AsyncMock(return_value=None)
+    svc._resolve_namespace = AsyncMock(return_value="test-ns")
+    
+    mock_super_deploy = AsyncMock()
+    mock_manage_ranger = AsyncMock()
+
+    with patch("mindweaver.platform_service.base.PlatformService.deploy", mock_super_deploy), \
+         patch.object(svc, "_manage_ranger_service", mock_manage_ranger):
+         
+        await svc.deploy(model)
+        
+        # Verify password auto-generation happened
+        assert model.ranger_user_password is not None
+        mock_super_deploy.assert_called_once_with(model)
+        mock_manage_ranger.assert_called_once_with(model, "create")
+
+        # Test before delete hook
+        mock_manage_ranger.reset_mock()
+        await svc.delete_ranger_service_on_delete(model)
+        mock_manage_ranger.assert_called_once_with(model, "delete")
+
+
+@pytest.mark.asyncio
+async def test_nifi_render_manifests_with_ranger(mock_service_dependencies):
+    """Test that Ranger configurations are correctly rendered in the NiFi manifests."""
+    from mindweaver.platform_service.ranger.model import RangerPlatform
+    request, session = mock_service_dependencies
+    svc = NifiPlatformService(request, session)
+
+    model = NifiPlatform(
+        name="test-nifi",
+        project_id=1,
+        ranger_id=99,
+    )
+
+    svc._resolve_namespace = AsyncMock(return_value="test-ns")
+    mock_project = MagicMock(ingress_domain="example.com", ldap_config_id=None)
+    svc.project = AsyncMock(return_value=mock_project)
+
+    mock_ranger_model = RangerPlatform(
+        id=99,
+        name="test-ranger",
+        project_id=1,
+        solr_id=None,
+    )
+    mock_ranger_svc = MagicMock()
+    mock_ranger_svc.get = AsyncMock(return_value=mock_ranger_model)
+    mock_ranger_svc.platform_state = AsyncMock(return_value=MagicMock(active=True))
+    mock_ranger_svc._resolve_namespace = AsyncMock(return_value="ranger-ns")
+
+    with patch("mindweaver.platform_service.ranger.service.RangerPlatformService.get_service", AsyncMock(return_value=mock_ranger_svc)):
+        manifests = await svc.render_manifests(model)
+        
+        # Check that it renders in application template
+        assert "nifi.security.user.authorizer=ranger-provider" in manifests
+        assert "nifi.authorizer.configuration.file=/opt/nifi/nifi-current/conf/ranger/authorizers.xml" in manifests
+        assert "externalVolumeConfigs:" in manifests
+        assert "name: \"test-nifi-ranger-security\"" in manifests
+        assert "mountPath: \"/opt/nifi/nifi-current/conf/ranger-nifi-security.xml\"" in manifests
+        assert "initContainers:" in manifests
+        assert "prepare-ranger-truststore" in manifests
+        assert "ranger-policymgr-ssl.xml" in manifests
+        assert "java.arg.ranger.truststore=-Djavax.net.ssl.trustStore=/opt/nifi/nifi-current/conf/ranger/ranger-truststore.jks" in manifests
+        assert "java.arg.ranger.truststore.password=-Djavax.net.ssl.trustStorePassword=changeit" in manifests
+        
+        # Check that it renders the new 20-ranger-config template
+        assert "kind: ConfigMap" in manifests
+        assert "ranger-nifi-security.xml" in manifests
+        assert "ranger-nifi-audit.xml" in manifests
+        assert "https://test-ranger.ranger-ns.svc.cluster.local:6080" in manifests
+
+
 
