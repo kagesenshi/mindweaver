@@ -75,10 +75,10 @@ spec:
 
           additionalProperties:
             {%- if not additional_properties or 'policymgr_supportedcomponents' not in additional_properties %}
-            policymgr_supportedcomponents: trino,kafka,elasticsearch
+            policymgr_supportedcomponents: trino
             {%- endif %}
             {%- if not additional_properties or 'ranger.supportedcomponents' not in additional_properties %}
-            ranger.supportedcomponents: trino,kafka,elasticsearch
+            ranger.supportedcomponents: trino
             {%- endif %}
             {%- if additional_properties %}
             {%- for key, val in additional_properties.items() %}
