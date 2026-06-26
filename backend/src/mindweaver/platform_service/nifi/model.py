@@ -17,8 +17,8 @@ class NifiPlatform(PlatformBase, table=True):
     chart_version: str = Field(default="1.17.0")
 
     override_image: bool = Field(default=False)
-    image: str = Field(default="ghcr.io/kagesenshi/mindweaver/nifi")
-    image_tag: str = Field(default="2.9.0-rev.0")
+    image: str = Field(default="apache/nifi")
+    image_tag: str = Field(default="2.9.0")
 
     # Resource configuration
     cpu_request: float = Field(default=0.5)
@@ -27,10 +27,6 @@ class NifiPlatform(PlatformBase, table=True):
     mem_limit: float = Field(default=4.0)
 
     storage_size: str = Field(default="10Gi")
-
-    # Ranger integration configuration
-    ranger_id: Optional[int] = Field(default=None, foreign_key="mw_ranger_platform.id")
-    ranger_user_password: Optional[str] = Field(default=None)
 
     additional_properties: dict[str, Any] = Field(default_factory=dict, sa_type=JSONType())
 

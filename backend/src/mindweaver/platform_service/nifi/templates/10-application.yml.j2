@@ -34,29 +34,6 @@ spec:
           image:
             repository: "{{ image }}"
             tag: "{{ image_tag }}"
-          {%- if ranger_enabled %}
-          initContainers:
-            - name: prepare-ranger-truststore
-              image: "{{ image }}:{{ image_tag }}"
-              command:
-                - sh
-                - -c
-                - |
-                  echo "Generating Ranger Truststore..."
-                  # Import CA cert into ranger-truststore.jks with password changeit
-                  keytool -importcert -file /var/run/secrets/java.io/keystores/server/ca.crt -keystore /opt/nifi/nifi-current/conf/ranger/ranger-truststore.jks -storepass changeit -noprompt
-                  
-                  # Copy configuration files from the mounted configmap source directory to the emptyDir mount
-                  cp /tmp/ranger-config-src/authorizers.xml /opt/nifi/nifi-current/conf/ranger/authorizers.xml
-                  cp /tmp/ranger-config-src/ranger-policymgr-ssl.xml /opt/nifi/nifi-current/conf/ranger/ranger-policymgr-ssl.xml
-              volumeMounts:
-                - name: "{{ name }}-ranger-truststore-vol"
-                  mountPath: "/opt/nifi/nifi-current/conf/ranger"
-                - name: "server-ks-files"
-                  mountPath: "/var/run/secrets/java.io/keystores/server"
-                - name: "{{ name }}-ranger-config-src-vol"
-                  mountPath: "/tmp/ranger-config-src"
-          {%- endif %}
           nodeConfigGroups:
             default-group:
               isNode: true
@@ -70,26 +47,6 @@ spec:
                     resources:
                       requests:
                         storage: "{{ storage_size }}"
-              {%- if ranger_enabled %}
-              externalVolumeConfigs:
-                - name: "{{ name }}-ranger-security"
-                  mountPath: "/opt/nifi/nifi-current/conf/ranger-nifi-security.xml"
-                  subPath: "ranger-nifi-security.xml"
-                  configMap:
-                    name: "{{ name }}-ranger-config"
-                - name: "{{ name }}-ranger-audit"
-                  mountPath: "/opt/nifi/nifi-current/conf/ranger-nifi-audit.xml"
-                  subPath: "ranger-nifi-audit.xml"
-                  configMap:
-                    name: "{{ name }}-ranger-config"
-                - name: "{{ name }}-ranger-config-src-vol"
-                  mountPath: "/tmp/ranger-config-src"
-                  configMap:
-                    name: "{{ name }}-ranger-config"
-                - name: "{{ name }}-ranger-truststore-vol"
-                  mountPath: "/opt/nifi/nifi-current/conf/ranger"
-                  emptyDir: {}
-              {%- endif %}
               resourcesRequirements:
                 requests:
                   cpu: "{{ cpu_request }}"
@@ -139,10 +96,6 @@ spec:
               {% if ingress_domain %}
               nifi.web.proxy.host={{ name }}.{{ ingress_domain }}:443
               {% endif %}
-              {% if ranger_enabled %}
-              nifi.security.user.authorizer=ranger-provider
-              nifi.authorizer.configuration.file=/opt/nifi/nifi-current/conf/ranger/authorizers.xml
-              {% endif %}
             webProxyHosts:
               {%- if ingress_domain %}
               - "{{ name }}.{{ ingress_domain }}"
@@ -167,10 +120,6 @@ spec:
           bootstrapProperties:
             overrideConfigs: |
               java.arg.addopens.exodus=--add-opens=java.base/sun.nio.ch=ALL-UNNAMED
-              {%- if ranger_enabled %}
-              java.arg.ranger.truststore=-Djavax.net.ssl.trustStore=/opt/nifi/nifi-current/conf/ranger/ranger-truststore.jks
-              java.arg.ranger.truststore.password=-Djavax.net.ssl.trustStorePassword=changeit
-              {%- endif %}
             nifiJvmMemory: "512m"
   destination:
     server: https://kubernetes.default.svc

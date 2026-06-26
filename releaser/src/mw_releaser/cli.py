@@ -8,7 +8,6 @@ from .ranger import RangerReleaser
 from .superset import SupersetReleaser
 from .trino import TrinoReleaser
 from .airflow import AirflowReleaser
-from .nifi import NifiReleaser
 
 
 @click.group()
@@ -63,12 +62,6 @@ def trino():
 @cli.group()
 def airflow():
     """Apache Airflow release commands"""
-    pass
-
-
-@cli.group()
-def nifi():
-    """NiFi release commands"""
     pass
 
 
@@ -135,7 +128,6 @@ create_command(superset, SupersetReleaser)
 create_command(ranger, RangerReleaser)
 create_command(trino, TrinoReleaser)
 create_command(airflow, AirflowReleaser)
-create_command(nifi, NifiReleaser)
 
 
 def main():
