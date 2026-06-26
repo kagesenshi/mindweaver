@@ -235,13 +235,13 @@ async def test_ranger_render_manifests(mock_service_dependencies):
         # Default behavior: policymgr_supportedcomponents should be rendered
         manifests = await svc.render_manifests(model)
         assert (
-            "policymgr_supportedcomponents: trino,kafka,elasticsearch,nifi" in manifests
+            "policymgr_supportedcomponents: trino,kafka,elasticsearch" in manifests
         )
-        assert "ranger.supportedcomponents: trino,kafka,elasticsearch,nifi" in manifests
+        assert "ranger.supportedcomponents: trino,kafka,elasticsearch" in manifests
         assert "javaOpts:" in manifests
         # Default behavior: usersync should be disabled
         assert "enabled: false" in manifests
-
+ 
         # Custom override in additional_properties
         model.additional_properties = {
             "policymgr_supportedcomponents": "kafka,trino",
@@ -254,7 +254,7 @@ async def test_ranger_render_manifests(mock_service_dependencies):
         assert "custom.property: value" in manifests_custom
         # Ensure default list doesn't appear when overridden
         assert (
-            "policymgr_supportedcomponents: trino,kafka,elasticsearch,nifi"
+            "policymgr_supportedcomponents: trino,kafka,elasticsearch"
             not in manifests_custom
         )
 
