@@ -28,8 +28,6 @@ from mindweaver.platform_service.hive_metastore.service import (
 from mindweaver.datasource_service import DatabaseSourceService
 from mindweaver.service.s3_storage.service import S3StorageService
 from mindweaver.service.ldap_config.service import LdapConfigService
-from mindweaver.platform_service.ranger.service import RangerPlatformService
-from mindweaver.platform_service.solr.service import SolrPlatformService
 from mindweaver.crypto import decrypt_password
 from mindweaver.fw.util import generate_password
 
@@ -53,11 +51,11 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
 
     @classmethod
     def internal_fields(cls) -> list[str]:
-        return super().internal_fields() + ["internal_shared_secret", "ranger_user_password", "admin_password"]
+        return super().internal_fields() + ["internal_shared_secret", "admin_password"]
 
     @classmethod
     def redacted_fields(cls) -> list[str]:
-        return ["internal_shared_secret", "ranger_user_password", "admin_password"]
+        return ["internal_shared_secret", "admin_password"]
 
     @classmethod
     def widgets(cls) -> dict[str, Any]:
@@ -126,19 +124,11 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
                 "field": "id",
                 "multiselect": True,
             },
-            "ranger_id": {
-                "order": 25,
-                "label": "Ranger integration",
-                "type": "relationship",
-                "endpoint": "/api/v1/platform/ranger",
-                "field": "id",
-            },
         }
 
     @before_create(before="_handle_redacted_create")
     async def generate_passwords(self, model: TrinoPlatform):
         """Autogenerate random passwords for Trino components."""
-        model.ranger_user_password = generate_password()
         model.admin_password = generate_password()
 
     async def get_preferred_catalog(self, model: TrinoPlatform) -> Optional[str]:
@@ -333,51 +323,7 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
 
             vars["ldap"] = ldap_props
 
-        # 4. Resolve Ranger Configuration
-        if model.ranger_id:
-            ranger_svc = await RangerPlatformService.get_service(self.request, self.session)
-            ranger_model = await ranger_svc.get(model.ranger_id)
-            ranger_state = await ranger_svc.platform_state(ranger_model)
-
-            ranger_ns = await ranger_svc._resolve_namespace(ranger_model)
-            ranger_url = f"https://{ranger_model.name}.{ranger_ns}.svc.cluster.local:6080"
-
-            vars["ranger_enabled"] = True
-            vars["ranger_url"] = ranger_url
-            vars["ranger_service_name"] = model.name
-
-            # Solr auditing config resolution
-            if ranger_model.solr_id:
-                solr_svc = await SolrPlatformService.get_service(self.request, self.session)
-                solr_model = await solr_svc.get(ranger_model.solr_id)
-                solr_state = await solr_svc.platform_state(solr_model)
-
-                if not getattr(self, "_decommissioning", False) and (not solr_state or not solr_state.active):
-                    raise ValueError(
-                        f"Managed Solr cluster {solr_model.name} is not active"
-                    )
-
-                solr_ns = await solr_svc._resolve_namespace(solr_model)
-                vars["ranger_solr_enabled"] = "true"
-                solr_host = SolrPlatformService.get_internal_host(
-                    solr_model, solr_state, solr_ns
-                )
-
-                solr_pass = ""
-                if solr_state.admin_password:
-                    try:
-                        solr_pass = decrypt_password(solr_state.admin_password)
-                    except Exception:
-                        solr_pass = solr_state.admin_password
-                vars["ranger_solr_url"] = f"https://{solr_model.name}-ranger-noauth.{solr_ns}.svc.cluster.local:8443/solr/ranger_audits"
-                vars["ranger_solr_password"] = ""
-            else:
-                vars["ranger_solr_enabled"] = "false"
-
-            # S3 auditing config resolution
-            vars["ranger_audit_s3_enabled"] = "false"
-        else:
-            vars["ranger_enabled"] = False
+        vars["ranger_enabled"] = False
 
         # Resolve password authenticators list (LDAP first, then file/local)
         auth_files = []
@@ -403,21 +349,7 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
             hashed_admin_str = "$2y$" + hashed_admin_str[4:]
         vars["admin_trino_password_hash"] = hashed_admin_str
 
-        if model.ranger_id:
-            ranger_pass = ""
-            if model.ranger_user_password:
-                try:
-                    ranger_pass = decrypt_password(model.ranger_user_password)
-                except Exception:
-                    ranger_pass = model.ranger_user_password
-            if not ranger_pass:
-                ranger_pass = "ranger"
-                
-            hashed = bcrypt.hashpw(ranger_pass.encode("utf-8"), bcrypt.gensalt(10))
-            hashed_str = hashed.decode("utf-8")
-            if hashed_str.startswith("$2b$"):
-                hashed_str = "$2y$" + hashed_str[4:]
-            vars["ranger_trino_password_hash"] = hashed_str
+
 
         if auth_files:
             vars["password_authenticator_config_files"] = ",".join(auth_files)
@@ -453,9 +385,6 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
 
         for template_name in templates:
             if not template_name.endswith((".yaml", ".yml", ".yml.j2", ".yaml.j2")):
-                continue
-            # Exclude ranger-sync-job.yaml.j2
-            if "ranger-sync-job.yaml.j2" in template_name:
                 continue
             template = env.get_template(template_name)
             rendered = template.render(**vars)
@@ -638,13 +567,9 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
 
     async def deploy(self, model: TrinoPlatform):
         """
-        Deploys/upgrades the Trino service and automatically creates
-        the corresponding service definition in Ranger if linked.
+        Deploys/upgrades the Trino service.
         """
         db_updated = False
-        if not model.ranger_user_password:
-            model.ranger_user_password = generate_password()
-            db_updated = True
         if not model.admin_password:
             model.admin_password = generate_password()
             db_updated = True
@@ -655,115 +580,3 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
                 await coro
 
         await super().deploy(model)
-        await self._manage_ranger_service(model, "create")
-
-    @before_delete()
-    async def delete_ranger_service_on_delete(self, model: TrinoPlatform):
-        """
-        Deletes the corresponding service definition in Ranger when the Trino platform is deleted.
-        """
-        await self._manage_ranger_service(model, "delete")
-
-    async def _manage_ranger_service(self, model: TrinoPlatform, action: str):
-        """
-        Create or delete a Ranger service definition for the Trino instance using an in-cluster Job.
-        """
-        if not model.ranger_id:
-            return
-
-        try:
-            ranger_svc = await RangerPlatformService.get_service(self.request, self.session)
-            ranger_model = await ranger_svc.get(model.ranger_id)
-            ranger_ns = await ranger_svc._resolve_namespace(ranger_model)
-            ranger_url = f"https://{ranger_model.name}.{ranger_ns}.svc.cluster.local:6080"
-            
-            admin_password = ""
-            if ranger_model.admin_password:
-                try:
-                    admin_password = decrypt_password(ranger_model.admin_password)
-                except Exception:
-                    admin_password = ranger_model.admin_password
-
-            # Resolve credentials and namespace
-            namespace = await self._resolve_namespace(model)
-            ranger_pass = ""
-            if model.ranger_user_password:
-                try:
-                    ranger_pass = decrypt_password(model.ranger_user_password)
-                except Exception:
-                    ranger_pass = model.ranger_user_password
-            if not ranger_pass:
-                ranger_pass = "ranger"
-
-            auth_str = f"admin:{admin_password}"
-            auth_base64 = base64.b64encode(auth_str.encode()).decode()
-
-            # Load the python sync script from templates
-            script_path = os.path.join(self.template_directory, "ranger_sync.py")
-            with open(script_path, "r") as sf:
-                script_content = sf.read()
-
-            # Generate random suffix for Job name uniqueness
-            rand_suffix = "".join(random.choices(string.ascii_lowercase + string.digits, k=5))
-            job_name = f"{model.name}-ranger-sync-{rand_suffix}"
-
-            # Render the Job template
-            from mindweaver.platform_service.base import _get_jinja_env
-            env = _get_jinja_env(self.template_directory)
-            job_template = env.get_template("ranger-sync-job.yaml.j2")
-            rendered_job = job_template.render(
-                job_name=job_name,
-                namespace=namespace,
-                ranger_sync_script=script_content,
-                ranger_url=ranger_url,
-                ranger_auth_b64=auth_base64,
-                service_name=model.name,
-                action=action,
-                ranger_pass=ranger_pass
-            )
-
-            job_body = yaml.safe_load(rendered_job)
-
-            kubeconfig = await self.kubeconfig(model)
-            if kubeconfig is None:
-                config.load_incluster_config()
-                k8s_client = client.ApiClient()
-            else:
-                with tempfile.NamedTemporaryFile(mode="w") as kf:
-                    kf.write(kubeconfig)
-                    kf.flush()
-                    k8s_client = config.new_client_from_config(config_file=kf.name)
-
-            batch_v1 = client.BatchV1Api(k8s_client)
-
-            # Deploy Job
-            logger.info(f"Creating Ranger sync job {job_name} in namespace {namespace}...")
-            batch_v1.create_namespaced_job(namespace=namespace, body=job_body)
-
-            # Poll for Job completion
-            success = False
-            for _ in range(15):
-                await asyncio.sleep(2)
-                try:
-                    job_status = batch_v1.read_namespaced_job_status(name=job_name, namespace=namespace)
-                    if job_status.status.succeeded:
-                        logger.info(f"Ranger sync job {job_name} succeeded.")
-                        success = True
-                        break
-                    if job_status.status.failed:
-                        logger.error(f"Ranger sync job {job_name} failed.")
-                        break
-                except Exception as poll_err:
-                    logger.warning(f"Error checking job status for {job_name}: {poll_err}")
-
-            # Clean up the Job immediately
-            try:
-                batch_v1.delete_namespaced_job(name=job_name, namespace=namespace, propagation_policy="Background")
-            except Exception as delete_err:
-                logger.warning(f"Failed to delete sync job {job_name}: {delete_err}")
-
-            if not success:
-                logger.error(f"Ranger sync job {job_name} did not succeed within timeout.")
-
-        except Exception as e:
-            logger.error(f"Failed to {action} Ranger service for Trino {model.name}: {e}")

@@ -19,8 +19,6 @@ import mindweaver.platform_service.hive_metastore.model
 import mindweaver.platform_service.trino.model
 import mindweaver.platform_service.superset.model
 import mindweaver.platform_service.airflow.model
-import mindweaver.platform_service.ranger.model
-import mindweaver.platform_service.solr.model
 import mindweaver.platform_service.kafka.model
 
 

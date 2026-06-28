@@ -19,7 +19,7 @@ import {
     TrendingUp,
     FolderKanban,
 } from 'lucide-react';
-import { usePgSql, useHiveMetastore, useTrino, useSuperset, useAirflow, useRanger, useSolr, useKafka, useNifi } from '../hooks/useResources';
+import { usePgSql, useHiveMetastore, useTrino, useSuperset, useAirflow, useKafka, useNifi } from '../hooks/useResources';
 import PageLayout from '../components/PageLayout';
 
 const HomePage = () => {
@@ -29,13 +29,11 @@ const HomePage = () => {
     const { platforms: trinoPlatforms, loading: trinoLoading } = useTrino();
     const { platforms: supersetPlatforms, loading: supersetLoading } = useSuperset();
     const { platforms: airflowPlatforms, loading: airflowLoading } = useAirflow();
-    const { platforms: rangerPlatforms, loading: rangerLoading } = useRanger();
-    const { platforms: solrPlatforms, loading: solrLoading } = useSolr();
     const { platforms: kafkaPlatforms, loading: kafkaLoading } = useKafka();
     const { platforms: nifiPlatforms, loading: nifiLoading } = useNifi();
     const navigate = useNavigate();
 
-    const loading = pgsqlLoading || hmsLoading || trinoLoading || supersetLoading || airflowLoading || rangerLoading || solrLoading || kafkaLoading || nifiLoading;
+    const loading = pgsqlLoading || hmsLoading || trinoLoading || supersetLoading || airflowLoading || kafkaLoading || nifiLoading;
 
     const allInstances = [
         ...pgsqlPlatforms.map(p => ({ ...p, type: 'pgsql' })),
@@ -43,8 +41,6 @@ const HomePage = () => {
         ...trinoPlatforms.map(p => ({ ...p, type: 'trino' })),
         ...supersetPlatforms.map(p => ({ ...p, type: 'superset' })),
         ...airflowPlatforms.map(p => ({ ...p, type: 'airflow' })),
-        ...rangerPlatforms.map(p => ({ ...p, type: 'ranger' })),
-        ...solrPlatforms.map(p => ({ ...p, type: 'solr' })),
         ...kafkaPlatforms.map(p => ({ ...p, type: 'kafka' })),
         ...nifiPlatforms.map(p => ({ ...p, type: 'nifi' }))
     ];
@@ -68,8 +64,6 @@ const HomePage = () => {
         { key: 'airflow', label: 'Apache Airflow', icon: Activity, route: '/platform/airflow', color: 'text-teal-500 bg-teal-500/10' },
         { key: 'nifi', label: 'Apache NiFi', icon: Network, route: '/platform/nifi', color: 'text-orange-500 bg-orange-500/10' },
         { key: 'superset', label: 'Apache Superset', icon: LayoutDashboard, route: '/platform/superset', color: 'text-pink-500 bg-pink-500/10' },
-        { key: 'ranger', label: 'Apache Ranger', icon: ShieldCheck, route: '/platform/ranger', color: 'text-emerald-500 bg-emerald-500/10' },
-        { key: 'solr', label: 'Solr', icon: Search, route: '/platform/solr', color: 'text-yellow-500 bg-yellow-500/10' },
     ];
 
     // Calculate dynamic stats

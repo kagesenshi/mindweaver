@@ -36,14 +36,6 @@ class ProjectState(BaseState):
             AirflowPlatform,
             AirflowPlatformState,
         )
-        from mindweaver.platform_service.ranger import (
-            RangerPlatform,
-            RangerPlatformState,
-        )
-        from mindweaver.platform_service.solr import (
-            SolrPlatform,
-            SolrPlatformState,
-        )
         from mindweaver.service.k8s_cluster import K8sClusterStatus
 
         # Helper to get counts
@@ -66,8 +58,6 @@ class ProjectState(BaseState):
         hive_metastore_count = await _get_count(HiveMetastorePlatform, HiveMetastorePlatformState)
         superset_count = await _get_count(SupersetPlatform, SupersetPlatformState)
         airflow_count = await _get_count(AirflowPlatform, AirflowPlatformState)
-        ranger_count = await _get_count(RangerPlatform, RangerPlatformState)
-        solr_count = await _get_count(SolrPlatform, SolrPlatformState)
 
         # Get cluster status
         status_data = {}
@@ -201,8 +191,6 @@ class ProjectState(BaseState):
             "hive_metastore": hive_metastore_count,
             "superset": superset_count,
             "airflow": airflow_count,
-            "ranger": ranger_count,
-            "solr": solr_count,
             "cluster": status_data,
             "dex_installed": dex_installed,
             "dex_version": dex_version,

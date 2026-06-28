@@ -19,8 +19,6 @@ from mindweaver.platform_service.hive_metastore.model import HiveMetastorePlatfo
 from mindweaver.platform_service.trino.model import TrinoPlatform, TrinoPlatformState
 from mindweaver.platform_service.superset.model import SupersetPlatform, SupersetPlatformState
 from mindweaver.platform_service.airflow.model import AirflowPlatform, AirflowPlatformState
-from mindweaver.platform_service.ranger.model import RangerPlatform, RangerPlatformState
-from mindweaver.platform_service.solr.model import SolrPlatform, SolrPlatformState
 from mindweaver.platform_service.kafka.model import KafkaPlatform, KafkaPlatformState
 from mindweaver.platform_service.nifi.model import NifiPlatform, NifiPlatformState
 from mindweaver.service.ldap_config.model import LdapConfig

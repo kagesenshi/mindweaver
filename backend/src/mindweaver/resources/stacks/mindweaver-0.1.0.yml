@@ -18,21 +18,13 @@ configuration:
         main:
           image: ghcr.io/kagesenshi/mindweaver/airflow
           tag: "3.2.2-rev.5"
-    solr:
-      images:
-        main:
-          image: solr
-          tag: "9.6.0"
+
     kafka:
       images:
         main:
           image: apache/kafka
           tag: "4.0.0-rev.0"
-    ranger:
-      images:
-        main:
-          image: docker.io/apache/ranger
-          tag: "2.8.0"
+
     superset:
       images:
         main:

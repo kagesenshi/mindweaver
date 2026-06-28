@@ -176,103 +176,12 @@ def test_hms_decommission_dependency_inactive(client: TestClient, test_project):
         assert resp.status_code == 200
 
 
-def test_ranger_decommission_dependency_inactive(client: TestClient, test_project):
-    """Test that Ranger decommissioning succeeds when PostgreSQL and Solr dependencies are inactive."""
-    with patch("mindweaver.platform_service.base.PlatformService._deploy_to_cluster"), \
-         patch("mindweaver.platform_service.base.PlatformService._decommission_from_cluster"), \
-         patch("mindweaver.platform_service.pgsql.service.PgSqlPlatformService.poll_status"), \
-         patch("mindweaver.platform_service.solr.service.SolrPlatformService.poll_status"), \
-         patch("mindweaver.platform_service.ranger.service.RangerPlatformService.poll_status"):
-
-        # 1. Create PostgreSQL dependency
-        pgsql_data = {
-            "name": "ranger-db",
-            "title": "Ranger PG DB",
-            "project_id": test_project["id"],
-        }
-        resp = client.post(
-            "/api/v1/platform/pgsql",
-            json=pgsql_data,
-            headers={"X-Project-Id": str(test_project["id"])},
-        )
-        resp.raise_for_status()
-        pgsql_id = resp.json()["data"]["id"]
-
-        resp = client.post(
-            f"/api/v1/platform/pgsql/{pgsql_id}/_state",
-            json={"status": "offline", "active": False},
-            headers={
-                "X-Project-Id": str(test_project["id"]),
-                "X-RESOURCE-NAME": "ranger-db",
-            },
-        )
-        resp.raise_for_status()
-
-        # 2. Create Solr dependency
-        solr_data = {
-            "name": "ranger-solr",
-            "title": "Ranger Solr",
-            "project_id": test_project["id"],
-        }
-        resp = client.post(
-            "/api/v1/platform/solr",
-            json=solr_data,
-            headers={"X-Project-Id": str(test_project["id"])},
-        )
-        resp.raise_for_status()
-        solr_id = resp.json()["data"]["id"]
-
-        resp = client.post(
-            f"/api/v1/platform/solr/{solr_id}/_state",
-            json={"status": "offline", "active": False},
-            headers={
-                "X-Project-Id": str(test_project["id"]),
-                "X-RESOURCE-NAME": "ranger-solr",
-            },
-        )
-        resp.raise_for_status()
-
-        # Create Ranger Platform
-        ranger_data = {
-            "name": "my-ranger",
-            "title": "My Ranger",
-            "project_id": test_project["id"],
-            "database_id": pgsql_id,
-            "solr_id": solr_id,
-        }
-        resp = client.post(
-            "/api/v1/platform/ranger",
-            json=ranger_data,
-            headers={"X-Project-Id": str(test_project["id"])},
-        )
-        resp.raise_for_status()
-        ranger_id = resp.json()["data"]["id"]
-
-        # Deploy Ranger -> should fail
-        with pytest.raises(ValueError, match="is not active"):
-            client.post(
-                f"/api/v1/platform/ranger/{ranger_id}/_deploy",
-                headers={"X-Project-Id": str(test_project["id"])},
-            )
-
-        # Decommission Ranger -> should succeed
-        resp = client.post(
-            f"/api/v1/platform/ranger/{ranger_id}/_decommission",
-            headers={
-                "X-Project-Id": str(test_project["id"]),
-                "X-RESOURCE-NAME": "my-ranger",
-            },
-        )
-        assert resp.status_code == 200
-
-
 def test_trino_decommission_dependency_inactive(client: TestClient, test_project):
-    """Test that Trino decommissioning succeeds when Hive Metastore and Solr dependencies are inactive."""
+    """Test that Trino decommissioning succeeds when Hive Metastore dependency is inactive."""
     with patch("mindweaver.platform_service.base.PlatformService._deploy_to_cluster"), \
          patch("mindweaver.platform_service.base.PlatformService._decommission_from_cluster"), \
          patch("mindweaver.platform_service.pgsql.service.PgSqlPlatformService.poll_status"), \
          patch("mindweaver.platform_service.hive_metastore.service.HiveMetastorePlatformService.poll_status"), \
-         patch("mindweaver.platform_service.solr.service.SolrPlatformService.poll_status"), \
          patch("mindweaver.platform_service.trino.service.TrinoPlatformService.poll_status"):
 
         # 1. Create Hive Metastore dependency
@@ -326,37 +235,12 @@ def test_trino_decommission_dependency_inactive(client: TestClient, test_project
         )
         resp.raise_for_status()
 
-        # 2. Create Solr dependency
-        solr_data = {
-            "name": "trino-solr",
-            "title": "Trino Solr",
-            "project_id": test_project["id"],
-        }
-        resp = client.post(
-            "/api/v1/platform/solr",
-            json=solr_data,
-            headers={"X-Project-Id": str(test_project["id"])},
-        )
-        resp.raise_for_status()
-        solr_id = resp.json()["data"]["id"]
-
-        resp = client.post(
-            f"/api/v1/platform/solr/{solr_id}/_state",
-            json={"status": "offline", "active": False},
-            headers={
-                "X-Project-Id": str(test_project["id"]),
-                "X-RESOURCE-NAME": "trino-solr",
-            },
-        )
-        resp.raise_for_status()
-
         # Create Trino Platform
         trino_data = {
             "name": "my-trino",
             "title": "My Trino",
             "project_id": test_project["id"],
             "hms_ids": [hms_id],
-            "solr_id": solr_id,
         }
         resp = client.post(
             "/api/v1/platform/trino",

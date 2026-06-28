@@ -32,9 +32,6 @@ class TrinoPlatform(PlatformBase, table=True):
 
     process_forwarded: bool = Field(default=False)
 
-    # Ranger integration configuration
-    ranger_id: Optional[int] = Field(default=None, foreign_key="mw_ranger_platform.id")
-    ranger_user_password: Optional[str] = Field(default=None)
     admin_password: Optional[str] = Field(default=None)
 
     # Internal communication secret (required when auth is enabled)

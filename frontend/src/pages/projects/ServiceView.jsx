@@ -191,20 +191,6 @@ const ServiceView = ({
             count: projectState?.airflow || 0,
             color: "text-cyan-500",
             bg: "bg-cyan-500/10"
-        },
-        {
-            name: "Ranger",
-            icon: Shield,
-            count: projectState?.ranger || 0,
-            color: "text-emerald-500",
-            bg: "bg-emerald-500/10"
-        },
-        {
-            name: "Solr",
-            icon: Search,
-            count: projectState?.solr || 0,
-            color: "text-cyan-500",
-            bg: "bg-cyan-500/10"
         }
     ];
 

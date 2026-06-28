@@ -57,8 +57,6 @@ const CONNECTIVITY_ITEMS = [
 
 const INFRA_ITEMS = [
     { name: 'PostgreSQL', to: '/platform/pgsql', icon: Database },
-    { name: 'Apache Solr', to: '/platform/solr', icon: Search },
-    { name: 'Apache Ranger', to: '/platform/ranger', icon: ShieldCheck },
     { name: 'Hive Metastore', to: '/platform/hive-metastore', icon: Boxes },
     { name: 'Trino', to: '/platform/trino', icon: Wind },
     { name: 'Apache Kafka', to: '/platform/kafka', icon: RefreshCcw },

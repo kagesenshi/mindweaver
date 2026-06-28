@@ -149,10 +149,7 @@ const ServiceView = ({
                     <CredentialBlock
                         darkMode={darkMode}
                         credentials={[
-                            { label: 'Trino Admin Password', value: platformState?.db_pass, isMasked: true },
-                            ...(platformState?.ranger_pass ? [
-                                { label: 'Ranger User Password', value: platformState?.ranger_pass, isMasked: true }
-                            ] : [])
+                            { label: 'Trino Admin Password', value: platformState?.db_pass, isMasked: true }
                         ]}
                     />
                 )}

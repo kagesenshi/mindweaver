@@ -10,8 +10,6 @@ from mindweaver.platform_service.hive_metastore import HiveMetastorePlatformServ
 from mindweaver.platform_service.trino import TrinoPlatformService
 from mindweaver.platform_service.superset import SupersetPlatformService
 from mindweaver.platform_service.airflow import AirflowPlatformService
-from mindweaver.platform_service.ranger import RangerPlatformService
-from mindweaver.platform_service.solr import SolrPlatformService
 from mindweaver.platform_service.kafka import KafkaPlatformService
 from mindweaver.platform_service.nifi import NifiPlatformService
 from mindweaver.config import logger
@@ -33,8 +31,6 @@ def poll_all_platforms():
         TrinoPlatformService,
         SupersetPlatformService,
         AirflowPlatformService,
-        RangerPlatformService,
-        SolrPlatformService,
         KafkaPlatformService,
         NifiPlatformService,
     ]
@@ -74,8 +70,6 @@ async def _poll_platform_status(service_class_name: str, platform_id: int):
         "TrinoPlatformService": TrinoPlatformService,
         "SupersetPlatformService": SupersetPlatformService,
         "AirflowPlatformService": AirflowPlatformService,
-        "RangerPlatformService": RangerPlatformService,
-        "SolrPlatformService": SolrPlatformService,
         "KafkaPlatformService": KafkaPlatformService,
         "NifiPlatformService": NifiPlatformService,
     }

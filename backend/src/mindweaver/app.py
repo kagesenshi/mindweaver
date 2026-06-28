@@ -23,8 +23,6 @@ from .platform_service.hive_metastore import router as hms_router
 from .platform_service.trino import router as trino_router
 from .platform_service.superset import router as superset_router
 from .platform_service.airflow import router as airflow_router
-from .platform_service.ranger import router as ranger_router
-from .platform_service.solr import router as solr_router
 from .platform_service.kafka import router as kafka_router
 from .platform_service.nifi import router as nifi_router
 from .service.name_tracker import router as name_tracker_router
@@ -205,8 +203,6 @@ app.include_router(hms_router, prefix="/api/v1")
 app.include_router(trino_router, prefix="/api/v1")
 app.include_router(superset_router, prefix="/api/v1")
 app.include_router(airflow_router, prefix="/api/v1")
-app.include_router(ranger_router, prefix="/api/v1")
-app.include_router(solr_router, prefix="/api/v1")
 app.include_router(kafka_router, prefix="/api/v1")
 app.include_router(nifi_router, prefix="/api/v1")
 app.include_router(s3_router, prefix="/api/v1")
