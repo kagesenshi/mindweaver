@@ -66,7 +66,7 @@ const INFRA_ITEMS = [
 ];
 
 const Sidebar = ({ darkMode, isCollapsed, toggleSidebar, onNavItemClick }) => {
-    const { user } = useAuth();
+    const { user, brandName, brandLogo, brandBgColor } = useAuth();
     const location = useLocation();
     const sidebarBg = darkMode ? "bg-[#0c0e12]" : "bg-white";
     const borderCol = darkMode ? "border-slate-800" : "border-slate-200";
@@ -84,20 +84,29 @@ const Sidebar = ({ darkMode, isCollapsed, toggleSidebar, onNavItemClick }) => {
             sidebarBg,
             borderCol
         )}>
-            {/* Header */}
             <div className={cn("h-[81px] border-b flex items-center transition-all duration-300",
                 borderCol,
                 isCollapsed ? "justify-center px-0" : "px-6 gap-3"
             )}>
-                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shrink-0 shadow-lg shadow-blue-600/20">
-                    <Layers className="text-white" size={20} />
+                <div 
+                    className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shrink-0 shadow-lg shadow-blue-600/20 overflow-hidden"
+                    style={brandBgColor ? { backgroundColor: brandBgColor, boxShadow: `0 10px 15px -3px ${brandBgColor}33` } : {}}
+                >
+                    {brandLogo ? (
+                        <div 
+                            className="w-5 h-5 text-white flex items-center justify-center svg-container [&>svg]:w-full [&>svg]:h-full [&>svg]:stroke-current" 
+                            dangerouslySetInnerHTML={{ __html: brandLogo }} 
+                        />
+                    ) : (
+                        <Layers className="text-white" size={20} />
+                    )}
                 </div>
                 {!isCollapsed && (
                     <h1 className={cn(
                         "text-2xl font-bold tracking-tight whitespace-nowrap overflow-hidden transition-opacity duration-300",
                         darkMode ? 'text-white' : 'text-slate-900'
                     )}>
-                        Mindweaver
+                        {brandName}
                     </h1>
                 )}
             </div>

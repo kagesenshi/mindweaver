@@ -125,10 +125,11 @@ async def verify_token(request: Request):
 
     # Exemptions
     path = request.url.path
-    if path in ["/health", "/feature-flags"]:
+    if path in ["/health", "/feature-flags", "/api/v1/_brand"]:
         return
     if "/api/v1/auth/login" in path or "/api/v1/auth/callback" in path:
         return
+
 
     # We need a session to verify the user exists
     async for session in get_session(get_engine()):

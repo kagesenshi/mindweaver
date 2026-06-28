@@ -8,7 +8,7 @@ import { Layers, Rocket, LogIn, Loader2, WifiOff, RefreshCw } from 'lucide-react
 import apiClient from '../services/api';
 
 const LoginPage = () => {
-    const { login, loginLocal } = useAuth();
+    const { login, loginLocal, brandName, brandLogo, brandBgColor } = useAuth();
     const navigate = useNavigate();
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
@@ -73,10 +73,21 @@ const LoginPage = () => {
 
             <div className="w-full max-w-md relative z-10">
                 <div className="text-center mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                    <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-blue-600/40 mx-auto mb-6">
-                        <Layers className="text-white" size={32} />
+                    <div 
+                        className="w-32 h-32 bg-blue-600 rounded-[32px] flex items-center justify-center shadow-2xl shadow-blue-600/40 mx-auto mb-6 overflow-hidden"
+                        style={brandBgColor ? { backgroundColor: brandBgColor, boxShadow: `0 25px 50px -12px ${brandBgColor}66` } : {}}
+                    >
+                        {brandLogo ? (
+                            <div 
+                                className="w-24 h-24 text-white flex items-center justify-center svg-container [&>svg]:w-full [&>svg]:h-full [&>svg]:stroke-current" 
+                                dangerouslySetInnerHTML={{ __html: brandLogo }} 
+                            />
+                        ) : (
+                            <Layers className="text-white" size={64} />
+                        )}
                     </div>
-                    <h1 className="text-5xl font-bold tracking-tight text-white mb-3">Mindweaver</h1>
+
+                    <h1 className="text-5xl font-bold tracking-tight text-white mb-3">{brandName}</h1>
                     <p className="text-slate-500 text-base">Deployment and metadata layer for data platforms.</p>
                 </div>
 

@@ -10,6 +10,26 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [brandName, setBrandName] = useState('Mindweaver');
+    const [brandLogo, setBrandLogo] = useState('');
+    const [brandBgColor, setBrandBgColor] = useState(null);
+
+    const fetchBrand = async () => {
+        try {
+            const response = await apiClient.get('/_brand');
+            if (response.data.name) {
+                setBrandName(response.data.name);
+            }
+            if (response.data.logo) {
+                setBrandLogo(response.data.logo);
+            }
+            if (response.data.bgcolor) {
+                setBrandBgColor(response.data.bgcolor);
+            }
+        } catch (err) {
+            console.error('Failed to fetch brand configuration:', err);
+        }
+    };
 
     const checkAuth = async () => {
         const token = localStorage.getItem('mindweaver-token');
@@ -33,6 +53,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     useEffect(() => {
+        fetchBrand();
         checkAuth();
     }, []);
 
@@ -83,8 +104,9 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, error, login, loginLocal, logout, handleCallback, checkAuth }}>
+        <AuthContext.Provider value={{ user, loading, error, login, loginLocal, logout, handleCallback, checkAuth, brandName, brandLogo, brandBgColor }}>
             {children}
         </AuthContext.Provider>
     );
 };
+

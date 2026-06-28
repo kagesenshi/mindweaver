@@ -46,6 +46,9 @@ services:
       MINDWEAVER_CELERY_BROKER_URL: redis://redis:6379/0
       MINDWEAVER_CELERY_RESULT_BACKEND: redis://redis:6379/0
       MINDWEAVER_EMBEDDED_WORKER: "false"
+      MINDWEAVER_BRAND_NAME: "Citadel"
+      MINDWEAVER_BRAND_LOGO: "citadel.svg"
+      MINDWEAVER_BRAND_BGCOLOR: "#fff"
     volumes:
       - ./backend/src:/app/src
       - ./backend/migration:/app/migration

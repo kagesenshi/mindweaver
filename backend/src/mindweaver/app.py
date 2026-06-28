@@ -2,7 +2,9 @@
 # SPDX-License-Identifier: AGPLv3+
 
 import fastapi
+from pathlib import Path
 from .config import settings, logger
+
 from .service.s3_storage import router as s3_router
 from .service.ldap_config import router as ldap_config_router
 from .service.project import router as project_router
@@ -191,6 +193,36 @@ async def feature_flags():
         "enable_airflow_oidc": settings.enable_airflow_oidc,
         "enable_dex": settings.enable_dex,
     }
+
+
+@app.get("/api/v1/_brand")
+async def get_brand():
+    """
+    Get brand name and logo SVG content.
+    """
+    assets_dir = Path(__file__).parent / "resources" / "assets"
+    logo_filename = settings.brand_logo or "logo.svg"
+    logo_path = assets_dir / logo_filename
+
+    logo_content = ""
+    try:
+        if logo_path.exists():
+            logo_content = logo_path.read_text(encoding="utf-8")
+        else:
+            fallback_path = assets_dir / "logo.svg"
+            if fallback_path.exists():
+                logo_content = fallback_path.read_text(encoding="utf-8")
+    except Exception as e:
+        logger.error(f"Error reading brand logo: {e}")
+
+    return {
+        "name": settings.brand_name,
+        "logo": logo_content,
+        "bgcolor": settings.brand_bgcolor,
+    }
+
+
+
 
 
 app.include_router(project_router, prefix="/api/v1")

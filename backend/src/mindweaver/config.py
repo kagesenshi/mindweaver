@@ -41,6 +41,13 @@ class Settings(BaseSettings):
     default_admin_username: str | None = None
     default_admin_password: str | None = None
 
+    brand_name: str = "Mindweaver"
+    brand_logo: str = "logo.svg"
+    brand_bgcolor: str | None = None
+
+
+
+
     model_config = SettingsConfigDict(
         env_file=".env", env_prefix="mindweaver_", extra="allow"
     )
