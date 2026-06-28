@@ -12,10 +12,6 @@ class HiveMetastorePlatform(PlatformBase, table=True):
 
     replica_count: int = Field(default=1)
 
-    # Chart version selection (used with OCI chart oci://ghcr.io/kagesenshi/mindweaver/charts/hive-metastore)
-    chart_version: str = Field(default="0.1.8")
-
-
     # Resource configuration
     cpu_request: float = Field(default=0.5)
     cpu_limit: float = Field(default=1.0)

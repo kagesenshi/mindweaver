@@ -36,15 +36,10 @@ class HiveMetastorePlatformService(PlatformService[HiveMetastorePlatform]):
     def service_path(cls) -> str:
         return "/platform/hive-metastore"
 
+
     @classmethod
     def widgets(cls) -> dict[str, Any]:
         return {
-            "chart_version": {
-                "order": 3,
-                "label": "Chart Version",
-                "type": "select",
-                "endpoint": "/api/v1/platform/hive-metastore/_chart-versions",
-            },
             "replica_count": {
                 "order": 10,
                 "type": "range",
@@ -99,6 +94,9 @@ class HiveMetastorePlatformService(PlatformService[HiveMetastorePlatform]):
         vars = model.model_dump()
         vars["image"], _ = await self.resolve_image(
             model, "hive_metastore", "ghcr.io/kagesenshi/mindweaver/hive-metastore:latest"
+        )
+        vars["chart_version"] = await self.resolve_chart_version(
+            model, "hive_metastore", "0.1.8"
         )
         vars["override_image"] = True
         vars["namespace"] = await self._resolve_namespace(model)

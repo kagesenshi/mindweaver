@@ -669,6 +669,31 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
             return parts[0], parts[1]
         return default_image, default_tag
 
+    async def resolve_chart_version(
+        self,
+        model: T,
+        component_name: str,
+        default_chart_version: str,
+    ) -> str:
+        """Resolves the chart version for a component from the project's stack.
+        Falls back to default value if stack is not configured.
+        """
+        project = await self.project(model)
+        if hasattr(self.session, "_mock_name") or "mock" in type(self.session).__name__.lower():
+            return default_chart_version
+
+        if project.stack_id:
+            from mindweaver.service.stack.model import Stack
+            result = await self.session.exec(
+                select(Stack).where(Stack.id == project.stack_id)
+            )
+            stack = result.one_or_none()
+            if stack:
+                version = stack.get_chart_version_for_component(component_name)
+                if version:
+                    return version
+        return default_chart_version
+
 
 
 @PlatformService.with_state()

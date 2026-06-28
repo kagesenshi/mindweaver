@@ -31,14 +31,11 @@ class KafkaPlatformService(PlatformService[KafkaPlatform]):
         """Returns the REST path prefix for this service."""
         return "/platform/kafka"
 
+
     @classmethod
     def widgets(cls) -> dict[str, Any]:
         """Provides UI configuration widgets for metadata rendering."""
         return {
-            "chart_version": {
-                "order": 3,
-                "label": "Chart Version",
-            },
             "storage_size": {"order": 7, "label": "Storage Size"},
             "replica_count": {
                 "order": 10,
@@ -89,6 +86,9 @@ class KafkaPlatformService(PlatformService[KafkaPlatform]):
         vars = model.model_dump()
         vars["image"], vars["image_tag"] = await self.resolve_image(
             model, "kafka", "apache/kafka", "4.0.0-rev.0"
+        )
+        vars["chart_version"] = await self.resolve_chart_version(
+            model, "kafka", "0.1.0"
         )
         vars["override_image"] = True
         vars["namespace"] = await self._resolve_namespace(model)

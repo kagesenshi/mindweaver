@@ -13,10 +13,6 @@ class TrinoPlatform(PlatformBase, table=True):
     __tablename__ = "mw_trino_platform"
 
     replica_count: int = Field(default=1)
-    
-    # Target revision (chart version, or we can use version tags of operator chart)
-    chart_version: str = Field(default="1.41.0")
-
 
     # Resource configuration
     cpu_request: float = Field(default=0.5)

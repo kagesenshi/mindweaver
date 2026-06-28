@@ -32,9 +32,6 @@ class SupersetPlatform(PlatformBase, table=True):
     __tablename__ = "mw_superset_platform"
     model_config = ConfigDict(validate_assignment=True)
 
-    # Chart version selection (targetRevision in Application manifest)
-    chart_version: str = Field(default="0.15.0")
-
     # Internal secrets
     # Initial password for the 'admin' user created by init job
     admin_password: str = Field(default_factory=lambda: secrets.token_urlsafe(16))

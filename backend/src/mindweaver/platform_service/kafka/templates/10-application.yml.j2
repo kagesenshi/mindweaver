@@ -20,7 +20,7 @@ spec:
   project: {{ project_name }}
   source:
     repoURL: 'https://github.com/kagesenshi/mindweaver.git'
-    targetRevision: main
+    targetRevision: {{ chart_version }}
     path: charts/kafka
     helm:
       values: |

@@ -31,8 +31,6 @@ def test_trino_resource_defaults():
     assert model.database_source_ids == []
     assert model.hms_ids == []
 
-    # New fields
-    assert model.chart_version == "1.41.0"
     assert len(model.internal_shared_secret) == 64 # hex of 32 bytes
 
 
@@ -228,7 +226,6 @@ async def test_trino_override_image_template(mock_service_dependencies):
         name="trino-test",
         title="Trino Test",
         project_id=1,
-        chart_version="1.41.0",
     )
 
     manifest = await svc.render_manifests(model)
@@ -236,19 +233,6 @@ async def test_trino_override_image_template(mock_service_dependencies):
     assert "targetRevision: 1.41.0" in manifest
     assert "repository: \"custom/trino\"" in manifest
     assert "tag: \"v1.0.0\"" in manifest
-
-
-@pytest.mark.asyncio
-async def test_trino_chart_versions_endpoint():
-    """Test the _chart-versions endpoint returns static versions"""
-    from mindweaver.platform_service.trino.views import get_chart_versions
-
-    result = await get_chart_versions()
-
-    assert "data" in result
-    assert result["data"] == [
-        {"label": "1.41.0", "value": "1.41.0"},
-    ]
 
 
 @pytest.mark.asyncio

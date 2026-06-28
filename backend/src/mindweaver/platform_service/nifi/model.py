@@ -12,9 +12,6 @@ class NifiPlatform(PlatformBase, table=True):
     __tablename__ = "mw_nifi_platform"
 
     replica_count: int = Field(default=1)
-    
-    # Target revision (chart version, or we can use version tags of operator chart)
-    chart_version: str = Field(default="1.17.0")
 
     # Resource configuration
     cpu_request: float = Field(default=0.5)

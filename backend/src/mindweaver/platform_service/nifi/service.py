@@ -31,14 +31,11 @@ class NifiPlatformService(PlatformService[NifiPlatform]):
         """Returns the base API path for this service."""
         return "/platform/nifi"
 
+
     @classmethod
     def widgets(cls) -> dict[str, Any]:
         """Returns the DynamicForm widgets configuration for UI fields."""
         return {
-            "chart_version": {
-                "order": 3,
-                "label": "Chart Version",
-            },
             "storage_size": {"order": 7, "label": "Storage Size"},
             "replica_count": {
                 "order": 10,
@@ -89,6 +86,9 @@ class NifiPlatformService(PlatformService[NifiPlatform]):
         vars = model.model_dump()
         vars["image"], vars["image_tag"] = await self.resolve_image(
             model, "nifi", "apache/nifi", "2.9.0"
+        )
+        vars["chart_version"] = await self.resolve_chart_version(
+            model, "nifi", "1.17.0"
         )
         # NiFi templates check override_image in some legacy contexts or we can just set it to True
         vars["override_image"] = True

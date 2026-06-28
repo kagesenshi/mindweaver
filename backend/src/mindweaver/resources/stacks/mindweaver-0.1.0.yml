@@ -9,33 +9,39 @@ configuration:
           image: ghcr.io/cloudnative-pg/postgresql
           tag: "18"
     nifi:
+      chart_version: "1.17.0"
       images:
         main:
           image: apache/nifi
           tag: "2.9.0"
     airflow:
+      chart_version: "1.22.0"
       images:
         main:
           image: ghcr.io/kagesenshi/mindweaver/airflow
           tag: "3.2.2-rev.5"
 
     kafka:
+      chart_version: "0.1.0"
       images:
         main:
           image: apache/kafka
           tag: "4.0.0-rev.0"
 
     superset:
+      chart_version: "0.15.0"
       images:
         main:
           image: ghcr.io/kagesenshi/mindweaver/superset
           tag: "latest"
     hive_metastore:
+      chart_version: "0.1.8"
       images:
         main:
           image: ghcr.io/kagesenshi/mindweaver/hive-metastore
           tag: "latest"
     trino:
+      chart_version: "1.41.0"
       images:
         main:
           image: trinodb/trino

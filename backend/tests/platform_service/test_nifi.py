@@ -25,7 +25,6 @@ def test_nifi_resource_defaults():
     assert model.cpu_limit == 2.0
     assert model.mem_request == 2.0
     assert model.mem_limit == 4.0
-    assert model.chart_version == "1.17.0"
 
 def test_nifi_cpu_validation():
     """Test that CPU request cannot exceed CPU limit."""

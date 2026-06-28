@@ -4,7 +4,6 @@
 from .service import HiveMetastorePlatformService
 from .state import HiveMetastoreState
 from .model import HiveMetastorePlatform, HiveMetastorePlatformState
-from . import views  # noqa: F401
 
 # Bind state and generate router
 HiveMetastorePlatformService.with_state()(HiveMetastoreState)

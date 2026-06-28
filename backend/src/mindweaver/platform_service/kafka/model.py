@@ -13,10 +13,6 @@ class KafkaPlatform(PlatformBase, table=True):
 
     replica_count: int = Field(default=3)
 
-    # Chart version selection (targetRevision in Application manifest)
-    chart_version: str = Field(default="0.1.0")
-
-
     # Storage configuration
     storage_size: str = Field(default="20Gi")
 

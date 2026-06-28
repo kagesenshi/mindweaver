@@ -37,3 +37,13 @@ class Stack(NamedBase, table=True):
             return {}
         return comp.get("custom_config", {})
 
+    def get_chart_version_for_component(self, component_name: str) -> str | None:
+        """
+        Returns the chart version for the given component.
+        """
+        components = self.configuration.get("components", {})
+        comp = components.get(component_name)
+        if not comp:
+            return None
+        return comp.get("chart_version")
+

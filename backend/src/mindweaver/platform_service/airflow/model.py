@@ -32,9 +32,6 @@ class AirflowPlatform(PlatformBase, table=True):
     __tablename__ = "mw_airflow_platform"
     model_config = ConfigDict(validate_assignment=True)
 
-    # Chart version selection (targetRevision in Application manifest)
-    chart_version: str = Field(default="1.22.0")
-
     # Deploy Redis/Valkey for Celery broker by default
     redis_enabled: bool = Field(default=True)
 

@@ -203,27 +203,6 @@ async def test_hms_manifest_parsing(mock_service_dependencies):
 
 
 @pytest.mark.asyncio
-async def test_hms_chart_versions_endpoint():
-    """Test the _chart-versions endpoint returns static versions"""
-    from mindweaver.platform_service.hive_metastore.views import get_chart_versions
-    
-    result = await get_chart_versions()
-        
-    assert "data" in result
-    assert isinstance(result["data"], list)
-    assert len(result["data"]) > 0
-    # Check that it contains at least some of the known versions
-    versions = [item["value"] for item in result["data"]]
-    assert "0.1.9" in versions
-    assert "0.1.8" in versions
-    # Ensure items have correct format
-    for item in result["data"]:
-        assert "label" in item
-        assert "value" in item
-        assert item["label"] == item["value"]
-
-
-@pytest.mark.asyncio
 async def test_hms_fullname_override(mock_service_dependencies):
     """Test that fullnameOverride is present in the rendered manifest"""
     request, session = mock_service_dependencies

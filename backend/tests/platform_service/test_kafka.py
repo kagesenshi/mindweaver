@@ -27,7 +27,6 @@ def test_kafka_resource_defaults():
     assert model.cpu_limit == 1.0
     assert model.mem_request == 1.0
     assert model.mem_limit == 2.0
-    assert model.chart_version == "0.1.0"
 
 
 def test_kafka_cpu_validation():

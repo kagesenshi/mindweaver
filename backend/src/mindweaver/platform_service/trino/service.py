@@ -60,12 +60,6 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
     @classmethod
     def widgets(cls) -> dict[str, Any]:
         return {
-            "chart_version": {
-                "order": 6,
-                "label": "Chart Version",
-                "type": "select",
-                "endpoint": f"{cls.service_path()}/_chart-versions",
-            },
             "process_forwarded": {
                 "order": 9,
                 "label": "Process X-Forwarded Headers",
@@ -157,6 +151,9 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
         )
         vars["image"] = f"{resolved_img}:{resolved_tag}"
         vars["image_tag"] = resolved_tag
+        vars["chart_version"] = await self.resolve_chart_version(
+            model, "trino", "1.41.0"
+        )
         vars["override_image"] = True
         vars["namespace"] = await self._resolve_namespace(model)
         project = await self.project(model)

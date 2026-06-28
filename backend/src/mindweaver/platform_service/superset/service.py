@@ -63,15 +63,6 @@ class SupersetPlatformService(PlatformService[SupersetPlatform]):
     @classmethod
     def widgets(cls) -> dict[str, Any]:
         return {
-            "chart_version": {
-                "order": 5,
-                "label": "Chart Version",
-                "type": "select",
-                # Need to implement _chart-versions view if we want dynamic list
-                "options": [
-                    {"label": "0.15.0", "value": "0.15.0"},
-                ],
-            },
             "override_image": {
                 "order": 6,
                 "label": "Override Image",
@@ -154,6 +145,9 @@ class SupersetPlatformService(PlatformService[SupersetPlatform]):
             model, "superset", "ghcr.io/kagesenshi/mindweaver/superset:latest"
         )
         vars["image"] = f"{resolved_img}:{resolved_tag}"
+        vars["chart_version"] = await self.resolve_chart_version(
+            model, "superset", "0.15.0"
+        )
         vars["override_image"] = True
         vars["namespace"] = await self._resolve_namespace(model)
         project = await self.project(model)

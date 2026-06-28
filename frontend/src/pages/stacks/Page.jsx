@@ -170,6 +170,17 @@ const StacksPage = () => {
                                                         </span>
                                                     </div>
                                                 </div>
+
+                                                {comp.chart_version && (
+                                                    <div className="flex flex-col shrink-0 md:text-right md:w-32">
+                                                        <span className={cn("text-xs font-semibold uppercase tracking-wider mb-0.5", descColor)}>
+                                                            Chart Version
+                                                        </span>
+                                                        <span className={cn("text-sm font-semibold font-mono", titleColor)}>
+                                                            {comp.chart_version}
+                                                        </span>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     );
