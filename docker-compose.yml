@@ -27,6 +27,105 @@ services:
       timeout: 5s
       retries: 5
 
+  web:
+    profiles: ["app"]
+    build:
+      context: .
+      target: backend-base
+    image: mindweaver-dev:latest
+    command: uv run mindweaver run --port 8000 --bind 0.0.0.0
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    environment:
+      MINDWEAVER_DB_HOST: db
+      MINDWEAVER_DB_USER: postgres
+      MINDWEAVER_DB_PASS: password
+      MINDWEAVER_DB_NAME: mindweaver
+      MINDWEAVER_CELERY_BROKER_URL: redis://redis:6379/0
+      MINDWEAVER_CELERY_RESULT_BACKEND: redis://redis:6379/0
+      MINDWEAVER_EMBEDDED_WORKER: "false"
+    volumes:
+      - ./backend/src:/app/src
+      - ./backend/migration:/app/migration
+      - ./backend/alembic.ini:/app/alembic.ini
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  scheduler:
+    profiles: ["app"]
+    image: mindweaver-dev:latest
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      web:
+        condition: service_started
+    command: uv run mindweaver scheduler --reload
+    env_file:
+      - ./backend/.env
+    environment:
+      MINDWEAVER_DB_HOST: db
+      MINDWEAVER_DB_USER: postgres
+      MINDWEAVER_DB_PASS: password
+      MINDWEAVER_DB_NAME: mindweaver
+      MINDWEAVER_CELERY_BROKER_URL: redis://redis:6379/0
+      MINDWEAVER_CELERY_RESULT_BACKEND: redis://redis:6379/0
+      MINDWEAVER_EMBEDDED_WORKER: "false"
+    volumes:
+      - ./backend/src:/app/src
+      - ./backend/migration:/app/migration
+      - ./backend/alembic.ini:/app/alembic.ini
+
+  worker:
+    profiles: ["app"]
+    image: mindweaver-dev:latest
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      web:
+        condition: service_started
+    command: uv run mindweaver worker --reload
+    env_file:
+      - ./backend/.env
+    environment:
+      MINDWEAVER_DB_HOST: db
+      MINDWEAVER_DB_USER: postgres
+      MINDWEAVER_DB_PASS: password
+      MINDWEAVER_DB_NAME: mindweaver
+      MINDWEAVER_CELERY_BROKER_URL: redis://redis:6379/0
+      MINDWEAVER_CELERY_RESULT_BACKEND: redis://redis:6379/0
+      MINDWEAVER_EMBEDDED_WORKER: "false"
+    volumes:
+      - ./backend/src:/app/src
+      - ./backend/migration:/app/migration
+      - ./backend/alembic.ini:/app/alembic.ini
+
+  frontend:
+    profiles: ["app"]
+    build:
+      context: .
+      target: frontend-builder
+    image: mindweaver-frontend-dev:latest
+    command: npm run dev -- --port 3000 --host 0.0.0.0
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_URL=http://localhost:8000/api/v1
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      web:
+        condition: service_started
+
 volumes:
   postgres_data:
   redis_data:

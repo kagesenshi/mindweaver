@@ -23,38 +23,25 @@ Mindweaver is a 100% open-source data & AI orchestration platform, providing an 
 *   **Docker** and **Docker Compose** (for running backing services)
 *   **CloudNativePG Operator** (for Kubernetes deployments): [Installation guide](https://cloudnative-pg.io/documentation/current/installation_operator/)
 
-## Helm Installation
-
-You can install Mindweaver on Kubernetes using the Helm chart hosted on GHCR.
-
-> [!IMPORTANT]
-> The **CloudNativePG (CNPG) Operator** must be installed in your cluster before installing the Mindweaver chart, as it is used to manage the PostgreSQL database.
-
-```bash
-# 1. Install CNPG Operator (if not already installed)
-helm repo add cnpg https://cloudnative-pg.github.io/charts
-helm upgrade --install cnpg \
-  --namespace cnpg-system \
-  --create-namespace \
-  cnpg/cloudnative-pg
-
-# 2. Install the Mindweaver chart
-helm install mindweaver oci://ghcr.io/kagesenshi/mindweaver/charts/mindweaver
-```
-
 ## Development Environment Setup
 
 ### 1. Start Backing Services
 
-Start PostgreSQL and Redis using Docker Compose:
+Start PostgreSQL and Redis (the backing services) using Docker Compose:
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 This will start:
 *   PostgreSQL on `localhost:5432` (User: `postgres`, Password: `password`, DB: `mindweaver`)
 *   Redis on `localhost:6379`
+
+If you would like to run the backend application services (`web`, `scheduler`, and `worker`) inside Docker container environments with code hot-reloading from volume mounts, run docker-compose specifying the `app` profile:
+
+```bash
+docker compose --profile app up -d
+```
 
 ### 2. Application Setup
 
@@ -72,6 +59,7 @@ This will automatically:
 
 ## Running the Application
 
+### Running Locally
 From the **root directory** of the repository, run the development script:
 
 ```bash
@@ -83,6 +71,9 @@ This script will start:
 *   Backend API server (on `http://localhost:8000`)
 *   Celery Scheduler
 *   Celery Worker
+
+### Running in Docker
+If you started the application using `docker compose --profile app up -d`, the application containers are automatically running. The FastAPI backend will be exposed on `http://localhost:8000` and the React frontend development server will be exposed on `http://localhost:3000`.
 
 ## Running Tests
 
