@@ -215,38 +215,6 @@ async def _sync_core_integrations_task(k8s_cluster_id: int):
 
 
 @app.task
-def install_solr_operator_task(k8s_cluster_id: int):
-    """Trigger Solr Operator installation for a cluster."""
-    logger.info(f"Triggering Solr Operator installation for cluster {k8s_cluster_id}")
-    run_async(_install_solr_operator_task(k8s_cluster_id))
-
-
-async def _install_solr_operator_task(k8s_cluster_id: int):
-    engine = get_engine()
-    async with AsyncSession(engine) as session:
-
-        class MockRequest:
-            headers = {}
-
-        svc = K8sClusterService(MockRequest(), session)
-        try:
-            model = await svc.get(k8s_cluster_id)
-            from mindweaver.service.k8s_cluster.actions import InstallSolrOperatorAction
-
-            action = InstallSolrOperatorAction(model, svc)
-            await action.run()
-            await svc.poll_status(model)
-            await session.commit()
-            logger.info(
-                f"Successfully installed Solr Operator for cluster {k8s_cluster_id}"
-            )
-        except Exception as e:
-            logger.error(
-                f"Error installing Solr Operator for cluster {k8s_cluster_id}: {e}"
-            )
-
-
-@app.task
 def install_kafka_operator_task(k8s_cluster_id: int):
     """Trigger Kafka Operator installation for a cluster."""
     logger.info(f"Triggering Kafka Operator installation for cluster {k8s_cluster_id}")

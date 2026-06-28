@@ -218,29 +218,6 @@ class K8sClusterService(Service[K8sCluster]):
                 except Exception as e:
                     logger.warning(f"Failed to check Envoy Gateway presence: {e}")
 
-                # Check Solr Operator
-                solr_operator_installed = False
-                solr_operator_version = None
-                try:
-                    if secrets:
-                        for secret in secrets.items:
-                            if secret.metadata.name.startswith("sh.helm.release.v1.solr-operator"):
-                                solr_operator_installed = True
-                                break
-                    if not solr_operator_installed:
-                        pods = core_v1.list_pod_for_all_namespaces(
-                            label_selector="control-plane=solr-operator"
-                        )
-                        if not pods.items:
-                            pods = core_v1.list_pod_for_all_namespaces(
-                                label_selector="app.kubernetes.io/name=solr-operator"
-                            )
-                        if pods.items:
-                            solr_operator_installed = True
-                            solr_operator_version = _get_version(pods.items[0])
-                except Exception as e:
-                    logger.warning(f"Failed to check Solr Operator presence: {e}")
-
                 # Check Kafka Operator
                 kafka_operator_installed = False
                 kafka_operator_version = None
@@ -320,8 +297,6 @@ class K8sClusterService(Service[K8sCluster]):
 
                     "envoy_gateway_installed": envoy_gateway_installed,
                     "envoy_gateway_version": envoy_gateway_version,
-                    "solr_operator_installed": solr_operator_installed,
-                    "solr_operator_version": solr_operator_version,
                     "kafka_operator_installed": kafka_operator_installed,
                     "kafka_operator_version": kafka_operator_version,
                     "nifikop_installed": nifikop_installed,
@@ -357,8 +332,6 @@ class K8sClusterService(Service[K8sCluster]):
 
             status_model.envoy_gateway_installed = info["envoy_gateway_installed"]
             status_model.envoy_gateway_version = info["envoy_gateway_version"]
-            status_model.solr_operator_installed = info["solr_operator_installed"]
-            status_model.solr_operator_version = info["solr_operator_version"]
             status_model.kafka_operator_installed = info["kafka_operator_installed"]
             status_model.kafka_operator_version = info["kafka_operator_version"]
             status_model.nifikop_installed = info["nifikop_installed"]

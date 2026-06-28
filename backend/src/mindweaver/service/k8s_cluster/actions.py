@@ -501,16 +501,6 @@ class SyncCoreIntegrationsAction(InstallArgoCDAction):
         status.envoy_gateway_installed = True
         await self.session.flush()
 
-
-        # 6. Deploy/update Solr Operator Application manifest
-        logger.info("Sync: Deploying/updating Solr Operator...")
-        from .actions import InstallSolrOperatorAction
-        action = InstallSolrOperatorAction(self.model, self.svc)
-        action.session = self.session
-        await action.run()
-        status.solr_operator_installed = True
-        await self.session.flush()
-
         # 7. Deploy/update Kafka Operator Application manifest
         logger.info("Sync: Deploying/updating Kafka Operator...")
         from .actions import InstallKafkaOperatorAction
@@ -528,46 +518,6 @@ class SyncCoreIntegrationsAction(InstallArgoCDAction):
         await action_nifikop.run()
         status.nifikop_installed = True
         await self.session.flush()
-
-
-@K8sClusterService.register_action("install_solr_operator")
-class InstallSolrOperatorAction(InstallArgoCDAction):
-
-    async def available(self) -> bool:
-        """Check if Solr Operator action is available (not installed yet)"""
-        stmt = select(K8sClusterStatus).where(
-            K8sClusterStatus.k8s_cluster_id == self.model.id
-        )
-        result = await self.session.exec(stmt)
-        status = result.one_or_none()
-        return not (status and status.solr_operator_installed)
-
-    async def __call__(self, **kwargs):
-        """Call method to queue Solr Operator installation task asynchronously"""
-        from mindweaver.tasks.k8s_cluster_status import install_solr_operator_task
-
-        stmt = select(K8sClusterStatus).where(
-            K8sClusterStatus.k8s_cluster_id == self.model.id
-        )
-        result = await self.session.exec(stmt)
-        status_model = result.one_or_none()
-        if not status_model:
-            status_model = K8sClusterStatus(k8s_cluster_id=self.model.id)
-            self.session.add(status_model)
-        status_model.solr_operator_installed = True
-        await self.session.flush()
-
-        install_solr_operator_task.delay(self.model.id)
-        return {
-            "status": "success",
-            "message": "Solr Operator installation triggered and status being refreshed.",
-        }
-
-    async def run(self):
-        """Install Solr Operator to the cluster using ArgoCD Application"""
-        logger.info(f"Installing Solr Operator for cluster {self.model.name}")
-        chart_version = await self.resolve_integration_version("solr-operator", "0.9.1")
-        await self._apply_template("solr-operator.yml.j2", chart_version=chart_version)
 
 
 @K8sClusterService.register_action("install_kafka_operator")

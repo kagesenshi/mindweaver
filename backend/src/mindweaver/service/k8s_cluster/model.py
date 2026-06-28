@@ -68,9 +68,6 @@ class K8sClusterStatus(Base, table=True):
     envoy_gateway_installed: bool = Field(default=False)
     envoy_gateway_version: Optional[str] = Field(default=None)
 
-    solr_operator_installed: bool = Field(default=False)
-    solr_operator_version: Optional[str] = Field(default=None)
-
     kafka_operator_installed: bool = Field(default=False)
     kafka_operator_version: Optional[str] = Field(default=None)
 

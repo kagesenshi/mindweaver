@@ -12,7 +12,6 @@ const COMPONENT_TITLES = {
     pgsql: 'PostgreSQL',
     nifi: 'Apache NiFi',
     airflow: 'Apache Airflow',
-    solr: 'Apache Solr',
     kafka: 'Apache Kafka',
     ranger: 'Apache Ranger',
     superset: 'Apache Superset',
@@ -22,7 +21,6 @@ const COMPONENT_TITLES = {
     'cert-manager': 'Cert Manager',
     cnpg: 'CloudNativePG Operator',
     'envoy-gateway': 'Envoy Gateway',
-    'solr-operator': 'Solr Operator',
     'kafka-operator': 'Strimzi Kafka Operator',
     'nifikop-operator': 'NiFiKop Operator',
 };
