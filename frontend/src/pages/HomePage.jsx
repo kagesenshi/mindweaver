@@ -69,8 +69,6 @@ const HomePage = () => {
     // Calculate dynamic stats
     const totalResourcesCount = projectInstances.length;
     const activeProjectsCount = selectedProject ? 1 : projects?.length || 0;
-    const dbClustersCount = countsByType['pgsql'] || 0;
-    const dataStreamsCount = countsByType['kafka'] || 0;
 
     return (
         <PageLayout
@@ -86,7 +84,7 @@ const HomePage = () => {
         >
             <div className="space-y-8">
                 {/* Top-Level KPI Stats Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div className="mw-card p-6 flex items-center justify-between">
                         <div>
                             <p className="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Deployments</p>
@@ -104,26 +102,6 @@ const HomePage = () => {
                         </div>
                         <div className="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center text-purple-500">
                             <FolderKanban className="w-6 h-6" />
-                        </div>
-                    </div>
-
-                    <div className="mw-card p-6 flex items-center justify-between">
-                        <div>
-                            <p className="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Database Clusters</p>
-                            <h3 className="text-3xl font-black text-slate-900 dark:text-white mt-2">{dbClustersCount}</h3>
-                        </div>
-                        <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-                            <Database className="w-6 h-6" />
-                        </div>
-                    </div>
-
-                    <div className="mw-card p-6 flex items-center justify-between">
-                        <div>
-                            <p className="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Data Streams</p>
-                            <h3 className="text-3xl font-black text-slate-900 dark:text-white mt-2">{dataStreamsCount}</h3>
-                        </div>
-                        <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500">
-                            <RefreshCcw className="w-6 h-6" />
                         </div>
                     </div>
                 </div>

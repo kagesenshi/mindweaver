@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-    Briefcase, Database, Server, Activity, ArrowLeft, Monitor, Users, UserPlus, Edit, Trash2, Shield, RefreshCw, Download, Search, Key, CheckCircle2, AlertCircle, Eye
+    Briefcase, Database, Server, Activity, ArrowLeft, Monitor, Users, UserPlus, Edit, Trash2, Shield, RefreshCw, Download, Search, Key, CheckCircle2, AlertCircle, Eye, RefreshCcw, Network
 } from 'lucide-react';
 import { useProjectLocalUsers } from '../../hooks/useResources';
 import Modal from '../../components/Modal';
@@ -191,6 +191,20 @@ const ServiceView = ({
             count: projectState?.airflow || 0,
             color: "text-cyan-500",
             bg: "bg-cyan-500/10"
+        },
+        {
+            name: "Kafka",
+            icon: RefreshCcw,
+            count: projectState?.kafka || 0,
+            color: "text-amber-500",
+            bg: "bg-amber-500/10"
+        },
+        {
+            name: "NiFi",
+            icon: Network,
+            count: projectState?.nifi || 0,
+            color: "text-orange-500",
+            bg: "bg-orange-500/10"
         }
     ];
 
@@ -242,7 +256,7 @@ const ServiceView = ({
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-6">
                 {resourceCards.map((card, i) => {
                     const Icon = card.icon;
                     return (

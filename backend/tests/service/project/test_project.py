@@ -209,6 +209,8 @@ def test_project_state(
     assert state_data["trino"] == 0
     assert state_data["hive_metastore"] == 0
     assert state_data["superset"] == 0
+    assert state_data["kafka"] == 0
+    assert state_data["nifi"] == 0
 
     # Create PgSql platform
     headers_p1 = {"X-Project-ID": str(p1["id"])}

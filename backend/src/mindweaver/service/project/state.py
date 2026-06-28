@@ -36,6 +36,14 @@ class ProjectState(BaseState):
             AirflowPlatform,
             AirflowPlatformState,
         )
+        from mindweaver.platform_service.kafka import (
+            KafkaPlatform,
+            KafkaPlatformState,
+        )
+        from mindweaver.platform_service.nifi import (
+            NifiPlatform,
+            NifiPlatformState,
+        )
         from mindweaver.service.k8s_cluster import K8sClusterStatus
 
         # Helper to get counts
@@ -58,6 +66,8 @@ class ProjectState(BaseState):
         hive_metastore_count = await _get_count(HiveMetastorePlatform, HiveMetastorePlatformState)
         superset_count = await _get_count(SupersetPlatform, SupersetPlatformState)
         airflow_count = await _get_count(AirflowPlatform, AirflowPlatformState)
+        kafka_count = await _get_count(KafkaPlatform, KafkaPlatformState)
+        nifi_count = await _get_count(NifiPlatform, NifiPlatformState)
 
         # Get cluster status
         status_data = {}
@@ -191,6 +201,8 @@ class ProjectState(BaseState):
             "hive_metastore": hive_metastore_count,
             "superset": superset_count,
             "airflow": airflow_count,
+            "kafka": kafka_count,
+            "nifi": nifi_count,
             "cluster": status_data,
             "dex_installed": dex_installed,
             "dex_version": dex_version,
