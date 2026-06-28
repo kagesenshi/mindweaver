@@ -8,7 +8,7 @@ import { Layers, Rocket, LogIn, Loader2, WifiOff, RefreshCw } from 'lucide-react
 import apiClient from '../services/api';
 
 const LoginPage = () => {
-    const { login, loginLocal, brandName, brandLogo, brandBgColor } = useAuth();
+    const { login, loginLocal, brandName, brandLogo, brandBgColor, fetchBrand } = useAuth();
     const navigate = useNavigate();
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
@@ -28,6 +28,8 @@ const LoginPage = () => {
             }
             const data = await response.json();
             setOidcEnabled(data.oidc_enabled ?? false);
+            // Immediately load/refresh the brand config on successful connection
+            fetchBrand();
         } catch (err) {
             console.error('Failed to fetch feature flags:', err);
             setOidcEnabled(false);
@@ -37,11 +39,14 @@ const LoginPage = () => {
 
     useEffect(() => {
         /**
-         * Fetch feature flags from the backend to determine
-         * whether OIDC login should be displayed.
+         * Fetch feature flags and brand settings from the backend when the login page mounts.
          */
         fetchFeatureFlags();
+        fetchBrand();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+
 
     const handleLocalLogin = async (e) => {
         /**
@@ -72,24 +77,27 @@ const LoginPage = () => {
             <div className="absolute top-1/4 left-1/4 w-[400px] h-[400px] bg-indigo-600/10 rounded-full blur-[100px] pointer-events-none" />
 
             <div className="w-full max-w-md relative z-10">
-                <div className="text-center mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                    <div 
-                        className="w-32 h-32 bg-blue-600 rounded-[32px] flex items-center justify-center shadow-2xl shadow-blue-600/40 mx-auto mb-6 overflow-hidden"
-                        style={brandBgColor ? { backgroundColor: brandBgColor, boxShadow: `0 25px 50px -12px ${brandBgColor}66` } : {}}
-                    >
-                        {brandLogo ? (
-                            <div 
-                                className="w-24 h-24 text-white flex items-center justify-center svg-container [&>svg]:w-full [&>svg]:h-full [&>svg]:stroke-current" 
-                                dangerouslySetInnerHTML={{ __html: brandLogo }} 
-                            />
-                        ) : (
-                            <Layers className="text-white" size={64} />
-                        )}
-                    </div>
+                {!connectionError && (
+                    <div className="text-center mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                        <div 
+                            className="w-32 h-32 bg-blue-600 rounded-[32px] flex items-center justify-center shadow-2xl shadow-blue-600/40 mx-auto mb-6 overflow-hidden"
+                            style={brandBgColor ? { backgroundColor: brandBgColor, boxShadow: `0 25px 50px -12px ${brandBgColor}66` } : {}}
+                        >
+                            {brandLogo ? (
+                                <div 
+                                    className="w-24 h-24 text-white flex items-center justify-center svg-container [&>svg]:w-full [&>svg]:h-full [&>svg]:stroke-current" 
+                                    dangerouslySetInnerHTML={{ __html: brandLogo }} 
+                                />
+                            ) : (
+                                <Layers className="text-white" size={64} />
+                            )}
+                        </div>
 
-                    <h1 className="text-5xl font-bold tracking-tight text-white mb-3">{brandName}</h1>
-                    <p className="text-slate-500 text-base">Deployment and metadata layer for data platforms.</p>
-                </div>
+                        <h1 className="text-5xl font-bold tracking-tight text-white mb-3">{brandName}</h1>
+                        <p className="text-slate-500 text-base">Deployment and metadata layer for data platforms.</p>
+                    </div>
+                )}
+
 
                 <div className="bg-slate-900/40 border border-slate-800/60 p-10 rounded-[40px] shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-150">
                     {connectionError ? (

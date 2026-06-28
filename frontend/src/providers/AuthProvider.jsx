@@ -104,9 +104,10 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, error, login, loginLocal, logout, handleCallback, checkAuth, brandName, brandLogo, brandBgColor }}>
+        <AuthContext.Provider value={{ user, loading, error, login, loginLocal, logout, handleCallback, checkAuth, brandName, brandLogo, brandBgColor, fetchBrand }}>
             {children}
         </AuthContext.Provider>
     );
 };
+
 

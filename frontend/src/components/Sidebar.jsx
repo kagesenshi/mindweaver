@@ -89,27 +89,28 @@ const Sidebar = ({ darkMode, isCollapsed, toggleSidebar, onNavItemClick }) => {
                 isCollapsed ? "justify-center px-0" : "px-6 gap-3"
             )}>
                 <div 
-                    className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shrink-0 shadow-lg shadow-blue-600/20 overflow-hidden"
+                    className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-blue-600/20 overflow-hidden"
                     style={brandBgColor ? { backgroundColor: brandBgColor, boxShadow: `0 10px 15px -3px ${brandBgColor}33` } : {}}
                 >
                     {brandLogo ? (
                         <div 
-                            className="w-5 h-5 text-white flex items-center justify-center svg-container [&>svg]:w-full [&>svg]:h-full [&>svg]:stroke-current" 
+                            className="w-9 h-9 text-white flex items-center justify-center svg-container [&>svg]:w-full [&>svg]:h-full [&>svg]:stroke-current" 
                             dangerouslySetInnerHTML={{ __html: brandLogo }} 
                         />
                     ) : (
-                        <Layers className="text-white" size={20} />
+                        <Layers className="text-white" size={28} />
                     )}
                 </div>
                 {!isCollapsed && (
                     <h1 className={cn(
-                        "text-2xl font-bold tracking-tight whitespace-nowrap overflow-hidden transition-opacity duration-300",
+                        "text-[1.65rem] font-bold tracking-tight whitespace-nowrap overflow-hidden transition-opacity duration-300",
                         darkMode ? 'text-white' : 'text-slate-900'
                     )}>
                         {brandName}
                     </h1>
                 )}
             </div>
+
 
             {/* Toggle Button */}
             <button
