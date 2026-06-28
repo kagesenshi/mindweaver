@@ -186,8 +186,6 @@ async def health():
 @app.get("/feature-flags")
 async def feature_flags():
     return {
-        "experimental_data_source": settings.experimental_data_source,
-        "experimental_s3_storage": settings.experimental_s3_storage,
         "oidc_enabled": settings.oidc_issuer is not None,
         "enable_superset_oidc": settings.enable_superset_oidc,
         "enable_airflow_oidc": settings.enable_airflow_oidc,
@@ -246,5 +244,4 @@ app.include_router(container_registry_router, prefix="/api/v1")
 app.include_router(StackService.router(), prefix="/api/v1")
 
 
-if settings.experimental_data_source:
-    app.include_router(db_router, prefix="/api/v1/database-sources")
+app.include_router(db_router, prefix="/api/v1/database-sources")

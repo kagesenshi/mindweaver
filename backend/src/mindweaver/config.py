@@ -22,11 +22,6 @@ class Settings(BaseSettings):
     fernet_key: str | None = None
     jwt_secret: str = "unsafe-jwt-secret-key-that-is-at-least-32-bytes-long"
 
-    experimental_data_source: bool = False
-    experimental_knowledge_db: bool = False
-    experimental_s3_storage: bool = False
-    experimental_ingestion: bool = False
-
     enable_superset_oidc: bool = False
     enable_airflow_oidc: bool = False
     enable_dex: bool = False
