@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
+SPDX-License-Identifier: AGPLv3+
+-->
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
@@ -5,35 +10,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.3] - Unreleased
-
-## [0.1.2] - Unreleased
+## [0.1.3] - 2026-06-29
 
 ### Added
-- Iceberge REST API in HMS chart
+- Initial MVP release offering core framework orchestration capabilities to deploy and manage data platform components on Kubernetes, including:
+  - **PostgreSQL**: High-availability relational database service.
+  - **Apache Kafka**: Event streaming platform.
+  - **Apache Airflow**: Workflow orchestration engine.
+  - **Trino**: Distributed SQL query engine.
+  - **Hive Metastore**: Centralized schema metadata repository.
+  - **Apache NiFi**: Data integration and routing system.
+  - **Elasticsearch**: Search, analytics, and indexing engine.
+  - **Apache Superset**: Data exploration and visualization dashboard.
+- Out-of-the-box SSL/TLS support configured across all deployed services.
+- Metadata management for Projects, K8S Clusters, S3 Connections, Git Repositories, LDAP Configurations, and Container Registries.
 
 ### Changed
-- Refactored service framework to smaller mixins
-- Rebase HMS image to upstream apache/hive:standalone-metastore-4.2.0
-
-### Fixed
-- Pgsql nodeport selector not pointing to the right service
-
-## [0.1.1] - 2026-02-27
-
-### Added
-- Support for local credentials, including environment-based default admin login.
-- Introduced `is_superadmin` flag for user management. Restricted user service operations to superadmins only.
-
-### Changed
-- Refactored authentication implementation to the framework (`fw`) for consistent usage across services.
-- Centralized password hashing logic into a reusable mixin.
-- **Breaking:** Alembic migration history has been reset to allow for a clean slate. Please clear the database and migrate again.
-
-### Fixed
-- Fixes to the login screen and various UI components.
-- Fixes cluster status polling issue after switching to ArgoCD
-
-## [0.1.0] - 2026-02-26
-
-- Initial release with core framework and postgresql service
+- Centralized user authentication framework. Authorization support is currently omitted as Apache Ranger was determined to be unsuitable for the architecture.
+- **Breaking:** Database migrations have been reset. You will need to drop all existing tables and rerun the migrations.
