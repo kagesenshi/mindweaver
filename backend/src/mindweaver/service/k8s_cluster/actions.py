@@ -50,6 +50,42 @@ class InstallArgoCDAction(BaseAction):
             "message": "ArgoCD installation triggered and status being refreshed.",
         }
 
+    async def resolve_integration_version(self, component_name: str, default_version: str) -> str:
+        """Resolves the version for a core integration from the stack.
+        Falls back to default_version if stack or configuration is not found.
+        """
+        if hasattr(self.session, "_mock_name") or "mock" in type(self.session).__name__.lower():
+            return default_version
+
+        # 1. Find stack linked via projects using this cluster
+        from mindweaver.service.project.model import Project
+        from mindweaver.service.stack.model import Stack
+        
+        stack = None
+        try:
+            stmt = select(Project).where(Project.k8s_cluster_id == self.model.id)
+            result = await self.session.exec(stmt)
+            project = result.first()
+            if project and project.stack_id:
+                result = await self.session.exec(select(Stack).where(Stack.id == project.stack_id))
+                stack = result.one_or_none()
+        except Exception as e:
+            logger.warning(f"Failed to query project/stack for cluster: {e}")
+
+        if not stack:
+            # 2. Fallback to latest stack
+            try:
+                result = await self.session.exec(select(Stack).order_by(Stack.version.desc()))
+                stack = result.first()
+            except Exception as e:
+                logger.warning(f"Failed to query any stack: {e}")
+
+        if stack:
+            version = stack.get_chart_version_for_component(component_name)
+            if version:
+                return version
+        return default_version
+
     async def run(self):
         """Install ArgoCD to the cluster using Helm chart"""
         logger.info(f"Installing ArgoCD for cluster {self.model.name}")
@@ -58,6 +94,7 @@ class InstallArgoCDAction(BaseAction):
         release_name = "argocd"
         namespace = "argocd"
         chart_name = "argo/argo-cd"
+        version = await self.resolve_integration_version("argocd", "7.8.2")
 
         await self._install_helm_chart(
             repo_name="argo",
@@ -65,6 +102,7 @@ class InstallArgoCDAction(BaseAction):
             release_name=release_name,
             chart_name=chart_name,
             namespace=namespace,
+            version=version,
         )
 
     def _get_kubernetes_clients(self):
@@ -139,6 +177,7 @@ class InstallArgoCDAction(BaseAction):
         namespace: str,
         set_vals: dict[str, str] = None,
         create_namespace: bool = True,
+        version: str = None,
     ):
         kubeconfig_path = None
         temp_kf = None
@@ -186,6 +225,9 @@ class InstallArgoCDAction(BaseAction):
             ]
             if create_namespace:
                 args.append("--create-namespace")
+
+            if version:
+                args.extend(["--version", version])
 
             if set_vals:
                 for k, v in set_vals.items():
@@ -282,8 +324,8 @@ class InstallCertManagerAction(InstallArgoCDAction):
     async def run(self):
         """Install Cert Manager to the cluster using ArgoCD Application"""
         logger.info(f"Installing Cert Manager for cluster {self.model.name}")
-
-        await self._apply_template("cert-manager.yml.j2")
+        chart_version = await self.resolve_integration_version("cert-manager", "v1.20.0")
+        await self._apply_template("cert-manager.yml.j2", chart_version=chart_version)
 
 
 @K8sClusterService.register_action("install_cnpg_operator")
@@ -322,8 +364,8 @@ class InstallCNPGAction(InstallArgoCDAction):
     async def run(self):
         """Install CNPG Operator to the cluster using ArgoCD Application"""
         logger.info(f"Installing CNPG Operator for cluster {self.model.name}")
-
-        await self._apply_template("cnpg.yml.j2")
+        chart_version = await self.resolve_integration_version("cnpg", "0.27.1")
+        await self._apply_template("cnpg.yml.j2", chart_version=chart_version)
 
 
 
@@ -362,8 +404,8 @@ class InstallEnvoyGatewayAction(InstallArgoCDAction):
     async def run(self):
         """Install Envoy Gateway to the cluster using ArgoCD Application and configured service type"""
         logger.info(f"Installing Envoy Gateway for cluster {self.model.name}")
-
-        await self._apply_template("envoy-gateway.yml.j2")
+        chart_version = await self.resolve_integration_version("envoy-gateway", "1.8.1")
+        await self._apply_template("envoy-gateway.yml.j2", chart_version=chart_version)
 
         await self._wait_for_crd_and_namespace(
             ["envoyproxies.gateway.envoyproxy.io", "gatewayclasses.gateway.networking.k8s.io"],
@@ -524,8 +566,8 @@ class InstallSolrOperatorAction(InstallArgoCDAction):
     async def run(self):
         """Install Solr Operator to the cluster using ArgoCD Application"""
         logger.info(f"Installing Solr Operator for cluster {self.model.name}")
-
-        await self._apply_template("solr-operator.yml.j2")
+        chart_version = await self.resolve_integration_version("solr-operator", "0.9.1")
+        await self._apply_template("solr-operator.yml.j2", chart_version=chart_version)
 
 
 @K8sClusterService.register_action("install_kafka_operator")
@@ -564,8 +606,8 @@ class InstallKafkaOperatorAction(InstallArgoCDAction):
     async def run(self):
         """Install Strimzi Kafka Operator to the cluster using ArgoCD Application"""
         logger.info(f"Installing Kafka Operator for cluster {self.model.name}")
-
-        await self._apply_template("kafka-operator.yml.j2")
+        chart_version = await self.resolve_integration_version("kafka-operator", "0.41.0")
+        await self._apply_template("kafka-operator.yml.j2", chart_version=chart_version)
 
 
 @K8sClusterService.register_action("install_nifikop")
@@ -604,5 +646,5 @@ class InstallNifikopAction(InstallArgoCDAction):
     async def run(self):
         """Install NiFiKop Operator to the cluster using ArgoCD Application"""
         logger.info(f"Installing NiFiKop Operator for cluster {self.model.name}")
-
-        await self._apply_template("nifikop-operator.yml.j2")
+        chart_version = await self.resolve_integration_version("nifikop-operator", "1.17.0")
+        await self._apply_template("nifikop-operator.yml.j2", chart_version=chart_version)

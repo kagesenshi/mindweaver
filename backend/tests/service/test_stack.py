@@ -94,3 +94,56 @@ async def test_resolve_chart_version(mock_service_dependencies):
 
     resolved_version = await svc.resolve_chart_version(model, "trino", "1.41.0")
     assert resolved_version == "9.9.9"
+
+
+@pytest.mark.asyncio
+async def test_resolve_integration_version(mock_service_dependencies):
+    """Test resolve_integration_version behaves correctly for cluster integrations."""
+    from mindweaver.service.k8s_cluster.actions import InstallArgoCDAction
+    from mindweaver.service.k8s_cluster.model import K8sCluster
+    from mindweaver.service.k8s_cluster.service import K8sClusterService
+    
+    request, _ = mock_service_dependencies
+    
+    class DummySession:
+        pass
+        
+    session = DummySession()
+    cluster = K8sCluster(id=1, name="test-cluster")
+    svc = K8sClusterService(request, session)
+    action = InstallArgoCDAction(cluster, svc)
+    action.session = session
+
+    # 1. Test fallback when no stack exists
+    mock_result = MagicMock()
+    mock_result.first.return_value = None
+    session.exec = AsyncMock(return_value=mock_result)
+    
+    version = await action.resolve_integration_version("cert-manager", "v1.20.0")
+    assert version == "v1.20.0"
+
+    # 2. Test resolution from the project stack
+    stack = Stack(
+        id=5,
+        name="my-stack",
+        version="0.1.0",
+        configuration={
+            "components": {
+                "cert-manager": {
+                    "chart_version": "v1.99.0",
+                }
+            }
+        }
+    )
+    project = Project(id=1, name="proj", title="Proj", stack_id=5)
+    
+    mock_result_proj = MagicMock()
+    mock_result_proj.first.return_value = project
+    
+    mock_result_stack = MagicMock()
+    mock_result_stack.one_or_none.return_value = stack
+    
+    session.exec = AsyncMock(side_effect=[mock_result_proj, mock_result_stack])
+    
+    version = await action.resolve_integration_version("cert-manager", "v1.20.0")
+    assert version == "v1.99.0"

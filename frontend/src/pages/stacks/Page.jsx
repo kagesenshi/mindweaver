@@ -18,6 +18,13 @@ const COMPONENT_TITLES = {
     superset: 'Apache Superset',
     hive_metastore: 'Hive Metastore',
     trino: 'Trino',
+    argocd: 'ArgoCD',
+    'cert-manager': 'Cert Manager',
+    cnpg: 'CloudNativePG Operator',
+    'envoy-gateway': 'Envoy Gateway',
+    'solr-operator': 'Solr Operator',
+    'kafka-operator': 'Strimzi Kafka Operator',
+    'nifikop-operator': 'NiFiKop Operator',
 };
 
 const StacksPage = () => {

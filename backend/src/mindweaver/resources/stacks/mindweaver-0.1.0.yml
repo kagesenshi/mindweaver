@@ -46,3 +46,19 @@ configuration:
         main:
           image: trinodb/trino
           tag: "latest"
+
+    # Core Kubernetes integrations
+    argocd:
+      chart_version: "7.8.2"
+    cert-manager:
+      chart_version: "v1.20.0"
+    cnpg:
+      chart_version: "0.27.1"
+    envoy-gateway:
+      chart_version: "1.8.1"
+    solr-operator:
+      chart_version: "0.9.1"
+    kafka-operator:
+      chart_version: "0.41.0"
+    nifikop-operator:
+      chart_version: "1.17.0"
