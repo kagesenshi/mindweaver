@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+/*
+SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
+SPDX-License-Identifier: AGPLv3+
+*/
+
+import React from 'react';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import {
-    Briefcase,
     Database,
-    ChevronRight,
     Server,
     Boxes,
     Wind,
@@ -13,13 +16,14 @@ import {
     Search,
     RefreshCcw,
     Network,
+    TrendingUp,
+    FolderKanban,
 } from 'lucide-react';
 import { usePgSql, useHiveMetastore, useTrino, useSuperset, useAirflow, useRanger, useSolr, useKafka, useNifi } from '../hooks/useResources';
 import PageLayout from '../components/PageLayout';
-import ListingItem from '../components/ListingItem';
 
 const HomePage = () => {
-    const { selectedProject } = useOutletContext();
+    const { selectedProject, projects } = useOutletContext();
     const { platforms: pgsqlPlatforms, loading: pgsqlLoading } = usePgSql();
     const { platforms: hmsPlatforms, loading: hmsLoading } = useHiveMetastore();
     const { platforms: trinoPlatforms, loading: trinoLoading } = useTrino();
@@ -30,7 +34,6 @@ const HomePage = () => {
     const { platforms: kafkaPlatforms, loading: kafkaLoading } = useKafka();
     const { platforms: nifiPlatforms, loading: nifiLoading } = useNifi();
     const navigate = useNavigate();
-    const [searchTerm, setSearchTerm] = useState('');
 
     const loading = pgsqlLoading || hmsLoading || trinoLoading || supersetLoading || airflowLoading || rangerLoading || solrLoading || kafkaLoading || nifiLoading;
 
@@ -46,66 +49,127 @@ const HomePage = () => {
         ...nifiPlatforms.map(p => ({ ...p, type: 'nifi' }))
     ];
 
-    const filteredInstances = allInstances.filter(inst => {
-        const matchesProject = !selectedProject || inst.project_id === selectedProject.id;
-        const nameMatch = (inst.title || inst.name || '').toLowerCase().includes(searchTerm.toLowerCase());
-        const idMatch = String(inst.id || '').toLowerCase().includes(searchTerm.toLowerCase());
-        return matchesProject && (nameMatch || idMatch);
+    // Filter instances based on selected project
+    const projectInstances = allInstances.filter(inst => {
+        return !selectedProject || inst.project_id === selectedProject.id;
     });
 
+    // Count by service type within the project context
+    const countsByType = projectInstances.reduce((acc, inst) => {
+        acc[inst.type] = (acc[inst.type] || 0) + 1;
+        return acc;
+    }, {});
+
+    const serviceTypes = [
+        { key: 'pgsql', label: 'CloudNative PG', icon: Database, route: '/platform/pgsql', color: 'text-blue-500 bg-blue-500/10' },
+        { key: 'hms', label: 'Hive Metastore', icon: Boxes, route: '/platform/hive-metastore', color: 'text-purple-500 bg-purple-500/10' },
+        { key: 'kafka', label: 'Apache Kafka', icon: RefreshCcw, route: '/platform/kafka', color: 'text-amber-500 bg-amber-500/10' },
+        { key: 'trino', label: 'Trino Cluster', icon: Wind, route: '/platform/trino', color: 'text-sky-500 bg-sky-500/10' },
+        { key: 'airflow', label: 'Apache Airflow', icon: Activity, route: '/platform/airflow', color: 'text-teal-500 bg-teal-500/10' },
+        { key: 'nifi', label: 'Apache NiFi', icon: Network, route: '/platform/nifi', color: 'text-orange-500 bg-orange-500/10' },
+        { key: 'superset', label: 'Apache Superset', icon: LayoutDashboard, route: '/platform/superset', color: 'text-pink-500 bg-pink-500/10' },
+        { key: 'ranger', label: 'Apache Ranger', icon: ShieldCheck, route: '/platform/ranger', color: 'text-emerald-500 bg-emerald-500/10' },
+        { key: 'solr', label: 'Solr', icon: Search, route: '/platform/solr', color: 'text-yellow-500 bg-yellow-500/10' },
+    ];
+
+    // Calculate dynamic stats
+    const totalResourcesCount = projectInstances.length;
+    const activeProjectsCount = selectedProject ? 1 : projects?.length || 0;
+    const dbClustersCount = countsByType['pgsql'] || 0;
+    const dataStreamsCount = countsByType['kafka'] || 0;
 
     return (
         <PageLayout
             title={selectedProject ? `Stack: ${selectedProject.title}` : 'Unified Fleet'}
-            description={`Monitoring ${filteredInstances.length} resources across all projects.`}
-            searchQuery={searchTerm}
-            onSearchChange={(e) => setSearchTerm(e.target.value)}
-            searchPlaceholder="Search within fleet..."
+            description={`Monitoring ${totalResourcesCount} resources across all projects.`}
             isLoading={loading}
-            isEmpty={filteredInstances.length === 0}
+            isEmpty={projectInstances.length === 0}
             emptyState={{
                 title: "Quiet in the sector",
                 description: `No active resources found ${selectedProject ? `for ${selectedProject.title}` : ''}.`,
                 icon: <Server size={48} className="text-slate-700" />
             }}
         >
-            <div className="grid grid-cols-1 gap-4">
-                {filteredInstances.map(inst => (
-                    <ListingItem
-                        key={`${inst.type}-${inst.id}`}
-                        icon={inst.type === 'hms' ? Boxes : inst.type === 'trino' ? Wind : inst.type === 'superset' ? LayoutDashboard : inst.type === 'airflow' ? Activity : inst.type === 'ranger' ? ShieldCheck : inst.type === 'solr' ? Search : inst.type === 'kafka' ? RefreshCcw : inst.type === 'nifi' ? Network : Database}
-                        title={inst.title || inst.name}
-                        badges={[{ 
-                            text: inst.type === 'hms' ? "Hive Metastore" : inst.type === 'trino' ? "Trino Cluster" : inst.type === 'superset' ? "Apache Superset" : inst.type === 'airflow' ? "Apache Airflow" : inst.type === 'ranger' ? "Apache Ranger" : inst.type === 'solr' ? "Solr" : inst.type === 'kafka' ? "Apache Kafka" : inst.type === 'nifi' ? "Apache NiFi" : "CloudNative PG", 
-                            variant: "mw-badge-neutral" 
-                        }]}
-                        subtitle={inst.id}
-                        onClick={() => {
-                            if (inst.type === 'hms') navigate('/platform/hive-metastore');
-                            else if (inst.type === 'trino') navigate('/platform/trino');
-                            else if (inst.type === 'superset') navigate('/platform/superset');
-                            else if (inst.type === 'airflow') navigate('/platform/airflow');
-                            else if (inst.type === 'ranger') navigate('/platform/ranger');
-                            else if (inst.type === 'solr') navigate('/platform/solr');
-                            else if (inst.type === 'kafka') navigate('/platform/kafka');
-                            else if (inst.type === 'nifi') navigate('/platform/nifi');
-                            else navigate('/platform/pgsql');
-                        }}
-                        actions={
-                            <div className="flex items-center gap-12">
-                                <div className="flex items-center gap-2 text-blue-500/70">
-                                    <Briefcase size={16} />
-                                    <span className="text-base font-bold uppercase truncate max-w-[150px]">
-                                        {inst.project?.title || 'Service Component'}
-                                    </span>
+            <div className="space-y-8">
+                {/* Top-Level KPI Stats Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="mw-card p-6 flex items-center justify-between">
+                        <div>
+                            <p className="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Deployments</p>
+                            <h3 className="text-3xl font-black text-slate-900 dark:text-white mt-2">{totalResourcesCount}</h3>
+                        </div>
+                        <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500">
+                            <TrendingUp className="w-6 h-6" />
+                        </div>
+                    </div>
+
+                    <div className="mw-card p-6 flex items-center justify-between">
+                        <div>
+                            <p className="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Active Projects</p>
+                            <h3 className="text-3xl font-black text-slate-900 dark:text-white mt-2">{activeProjectsCount}</h3>
+                        </div>
+                        <div className="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center text-purple-500">
+                            <FolderKanban className="w-6 h-6" />
+                        </div>
+                    </div>
+
+                    <div className="mw-card p-6 flex items-center justify-between">
+                        <div>
+                            <p className="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Database Clusters</p>
+                            <h3 className="text-3xl font-black text-slate-900 dark:text-white mt-2">{dbClustersCount}</h3>
+                        </div>
+                        <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                            <Database className="w-6 h-6" />
+                        </div>
+                    </div>
+
+                    <div className="mw-card p-6 flex items-center justify-between">
+                        <div>
+                            <p className="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Data Streams</p>
+                            <h3 className="text-3xl font-black text-slate-900 dark:text-white mt-2">{dataStreamsCount}</h3>
+                        </div>
+                        <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500">
+                            <RefreshCcw className="w-6 h-6" />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Component Breakdown Section */}
+                <div className="space-y-4">
+                    <h3 className="text-xl font-bold tracking-tight text-slate-950 dark:text-white">Platform Breakdown</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {serviceTypes.map((st) => {
+                            const count = countsByType[st.key] || 0;
+                            const IconComponent = st.icon;
+                            return (
+                                <div
+                                    key={st.key}
+                                    onClick={() => navigate(st.route)}
+                                    className="mw-card-interactive flex items-center justify-between p-5 border transition-all duration-200 border-slate-200 dark:border-slate-800"
+                                >
+                                    <div className="flex items-center gap-4 min-w-0">
+                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${st.color}`}>
+                                            <IconComponent className="w-6 h-6" />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <h4 className="text-base font-bold truncate text-slate-900 dark:text-white leading-tight">
+                                                {st.label}
+                                            </h4>
+                                            <span className="text-xs text-blue-500 font-medium mt-1 block">
+                                                Manage &rarr;
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className={`mw-badge ${count > 0 ? 'mw-badge-info' : 'mw-badge-neutral'}`}>
+                                            {count}
+                                        </span>
+                                    </div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <ChevronRight className="w-5 h-5 text-slate-300 dark:text-slate-600" />
-                                </div>
-                            </div>
-                        }
-                    />
-                ))}
+                            );
+                        })}
+                    </div>
+                </div>
             </div>
         </PageLayout>
     );
