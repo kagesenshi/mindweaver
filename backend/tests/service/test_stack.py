@@ -36,8 +36,12 @@ def test_stack_chart_version_resolution():
                     }
                 },
                 "nifi": {
-                    "images": {
-                        "main": {"image": "apache/nifi", "tag": "2.0"}
+                    "charts": {
+                        "main": {
+                            "repo": "ghcr.io/konpyutaika/helm-charts",
+                            "chart": "nifi-cluster",
+                            "version": "1.17.0"
+                        }
                     }
                 }
             }
@@ -45,8 +49,39 @@ def test_stack_chart_version_resolution():
     )
 
     assert stack.get_chart_version_for_component("trino") == "2.0.0"
-    assert stack.get_chart_version_for_component("nifi") is None
+    assert stack.get_chart_version_for_component("nifi") == "1.17.0"
     assert stack.get_chart_version_for_component("nonexistent") is None
+
+
+def test_stack_chart_resolution():
+    """Test get_chart_for_component returns correct tuple of (repo, chart, version)."""
+    stack = Stack(
+        name="test-stack",
+        version="1.0.0",
+        configuration={
+            "components": {
+                "nifi": {
+                    "charts": {
+                        "main": {
+                            "repo": "ghcr.io/konpyutaika/helm-charts",
+                            "chart": "nifi-cluster",
+                            "version": "1.17.0"
+                        },
+                        "custom": {
+                            "repo": "my-repo",
+                            "chart": "my-chart",
+                            "version": "2.0.0"
+                        }
+                    }
+                }
+            }
+        }
+    )
+
+    assert stack.get_chart_for_component("nifi", "main") == ("ghcr.io/konpyutaika/helm-charts", "nifi-cluster", "1.17.0")
+    assert stack.get_chart_for_component("nifi", "custom") == ("my-repo", "my-chart", "2.0.0")
+    assert stack.get_chart_for_component("nifi", "nonexistent") == (None, None, None)
+    assert stack.get_chart_for_component("nonexistent") == (None, None, None)
 
 
 @pytest.mark.asyncio
@@ -80,7 +115,13 @@ async def test_resolve_chart_version(mock_service_dependencies):
         configuration={
             "components": {
                 "trino": {
-                    "chart_version": "9.9.9",
+                    "charts": {
+                        "main": {
+                            "repo": "https://trinodb.github.io/charts",
+                            "chart": "trino",
+                            "version": "9.9.9",
+                        }
+                    }
                 }
             }
         }
@@ -94,6 +135,14 @@ async def test_resolve_chart_version(mock_service_dependencies):
 
     resolved_version = await svc.resolve_chart_version(model, "trino", "1.41.0")
     assert resolved_version == "9.9.9"
+
+    # 3. Test resolve_chart directly
+    repo, chart, version = await svc.resolve_chart(
+        model, "trino", "main", "https://default-repo", "default-chart", "1.0.0"
+    )
+    assert repo == "https://trinodb.github.io/charts"
+    assert chart == "trino"
+    assert version == "9.9.9"
 
 
 @pytest.mark.asyncio
@@ -130,7 +179,13 @@ async def test_resolve_integration_version(mock_service_dependencies):
         configuration={
             "components": {
                 "cert-manager": {
-                    "chart_version": "v1.99.0",
+                    "charts": {
+                        "main": {
+                            "repo": "https://charts.jetstack.io",
+                            "chart": "cert-manager",
+                            "version": "v1.99.0",
+                        }
+                    }
                 }
             }
         }
@@ -147,3 +202,4 @@ async def test_resolve_integration_version(mock_service_dependencies):
     
     version = await action.resolve_integration_version("cert-manager", "v1.20.0")
     assert version == "v1.99.0"
+

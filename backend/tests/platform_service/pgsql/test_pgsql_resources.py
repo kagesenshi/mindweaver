@@ -107,8 +107,8 @@ async def test_pgsql_template_rendering(mock_service_dependencies):
         content = f.read()
 
     assert "kind: Application" in content
-    assert "repoURL: 'https://cloudnative-pg.github.io/charts'" in content
-    assert "chart: cluster" in content
+    assert "repoURL: {{ chart_repo }}" in content
+    assert "chart: {{ chart_name }}" in content
     assert "namespace: {{ namespace }}" in content
     assert 'schedule: "{{ backup_schedule }}"' in content
     assert "poolers:" in content

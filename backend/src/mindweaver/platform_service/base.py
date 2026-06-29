@@ -669,6 +669,35 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
             return parts[0], parts[1]
         return default_image, default_tag
 
+    async def resolve_chart(
+        self,
+        model: T,
+        component_name: str,
+        chart_key: str = "main",
+        default_repo: str = "",
+        default_chart: str = "",
+        default_version: str = "",
+    ) -> tuple[str, str, str]:
+        """Resolves the repo URL, chart name, and chart version for a component from the project's stack.
+        Falls back to default values if stack is not configured or chart_key is missing.
+        """
+        project = await self.project(model)
+        if hasattr(self.session, "_mock_name") or "mock" in type(self.session).__name__.lower():
+            return default_repo, default_chart, default_version
+
+        if project.stack_id:
+            from mindweaver.service.stack.model import Stack
+            result = await self.session.exec(
+                select(Stack).where(Stack.id == project.stack_id)
+            )
+            stack = result.one_or_none()
+            if stack:
+                repo, chart, version = stack.get_chart_for_component(component_name, chart_key)
+                if repo or chart or version:
+                    return repo or default_repo, chart or default_chart, version or default_version
+
+        return default_repo, default_chart, default_version
+
     async def resolve_chart_version(
         self,
         model: T,
@@ -678,21 +707,14 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
         """Resolves the chart version for a component from the project's stack.
         Falls back to default value if stack is not configured.
         """
-        project = await self.project(model)
-        if hasattr(self.session, "_mock_name") or "mock" in type(self.session).__name__.lower():
-            return default_chart_version
+        _, _, version = await self.resolve_chart(
+            model=model,
+            component_name=component_name,
+            chart_key="main",
+            default_version=default_chart_version,
+        )
+        return version
 
-        if project.stack_id:
-            from mindweaver.service.stack.model import Stack
-            result = await self.session.exec(
-                select(Stack).where(Stack.id == project.stack_id)
-            )
-            stack = result.one_or_none()
-            if stack:
-                version = stack.get_chart_version_for_component(component_name)
-                if version:
-                    return version
-        return default_chart_version
 
 
 

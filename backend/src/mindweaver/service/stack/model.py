@@ -45,5 +45,27 @@ class Stack(NamedBase, table=True):
         comp = components.get(component_name)
         if not comp:
             return None
-        return comp.get("chart_version")
+        version = comp.get("chart_version")
+        if not version:
+            charts = comp.get("charts", {})
+            main_chart = charts.get("main", {})
+            version = main_chart.get("version")
+        return version
+
+    def get_chart_for_component(
+        self, component_name: str, chart_key: str = "main"
+    ) -> tuple[str | None, str | None, str | None]:
+        """
+        Returns (repo_url, chart_name, chart_version) for the given component and chart key.
+        """
+        components = self.configuration.get("components", {})
+        comp = components.get(component_name)
+        if not comp:
+            return None, None, None
+        charts = comp.get("charts", {})
+        chart_info = charts.get(chart_key)
+        if not chart_info:
+            return None, None, None
+        return chart_info.get("repo"), chart_info.get("chart"), chart_info.get("version")
+
 

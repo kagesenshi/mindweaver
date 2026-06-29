@@ -87,9 +87,12 @@ class KafkaPlatformService(PlatformService[KafkaPlatform]):
         vars["image"], vars["image_tag"] = await self.resolve_image(
             model, "kafka", "apache/kafka", "4.0.0-rev.0"
         )
-        vars["chart_version"] = await self.resolve_chart_version(
-            model, "kafka", "0.1.0"
+        chart_repo, chart_name, chart_version = await self.resolve_chart(
+            model, "kafka", "main", "https://github.com/kagesenshi/mindweaver.git", "charts/kafka", "0.1.0"
         )
+        vars["chart_repo"] = chart_repo
+        vars["chart_name"] = chart_name
+        vars["chart_version"] = chart_version
         vars["override_image"] = True
         vars["namespace"] = await self._resolve_namespace(model)
         project = await self.project(model)

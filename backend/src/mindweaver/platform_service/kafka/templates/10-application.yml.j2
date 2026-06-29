@@ -19,9 +19,13 @@ metadata:
 spec:
   project: {{ project_name }}
   source:
-    repoURL: 'https://github.com/kagesenshi/mindweaver.git'
+    repoURL: {{ chart_repo }}
     targetRevision: {{ chart_version }}
-    path: charts/kafka
+    {% if chart_repo.endswith('.git') or 'github.com' in chart_repo %}
+    path: {{ chart_name }}
+    {% else %}
+    chart: {{ chart_name }}
+    {% endif %}
     helm:
       values: |
         fullnameOverride: {{ name }}

@@ -147,7 +147,7 @@ async def test_hms_template_rendering(mock_service_dependencies):
         content = f.read()
     
     assert "kind: Application" in content
-    assert "oci://ghcr.io/kagesenshi/mindweaver/charts" in content
+    assert "repoURL: {{ chart_repo }}" in content
     assert "namespace: {{ namespace }}" in content
 
     sec_template = os.path.join(svc.template_directory, "01-secret.yml.j2")

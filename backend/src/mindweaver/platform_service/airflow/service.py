@@ -155,9 +155,12 @@ class AirflowPlatformService(PlatformService[AirflowPlatform]):
             model, "airflow", "ghcr.io/kagesenshi/mindweaver/airflow:3.2.2-rev.5"
         )
         vars["image"] = f"{resolved_img}:{resolved_tag}"
-        vars["chart_version"] = await self.resolve_chart_version(
-            model, "airflow", "1.22.0"
+        chart_repo, chart_name, chart_version = await self.resolve_chart(
+            model, "airflow", "main", "https://airflow.apache.org", "airflow", "1.22.0"
         )
+        vars["chart_repo"] = chart_repo
+        vars["chart_name"] = chart_name
+        vars["chart_version"] = chart_version
         vars["override_image"] = True
         vars["namespace"] = await self._resolve_namespace(model)
         project = await self.project(model)

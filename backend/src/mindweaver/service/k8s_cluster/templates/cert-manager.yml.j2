@@ -19,8 +19,8 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://charts.jetstack.io
-    chart: cert-manager
+    repoURL: {{ chart_repo }}
+    chart: {{ chart_name }}
     targetRevision: {{ chart_version }}
     helm:
       values: |

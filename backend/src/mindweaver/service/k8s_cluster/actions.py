@@ -50,51 +50,66 @@ class InstallArgoCDAction(BaseAction):
             "message": "ArgoCD installation triggered and status being refreshed.",
         }
 
-    async def resolve_integration_version(self, component_name: str, default_version: str) -> str:
-        """Resolves the version for a core integration from the stack.
-        Falls back to default_version if stack or configuration is not found.
-        """
+    async def resolve_integration_chart(
+        self,
+        component_name: str,
+        chart_key: str = "main",
+        default_repo: str = "",
+        default_chart: str = "",
+        default_version: str = "",
+    ) -> tuple[str, str, str]:
+        """Resolve integration chart (repo, chart, version) based on stack linked to project or fall back"""
         if hasattr(self.session, "_mock_name") or "mock" in type(self.session).__name__.lower():
-            return default_version
+            return default_repo, default_chart, default_version
 
         # 1. Find stack linked via projects using this cluster
         from mindweaver.service.project.model import Project
         from mindweaver.service.stack.model import Stack
-        
+
         stack = None
         try:
-            stmt = select(Project).where(Project.k8s_cluster_id == self.model.id)
-            result = await self.session.exec(stmt)
-            project = result.first()
-            if project and project.stack_id:
-                result = await self.session.exec(select(Stack).where(Stack.id == project.stack_id))
-                stack = result.one_or_none()
+            proj_stmt = select(Project).where(Project.k8s_cluster_id == self.model.id)
+            res = await self.session.exec(proj_stmt)
+            proj = res.first()
+            if proj and proj.stack_id:
+                stack_stmt = select(Stack).where(Stack.id == proj.stack_id)
+                res_stack = await self.session.exec(stack_stmt)
+                stack = res_stack.one_or_none()
         except Exception as e:
             logger.warning(f"Failed to query project/stack for cluster: {e}")
 
         if not stack:
-            # 2. Fallback to latest stack
+            # Fallback to latest stack
             try:
-                result = await self.session.exec(select(Stack).order_by(Stack.version.desc()))
-                stack = result.first()
+                res_stack = await self.session.exec(select(Stack).order_by(Stack.version.desc()))
+                stack = res_stack.first()
             except Exception as e:
                 logger.warning(f"Failed to query any stack: {e}")
 
         if stack:
-            version = stack.get_chart_version_for_component(component_name)
-            if version:
-                return version
-        return default_version
+            repo, chart, version = stack.get_chart_for_component(component_name, chart_key)
+            if repo or chart or version:
+                return repo or default_repo, chart or default_chart, version or default_version
+        return default_repo, default_chart, default_version
+
+    async def resolve_integration_version(self, component_name: str, default_version: str) -> str:
+        """Resolve component integration version based on stack linked to project or fall back"""
+        _, _, version = await self.resolve_integration_chart(
+            component_name=component_name,
+            chart_key="main",
+            default_version=default_version,
+        )
+        return version
 
     async def run(self):
         """Install ArgoCD to the cluster using Helm chart"""
         logger.info(f"Installing ArgoCD for cluster {self.model.name}")
 
-        repo_url = "https://argoproj.github.io/argo-helm"
+        repo_url, chart_name, version = await self.resolve_integration_chart(
+            "argocd", "main", "https://argoproj.github.io/argo-helm", "argo/argo-cd", "7.8.2"
+        )
         release_name = "argocd"
         namespace = "argocd"
-        chart_name = "argo/argo-cd"
-        version = await self.resolve_integration_version("argocd", "7.8.2")
 
         await self._install_helm_chart(
             repo_name="argo",
@@ -324,8 +339,15 @@ class InstallCertManagerAction(InstallArgoCDAction):
     async def run(self):
         """Install Cert Manager to the cluster using ArgoCD Application"""
         logger.info(f"Installing Cert Manager for cluster {self.model.name}")
-        chart_version = await self.resolve_integration_version("cert-manager", "v1.20.0")
-        await self._apply_template("cert-manager.yml.j2", chart_version=chart_version)
+        chart_repo, chart_name, chart_version = await self.resolve_integration_chart(
+            "cert-manager", "main", "https://charts.jetstack.io", "cert-manager", "v1.20.0"
+        )
+        await self._apply_template(
+            "cert-manager.yml.j2",
+            chart_repo=chart_repo,
+            chart_name=chart_name,
+            chart_version=chart_version,
+        )
 
 
 @K8sClusterService.register_action("install_cnpg_operator")
@@ -364,8 +386,15 @@ class InstallCNPGAction(InstallArgoCDAction):
     async def run(self):
         """Install CNPG Operator to the cluster using ArgoCD Application"""
         logger.info(f"Installing CNPG Operator for cluster {self.model.name}")
-        chart_version = await self.resolve_integration_version("cnpg", "0.27.1")
-        await self._apply_template("cnpg.yml.j2", chart_version=chart_version)
+        chart_repo, chart_name, chart_version = await self.resolve_integration_chart(
+            "cnpg", "main", "https://cloudnative-pg.github.io/charts", "cloudnative-pg", "0.27.1"
+        )
+        await self._apply_template(
+            "cnpg.yml.j2",
+            chart_repo=chart_repo,
+            chart_name=chart_name,
+            chart_version=chart_version,
+        )
 
 
 
@@ -404,8 +433,15 @@ class InstallEnvoyGatewayAction(InstallArgoCDAction):
     async def run(self):
         """Install Envoy Gateway to the cluster using ArgoCD Application and configured service type"""
         logger.info(f"Installing Envoy Gateway for cluster {self.model.name}")
-        chart_version = await self.resolve_integration_version("envoy-gateway", "1.8.1")
-        await self._apply_template("envoy-gateway.yml.j2", chart_version=chart_version)
+        chart_repo, chart_name, chart_version = await self.resolve_integration_chart(
+            "envoy-gateway", "main", "docker.io/envoyproxy", "gateway-helm", "1.8.1"
+        )
+        await self._apply_template(
+            "envoy-gateway.yml.j2",
+            chart_repo=chart_repo,
+            chart_name=chart_name,
+            chart_version=chart_version,
+        )
 
         await self._wait_for_crd_and_namespace(
             ["envoyproxies.gateway.envoyproxy.io", "gatewayclasses.gateway.networking.k8s.io"],
@@ -556,8 +592,15 @@ class InstallKafkaOperatorAction(InstallArgoCDAction):
     async def run(self):
         """Install Strimzi Kafka Operator to the cluster using ArgoCD Application"""
         logger.info(f"Installing Kafka Operator for cluster {self.model.name}")
-        chart_version = await self.resolve_integration_version("kafka-operator", "0.41.0")
-        await self._apply_template("kafka-operator.yml.j2", chart_version=chart_version)
+        chart_repo, chart_name, chart_version = await self.resolve_integration_chart(
+            "kafka-operator", "main", "https://strimzi.io/charts/", "strimzi-kafka-operator", "0.41.0"
+        )
+        await self._apply_template(
+            "kafka-operator.yml.j2",
+            chart_repo=chart_repo,
+            chart_name=chart_name,
+            chart_version=chart_version,
+        )
 
 
 @K8sClusterService.register_action("install_nifikop")
@@ -596,5 +639,12 @@ class InstallNifikopAction(InstallArgoCDAction):
     async def run(self):
         """Install NiFiKop Operator to the cluster using ArgoCD Application"""
         logger.info(f"Installing NiFiKop Operator for cluster {self.model.name}")
-        chart_version = await self.resolve_integration_version("nifikop-operator", "1.17.0")
-        await self._apply_template("nifikop-operator.yml.j2", chart_version=chart_version)
+        chart_repo, chart_name, chart_version = await self.resolve_integration_chart(
+            "nifikop-operator", "main", "ghcr.io/konpyutaika/helm-charts", "nifikop", "1.17.0"
+        )
+        await self._apply_template(
+            "nifikop-operator.yml.j2",
+            chart_repo=chart_repo,
+            chart_name=chart_name,
+            chart_version=chart_version,
+        )

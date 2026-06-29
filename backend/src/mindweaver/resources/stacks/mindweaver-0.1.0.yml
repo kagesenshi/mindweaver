@@ -4,59 +4,118 @@ version: 0.1.0
 configuration:
   components:
     pgsql:
+      charts:
+        main:
+          repo: https://cloudnative-pg.github.io/charts
+          chart: cluster
+          version: "0.5.0"
       images:
         main:
           image: ghcr.io/cloudnative-pg/postgresql
-          tag: "18"
+          tag: "18.4"
     nifi:
-      chart_version: "1.17.0"
+      charts:
+        main:
+          repo: ghcr.io/konpyutaika/helm-charts
+          chart: nifi-cluster
+          version: "1.17.0"
       images:
         main:
           image: apache/nifi
           tag: "2.9.0"
     airflow:
-      chart_version: "1.22.0"
+      charts:
+        main:
+          repo: https://airflow.apache.org
+          chart: airflow
+          version: "1.22.0"
       images:
         main:
           image: ghcr.io/kagesenshi/mindweaver/airflow
           tag: "3.2.2-rev.5"
 
     kafka:
-      chart_version: "0.1.0"
+      charts:
+        main:
+          repo: https://github.com/kagesenshi/mindweaver.git
+          chart: charts/kafka
+          version: "0.1.0"
       images:
         main:
           image: apache/kafka
           tag: "4.0.0-rev.0"
 
     superset:
-      chart_version: "0.15.0"
+      charts:
+        main:
+          repo: https://apache.github.io/superset
+          chart: superset
+          version: "0.15.0"
       images:
         main:
           image: ghcr.io/kagesenshi/mindweaver/superset
-          tag: "latest"
+          tag: "6.1.0-rev.1"
     hive_metastore:
-      chart_version: "0.1.8"
+      charts:
+        main:
+          repo: oci://ghcr.io/kagesenshi/mindweaver/charts/hive-metastore
+          chart: hive-metastore
+          version: "0.1.8"
       images:
         main:
           image: ghcr.io/kagesenshi/mindweaver/hive-metastore
-          tag: "latest"
+          tag: "4.2.0-rev.6"
     trino:
-      chart_version: "1.41.0"
+      charts:
+        main:
+          repo: https://trinodb.github.io/charts
+          chart: trino
+          version: "1.41.0"
       images:
         main:
           image: trinodb/trino
-          tag: "latest"
+          tag: "482"
 
     # Core Kubernetes integrations
     argocd:
-      chart_version: "7.8.2"
+      charts:
+        main:
+          repo: https://argoproj.github.io/argo-helm
+          chart: argo/argo-cd
+          version: "7.8.2"
     cert-manager:
-      chart_version: "v1.20.0"
+      charts:
+        main:
+          repo: https://charts.jetstack.io
+          chart: cert-manager
+          version: "v1.20.0"
     cnpg:
-      chart_version: "0.27.1"
+      charts:
+        main:
+          repo: https://cloudnative-pg.github.io/charts
+          chart: cloudnative-pg
+          version: "0.27.1"
     envoy-gateway:
-      chart_version: "1.8.1"
+      charts:
+        main:
+          repo: docker.io/envoyproxy
+          chart: gateway-helm
+          version: "1.8.1"
     kafka-operator:
-      chart_version: "0.41.0"
+      charts:
+        main:
+          repo: https://strimzi.io/charts/
+          chart: strimzi-kafka-operator
+          version: "0.41.0"
     nifikop-operator:
-      chart_version: "1.17.0"
+      charts:
+        main:
+          repo: ghcr.io/konpyutaika/helm-charts
+          chart: nifikop
+          version: "1.17.0"
+    dex:
+      charts:
+        main:
+          repo: https://charts.dexidp.io
+          chart: dex
+          version: "0.24.1"

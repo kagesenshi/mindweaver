@@ -19,8 +19,8 @@ metadata:
 spec:
   project: {{ project_name }}
   source:
-    repoURL: 'https://airflow.apache.org'
-    chart: airflow
+    repoURL: {{ chart_repo }}
+    chart: {{ chart_name }}
     targetRevision: {{ chart_version }}
     helm:
       values: |

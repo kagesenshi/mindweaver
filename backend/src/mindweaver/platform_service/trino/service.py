@@ -151,9 +151,12 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
         )
         vars["image"] = f"{resolved_img}:{resolved_tag}"
         vars["image_tag"] = resolved_tag
-        vars["chart_version"] = await self.resolve_chart_version(
-            model, "trino", "1.41.0"
+        chart_repo, chart_name, chart_version = await self.resolve_chart(
+            model, "trino", "main", "https://trinodb.github.io/charts", "trino", "1.41.0"
         )
+        vars["chart_repo"] = chart_repo
+        vars["chart_name"] = chart_name
+        vars["chart_version"] = chart_version
         vars["override_image"] = True
         vars["namespace"] = await self._resolve_namespace(model)
         project = await self.project(model)

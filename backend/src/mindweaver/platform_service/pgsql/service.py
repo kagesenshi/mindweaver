@@ -114,6 +114,13 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
         # Resolve namespace
         vars["namespace"] = await self._resolve_namespace(model)
 
+        chart_repo, chart_name, chart_version = await self.resolve_chart(
+            model, "pgsql", "main", "https://cloudnative-pg.github.io/charts", "cluster", "0.5.0"
+        )
+        vars["chart_repo"] = chart_repo
+        vars["chart_name"] = chart_name
+        vars["chart_version"] = chart_version
+
         # Parse image catalog and version from model
         image_resolved, tag_resolved = await self.resolve_image(
             model, "pgsql", "ghcr.io/cloudnative-pg/postgresql:18"

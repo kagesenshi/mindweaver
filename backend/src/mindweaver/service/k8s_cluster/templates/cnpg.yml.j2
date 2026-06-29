@@ -19,8 +19,8 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://cloudnative-pg.github.io/charts
-    chart: cloudnative-pg
+    repoURL: {{ chart_repo }}
+    chart: {{ chart_name }}
     targetRevision: {{ chart_version }}
   destination:
     server: https://kubernetes.default.svc

@@ -16,9 +16,9 @@ metadata:
 spec:
   project: {{ project_name }}
   source:
-    repoURL: 'oci://ghcr.io/kagesenshi/mindweaver/charts/hive-metastore'
+    repoURL: {{ chart_repo }}
+    chart: {{ chart_name }}
     targetRevision: {{ chart_version }}
-    path: .
     helm:
       values: |
         fullnameOverride: {{ name }}

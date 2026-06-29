@@ -95,9 +95,12 @@ class HiveMetastorePlatformService(PlatformService[HiveMetastorePlatform]):
         vars["image"], _ = await self.resolve_image(
             model, "hive_metastore", "ghcr.io/kagesenshi/mindweaver/hive-metastore:latest"
         )
-        vars["chart_version"] = await self.resolve_chart_version(
-            model, "hive_metastore", "0.1.8"
+        chart_repo, chart_name, chart_version = await self.resolve_chart(
+            model, "hive_metastore", "main", "oci://ghcr.io/kagesenshi/mindweaver/charts/hive-metastore", "hive-metastore", "0.1.8"
         )
+        vars["chart_repo"] = chart_repo
+        vars["chart_name"] = chart_name
+        vars["chart_version"] = chart_version
         vars["override_image"] = True
         vars["namespace"] = await self._resolve_namespace(model)
 

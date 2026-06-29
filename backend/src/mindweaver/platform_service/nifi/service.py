@@ -87,9 +87,12 @@ class NifiPlatformService(PlatformService[NifiPlatform]):
         vars["image"], vars["image_tag"] = await self.resolve_image(
             model, "nifi", "apache/nifi", "2.9.0"
         )
-        vars["chart_version"] = await self.resolve_chart_version(
-            model, "nifi", "1.17.0"
+        chart_repo, chart_name, chart_version = await self.resolve_chart(
+            model, "nifi", "main", "ghcr.io/konpyutaika/helm-charts", "nifi-cluster", "1.17.0"
         )
+        vars["chart_repo"] = chart_repo
+        vars["chart_name"] = chart_name
+        vars["chart_version"] = chart_version
         # NiFi templates check override_image in some legacy contexts or we can just set it to True
         vars["override_image"] = True
         vars["namespace"] = await self._resolve_namespace(model)

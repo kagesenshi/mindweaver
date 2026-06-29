@@ -19,8 +19,8 @@ metadata:
 spec:
   project: {{ project_name }}
   source:
-    repoURL: 'https://apache.github.io/superset'
-    chart: superset
+    repoURL: {{ chart_repo }}
+    chart: {{ chart_name }}
     targetRevision: {{ chart_version }}
     helm:
       values: |

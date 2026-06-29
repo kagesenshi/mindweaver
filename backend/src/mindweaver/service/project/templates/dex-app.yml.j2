@@ -19,9 +19,9 @@ metadata:
 spec:
   project: {{ project_name }}
   source:
-    repoURL: https://charts.dexidp.io
-    chart: dex
-    targetRevision: 0.24.1
+    repoURL: {{ chart_repo }}
+    chart: {{ chart_name }}
+    targetRevision: {{ chart_version }}
     helm:
       values: |
         fullnameOverride: {{ name }}-dex

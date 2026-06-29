@@ -145,9 +145,12 @@ class SupersetPlatformService(PlatformService[SupersetPlatform]):
             model, "superset", "ghcr.io/kagesenshi/mindweaver/superset:latest"
         )
         vars["image"] = f"{resolved_img}:{resolved_tag}"
-        vars["chart_version"] = await self.resolve_chart_version(
-            model, "superset", "0.15.0"
+        chart_repo, chart_name, chart_version = await self.resolve_chart(
+            model, "superset", "main", "https://apache.github.io/superset", "superset", "0.15.0"
         )
+        vars["chart_repo"] = chart_repo
+        vars["chart_name"] = chart_name
+        vars["chart_version"] = chart_version
         vars["override_image"] = True
         vars["namespace"] = await self._resolve_namespace(model)
         project = await self.project(model)

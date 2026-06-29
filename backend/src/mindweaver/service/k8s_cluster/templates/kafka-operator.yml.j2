@@ -19,8 +19,8 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://strimzi.io/charts/
-    chart: strimzi-kafka-operator
+    repoURL: {{ chart_repo }}
+    chart: {{ chart_name }}
     targetRevision: {{ chart_version }}
     helm:
       values: |

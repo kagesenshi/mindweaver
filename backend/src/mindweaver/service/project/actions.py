@@ -379,6 +379,22 @@ class InstallDexAction(BaseAction):
                 return stdout.decode()
 
             # Render and apply Dex ArgoCD Application manifest
+            chart_repo, chart_name, chart_version = "https://charts.dexidp.io", "dex", "0.24.1"
+            if self.model.stack_id:
+                from mindweaver.service.stack.model import Stack
+                try:
+                    stmt = select(Stack).where(Stack.id == self.model.stack_id)
+                    res = await self.session.exec(stmt)
+                    stack = res.one_or_none()
+                    if stack:
+                        r, c, v = stack.get_chart_for_component("dex", "main")
+                        if r or c or v:
+                            chart_repo = r or chart_repo
+                            chart_name = c or chart_name
+                            chart_version = v or chart_version
+                except Exception as e:
+                    logger.warning(f"Failed to resolve dex chart from stack: {e}")
+
             env = _get_jinja_env()
             template = env.get_template("dex-app.yml.j2")
             dex_manifest = template.render(
@@ -387,7 +403,10 @@ class InstallDexAction(BaseAction):
                 namespace=namespace,
                 dex_values=yaml.safe_dump(dex_values),
                 project_title=sanitize_label_value(self.model.title),
-                service_title="Dex"
+                service_title="Dex",
+                chart_repo=chart_repo,
+                chart_name=chart_name,
+                chart_version=chart_version,
             )
 
             await run_kubectl(dex_manifest)
