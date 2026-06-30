@@ -202,11 +202,6 @@ const LoginPage = () => {
                     )}
                 </div>
 
-                <div className="mt-12 flex justify-center gap-6 animate-in fade-in duration-1000 delay-500">
-                    <span className="text-sm text-slate-600 font-mono uppercase">Nodes: Stable</span>
-                    <span className="text-sm text-slate-600 font-mono uppercase">API: Operational</span>
-                    <span className="text-sm text-slate-600 font-mono uppercase">v1.2.0-core</span>
-                </div>
             </div>
         </div>
     );
