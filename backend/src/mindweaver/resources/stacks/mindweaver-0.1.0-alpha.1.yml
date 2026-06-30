@@ -1,6 +1,6 @@
 name: mindweaver-0.1.0
 title: Mindweaver 0.1.0
-version: 0.1.0
+version: 0.1.0-alpha.1
 configuration:
   components:
     pgsql:

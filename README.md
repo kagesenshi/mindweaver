@@ -79,23 +79,22 @@ kubectl wait --for=condition=ready pod --selector app=metallb -n metallb-system 
 
 ## Development Environment Setup
 
-### 1. Start Backing Services
+### 1. Start Development Containers
 
 Start PostgreSQL and Redis (the backing services) using Docker Compose:
 
 ```bash
-docker compose up -d
+docker compose up --profile=app up -d
 ```
 
 This will start:
 *   PostgreSQL on `localhost:5432` (User: `postgres`, Password: `password`, DB: `mindweaver`)
 *   Redis on `localhost:6379`
+*   Mindweaver Backend API on `localhost:8000`
+*   Mindweaver Frontend UI on `localhost:3000`
 
-If you would like to run the backend application services (`web`, `scheduler`, and `worker`) inside Docker container environments with code hot-reloading from volume mounts, run docker-compose specifying the `app` profile:
-
-```bash
-docker compose --profile app up -d
-```
+The backend and frontend is running with local source code mounted into the container for development
+and supports hot-reloading. 
 
 ### 2. Application Setup
 
@@ -111,24 +110,6 @@ This will automatically:
 - Run database migrations.
 - Suggest an encryption key.
 
-## Running the Application
-
-### Running Locally
-From the **root directory** of the repository, run the development script:
-
-```bash
-python start-dev.py
-```
-
-This script will start:
-*   Frontend development server (typically on `http://localhost:3000`)
-*   Backend API server (on `http://localhost:8000`)
-*   Celery Scheduler
-*   Celery Worker
-
-### Running in Docker
-If you started the application using `docker compose --profile app up -d`, the application containers are automatically running. The FastAPI backend will be exposed on `http://localhost:8000` and the React frontend development server will be exposed on `http://localhost:3000`.
-
 ## Running Tests
 
 ### Backend
@@ -139,11 +120,3 @@ To run backend tests:
 uv run --package mindweaver pytest backend/tests
 ```
 
-### Frontend
-
-The frontend is a React application built with Vite. Currently, there is no test script defined in `frontend/package.json`.
-
-## Architecture
-
-*   **Backend**: Python, FastAPI, SQLModel, Celery, Alembic. Located in `backend/`.
-*   **Frontend**: React, Vite, Tailwind CSS. Located in `frontend/`.
