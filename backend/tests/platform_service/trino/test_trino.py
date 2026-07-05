@@ -564,7 +564,7 @@ async def test_trino_poll_status_with_https_nodeport(mock_service_dependencies):
     svc.project = AsyncMock(return_value=MagicMock(ingress_domain=None))
 
     # Call poll_status
-    with patch("mindweaver.platform_service.trino.service.asyncio.to_thread") as mock_to_thread:
+    with patch("mindweaver.platform_service.trino.poller.asyncio.to_thread") as mock_to_thread:
         mock_to_thread.return_value = ("online", "Healthy", {"argo": "ok"}, node_ports, cluster_nodes)
 
         await svc.poll_status(model)
@@ -598,7 +598,7 @@ async def test_trino_poll_status_with_ingress_domain(mock_service_dependencies):
 
     svc.get_preferred_catalog = AsyncMock(return_value="hive")
 
-    with patch("mindweaver.platform_service.trino.service.asyncio.to_thread") as mock_to_thread:
+    with patch("mindweaver.platform_service.trino.poller.asyncio.to_thread") as mock_to_thread:
         mock_to_thread.return_value = ("online", "Healthy", {"argo": "ok"}, node_ports, cluster_nodes)
 
         await svc.poll_status(model)

@@ -352,8 +352,8 @@ async def test_superset_template_rendering(mock_service_dependencies):
         async def mock_poll(*args):
             return "online", "Healthy", {}, node_ports, cluster_nodes_dual
             
-        with patch("mindweaver.platform_service.superset.service.asyncio.to_thread", side_effect=mock_poll), \
-             patch("mindweaver.platform_service.superset.service.decrypt_password", side_effect=lambda x: x):
+        with patch("mindweaver.platform_service.superset.poller.asyncio.to_thread", side_effect=mock_poll), \
+             patch("mindweaver.platform_service.superset.poller.decrypt_password", side_effect=lambda x: x):
             # Test without ingress_domain
             mock_project_no_ingress = MagicMock()
             mock_project_no_ingress.ingress_domain = None

@@ -40,6 +40,7 @@ def poll_all_platforms():
 
 
 async def _trigger_service_polling(svc_cls: Type[PlatformService]):
+    from mindweaver.fw.model import ts_now
     engine = get_engine()
     async with AsyncSession(engine) as session:
         # Mock request since some service methods might expect it
@@ -51,7 +52,15 @@ async def _trigger_service_polling(svc_cls: Type[PlatformService]):
         platforms = await svc.list_active_platforms()
 
         for platform in platforms:
-            poll_platform_status.apply_async(args=[svc_cls.__name__, platform.id], expires=settings.status_polling_expiry)
+            state = await svc.platform_state(platform)
+            should_poll = True
+            if state and state.last_heartbeat:
+                elapsed = (ts_now() - state.last_heartbeat).total_seconds()
+                if elapsed < svc._polling_frequency:
+                    should_poll = False
+
+            if should_poll:
+                poll_platform_status.apply_async(args=[svc_cls.__name__, platform.id], expires=settings.status_polling_expiry)
 
 
 @app.task

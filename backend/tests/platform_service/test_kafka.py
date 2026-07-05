@@ -257,3 +257,11 @@ async def test_kafka_poll_status_with_nodeports(mock_service_dependencies):
             assert mock_state.node_ports == node_ports
             assert mock_state.cluster_nodes == cluster_nodes
 
+
+def test_register_poller_invalid_frequency():
+    """Verify that register_poller raises ValueError for frequency not multiple of 15."""
+    with pytest.raises(ValueError, match="Polling frequency must be set at blocks of 15 seconds"):
+        @KafkaPlatformService.register_poller(frequency=25)
+        class InvalidPoller:
+            pass
+

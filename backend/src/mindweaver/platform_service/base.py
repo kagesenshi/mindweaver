@@ -26,7 +26,7 @@ from sqlalchemy_utils import JSONType
 from sqlmodel import Field, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 import tempfile
-from typing import Annotated, Any, Literal, Optional, TypeVar
+from typing import Annotated, Any, Callable, Literal, Optional, TypeVar
 import yaml
 
 logger = logging.getLogger(__name__)
@@ -216,12 +216,35 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
         result = await self.session.exec(stmt)
         return list(result.all())
 
+    _poller_class: Optional[type] = None
+    _polling_frequency: int = 15
+
+    @classmethod
+    def register_poller(cls, *, frequency: int = 15) -> Callable[[type], type]:
+        """
+        Decorator method to register a poller class for the platform service.
+        Must be called with parentheses: `@register_poller()` or `@register_poller(frequency=30)`.
+        """
+        if frequency % 15 != 0:
+            raise ValueError("Polling frequency must be set at blocks of 15 seconds (e.g., 15, 30, 45, 60...)")
+
+        def decorator(poller_cls: type) -> type:
+            cls._poller_class = poller_cls
+            cls._polling_frequency = frequency
+            return poller_cls
+
+        return decorator
+
     async def poll_status(self, model: T):
         """
         Poll the status of the platform from Kubernetes.
-        To be overridden by subclasses.
+        Delegates to the registered poller if available.
         """
-        pass
+        if self._poller_class:
+            poller = self._poller_class(self, model)
+            await poller.poll()
+        else:
+            pass
 
     @before_create()
     async def _validate_name_availability(self, data: T):
