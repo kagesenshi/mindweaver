@@ -207,6 +207,12 @@ async def test_trino_template_rendering(mock_service_dependencies):
     # Verify process_forwarded is rendered
     assert "http-server.process-forwarded=true" in values["additionalConfigProperties"]
 
+    # Verify access-control.properties and rules.json are rendered
+    assert "access-control.name=file" in values["coordinator"]["additionalConfigFiles"]["access-control.properties"]
+    import json
+    rules = json.loads(values["coordinator"]["additionalConfigFiles"]["rules.json"])
+    assert rules["impersonation"][0]["originalUser"] == "CN=.*\\.trino-ns\\.svc\\.cluster\\.local"
+
     # Verify the additional HTTPS NodePort service is present in the docs
     https_svc = next(d for d in docs if d["kind"] == "Service" and d["metadata"]["name"] == "trino-test-https-nodeport")
     assert https_svc["spec"]["type"] == "NodePort"

@@ -218,6 +218,19 @@ spec:
                 </property>
               </configuration>
             {% endif %}
+            access-control.properties: |
+              access-control.name=file
+              security.config-file=/etc/trino/rules.json
+            rules.json: |
+              {
+                "impersonation": [
+                  {
+                    "originalUser": "CN=.*\\.{{ namespace }}\\.svc\\.cluster\\.local",
+                    "newUser": ".*",
+                    "allow": true
+                  }
+                ]
+              }
           additionalVolumes:
             - name: tls-secret
               secret:
