@@ -115,6 +115,12 @@ async def test_nifi_render_manifests(mock_service_dependencies):
     assert "kind: Certificate" not in manifests
     assert "create: true" in manifests
     assert "selfsigned-issuer" in manifests
+    # Single user configurations and credentials secret assertions
+    assert "singleUserConfiguration" in manifests
+    assert "test-nifi-single-user-credentials" in manifests
+    assert "extraManifests" in manifests
+    assert "username: \"admin\"" in manifests
+    assert "nifi.security.needClientAuth=false" in manifests
 
 
 @pytest.mark.asyncio
@@ -255,7 +261,7 @@ async def test_nifi_render_manifests_with_ldap(mock_service_dependencies):
         name="test-ldap",
         server_url="ldap://ldap.example.com:389",
         user_search_base="ou=users,dc=example,dc=com",
-        user_search_filter="(uid={0})",
+        user_search_filter="(&(uid={0})(objectClass=person))",
         username_attr="uid",
         verify_ssl=False,
     )
@@ -270,7 +276,7 @@ async def test_nifi_render_manifests_with_ldap(mock_service_dependencies):
         assert "enabled: true" in manifests
         assert "url: \"ldap://ldap.example.com:389\"" in manifests
         assert "searchBase: \"ou=users,dc=example,dc=com\"" in manifests
-        assert "searchFilter: \"(uid={0})\"" in manifests
+        assert "searchFilter: \"(&amp;(uid={0})(objectClass=person))\"" in manifests
         assert "authenticationStrategy: \"SIMPLE\"" in manifests
-        assert "nifi.security.needClientAuth=true" in manifests
+        assert "nifi.security.needClientAuth=false" in manifests
 

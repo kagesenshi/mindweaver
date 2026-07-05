@@ -92,7 +92,7 @@ spec:
               nifi.cluster.leader.election.implementation=KubernetesLeaderElectionManager
               nifi.cluster.leader.election.kubernetes.lease.prefix={{ name }}
               nifi.sensitive.props.key=default-sensitive-properties-key-32-chars-long
-              nifi.security.needClientAuth=true
+              nifi.security.needClientAuth=false
               {% if ingress_domain %}
               nifi.web.proxy.host={{ name }}.{{ ingress_domain }}:443
               {% endif %}
@@ -107,20 +107,43 @@ spec:
             enabled: true
             url: "{{ ldap_url }}"
             searchBase: "{{ ldap_search_base }}"
-            searchFilter: "{{ ldap_search_filter }}"
+            searchFilter: "{{ ldap_search_filter | replace('&', '&amp;') | replace('<', '&lt;') | replace('>', '&gt;') }}"
             {%- if ldap_manager_dn %}
-            managerDn: "{{ ldap_manager_dn }}"
+            managerDn: "{{ ldap_manager_dn | replace('&', '&amp;') | replace('<', '&lt;') | replace('>', '&gt;') }}"
             {%- endif %}
             {%- if ldap_manager_password %}
-            managerPassword: "{{ ldap_manager_password }}"
+            managerPassword: "{{ ldap_manager_password | replace('&', '&amp;') | replace('<', '&lt;') | replace('>', '&gt;') }}"
             {%- endif %}
             authenticationStrategy: "{{ ldap_authentication_strategy }}"
+          {%- else %}
+          singleUserConfiguration:
+            enabled: true
+            authorizerEnabled: true
+            secretRef:
+              name: "{{ name }}-single-user-credentials"
+              namespace: "{{ namespace }}"
+            secretKeys:
+              username: "username"
+              password: "password"
           {%- endif %}
 
           bootstrapProperties:
             overrideConfigs: |
               java.arg.addopens.exodus=--add-opens=java.base/sun.nio.ch=ALL-UNNAMED
             nifiJvmMemory: "512m"
+
+        {%- if not ldap_enabled %}
+        extraManifests:
+          - apiVersion: v1
+            kind: Secret
+            metadata:
+              name: "{{ name }}-single-user-credentials"
+              namespace: "{{ namespace }}"
+            type: Opaque
+            stringData:
+              username: "admin"
+              password: "admin-password-123"
+        {%- endif %}
   destination:
     server: https://kubernetes.default.svc
     namespace: {{ namespace }}
