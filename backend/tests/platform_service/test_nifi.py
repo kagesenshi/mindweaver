@@ -91,6 +91,10 @@ async def test_nifi_render_manifests(mock_service_dependencies):
         project_id=1,
         replica_count=3,
         storage_size="20Gi",
+        auth_role_mapping=[
+            {"entity": "admin@example.com", "role": "Admin"},
+            {"entity": "CN=john.doe,OU=Users,O=Example", "role": "Reader"},
+        ],
     )
 
     svc._resolve_namespace = AsyncMock(return_value="test-ns")
@@ -121,6 +125,16 @@ async def test_nifi_render_manifests(mock_service_dependencies):
     assert "extraManifests" in manifests
     assert "username: \"admin\"" in manifests
     assert "nifi.security.needClientAuth=false" in manifests
+    assert "nifi.security.identity.mapping.pattern.dn=CN=([^,]*)(?:, (?:O|OU)=.*)?" in manifests
+    assert "nifi.security.identity.mapping.value.dn=$1" in manifests
+    assert "nifi.security.identity.mapping.transform.dn=NONE" in manifests
+    # Managed users mapping assertions
+    assert "managedAdminUsers:" in manifests
+    assert "identity: \"admin@example.com\"" in manifests
+    assert "name: \"admin\"" in manifests
+    assert "managedReaderUsers:" in manifests
+    assert "identity: \"CN=john.doe,OU=Users,O=Example\"" in manifests
+    assert "name: \"john.doe\"" in manifests
 
 
 @pytest.mark.asyncio
@@ -279,4 +293,45 @@ async def test_nifi_render_manifests_with_ldap(mock_service_dependencies):
         assert "searchFilter: \"(&amp;(uid={0})(objectClass=person))\"" in manifests
         assert "authenticationStrategy: \"SIMPLE\"" in manifests
         assert "nifi.security.needClientAuth=false" in manifests
+        assert "nifi.security.identity.mapping.pattern.dn=CN=([^,]*)(?:, (?:O|OU)=.*)?" in manifests
+        assert "nifi.security.identity.mapping.value.dn=$1" in manifests
+        assert "nifi.security.identity.mapping.transform.dn=NONE" in manifests
+
+
+def test_nifi_auth_role_mapping_validation():
+    """Test validation for auth_role_mapping in NiFi."""
+    from mindweaver.platform_service.nifi.model import NifiRoleMapping
+    
+    # Valid model validation
+    model = NifiPlatform.model_validate(
+        {
+            "name": "test-nifi",
+            "title": "Test NiFi",
+            "project_id": 1,
+            "auth_role_mapping": [NifiRoleMapping(entity="user1", role="Admin")]
+        }
+    )
+    assert model.auth_role_mapping[0]["role"] == "Admin"
+
+    # Invalid role should raise error
+    with pytest.raises(ValidationError) as excinfo:
+        NifiPlatform.model_validate(
+            {
+                "name": "test-nifi",
+                "title": "Test NiFi",
+                "project_id": 1,
+                "auth_role_mapping": [{"entity": "user1", "role": "InvalidRole"}]
+            }
+        )
+    assert "Invalid role: InvalidRole" in str(excinfo.value)
+
+
+def test_nifi_auth_role_mapping_dict_assignment():
+    """Test assignment of dict and custom objects to auth_role_mapping."""
+    model = NifiPlatform(name="test-nifi", title="Test NiFi", project_id=1)
+    model.auth_role_mapping = [{"entity": "user1", "role": "Admin"}]
+    
+    assert isinstance(model.auth_role_mapping[0], dict)
+    assert model.auth_role_mapping[0]["entity"] == "user1"
+    assert model.auth_role_mapping[0]["role"] == "Admin"
 

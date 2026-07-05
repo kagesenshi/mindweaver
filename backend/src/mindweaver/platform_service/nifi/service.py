@@ -37,6 +37,12 @@ class NifiPlatformService(PlatformService[NifiPlatform]):
         """Returns the DynamicForm widgets configuration for UI fields."""
         return {
             "storage_size": {"order": 7, "label": "Storage Size"},
+            "auth_role_mapping": {
+                "order": 8,
+                "label": "Auth Role Mapping",
+                "type": "auth-role-mapping",
+                "roles": ["Admin", "Reader"],
+            },
             "replica_count": {
                 "order": 10,
                 "type": "range",
@@ -131,6 +137,23 @@ class NifiPlatformService(PlatformService[NifiPlatform]):
                 vars["ldap_authentication_strategy"] = "LDAPS"
             else:
                 vars["ldap_authentication_strategy"] = "SIMPLE"
+
+        # Resolve admin and reader users from auth_role_mapping
+        managed_admin_users = []
+        managed_reader_users = []
+        for m in model.auth_role_mapping:
+            entity = m["entity"]
+            role = m["role"]
+            # Clean name from entity
+            name = entity.split("@")[0].split(",")[0].replace("CN=", "").replace("cn=", "")
+            user_entry = {"identity": entity, "name": name}
+            if role == "Admin":
+                managed_admin_users.append(user_entry)
+            elif role == "Reader":
+                managed_reader_users.append(user_entry)
+
+        vars["managed_admin_users"] = managed_admin_users
+        vars["managed_reader_users"] = managed_reader_users
                 
         return vars
 

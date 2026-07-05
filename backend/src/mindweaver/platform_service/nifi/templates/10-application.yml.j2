@@ -59,6 +59,20 @@ spec:
             - id: {{ i }}
               nodeConfigGroup: default-group
             {%- endfor %}
+          {%- if managed_admin_users %}
+          managedAdminUsers:
+            {%- for u in managed_admin_users %}
+            - identity: "{{ u.identity }}"
+              name: "{{ u.name }}"
+            {%- endfor %}
+          {%- endif %}
+          {%- if managed_reader_users %}
+          managedReaderUsers:
+            {%- for u in managed_reader_users %}
+            - identity: "{{ u.identity }}"
+              name: "{{ u.name }}"
+            {%- endfor %}
+          {%- endif %}
           listenersConfig:
             internalListeners:
               - containerPort: 8443
@@ -93,6 +107,9 @@ spec:
               nifi.cluster.leader.election.kubernetes.lease.prefix={{ name }}
               nifi.sensitive.props.key=default-sensitive-properties-key-32-chars-long
               nifi.security.needClientAuth=false
+              nifi.security.identity.mapping.pattern.dn=CN=([^,]*)(?:, (?:O|OU)=.*)?
+              nifi.security.identity.mapping.value.dn=$1
+              nifi.security.identity.mapping.transform.dn=NONE
               {% if ingress_domain %}
               nifi.web.proxy.host={{ name }}.{{ ingress_domain }}:443
               {% endif %}
