@@ -153,6 +153,14 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
         # Deploy to cluster
         await self._deploy_to_cluster(kubeconfig, full_manifest, namespace)
 
+        # Mark state as active
+        if self.state_model:
+            state = await self.platform_state(model)
+            if not state:
+                state = self.state_model(platform_id=model.id)
+                self.session.add(state)
+            state.active = True
+
     _decommissioning: bool = False
 
     async def decommission(self, model: T):

@@ -51,7 +51,7 @@ async def _trigger_service_polling(svc_cls: Type[PlatformService]):
         platforms = await svc.list_active_platforms()
 
         for platform in platforms:
-            poll_platform_status.delay(svc_cls.__name__, platform.id)
+            poll_platform_status.apply_async(args=[svc_cls.__name__, platform.id], expires=60)
 
 
 @app.task

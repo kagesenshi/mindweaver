@@ -27,7 +27,7 @@ async def _poll_all_k8s_clusters():
         clusters = await svc.all()
 
         for cluster in clusters:
-            poll_k8s_cluster_status.delay(cluster.id)
+            poll_k8s_cluster_status.apply_async(args=[cluster.id], expires=60)
 
 
 @app.task
