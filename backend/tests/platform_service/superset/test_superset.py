@@ -459,3 +459,83 @@ def test_superset_feature_flag_schema_filtering(monkeypatch):
     assert "oidc_enabled" in schema.model_fields
     assert "oidc_client_secret" in schema.model_fields
 
+
+@pytest.mark.asyncio
+async def test_superset_load_examples(mock_service_dependencies):
+    """Test that load_examples field is rendered correctly in Superset templates"""
+    from mindweaver.platform_service.superset.model import SupersetPlatform
+    from mindweaver.platform_service.superset.service import SupersetPlatformService
+    import yaml
+
+    request, session = mock_service_dependencies
+    svc = SupersetPlatformService(request, session)
+    
+    # 1. Test load_examples is True
+    model_true = SupersetPlatform(
+        name="test-superset",
+        title="Test Superset",
+        project_id=1,
+        platform_pgsql_id=1,
+        load_examples=True,
+    )
+    
+    # Mock resolves
+    svc._resolve_namespace = AsyncMock(return_value="superset-ns")
+    
+    mock_pgsql_svc = AsyncMock()
+    mock_pgsql_model = MagicMock()
+    mock_pgsql_model.name = "test-pgsql"
+    mock_pgsql_svc.get.return_value = mock_pgsql_model
+    
+    mock_pgsql_state = MagicMock()
+    mock_pgsql_state.active = True
+    mock_pgsql_state.db_user = "usr"
+    mock_pgsql_state.db_name = "db"
+    mock_pgsql_state.db_pass = "pass"
+    mock_pgsql_state.extra_data = {"pgbouncer_host": "my-db"}
+    mock_pgsql_svc.platform_state.return_value = mock_pgsql_state
+    
+    with patch("mindweaver.platform_service.superset.service.PgSqlPlatformService") as mock_pg_class, \
+         patch("mindweaver.platform_service.superset.service.decrypt_password", side_effect=lambda x: x):
+        
+        mock_pg_class.get_service = AsyncMock(return_value=mock_pgsql_svc)
+        
+        # Mock project relationship
+        mock_project = MagicMock()
+        mock_project.ldap_config_id = None
+        mock_project.ingress_domain = None
+        mock_project.name = "myproject"
+        svc.project = AsyncMock(return_value=mock_project)
+
+        manifest = await svc.render_manifests(model_true)
+        docs = [d for d in yaml.safe_load_all(manifest) if d is not None]
+        app_doc = next(d for d in docs if d["kind"] == "Application")
+        values = yaml.safe_load(app_doc["spec"]["source"]["helm"]["values"])
+        assert values["init"]["loadExamples"] is True
+
+    # 2. Test load_examples is False
+    model_false = SupersetPlatform(
+        name="test-superset",
+        title="Test Superset",
+        project_id=1,
+        platform_pgsql_id=1,
+        load_examples=False,
+    )
+    with patch("mindweaver.platform_service.superset.service.PgSqlPlatformService") as mock_pg_class, \
+         patch("mindweaver.platform_service.superset.service.decrypt_password", side_effect=lambda x: x):
+        
+        mock_pg_class.get_service = AsyncMock(return_value=mock_pgsql_svc)
+        
+        # Mock project relationship
+        mock_project = MagicMock()
+        mock_project.ldap_config_id = None
+        mock_project.ingress_domain = None
+        mock_project.name = "myproject"
+        svc.project = AsyncMock(return_value=mock_project)
+
+        manifest = await svc.render_manifests(model_false)
+        docs = [d for d in yaml.safe_load_all(manifest) if d is not None]
+        app_doc = next(d for d in docs if d["kind"] == "Application")
+        values = yaml.safe_load(app_doc["spec"]["source"]["helm"]["values"])
+        assert values["init"]["loadExamples"] is False
+

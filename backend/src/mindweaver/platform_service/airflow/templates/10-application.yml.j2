@@ -244,6 +244,8 @@ spec:
           type: NodePort
 
         extraEnv: |
+          - name: AIRFLOW__CORE__LOAD_EXAMPLES
+            value: "{{ 'True' if load_examples else 'False' }}"
           {% if auth_role_mapping %}
           {% for entity, roles in auth_role_mapping.items() %}
           {% for role in roles %}

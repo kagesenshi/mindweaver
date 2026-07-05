@@ -107,9 +107,7 @@ spec:
           adminUser:
             username: admin
             password: {{ admin_password }}
-          {% if datasources %}
-          loadExamples: false
-          {% endif %}
+          loadExamples: {{ 'true' if load_examples else 'false' }}
           initscript: |-
             #!/bin/sh
             set -eu

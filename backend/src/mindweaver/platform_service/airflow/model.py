@@ -35,6 +35,9 @@ class AirflowPlatform(PlatformBase, table=True):
     # Deploy Redis/Valkey for Celery broker by default
     redis_enabled: bool = Field(default=True)
 
+    # Load example DAGs/data
+    load_examples: bool = Field(default=False)
+
     # S3 Storage for remote logging (no PVC)
     s3_storage_id: Optional[int] = Field(default=None, foreign_key="mw_s3_storage.id")
     logs_s3_bucket: str = Field(default="")

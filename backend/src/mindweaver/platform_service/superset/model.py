@@ -42,6 +42,7 @@ class SupersetPlatform(PlatformBase, table=True):
     oidc_enabled: bool = Field(default=False)
     oidc_client_secret: str = Field(default_factory=lambda: secrets.token_urlsafe(32))
     sqllab_enabled: bool = Field(default=True)
+    load_examples: bool = Field(default=False)
 
     # PostgreSQL dependency (mandatory for Superset metadata)
     platform_pgsql_id: int = Field(foreign_key="mw_pgsql_platform.id")

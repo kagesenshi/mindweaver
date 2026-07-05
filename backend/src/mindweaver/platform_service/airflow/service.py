@@ -65,6 +65,11 @@ class AirflowPlatformService(PlatformService[AirflowPlatform]):
                 "label": "Deploy Redis Broker",
                 "type": "boolean",
             },
+            "load_examples": {
+                "order": 8.5,
+                "label": "Load Examples",
+                "type": "boolean",
+            },
             "s3_storage_id": {
                 "order": 9,
                 "label": "S3 Storage (Remote Logging)",

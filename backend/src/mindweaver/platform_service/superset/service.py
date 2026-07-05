@@ -137,6 +137,11 @@ class SupersetPlatformService(PlatformService[SupersetPlatform]):
                 "label": "Enable SQL Lab",
                 "type": "boolean",
             },
+            "load_examples": {
+                "order": 28,
+                "label": "Load Examples",
+                "type": "boolean",
+            },
         }
 
     async def template_vars(self, model: SupersetPlatform) -> dict:

@@ -334,3 +334,66 @@ def test_airflow_feature_flag_schema_filtering(monkeypatch):
     assert "oidc_enabled" in schema.model_fields
     assert "oidc_client_secret" in schema.model_fields
 
+
+@pytest.mark.asyncio
+async def test_airflow_load_examples(test_project):
+    """Test that load_examples field is rendered correctly in Airflow templates"""
+    from mindweaver.platform_service.airflow.service import AirflowPlatformService
+    from mindweaver.platform_service.airflow.model import AirflowPlatform
+    from mindweaver.platform_service.pgsql.model import PgSqlPlatform, PgSqlPlatformState
+    from mindweaver.service.project.model import Project
+
+    mock_request = MagicMock()
+    mock_request.headers = {"X-Project-Id": str(test_project["id"])}
+    mock_session = AsyncMock()
+
+    mock_pgsql = PgSqlPlatform(id=1, name="my-pgsql", project_id=test_project["id"])
+    mock_pgsql_state = PgSqlPlatformState(
+        platform_id=1,
+        active=True,
+        db_user="app",
+        db_name="app",
+        db_pass=encrypt_password("secret_pass"),
+        extra_data={"pgbouncer_host": "pgbouncer-host"},
+    )
+    mock_project = Project(id=test_project["id"], name="test-proj", ingress_domain="test.domain")
+
+    svc = AirflowPlatformService(mock_request, mock_session)
+    svc._resolve_namespace = AsyncMock(return_value="airflow-ns")
+    svc.project = AsyncMock(return_value=mock_project)
+
+    mock_pgsql_svc = MagicMock()
+    mock_pgsql_svc.get = AsyncMock(return_value=mock_pgsql)
+    mock_pgsql_svc.platform_state = AsyncMock(return_value=mock_pgsql_state)
+
+    from mindweaver.platform_service.pgsql.service import PgSqlPlatformService
+
+    async def get_service_mock(req, sess):
+        return mock_pgsql_svc
+
+    # 1. Test load_examples is True
+    airflow_model_true = AirflowPlatform(
+        name="test-airflow",
+        title="Test Airflow",
+        project_id=test_project["id"],
+        platform_pgsql_id=1,
+        load_examples=True,
+    )
+    with patch.object(PgSqlPlatformService, "get_service", new=get_service_mock):
+        manifests = await svc.render_manifests(airflow_model_true)
+        assert "AIRFLOW__CORE__LOAD_EXAMPLES" in manifests
+        assert "value: \"True\"" in manifests
+
+    # 2. Test load_examples is False
+    airflow_model_false = AirflowPlatform(
+        name="test-airflow",
+        title="Test Airflow",
+        project_id=test_project["id"],
+        platform_pgsql_id=1,
+        load_examples=False,
+    )
+    with patch.object(PgSqlPlatformService, "get_service", new=get_service_mock):
+        manifests = await svc.render_manifests(airflow_model_false)
+        assert "AIRFLOW__CORE__LOAD_EXAMPLES" in manifests
+        assert "value: \"False\"" in manifests
+
