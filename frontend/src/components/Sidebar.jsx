@@ -26,6 +26,7 @@ import {
     GitBranch,
     RefreshCcw,
     Network,
+    Users,
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { useAuth } from '../providers/AuthProvider';
@@ -34,6 +35,10 @@ import UserProfilePanel from './UserProfilePanel';
 
 const NAV_ITEMS = [
     { name: 'Fleet Overview', to: '/', icon: Monitor },
+];
+
+const ADMIN_ITEMS = [
+    { name: 'Users', to: '/users', icon: Users },
 ];
 
 const ENVIRONMENT_ITEMS = [
@@ -254,6 +259,38 @@ const Sidebar = ({ darkMode, isCollapsed, toggleSidebar, onNavItemClick }) => {
                         </NavLink>
                     </Tooltip>
                 ))}
+
+                {user?.is_superadmin && (
+                    <>
+                        {/* Administration Section */}
+                        <div className={cn("transition-all duration-300", isCollapsed ? "py-4 flex justify-center" : "pt-6 pb-2")}>
+                            {isCollapsed ? (
+                                <div className="w-8 h-px bg-slate-200 dark:bg-slate-800" />
+                            ) : (
+                                <div className="mw-sidebar-section">Administration</div>
+                            )}
+                        </div>
+
+                        {ADMIN_ITEMS.map((item) => (
+                            <Tooltip key={item.to} content={item.name} disabled={!isCollapsed} side="right">
+                                <NavLink
+                                    to={item.to}
+                                    onClick={() => handleClick(item.to)}
+                                    className={({ isActive }) => cn(
+                                        "mw-nav-item flex items-center transition-all duration-200",
+                                        isCollapsed ? "justify-center p-2 rounded-lg" : "px-3 py-2 rounded-lg gap-3",
+                                        isActive
+                                            ? 'bg-blue-600/10 text-blue-400 border border-blue-500/20'
+                                            : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 border border-transparent'
+                                    )}
+                                >
+                                    <item.icon size={20} className="shrink-0" />
+                                    {!isCollapsed && <span className="whitespace-nowrap overflow-hidden">{item.name}</span>}
+                                </NavLink>
+                            </Tooltip>
+                        ))}
+                    </>
+                )}
             </nav>
 
             <UserProfilePanel

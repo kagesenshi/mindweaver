@@ -1056,5 +1056,7 @@ export const useStacks = () => {
     return { stacks, loading, error, fetchStacks };
 };
 
+export const useUsers = createGenericSourceHook('/users');
+
 
 

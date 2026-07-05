@@ -24,6 +24,7 @@ const AirflowPage = lazy(() => import('./pages/airflow/Page'))
 const KafkaPage = lazy(() => import('./pages/kafka/Page'))
 const NifiPage = lazy(() => import('./pages/nifi/Page'))
 const StacksPage = lazy(() => import('./pages/stacks/Page'))
+const UsersPage = lazy(() => import('./pages/users/Page'))
 
 import { ProtectedRoute } from './components/ProtectedRoute'
 
@@ -76,6 +77,10 @@ const router = createBrowserRouter([
       {
         path: 'container-registries',
         element: <ContainerRegistriesPage />,
+      },
+      {
+        path: 'users',
+        element: <UsersPage />,
       },
 
       {

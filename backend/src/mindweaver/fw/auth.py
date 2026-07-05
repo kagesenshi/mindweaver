@@ -349,6 +349,13 @@ class AuthService(Service[User]):
         return router
 
 
+from pydantic import BaseModel, Field
+from .util import redefine_model
+
+class ChangePasswordRequest(BaseModel):
+    password: str = Field(min_length=8)
+
+
 class UserService(Service[User]):
     @classmethod
     def model_class(cls) -> type[User]:
@@ -365,6 +372,30 @@ class UserService(Service[User]):
         return ["name", "email"]
 
     @classmethod
+    def updatemodel_class(cls):
+        model_class = cls.model_class()
+        schema_class = cls.schema_class()
+        return redefine_model(
+            f"Update {model_class.__name__}",
+            schema_class,
+            exclude=cls.internal_fields() + ["password"],
+            optional=["__ALL__"],
+        )
+
+    @classmethod
+    def widgets(cls) -> dict[str, Any]:
+        return {
+            "name": {"order": 1, "column_span": 1, "label": "Username"},
+            "display_name": {"order": 2, "column_span": 1},
+            "email": {"order": 3, "column_span": 1},
+            "password": {"type": "password", "order": 4, "column_span": 1},
+            "title": {"order": 5, "column_span": 1},
+            "picture": {"order": 6, "column_span": 1},
+            "is_active": {"order": 7, "column_span": 1},
+            "is_superadmin": {"order": 8, "column_span": 1},
+        }
+
+    @classmethod
     def extra_dependencies(cls):
         return [Depends(get_superadmin)]
 
@@ -372,6 +403,30 @@ class UserService(Service[User]):
     def router(cls) -> APIRouter:
         router = super().router()
         return router
+
+
+@UserService.model_view("POST", "/_change_password", dependencies=[])
+async def change_password(
+    id: int,
+    payload: ChangePasswordRequest,
+    session: AsyncSession,
+    current_user: User = Depends(get_current_user),
+):
+    target_user = await session.get(User, id)
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Only superadmin can change other users password. Current user can only change their own password.
+    if not current_user.is_superadmin and current_user.id != target_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Not authorized to change this user's password"
+        )
+
+    target_user.password = get_password_hash(payload.password)
+    session.add(target_user)
+    await session.commit()
+    return {"status": "success", "message": "Password changed successfully"}
 
 
 router = AuthService.router()
