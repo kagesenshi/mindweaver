@@ -5,7 +5,7 @@ from mindweaver.celery_app import app
 from mindweaver.fw.model import get_engine
 from sqlmodel.ext.asyncio.session import AsyncSession
 from mindweaver.service.k8s_cluster import K8sClusterService
-from mindweaver.config import logger
+from mindweaver.config import logger, settings
 from .base import run_async
 
 
@@ -27,7 +27,7 @@ async def _poll_all_k8s_clusters():
         clusters = await svc.all()
 
         for cluster in clusters:
-            poll_k8s_cluster_status.apply_async(args=[cluster.id], expires=60)
+            poll_k8s_cluster_status.apply_async(args=[cluster.id], expires=settings.status_polling_expiry)
 
 
 @app.task

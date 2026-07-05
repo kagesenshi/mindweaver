@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     celery_broker_url: str = "redis://localhost:6379/0"
     celery_result_backend: str = "redis://localhost:6379/0"
     embedded_worker: bool = True
+    status_polling_expiry: int = 60
 
     oidc_issuer: str | None = None
     oidc_client_id: str | None = None

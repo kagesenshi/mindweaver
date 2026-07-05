@@ -12,7 +12,7 @@ from mindweaver.platform_service.superset import SupersetPlatformService
 from mindweaver.platform_service.airflow import AirflowPlatformService
 from mindweaver.platform_service.kafka import KafkaPlatformService
 from mindweaver.platform_service.nifi import NifiPlatformService
-from mindweaver.config import logger
+from mindweaver.config import logger, settings
 from typing import Type
 from .base import run_async
 
@@ -51,7 +51,7 @@ async def _trigger_service_polling(svc_cls: Type[PlatformService]):
         platforms = await svc.list_active_platforms()
 
         for platform in platforms:
-            poll_platform_status.apply_async(args=[svc_cls.__name__, platform.id], expires=60)
+            poll_platform_status.apply_async(args=[svc_cls.__name__, platform.id], expires=settings.status_polling_expiry)
 
 
 @app.task
