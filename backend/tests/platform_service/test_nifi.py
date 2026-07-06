@@ -128,6 +128,13 @@ async def test_nifi_render_manifests(mock_service_dependencies):
     assert "nifi.security.identity.mapping.pattern.dn=CN=([^,]*)(?:, (?:O|OU)=.*)?" in manifests
     assert "nifi.security.identity.mapping.value.dn=$1" in manifests
     assert "nifi.security.identity.mapping.transform.dn=NONE" in manifests
+    assert "nifi.flow.configuration.file=/opt/nifi/nifi-current/data/flow.json.gz" in manifests
+    assert "nifi.flow.configuration.archive.dir=/opt/nifi/nifi-current/data/archive" in manifests
+    assert "nifi.database.directory=/opt/nifi/nifi-current/data/database_repository" in manifests
+    assert "nifi.flowfile.repository.directory=/opt/nifi/nifi-current/data/flowfile_repository" in manifests
+    assert "nifi.content.repository.directory.default=/opt/nifi/nifi-current/data/content_repository" in manifests
+    assert "nifi.provenance.repository.directory.default=/opt/nifi/nifi-current/data/provenance_repository" in manifests
+    assert "nifi.state.management.local.provider.directory=/opt/nifi/nifi-current/data/state" in manifests
     # Managed users mapping assertions
     assert "managedAdminUsers:" in manifests
     assert "identity: \"admin@example.com\"" in manifests

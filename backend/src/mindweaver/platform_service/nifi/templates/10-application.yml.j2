@@ -110,6 +110,13 @@ spec:
               nifi.security.identity.mapping.pattern.dn=CN=([^,]*)(?:, (?:O|OU)=.*)?
               nifi.security.identity.mapping.value.dn=$1
               nifi.security.identity.mapping.transform.dn=NONE
+              nifi.flow.configuration.file=/opt/nifi/nifi-current/data/flow.json.gz
+              nifi.flow.configuration.archive.dir=/opt/nifi/nifi-current/data/archive
+              nifi.database.directory=/opt/nifi/nifi-current/data/database_repository
+              nifi.flowfile.repository.directory=/opt/nifi/nifi-current/data/flowfile_repository
+              nifi.content.repository.directory.default=/opt/nifi/nifi-current/data/content_repository
+              nifi.provenance.repository.directory.default=/opt/nifi/nifi-current/data/provenance_repository
+              nifi.state.management.local.provider.directory=/opt/nifi/nifi-current/data/state
               {% if ingress_domain %}
               nifi.web.proxy.host={{ name }}.{{ ingress_domain }}:443
               {% endif %}
