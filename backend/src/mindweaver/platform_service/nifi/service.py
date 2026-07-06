@@ -152,15 +152,6 @@ class NifiPlatformService(PlatformService[NifiPlatform]):
             elif role == "Reader":
                 managed_reader_users.append(user_entry)
 
-        # Add cluster nodes to managed_admin_users so they can communicate
-        for i in range(model.replica_count):
-            node_identity = f"node-{i}"
-            if not any(u["identity"] == node_identity for u in managed_admin_users):
-                managed_admin_users.append({
-                    "identity": node_identity,
-                    "name": f"node-{i}"
-                })
-
         vars["managed_admin_users"] = managed_admin_users
         vars["managed_reader_users"] = managed_reader_users
                 
