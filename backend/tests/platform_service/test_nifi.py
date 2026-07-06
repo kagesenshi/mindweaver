@@ -125,9 +125,12 @@ async def test_nifi_render_manifests(mock_service_dependencies):
     assert "extraManifests" in manifests
     assert "username: \"admin\"" in manifests
     assert "nifi.security.needClientAuth=false" in manifests
-    assert "nifi.security.identity.mapping.pattern.dn=CN=([^,]*)(?:, (?:O|OU)=.*)?" in manifests
-    assert "nifi.security.identity.mapping.value.dn=$1" in manifests
-    assert "nifi.security.identity.mapping.transform.dn=NONE" in manifests
+    assert "nifi.security.identity.mapping.pattern.dn.1=^CN=(node-\\\\d+)(,.*)?$" in manifests
+    assert "nifi.security.identity.mapping.value.dn.1=$1" in manifests
+    assert "nifi.security.identity.mapping.transform.dn.1=NONE" in manifests
+    assert "nifi.security.identity.mapping.pattern.dn.2=CN=([^,]*)(?:, (?:O|OU)=.*)?" in manifests
+    assert "nifi.security.identity.mapping.value.dn.2=$1" in manifests
+    assert "nifi.security.identity.mapping.transform.dn.2=NONE" in manifests
     assert "nifi.flow.configuration.file=/opt/nifi/nifi-current/data/flow.json.gz" in manifests
     assert "nifi.flow.configuration.archive.dir=/opt/nifi/nifi-current/data/archive" in manifests
     assert "nifi.database.directory=/opt/nifi/nifi-current/data/database_repository" in manifests
@@ -139,6 +142,9 @@ async def test_nifi_render_manifests(mock_service_dependencies):
     assert "managedAdminUsers:" in manifests
     assert "identity: \"admin@example.com\"" in manifests
     assert "name: \"admin\"" in manifests
+    assert "identity: \"node-0\"" in manifests
+    assert "identity: \"node-1\"" in manifests
+    assert "identity: \"node-2\"" in manifests
     assert "managedReaderUsers:" in manifests
     assert "identity: \"CN=john.doe,OU=Users,O=Example\"" in manifests
     assert "name: \"john.doe\"" in manifests
@@ -300,9 +306,12 @@ async def test_nifi_render_manifests_with_ldap(mock_service_dependencies):
         assert "searchFilter: \"(&amp;(uid={0})(objectClass=person))\"" in manifests
         assert "authenticationStrategy: \"SIMPLE\"" in manifests
         assert "nifi.security.needClientAuth=false" in manifests
-        assert "nifi.security.identity.mapping.pattern.dn=CN=([^,]*)(?:, (?:O|OU)=.*)?" in manifests
-        assert "nifi.security.identity.mapping.value.dn=$1" in manifests
-        assert "nifi.security.identity.mapping.transform.dn=NONE" in manifests
+        assert "nifi.security.identity.mapping.pattern.dn.1=^CN=(node-\\\\d+)(,.*)?$" in manifests
+        assert "nifi.security.identity.mapping.value.dn.1=$1" in manifests
+        assert "nifi.security.identity.mapping.transform.dn.1=NONE" in manifests
+        assert "nifi.security.identity.mapping.pattern.dn.2=CN=([^,]*)(?:, (?:O|OU)=.*)?" in manifests
+        assert "nifi.security.identity.mapping.value.dn.2=$1" in manifests
+        assert "nifi.security.identity.mapping.transform.dn.2=NONE" in manifests
 
 
 def test_nifi_auth_role_mapping_validation():
