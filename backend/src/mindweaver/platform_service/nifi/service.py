@@ -141,15 +141,20 @@ class NifiPlatformService(PlatformService[NifiPlatform]):
         # Resolve admin and reader users from auth_role_mapping
         managed_admin_users = []
         managed_reader_users = []
+        admin_count = 0
+        reader_count = 0
         for m in model.auth_role_mapping:
             entity = m["entity"]
             role = m["role"]
-            # Clean name from entity
-            name = entity.split("@")[0].split(",")[0].replace("CN=", "").replace("cn=", "")
-            user_entry = {"identity": entity, "name": name}
             if role == "Admin":
+                admin_count += 1
+                name = 'admin-%s' % admin_count
+                user_entry = {"identity": entity, "name": name}
                 managed_admin_users.append(user_entry)
             elif role == "Reader":
+                reader_count += 1
+                name = 'reader-%s' % reader_count
+                user_entry = {"identity": entity, "name": name}
                 managed_reader_users.append(user_entry)
 
         vars["managed_admin_users"] = managed_admin_users

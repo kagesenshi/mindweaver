@@ -62,15 +62,15 @@ spec:
           {%- if managed_admin_users %}
           managedAdminUsers:
             {%- for u in managed_admin_users %}
-            - identity: "{{ u.identity }}"
-              name: "{{ u.name }}"
+            - name: "{{ u.name }}"
+              identity: "{{ u.identity }}"
             {%- endfor %}
           {%- endif %}
           {%- if managed_reader_users %}
           managedReaderUsers:
             {%- for u in managed_reader_users %}
-            - identity: "{{ u.identity }}"
-              name: "{{ u.name }}"
+            - name: "{{ u.name }}"
+              identity: "{{ u.identity }}"
             {%- endfor %}
           {%- endif %}
           listenersConfig:
@@ -103,13 +103,11 @@ spec:
                     port: 8443
           nifiProperties:
             overrideConfigs: |
-              nifi.cluster.leader.election.implementation=KubernetesLeaderElectionManager
-              nifi.cluster.leader.election.kubernetes.lease.prefix={{ name }}
-              nifi.sensitive.props.key=default-sensitive-properties-key-32-chars-long
+              nifi.sensitive.props.key=thisIsABadSensitiveKeyPassword
+              nifi.security.identity.mapping.pattern.dn1=CN=([^,]*)?
+              nifi.security.identity.mapping.value.dn1=$1
+              nifi.security.identity.mapping.transform.dn1=NONE
               nifi.security.needClientAuth=false
-              nifi.security.identity.mapping.pattern.dn=CN=([^,]*)(?:, (?:O|OU)=.*)?
-              nifi.security.identity.mapping.value.dn=$1
-              nifi.security.identity.mapping.transform.dn=NONE
               nifi.flow.configuration.file=/opt/nifi/nifi-current/data/flow.json.gz
               nifi.flow.configuration.archive.dir=/opt/nifi/nifi-current/data/archive
               nifi.database.directory=/opt/nifi/nifi-current/data/database_repository
