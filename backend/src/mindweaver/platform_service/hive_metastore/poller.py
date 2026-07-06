@@ -179,9 +179,9 @@ class HiveMetastorePoller:
                 )
                 if ice_np:
                     state.iceberg_uri = (
-                        f"http://{cluster_nodes[0]['ipv4']}:{ice_np['node_port']}"
+                        f"http://{cluster_nodes[0]['ipv4']}:{ice_np['node_port']}/iceberg"
                     )
                 else:
-                    state.iceberg_uri = f"http://{self.model.name}-iceberg.{namespace}.svc.cluster.local:9001"
+                    state.iceberg_uri = f"http://{self.model.name}-iceberg.{namespace}.svc.cluster.local:9001/iceberg"
 
         state.last_heartbeat = ts_now()

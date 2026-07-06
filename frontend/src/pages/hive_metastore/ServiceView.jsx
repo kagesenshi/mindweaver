@@ -85,7 +85,7 @@ const ServiceView = ({
             if (selectedPlatform.iceberg_enabled) {
                 endpoints.push({
                     title: 'Iceberg REST',
-                    code: `http://${selectedPlatform.name}-iceberg.${platformState.extra_data.namespace}.svc.cluster.local:${selectedPlatform.iceberg_port}`,
+                    code: `http://${selectedPlatform.name}-iceberg.${platformState.extra_data.namespace}.svc.cluster.local:9001/iceberg`,
                     description: 'REST Catalog endpoint for Iceberg clients.'
                 });
             }
