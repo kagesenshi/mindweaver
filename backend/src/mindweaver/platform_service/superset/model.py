@@ -11,9 +11,9 @@ from typing import Optional, Any
 
 class SupersetRoleMapping(BaseModel):
     """
-    Mapping of external identity to Superset role.
+    Mapping of LDAP group DN or OIDC group to Superset role.
     """
-    entity: str
+    entity: str = Field(description="LDAP group DN (e.g. cn=group,ou=groups,dc=example,dc=com) or OIDC group name")
     role: str
 
     @field_validator("role")
@@ -53,7 +53,11 @@ class SupersetPlatform(PlatformBase, table=True):
     trino_ids: list[int] = Field(default_factory=list, sa_type=JSONType())
 
     # Auth Role Mapping (OIDC/LDAP to Superset)
-    auth_role_mapping: list[dict] = Field(default_factory=list, sa_type=JSONType())
+    auth_role_mapping: list[dict] = Field(
+        default_factory=list,
+        sa_type=JSONType(),
+        description="Mapping of LDAP group DNs (e.g. cn=group,ou=groups,dc=example,dc=com) or OIDC groups to Superset roles."
+    )
 
     # Resource configuration
     cpu_request: float = Field(default=0.5)
