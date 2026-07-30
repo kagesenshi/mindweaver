@@ -139,6 +139,8 @@ async def test_hms_template_rendering(mock_service_dependencies):
     assert vars["s3_endpoint_url"] == "http://minio:9000"
     assert vars["aws_access_key_id"] == "access"
     assert vars["aws_secret_access_key"] == "secret"
+    assert vars["chart_repo"] == "ghcr.io/kagesenshi/mindweaver/charts"
+    assert vars["chart_name"] == "hive-metastore"
 
     # Check template rendering logic (basic markers)
     import os

@@ -32,6 +32,19 @@ import yaml
 logger = logging.getLogger(__name__)
 
 
+def normalize_argocd_chart_source(repo: str, chart: str) -> tuple[str, str]:
+    """Return an Argo CD-compatible Helm chart repository and chart name."""
+    if not repo.startswith("oci://"):
+        return repo, chart
+
+    normalized_repo = repo.removeprefix("oci://").rstrip("/")
+    chart_suffix = f"/{chart.strip('/')}" if chart else ""
+    if chart_suffix and normalized_repo.endswith(chart_suffix):
+        normalized_repo = normalized_repo[: -len(chart_suffix)]
+
+    return normalized_repo, chart
+
+
 class PlatformStateBase(Base):
     """Base class for platform deployment status tracking"""
 
@@ -714,7 +727,10 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
         """
         project = await self.project(model)
         if hasattr(self.session, "_mock_name") or "mock" in type(self.session).__name__.lower():
-            return default_repo, default_chart, default_version
+            return (
+                *normalize_argocd_chart_source(default_repo, default_chart),
+                default_version,
+            )
 
         if project.stack_id:
             from mindweaver.service.stack.model import Stack
@@ -725,9 +741,17 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
             if stack:
                 repo, chart, version = stack.get_chart_for_component(component_name, chart_key)
                 if repo or chart or version:
-                    return repo or default_repo, chart or default_chart, version or default_version
+                    return (
+                        *normalize_argocd_chart_source(
+                            repo or default_repo, chart or default_chart
+                        ),
+                        version or default_version,
+                    )
 
-        return default_repo, default_chart, default_version
+        return (
+            *normalize_argocd_chart_source(default_repo, default_chart),
+            default_version,
+        )
 
     async def resolve_chart_version(
         self,
