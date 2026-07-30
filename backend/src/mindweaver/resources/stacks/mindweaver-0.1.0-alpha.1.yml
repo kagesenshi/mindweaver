@@ -39,11 +39,11 @@ configuration:
         main:
           repo: https://github.com/kagesenshi/mindweaver.git
           chart: charts/kafka
-          version: "0.1.0"
+          version: main
       images:
         main:
-          image: apache/kafka
-          tag: "4.0.0-rev.0"
+          image: quay.io/strimzi/kafka
+          tag: "0.41.0-kafka-3.7.0"
 
     superset:
       charts:

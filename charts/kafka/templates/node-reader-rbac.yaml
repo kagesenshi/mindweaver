@@ -1,0 +1,26 @@
+# SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
+# SPDX-License-Identifier: AGPLv3+
+
+# Strimzi's Kafka init container reads its Kubernetes Node to determine the
+# advertised address for the chart's NodePort listener.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Values.fullnameOverride }}-node-reader
+rules:
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ .Values.fullnameOverride }}-node-reader
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ .Values.fullnameOverride }}-node-reader
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.fullnameOverride }}-kafka
+    namespace: {{ .Release.Namespace }}

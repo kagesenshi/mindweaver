@@ -1,12 +1,35 @@
 # SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
 # SPDX-License-Identifier: AGPLv3+
 
+from pathlib import Path
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
 from fastapi import Request
 from pydantic import ValidationError
 from mindweaver.platform_service.kafka import KafkaPlatform, KafkaPlatformService
 from mindweaver.fw.model import AsyncSession
+
+
+def test_kafka_chart_grants_node_reader_for_nodeport_listener():
+    test_file = Path(__file__).resolve()
+    candidate_paths = [
+        root / "charts" / "kafka" / "templates" / "node-reader-rbac.yaml"
+        for root in (test_file.parents[2], test_file.parents[3])
+    ]
+    template_path = next(
+        (path for path in candidate_paths if path.exists()),
+        None,
+    )
+
+    assert template_path is not None, (
+        "Kafka node-reader RBAC template was not found"
+    )
+    template = template_path.read_text(encoding="utf-8")
+
+    assert 'resources: ["nodes"]' in template
+    assert 'verbs: ["get"]' in template
+    assert "name: {{ .Values.fullnameOverride }}-kafka" in template
+    assert "namespace: {{ .Release.Namespace }}" in template
 
 
 @pytest.fixture
@@ -109,6 +132,9 @@ async def test_kafka_template_vars(mock_service_dependencies):
     assert vars["namespace"] == "test-ns"
     assert vars["replica_count"] == 3
     assert vars["storage_size"] == "20Gi"
+    assert vars["image"] == "quay.io/strimzi/kafka"
+    assert vars["image_tag"] == "0.41.0-kafka-3.7.0"
+    assert vars["chart_version"] == "main"
 
 
 @pytest.mark.asyncio
@@ -133,6 +159,9 @@ async def test_kafka_render_manifests(mock_service_dependencies):
     assert "replicaCount: 3" in manifests
     assert "charts/kafka" in manifests
     assert "github.com/kagesenshi/mindweaver" in manifests
+    assert "targetRevision: main" in manifests
+    assert 'repository: "quay.io/strimzi/kafka"' in manifests
+    assert 'tag: "0.41.0-kafka-3.7.0"' in manifests
     assert "size: \"20Gi\"" in manifests
     assert "namespace: test-ns" in manifests
 
