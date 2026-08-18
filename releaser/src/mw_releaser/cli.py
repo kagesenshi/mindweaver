@@ -7,6 +7,7 @@ from .hms import HMSReleaser
 from .superset import SupersetReleaser
 from .trino import TrinoReleaser
 from .airflow import AirflowReleaser
+from .kafka import KafkaReleaser
 
 
 @click.group()
@@ -58,6 +59,12 @@ def trino():
 @cli.group()
 def airflow():
     """Apache Airflow release commands"""
+    pass
+
+
+@cli.group()
+def kafka():
+    """Apache Kafka release commands"""
     pass
 
 
@@ -123,6 +130,7 @@ create_command(hms, HMSReleaser)
 create_command(superset, SupersetReleaser)
 create_command(trino, TrinoReleaser)
 create_command(airflow, AirflowReleaser)
+create_command(kafka, KafkaReleaser)
 
 
 def main():

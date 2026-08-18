@@ -37,12 +37,12 @@ configuration:
     kafka:
       charts:
         main:
-          repo: https://github.com/kagesenshi/mindweaver.git
-          chart: charts/kafka
+          repo: ghcr.io/kagesenshi/mindweaver/charts
+          chart: kafka
           version: "0.1.0"
       images:
         main:
-          image: apache/kafka
+          image: ghcr.io/kagesenshi/mindweaver/kafka
           tag: "4.0.0-rev.0"
 
     superset:
@@ -58,7 +58,7 @@ configuration:
     hive_metastore:
       charts:
         main:
-          repo: oci://ghcr.io/kagesenshi/mindweaver/charts/hive-metastore
+          repo: ghcr.io/kagesenshi/mindweaver/charts/hive-metastore
           chart: hive-metastore
           version: "0.1.8"
       images:
