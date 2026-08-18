@@ -104,9 +104,15 @@ spec:
           nifiProperties:
             overrideConfigs: |
               nifi.sensitive.props.key=thisIsABadSensitiveKeyPassword
-              nifi.security.identity.mapping.pattern.dn1=CN=([^,]*)?
+              nifi.security.identity.mapping.pattern.dn1=^CN=([^,]*)(?:,.*)?$
               nifi.security.identity.mapping.value.dn1=$1
               nifi.security.identity.mapping.transform.dn1=NONE
+              nifi.security.identity.mapping.pattern.dn2=^cn=([^,]*)(?:,.*)?$
+              nifi.security.identity.mapping.value.dn2=$1
+              nifi.security.identity.mapping.transform.dn2=NONE
+              nifi.security.identity.mapping.pattern.dn3=^uid=([^,]*)(?:,.*)?$
+              nifi.security.identity.mapping.value.dn3=$1
+              nifi.security.identity.mapping.transform.dn3=NONE
               nifi.security.needClientAuth=false
               nifi.flow.configuration.file=/opt/nifi/nifi-current/data/flow.json.gz
               nifi.flow.configuration.archive.dir=/opt/nifi/nifi-current/data/archive

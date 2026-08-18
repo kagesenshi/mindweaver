@@ -7,6 +7,19 @@ from mindweaver.platform_service.base import PlatformBase, PlatformStateBase
 from pydantic import model_validator
 import secrets
 from typing import Optional, Any
+import json
+
+
+
+def get_default_rules() -> dict[str, Any]:
+    return {
+        "catalogs": [
+            {
+                "catalog": ".*",
+                "allow": "all"
+            }
+        ]
+    }
 
 
 class TrinoPlatform(PlatformBase, table=True):
@@ -40,6 +53,20 @@ class TrinoPlatform(PlatformBase, table=True):
         if self.mem_request > self.mem_limit:
             raise ValueError("Memory request cannot be greater than Memory limit")
         return self
+
+    rules: Optional[dict[str, Any]] = Field(default_factory=get_default_rules, sa_type=JSONType())
+
+    @model_validator(mode="before")
+    @classmethod
+    def parse_rules(cls, data: Any) -> Any:
+        if isinstance(data, dict) and "rules" in data:
+            rules_val = data["rules"]
+            if isinstance(rules_val, str) and rules_val.strip():
+                try:
+                    data["rules"] = json.loads(rules_val)
+                except Exception as e:
+                    raise ValueError(f"rules must be valid JSON: {e}")
+        return data
 
     @model_validator(mode="after")
     def validate_catalogs(self) -> "TrinoPlatform":

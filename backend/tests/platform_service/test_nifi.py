@@ -144,10 +144,10 @@ async def test_nifi_render_manifests(mock_service_dependencies):
     # Managed users mapping assertions
     assert "managedAdminUsers:" in manifests
     assert "identity: \"admin@example.com\"" in manifests
-    assert "name: \"admin\"" in manifests
+    assert "name: \"admin-1\"" in manifests
     assert "managedReaderUsers:" in manifests
     assert "identity: \"CN=john.doe,OU=Users,O=Example\"" in manifests
-    assert "name: \"john.doe\"" in manifests
+    assert "name: \"reader-1\"" in manifests
 
 
 @pytest.mark.asyncio

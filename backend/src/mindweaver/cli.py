@@ -395,6 +395,16 @@ def handle_worker(args: argparse.Namespace):
         subprocess.run(cmd)
 
 
+def handle_queue_flush(args: argparse.Namespace):
+    """
+    Flush/purge all Celery task queues.
+    """
+    from mindweaver.celery_app import app
+    logger.info("Purging Celery task queues...")
+    purged_count = app.control.purge()
+    logger.info(f"Purged {purged_count} tasks from the queue.")
+
+
 def get_parser() -> argparse.ArgumentParser:
     """
     Construct argument parser
@@ -519,6 +529,16 @@ def get_parser() -> argparse.ArgumentParser:
         help="Path to directory containing stack YAML files",
     )
     stack_import_cmd.set_defaults(handler=handle_stack_import)
+
+    # queue
+    queue_cmd = subparsers.add_parser("queue", help="Queue operations")
+    queue_cmd_subparser = queue_cmd.add_subparsers(dest="queue_command")
+
+    # queue flush
+    queue_flush_cmd = queue_cmd_subparser.add_parser(
+        "flush", help="Flush the Celery task queue"
+    )
+    queue_flush_cmd.set_defaults(handler=handle_queue_flush)
 
     return parser
 

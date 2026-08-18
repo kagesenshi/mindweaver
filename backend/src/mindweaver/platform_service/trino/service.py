@@ -13,6 +13,8 @@ import random
 import string
 import yaml
 import jinja2 as j2
+import json
+
 
 from typing import Any, Optional, Literal
 from kubernetes import client, config
@@ -117,6 +119,13 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
                 "endpoint": "/api/v1/database-sources",
                 "field": "id",
                 "multiselect": True,
+            },
+            "rules": {
+                "order": 30,
+                "label": "Access Control Rules",
+                "type": "json",
+                "column_span": 2,
+                "placeholder": '{\n  "catalogs": [\n    {\n      "user": "admin",\n      "catalog": ".*",\n      "allow": "all"\n    }\n  ]\n}',
             },
         }
 
@@ -358,6 +367,34 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
         vars["jwt_key_file"] = f"http://{project.name}-dex.{vars['namespace']}.svc.cluster.local:5556/dex/keys"
 
         vars["preferred_catalog"] = await self.get_preferred_catalog(model)
+
+        # Resolve Access Control Rules (rules.json)
+        rules = dict(model.rules) if model.rules else {}
+        impersonation_rules = rules.get("impersonation", [])
+        if not isinstance(impersonation_rules, list):
+            impersonation_rules = [impersonation_rules]
+        else:
+            # Copy to avoid mutating the original dict/list in-place if it is stored in model
+            impersonation_rules = list(impersonation_rules)
+
+        automated_rule = {
+            "originalUser": f"CN=.*\\.{vars['namespace']}\\.svc\\.cluster\\.local",
+            "newUser": ".*",
+            "allow": True
+        }
+
+        # Check if automated rule is already present in impersonation_rules
+        is_already_present = False
+        for rule in impersonation_rules:
+            if isinstance(rule, dict) and rule.get("originalUser") == automated_rule["originalUser"] and rule.get("newUser") == automated_rule["newUser"] and rule.get("allow") == automated_rule["allow"]:
+                is_already_present = True
+                break
+
+        if not is_already_present:
+            impersonation_rules.append(automated_rule)
+
+        rules["impersonation"] = impersonation_rules
+        vars["rules_json"] = json.dumps(rules, indent=2)
 
         return vars
 

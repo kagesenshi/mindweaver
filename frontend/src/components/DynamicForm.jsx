@@ -48,6 +48,7 @@ const DynamicForm = ({
                 setSchema(data);
 
                 // Merge initial data with defaults from schema if needed
+                let initialFormValues = { ...initialData };
                 if (mode === 'create') {
                     const defaults = {};
                     const properties = data.jsonschema.properties || {};
@@ -69,7 +70,32 @@ const DynamicForm = ({
                             defaults[key] = `${serviceName}-${timeHash}${randPart}`;
                         }
                     });
-                    setFormData(prev => ({ ...defaults, ...prev }));
+
+                    if (data.widgets) {
+                        Object.entries(data.widgets).forEach(([key, widget]) => {
+                            if (widget.type === 'json') {
+                                if (defaults[key] !== undefined && defaults[key] !== null && typeof defaults[key] === 'object') {
+                                    defaults[key] = JSON.stringify(defaults[key], null, 2);
+                                }
+                                if (initialFormValues[key] !== undefined && initialFormValues[key] !== null && typeof initialFormValues[key] === 'object') {
+                                    initialFormValues[key] = JSON.stringify(initialFormValues[key], null, 2);
+                                }
+                            }
+                        });
+                    }
+
+                    setFormData(prev => ({ ...defaults, ...initialFormValues, ...prev }));
+                } else {
+                    if (data.widgets) {
+                        Object.entries(data.widgets).forEach(([key, widget]) => {
+                            if (widget.type === 'json' && initialFormValues[key] !== undefined && initialFormValues[key] !== null) {
+                                if (typeof initialFormValues[key] === 'object') {
+                                    initialFormValues[key] = JSON.stringify(initialFormValues[key], null, 2);
+                                }
+                            }
+                        });
+                    }
+                    setFormData(initialFormValues);
                 }
 
                 // Fetch relationship options
@@ -172,6 +198,31 @@ const DynamicForm = ({
                     cleanData[key] = parseFloat(cleanData[key]);
                 }
             });
+
+            if (schema.widgets) {
+                let hasJsonErrors = false;
+                const newFieldErrors = {};
+                Object.entries(schema.widgets).forEach(([key, widget]) => {
+                    if (widget.type === 'json' && cleanData[key] !== undefined && cleanData[key] !== null) {
+                        const strVal = cleanData[key];
+                        if (typeof strVal === 'string' && strVal.trim()) {
+                            try {
+                                cleanData[key] = JSON.parse(strVal);
+                            } catch (e) {
+                                newFieldErrors[key] = `Invalid JSON: ${e.message}`;
+                                hasJsonErrors = true;
+                            }
+                        } else if (typeof strVal === 'string' && !strVal.trim()) {
+                            cleanData[key] = null;
+                        }
+                    }
+                });
+                if (hasJsonErrors) {
+                    setFieldErrors(newFieldErrors);
+                    setSaving(false);
+                    return;
+                }
+            }
         }
 
         try {
@@ -312,6 +363,23 @@ const DynamicForm = ({
                     onChange={handleChange}
                     darkMode={darkMode}
                     isImmutable={isImmutable}
+                />
+            );
+        }
+
+        // -- Widget Type: JSON (renders as a textarea, but handled specially) --
+        if (widget.type === 'json') {
+            return (
+                <TextAreaWidget
+                    name={name}
+                    label={label}
+                    widget={widget}
+                    value={formData[name]}
+                    onChange={handleChange}
+                    isImmutable={isImmutable}
+                    disabledBg={disabledBg}
+                    inputBg={inputBg}
+                    hasError={hasError}
                 />
             );
         }

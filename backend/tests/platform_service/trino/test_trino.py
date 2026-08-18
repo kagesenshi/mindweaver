@@ -845,4 +845,67 @@ async def test_trino_jwt_rendering(mock_service_dependencies):
     assert "-Dlog.enable-console=true" in values["worker"]["additionalJVMConfig"]
 
 
+@pytest.mark.asyncio
+async def test_trino_configurable_rules(mock_service_dependencies):
+    """Test that custom rules can be configured and automated rule is merged"""
+    import json
+    request, session = mock_service_dependencies
+    svc = TrinoPlatformService(request, session)
+    svc._resolve_namespace = AsyncMock(return_value="trino-ns")
+    
+    # Mock project
+    mock_project = MagicMock(ldap_config_id=None)
+    mock_project.name = "test-project"
+    svc.project = AsyncMock(return_value=mock_project)
+
+    # 1. Test model validator parses rules as JSON string
+    model = TrinoPlatform.model_validate(
+        {
+            "name": "trino-test",
+            "title": "Trino Test",
+            "project_id": 1,
+            "database_source_ids": [1],
+            "rules": '{"catalogs": [{"catalog": "mysql", "allow": "all"}]}'
+        }
+    )
+    assert model.rules == {"catalogs": [{"catalog": "mysql", "allow": "all"}]}
+
+    # 1.5 Test that rules has a default when omitted
+    model_default = TrinoPlatform.model_validate(
+        {
+            "name": "trino-test-default",
+            "title": "Trino Test Default",
+            "project_id": 1,
+            "database_source_ids": [1],
+        }
+    )
+    assert model_default.rules == {"catalogs": [{"catalog": ".*", "allow": "all"}]}
+
+    # Mock DatabaseSourceService
+    mock_ds_svc = AsyncMock()
+    mock_ds_model = MagicMock()
+    mock_ds_model.name = "mysql-ds"
+    mock_ds_model.engine = "mysql"
+    mock_ds_model.host = "mysql-host"
+    mock_ds_model.port = 3306
+    mock_ds_model.database = "db"
+    mock_ds_model.login = "user"
+    mock_ds_model.password = "pass"
+    mock_ds_model.parameters = {}
+    mock_ds_svc.get.return_value = mock_ds_model
+
+    with patch("mindweaver.platform_service.trino.service.DatabaseSourceService.get_service", AsyncMock(return_value=mock_ds_svc)), \
+         patch("mindweaver.platform_service.trino.service.decrypt_password", lambda x: x):
+        vars = await svc.template_vars(model)
+        
+    rules = json.loads(vars["rules_json"])
+    
+    # Assert custom rules are preserved
+    assert rules["catalogs"][0]["catalog"] == "mysql"
+    # Assert automated impersonation rule is appended
+    assert len(rules["impersonation"]) == 1
+    assert rules["impersonation"][0]["originalUser"] == "CN=.*\\.trino-ns\\.svc\\.cluster\\.local"
+
+
+
 
