@@ -6,7 +6,7 @@ fullnameOverride: "kafka"
 image:
   repository: ghcr.io/kagesenshi/mindweaver/kafka
   pullPolicy: Always
-  tag: "4.0.0-rev.0"
+  tag: "4.0.0-rev.1"
 
 controller:
   replicaCount: 3
