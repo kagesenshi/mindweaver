@@ -119,3 +119,10 @@ configuration:
           repo: https://charts.dexidp.io
           chart: dex
           version: "0.24.1"
+    doris-operator:
+      charts:
+        main:
+          repo: https://charts.selectdb.com
+          chart: doris-operator
+          version: "25.8.0"
+

@@ -555,6 +555,15 @@ class SyncCoreIntegrationsAction(InstallArgoCDAction):
         status.nifikop_installed = True
         await self.session.flush()
 
+        # 9. Deploy/update Doris Operator Application manifest
+        logger.info("Sync: Deploying/updating Doris Operator...")
+        from .actions import InstallDorisOperatorAction
+        action_doris = InstallDorisOperatorAction(self.model, self.svc)
+        action_doris.session = self.session
+        await action_doris.run()
+        status.doris_operator_installed = True
+        await self.session.flush()
+
 
 @K8sClusterService.register_action("install_kafka_operator")
 class InstallKafkaOperatorAction(InstallArgoCDAction):
@@ -648,3 +657,52 @@ class InstallNifikopAction(InstallArgoCDAction):
             chart_name=chart_name,
             chart_version=chart_version,
         )
+
+
+@K8sClusterService.register_action("install_doris_operator")
+class InstallDorisOperatorAction(InstallArgoCDAction):
+    """Action to install Doris Operator on the cluster."""
+
+    async def available(self) -> bool:
+        """Check if Doris Operator action is available (not installed yet)"""
+        stmt = select(K8sClusterStatus).where(
+            K8sClusterStatus.k8s_cluster_id == self.model.id
+        )
+        result = await self.session.exec(stmt)
+        status = result.one_or_none()
+        return not (status and status.doris_operator_installed)
+
+    async def __call__(self, **kwargs):
+        """Call method to queue Doris Operator installation task asynchronously"""
+        from mindweaver.tasks.k8s_cluster_status import install_doris_operator_task
+
+        stmt = select(K8sClusterStatus).where(
+            K8sClusterStatus.k8s_cluster_id == self.model.id
+        )
+        result = await self.session.exec(stmt)
+        status_model = result.one_or_none()
+        if not status_model:
+            status_model = K8sClusterStatus(k8s_cluster_id=self.model.id)
+            self.session.add(status_model)
+        status_model.doris_operator_installed = True
+        await self.session.flush()
+
+        install_doris_operator_task.delay(self.model.id)
+        return {
+            "status": "success",
+            "message": "Doris Operator installation triggered and status being refreshed.",
+        }
+
+    async def run(self):
+        """Install Doris Operator to the cluster using ArgoCD Application"""
+        logger.info(f"Installing Doris Operator for cluster {self.model.name}")
+        chart_repo, chart_name, chart_version = await self.resolve_integration_chart(
+            "doris-operator", "main", "https://charts.selectdb.com", "doris-operator", "25.8.0"
+        )
+        await self._apply_template(
+            "doris-operator.yml.j2",
+            chart_repo=chart_repo,
+            chart_name=chart_name,
+            chart_version=chart_version,
+        )
+

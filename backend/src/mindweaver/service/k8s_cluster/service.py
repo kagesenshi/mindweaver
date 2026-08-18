@@ -282,6 +282,39 @@ class K8sClusterService(Service[K8sCluster]):
                 except Exception as e:
                     logger.warning(f"Failed to check NiFiKop Operator presence: {e}")
 
+                # Check Doris Operator
+                doris_operator_installed = False
+                doris_operator_version = None
+                try:
+                    if secrets:
+                        for secret in secrets.items:
+                            if secret.metadata.name.startswith("sh.helm.release.v1.doris-operator") or secret.metadata.name.startswith("sh.helm.release.v1.selectdb-doris-operator"):
+                                doris_operator_installed = True
+                                break
+                    if not doris_operator_installed:
+                        pods = core_v1.list_pod_for_all_namespaces(
+                            label_selector="app.kubernetes.io/name=doris-operator"
+                        )
+                        if not pods.items:
+                            pods = core_v1.list_pod_for_all_namespaces(
+                                label_selector="control-plane=doris-operator"
+                            )
+                        if pods.items:
+                            doris_operator_installed = True
+                            doris_operator_version = _get_version(pods.items[0])
+                    else:
+                        pods = core_v1.list_pod_for_all_namespaces(
+                            label_selector="app.kubernetes.io/name=doris-operator"
+                        )
+                        if not pods.items:
+                            pods = core_v1.list_pod_for_all_namespaces(
+                                label_selector="control-plane=doris-operator"
+                            )
+                        if pods.items:
+                            doris_operator_version = _get_version(pods.items[0])
+                except Exception as e:
+                    logger.warning(f"Failed to check Doris Operator presence: {e}")
+
                 return {
                     "k8s_version": k8s_version,
                     "node_count": node_count,
@@ -301,6 +334,8 @@ class K8sClusterService(Service[K8sCluster]):
                     "kafka_operator_version": kafka_operator_version,
                     "nifikop_installed": nifikop_installed,
                     "nifikop_version": nifikop_version,
+                    "doris_operator_installed": doris_operator_installed,
+                    "doris_operator_version": doris_operator_version,
                     "node_ips": node_ips,
                 }
 
@@ -336,6 +371,8 @@ class K8sClusterService(Service[K8sCluster]):
             status_model.kafka_operator_version = info["kafka_operator_version"]
             status_model.nifikop_installed = info["nifikop_installed"]
             status_model.nifikop_version = info["nifikop_version"]
+            status_model.doris_operator_installed = info["doris_operator_installed"]
+            status_model.doris_operator_version = info["doris_operator_version"]
             status_model.node_ips = info["node_ips"]
             status_model.last_update = ts_now()
             status_model.message = None
