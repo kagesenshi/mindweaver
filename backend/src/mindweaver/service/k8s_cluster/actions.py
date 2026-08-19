@@ -602,7 +602,7 @@ class InstallKafkaOperatorAction(InstallArgoCDAction):
         """Install Strimzi Kafka Operator to the cluster using ArgoCD Application"""
         logger.info(f"Installing Kafka Operator for cluster {self.model.name}")
         chart_repo, chart_name, chart_version = await self.resolve_integration_chart(
-            "kafka-operator", "main", "https://strimzi.io/charts/", "strimzi-kafka-operator", "0.41.0"
+            "kafka-operator", "main", "https://strimzi.io/charts/", "strimzi-kafka-operator", "0.50.1"
         )
         await self._apply_template(
             "kafka-operator.yml.j2",

@@ -11,8 +11,8 @@ metadata:
     strimzi.io/node-pools: enabled
 spec:
   kafka:
-    version: 3.7.0
-    metadataVersion: 3.7-IV0
+    version: 4.0.0
+    metadataVersion: 4.0-IV0
     {{- if .Values.image }}
     image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
     {{- end }}
@@ -49,7 +49,7 @@ spec:
       transaction.state.log.min.isr: 1
       default.replication.factor: {{ .Values.controller.replicaCount }}
       min.insync.replicas: 1
-      inter.broker.protocol.version: "3.7"
+      inter.broker.protocol.version: "4.0"
     resources:
       requests:
         cpu: "{{ .Values.controller.resources.requests.cpu }}"
