@@ -39,11 +39,11 @@ configuration:
         main:
           repo: ghcr.io/kagesenshi/mindweaver/charts
           chart: kafka
-          version: "0.1.0"
+          version: "0.1.2"
       images:
         main:
           image: ghcr.io/kagesenshi/mindweaver/kafka
-          tag: "4.0.0-rev.0"
+          tag: "4.0.0-rev.1"
 
     superset:
       charts:
@@ -106,7 +106,7 @@ configuration:
         main:
           repo: https://strimzi.io/charts/
           chart: strimzi-kafka-operator
-          version: "0.41.0"
+          version: "0.50.1"
     nifikop-operator:
       charts:
         main:

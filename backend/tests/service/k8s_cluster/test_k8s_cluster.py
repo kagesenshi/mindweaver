@@ -72,8 +72,8 @@ def mock_k8s():
 
         # Mock Pods (Kafka Operator version)
         mock_pod_kafka = MagicMock()
-        mock_pod_kafka.metadata.labels = {"app.kubernetes.io/version": "v0.41.0"}
-        mock_pod_kafka.spec.containers = [MagicMock(image="strimzi/operator:v0.41.0")]
+        mock_pod_kafka.metadata.labels = {"app.kubernetes.io/version": "v0.50.1"}
+        mock_pod_kafka.spec.containers = [MagicMock(image="strimzi/operator:v0.50.1")]
 
         # Mock Pods (NiFiKop Operator version)
         mock_pod_nifikop = MagicMock()
@@ -176,7 +176,7 @@ def test_poll_k8s_cluster_status(client: TestClient, mock_k8s):
     assert data["envoy_gateway_installed"] is True
     assert data["envoy_gateway_version"] == "v1.0.0"
     assert data["kafka_operator_installed"] is True
-    assert data["kafka_operator_version"] == "v0.41.0"
+    assert data["kafka_operator_version"] == "v0.50.1"
     assert data["nifikop_installed"] is True
     assert data["nifikop_version"] == "v1.17.0"
 
@@ -580,7 +580,7 @@ async def test_install_kafka_operator():
         assert "name: kafka-operator" in manifest
         assert "repoURL: https://strimzi.io/charts/" in manifest
         assert "chart: strimzi-kafka-operator" in manifest
-        assert "targetRevision: 0.41.0" in manifest
+        assert "targetRevision: 0.50.1" in manifest
 
 
 @pytest.mark.asyncio
