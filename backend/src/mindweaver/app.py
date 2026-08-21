@@ -148,6 +148,7 @@ async def mindweaver_exception_handler(request: fastapi.Request, exc: MindWeaver
 @app.exception_handler(Exception)
 async def general_exception_handler(request: fastapi.Request, exc: Exception):
     # Handle any other unexpected exceptions
+    logger.exception("An unexpected error occurred:")
     error_resp = Error(status="error", type="server_error", detail=str(exc))
     return JSONResponse(status_code=500, content=error_resp.model_dump())
 
