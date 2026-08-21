@@ -90,11 +90,11 @@ docker compose up --profile=app up -d
 This will start:
 *   PostgreSQL on `localhost:5432` (User: `postgres`, Password: `password`, DB: `mindweaver`)
 *   Redis on `localhost:6379`
-*   Mindweaver Backend API on `localhost:8000`
-*   Mindweaver Frontend UI on `localhost:3000`
+*   Mindweaver Development Proxy on `http://localhost:8080` (Nginx proxy routing to both frontend and backend)
 
-The backend and frontend is running with local source code mounted into the container for development
-and supports hot-reloading. 
+You should access the application via the development proxy at **`http://localhost:8080`** rather than connecting to the frontend port (`3000`) or backend port (`8000`) directly.
+
+The backend and frontend are running with local source code mounted into the container for development and support hot-reloading. 
 
 ### 2. Application Setup
 

@@ -157,11 +157,24 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - VITE_API_URL=http://localhost:8000/api/v1
+      - VITE_API_URL=/api/v1
     volumes:
       - ./frontend:/app
       - /app/node_modules
     depends_on:
+      web:
+        condition: service_started
+
+  proxy:
+    profiles: ["app"]
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./container/nginx.dev.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      frontend:
+        condition: service_started
       web:
         condition: service_started
 
