@@ -11,6 +11,7 @@ RUN npm run build
 FROM python:3.13-slim AS backend-base
 COPY --from=ghcr.io/astral-sh/uv:0.12.5 /uv /usr/local/bin/uv
 COPY --from=alpine/helm:3.16.1 /usr/bin/helm /usr/local/bin/helm
+COPY --from=bitnami/kubectl:1.31.0 /opt/bitnami/kubectl/bin/kubectl /usr/local/bin/kubectl
 
 WORKDIR /app
 ENV PYTHONUNBUFFERED=1
