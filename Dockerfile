@@ -10,6 +10,7 @@ RUN npm run build
 # Backend Base & Final Image
 FROM python:3.13-slim AS backend-base
 COPY --from=ghcr.io/astral-sh/uv:0.12.5 /uv /usr/local/bin/uv
+COPY --from=alpine/helm:3.16.1 /usr/bin/helm /usr/local/bin/helm
 
 WORKDIR /app
 ENV PYTHONUNBUFFERED=1
