@@ -112,6 +112,8 @@ async def validation_exception_handler(
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: fastapi.Request, exc: HTTPException):
     # Handle standard HTTP exceptions
+    if exc.status_code >= 500:
+        logger.exception("An unexpected server error occurred:")
     # If exc.detail is a list (like from some of our custom exceptions), inspect the first item
     detail_msg = exc.detail
     if isinstance(detail_msg, list) and len(detail_msg) > 0:
