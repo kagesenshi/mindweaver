@@ -50,6 +50,9 @@ from contextlib import asynccontextmanager
 
 @asynccontextmanager
 async def lifespan(app: fastapi.FastAPI):
+    from mindweaver.crypto import _get_fernet_instance
+    _get_fernet_instance()
+
     import asyncio
     from mindweaver.tasks.name_tracker import scan_and_clean_names
     asyncio.create_task(scan_and_clean_names())

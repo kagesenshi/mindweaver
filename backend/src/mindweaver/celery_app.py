@@ -40,5 +40,17 @@ app.conf.update(
     },
 )
 
+from celery.signals import celeryd_init, beat_init
+
+@celeryd_init.connect
+def check_fernet_on_worker_init(**kwargs):
+    from mindweaver.crypto import _get_fernet_instance
+    _get_fernet_instance()
+
+@beat_init.connect
+def check_fernet_on_beat_init(**kwargs):
+    from mindweaver.crypto import _get_fernet_instance
+    _get_fernet_instance()
+
 if __name__ == "__main__":
     app.start()
