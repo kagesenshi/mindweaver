@@ -57,7 +57,7 @@ services:
       context: .
       target: backend-base
     image: mindweaver-dev:latest
-    command: uv run mindweaver run --port 8000 --bind 0.0.0.0
+    command: uv run mindweaver run --port 8000 --bind 0.0.0.0 --log-file /var/log/mindweaver.log
     ports:
       - "8000:8000"
     env_file:

@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: AGPLv3+
 
 import argparse
+import copy
 from dataclasses import dataclass
 from alembic.config import Config as AlembicConfig
 from alembic.command import revision, upgrade, downgrade, history
@@ -47,15 +48,65 @@ def _get_default_config_path() -> str:
 class RunArgs(argparse.Namespace):
     port: int
     host: str
+    log_file: str
 
 
 def handle_run(args: RunArgs):
+    log_config = copy.deepcopy(uvicorn.config.LOGGING_CONFIG)
+
+    if args.log_file:
+        log_path = Path(args.log_file).resolve()
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Add file formatters
+        log_config["formatters"]["file_default"] = {
+            "()": "uvicorn.logging.DefaultFormatter",
+            "fmt": "%(asctime)s [%(process)d] %(levelprefix)s %(name)s - %(message)s",
+            "use_colors": False,
+        }
+        log_config["formatters"]["file_access"] = {
+            "()": "uvicorn.logging.AccessFormatter",
+            "fmt": '%(asctime)s [%(process)d] %(levelprefix)s %(client_addr)s - "%(request_line)s" %(status_code)s',
+            "use_colors": False,
+        }
+
+        # Add file handlers
+        log_config["handlers"]["file_default"] = {
+            "class": "logging.FileHandler",
+            "formatter": "file_default",
+            "filename": str(log_path),
+            "encoding": "utf-8",
+        }
+        log_config["handlers"]["file_access"] = {
+            "class": "logging.FileHandler",
+            "formatter": "file_access",
+            "filename": str(log_path),
+            "encoding": "utf-8",
+        }
+
+        # Add handlers to loggers
+        if "uvicorn" in log_config["loggers"]:
+            log_config["loggers"]["uvicorn"]["handlers"].append("file_default")
+        if "uvicorn.access" in log_config["loggers"]:
+            log_config["loggers"]["uvicorn.access"]["handlers"].append("file_access")
+        if "uvicorn.error" in log_config["loggers"]:
+            log_config["loggers"]["uvicorn.error"]["handlers"] = ["default", "file_default"]
+            log_config["loggers"]["uvicorn.error"]["propagate"] = False
+
+        # Add mindweaver logger configuration
+        log_config["loggers"]["mindweaver"] = {
+            "handlers": ["default", "file_default"],
+            "level": "INFO",
+            "propagate": False,
+        }
+
     uvicorn.run(
         "mindweaver.app:app",
         reload=True,
         reload_delay=5,
         host=args.host,
         port=args.port,
+        log_config=log_config,
     )
 
 
@@ -419,6 +470,14 @@ def get_parser() -> argparse.ArgumentParser:
     run_cmd = subparsers.add_parser("run", help="Run the application")
     run_cmd.add_argument("-p", "--port", dest="port", type=int, default=8000)
     run_cmd.add_argument("-b", "--bind", dest="host", type=str, default="127.0.0.1")
+    run_cmd.add_argument(
+        "-l",
+        "--log-file",
+        dest="log_file",
+        type=str,
+        default="logs/mindweaver.log",
+        help="Path to log file",
+    )
     run_cmd.set_defaults(handler=handle_run)
 
     # db
