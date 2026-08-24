@@ -438,7 +438,7 @@ async def test_trino_ldap_rendering(mock_service_dependencies):
     assert vars["ldap"]["ldap.group-auth-pattern"] == "(uid=${USER})"
 
     assert "internal-communication.shared-secret=test-shared-secret" in manifest
-    assert "http-server.authentication.type=PASSWORD,JWT,CERTIFICATE" in manifest
+    assert "http-server.authentication.type=PASSWORD,CERTIFICATE" in manifest
     assert "http-server.authentication.certificate.user-mapping.pattern=.*?(CN=[^,]+).*" in manifest
     assert "additionalConfigFiles:" in manifest
     assert "ldap.properties:" in manifest
@@ -828,17 +828,15 @@ async def test_trino_jwt_rendering(mock_service_dependencies):
         vars = await svc.template_vars(model)
         manifest = await svc.render_manifests(model)
 
-    assert vars["jwt_enabled"] is True
-    assert vars["jwt_key_file"] == "http://myproject-dex.trino-ns.svc.cluster.local:5556/dex/keys"
+    assert vars["jwt_enabled"] is False
+    assert "jwt_key_file" not in vars or vars["jwt_key_file"] is None
 
     docs = list(yaml.safe_load_all(manifest))
     app = next(d for d in docs if d["kind"] == "Application")
     values = yaml.safe_load(app["spec"]["source"]["helm"]["values"])
     
-    assert "http-server.authentication.type=PASSWORD,JWT,CERTIFICATE" in values["server"]["coordinatorExtraConfig"]
-    assert "http-server.authentication.certificate.user-mapping.pattern=.*?(CN=[^,]+).*" in values["server"]["coordinatorExtraConfig"]
-    assert "http-server.authentication.jwt.key-file=http://myproject-dex.trino-ns.svc.cluster.local:5556/dex/keys" in values["server"]["coordinatorExtraConfig"]
-    assert "http-server.authentication.jwt.principal-field=email" in values["server"]["coordinatorExtraConfig"]
+    assert "http-server.authentication.type=PASSWORD,CERTIFICATE" in values["server"]["coordinatorExtraConfig"]
+    assert "http-server.authentication.jwt.key-file=" not in values["server"]["coordinatorExtraConfig"]
     assert "additionalLogProperties" in values
     assert "log.properties" not in values["coordinator"]["additionalConfigFiles"]
     assert "-Dlog.enable-console=true" in values["coordinator"]["additionalJVMConfig"]
