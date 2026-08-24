@@ -98,6 +98,21 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
         )
         return result.one_or_none()
 
+    def populate_trusted_cert_init_container(self, model: T, vars: dict) -> dict:
+        """Injects trusted_cert_init_container variable into the vars dict."""
+        try:
+            import jinja2
+            if "image" not in vars:
+                vars["image"] = getattr(model, "image", "latest")
+            templates_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "resources", "templates")
+            tc_env = jinja2.Environment(loader=jinja2.FileSystemLoader(templates_dir))
+            tc_template = tc_env.get_template("trusted_cert_pod.yml.j2")
+            vars["trusted_cert_init_container"] = tc_template.render(**vars)
+        except Exception as e:
+            logger.warning(f"Failed to render trusted_cert_init_container: {e}")
+            vars["trusted_cert_init_container"] = ""
+        return vars
+
     async def template_vars(self, model: T) -> dict:
         """returns the variables to be used in the template"""
         vars = model.model_dump()
@@ -118,6 +133,7 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
         except Exception as e:
             logger.warning(f"Failed to fetch trusted certs for template_vars: {e}")
             vars["trusted_certs"] = []
+        self.populate_trusted_cert_init_container(model, vars)
         return vars
 
     async def render_manifests(self, model: T) -> str:
@@ -156,6 +172,7 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
             except Exception as e:
                 logger.warning(f"Failed to fetch trusted certs in render_manifests: {e}")
                 vars["trusted_certs"] = []
+        self.populate_trusted_cert_init_container(model, vars)
         project = await self.project(model)
         vars["project_name"] = project.name
         vars["project_title"] = sanitize_label_value(project.title)

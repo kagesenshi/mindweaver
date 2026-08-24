@@ -89,70 +89,9 @@ spec:
         
         initContainers:
           coordinator:
-            - name: prepare-tls
-              image: "{{ image.rsplit(':', 1)[0] if ':' in image else image }}:{{ image.split(':')[-1] if ':' in image else 'latest' }}"
-              command:
-                - sh
-                - -c
-                - |
-                  cat /tls-secret/tls.key /tls-secret/tls.crt > /tls/tls.pem
-                  cp /tls-secret/keystore.jks /tls/keystore.jks
-                  cp /tls-secret/truststore.jks /tls/truststore.jks
-                  if [ -d /trusted-certs ]; then
-                    for cert_file in /trusted-certs/*.crt; do
-                      if [ -f "$cert_file" ]; then
-                        alias_name=$(basename "$cert_file" .crt)
-                        keytool -delete -alias "$alias_name" -keystore /tls/truststore.jks -storepass changeit -noprompt || true
-                        keytool -importcert -alias "$alias_name" -file "$cert_file" -keystore /tls/truststore.jks -storepass changeit -noprompt
-                      fi
-                    done
-                  fi
-                  {% if ranger_enabled %}
-                  rm -f /tls/ranger-link.jceks
-                  echo "changeit" | keytool -importpass -alias sslKeyStore -keypass changeit -storepass changeit -keystore /tls/ranger-link.jceks -storetype JCEKS -noprompt
-                  echo "changeit" | keytool -importpass -alias sslTrustStore -keypass changeit -storepass changeit -keystore /tls/ranger-link.jceks -storetype JCEKS -noprompt
-                  {% endif %}
-              volumeMounts:
-                - name: tls-secret
-                  mountPath: /tls-secret
-                  readOnly: true
-                - name: certs
-                  mountPath: /tls
-                {% if trusted_certs %}
-                - name: trusted-certs
-                  mountPath: /trusted-certs
-                  readOnly: true
-                {% endif %}
+            {{ trusted_cert_init_container | indent(12) }}
           worker:
-            - name: prepare-tls
-              image: "{{ image.rsplit(':', 1)[0] if ':' in image else image }}:{{ image.split(':')[-1] if ':' in image else 'latest' }}"
-              command:
-                - sh
-                - -c
-                - |
-                  cat /tls-secret/tls.key /tls-secret/tls.crt > /tls/tls.pem
-                  cp /tls-secret/keystore.jks /tls/keystore.jks
-                  cp /tls-secret/truststore.jks /tls/truststore.jks
-                  if [ -d /trusted-certs ]; then
-                    for cert_file in /trusted-certs/*.crt; do
-                      if [ -f "$cert_file" ]; then
-                        alias_name=$(basename "$cert_file" .crt)
-                        keytool -delete -alias "$alias_name" -keystore /tls/truststore.jks -storepass changeit -noprompt || true
-                        keytool -importcert -alias "$alias_name" -file "$cert_file" -keystore /tls/truststore.jks -storepass changeit -noprompt
-                      fi
-                    done
-                  fi
-              volumeMounts:
-                - name: tls-secret
-                  mountPath: /tls-secret
-                  readOnly: true
-                - name: certs
-                  mountPath: /tls
-                {% if trusted_certs %}
-                - name: trusted-certs
-                  mountPath: /trusted-certs
-                  readOnly: true
-                {% endif %}
+            {{ trusted_cert_init_container | indent(12) }}
 
         coordinator:
           additionalExposedPorts:
@@ -284,6 +223,12 @@ spec:
             - name: certs
               mountPath: /etc/trino/tls
               readOnly: false
+            - name: certs
+              mountPath: /etc/ssl/certs/ca-certificates.crt
+              subPath: ca-certificates.crt
+            - name: certs
+              mountPath: /etc/pki/tls/certs/ca-bundle.crt
+              subPath: ca-certificates.crt
             {% if trusted_certs %}
             - name: trusted-certs
               mountPath: /trusted-certs
@@ -312,6 +257,12 @@ spec:
             - name: certs
               mountPath: /etc/trino/tls
               readOnly: false
+            - name: certs
+              mountPath: /etc/ssl/certs/ca-certificates.crt
+              subPath: ca-certificates.crt
+            - name: certs
+              mountPath: /etc/pki/tls/certs/ca-bundle.crt
+              subPath: ca-certificates.crt
             {% if trusted_certs %}
             - name: trusted-certs
               mountPath: /trusted-certs
