@@ -8,7 +8,7 @@ image:
   repository: ghcr.io/kagesenshi/mindweaver/hive-metastore
   pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "latest"
+  tag: "4.2.0-rev.6"
 
 imagePullSecrets: []
 nameOverride: ""
