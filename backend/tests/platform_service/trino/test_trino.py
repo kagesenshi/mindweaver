@@ -30,6 +30,7 @@ def test_trino_resource_defaults():
     assert model.mem_limit == 4.0
     assert model.database_source_ids == []
     assert model.hms_ids == []
+    assert model.disable_s3_cert_checking is False
 
     assert len(model.internal_shared_secret) == 64 # hex of 32 bytes
 
@@ -903,6 +904,73 @@ async def test_trino_configurable_rules(mock_service_dependencies):
     # Assert automated impersonation rule is appended
     assert len(rules["impersonation"]) == 1
     assert rules["impersonation"][0]["originalUser"] == "CN=.*\\.trino-ns\\.svc\\.cluster\\.local"
+
+
+@pytest.mark.asyncio
+async def test_trino_s3_cert_checking(mock_service_dependencies):
+    """Test that S3 certificate checking JVM option is added based on disable_s3_cert_checking boolean"""
+    request, session = mock_service_dependencies
+    svc = TrinoPlatformService(request, session)
+    svc._resolve_namespace = AsyncMock(return_value="trino-ns")
+    
+    mock_project = MagicMock(ldap_config_id=None)
+    mock_project.name = "test-project"
+    svc.project = AsyncMock(return_value=mock_project)
+
+    # Mock HMS service to satisfy validation and template rendering requirements
+    mock_hms_svc = AsyncMock()
+    mock_hms_model = MagicMock()
+    mock_hms_model.name = "test-hms"
+    mock_hms_model.s3_storage_id = None
+    mock_hms_svc.get.return_value = mock_hms_model
+    mock_hms_state = MagicMock()
+    mock_hms_state.active = True
+    mock_hms_state.hms_uri = "thrift://hms:9083"
+    mock_hms_svc.platform_state.return_value = mock_hms_state
+    mock_hms_svc._resolve_namespace.return_value = "hms-ns"
+
+    # Scenario 1: disable_s3_cert_checking is True
+    model_disabled = TrinoPlatform(
+        name="trino-disabled-certs",
+        title="Trino Disabled Certs",
+        project_id=1,
+        hms_ids=[10],
+        disable_s3_cert_checking=True,
+    )
+
+    with patch("mindweaver.platform_service.trino.service.HiveMetastorePlatformService.get_service", AsyncMock(return_value=mock_hms_svc)), \
+         patch("mindweaver.platform_service.trino.service.decrypt_password", lambda x: x):
+        manifest_disabled = await svc.render_manifests(model_disabled)
+
+    docs_disabled = list(yaml.safe_load_all(manifest_disabled))
+    app_disabled = next(d for d in docs_disabled if d["kind"] == "Application")
+    values_disabled = yaml.safe_load(app_disabled["spec"]["source"]["helm"]["values"])
+    
+    # Assert JVM option is present for both coordinator and worker
+    assert "-Dcom.amazonaws.sdk.disableCertChecking=true" in values_disabled["coordinator"]["additionalJVMConfig"]
+    assert "-Dcom.amazonaws.sdk.disableCertChecking=true" in values_disabled["worker"]["additionalJVMConfig"]
+
+    # Scenario 2: disable_s3_cert_checking is False
+    model_enabled = TrinoPlatform(
+        name="trino-enabled-certs",
+        title="Trino Enabled Certs",
+        project_id=1,
+        hms_ids=[10],
+        disable_s3_cert_checking=False,
+    )
+
+    with patch("mindweaver.platform_service.trino.service.HiveMetastorePlatformService.get_service", AsyncMock(return_value=mock_hms_svc)), \
+         patch("mindweaver.platform_service.trino.service.decrypt_password", lambda x: x):
+        manifest_enabled = await svc.render_manifests(model_enabled)
+
+    docs_enabled = list(yaml.safe_load_all(manifest_enabled))
+    app_enabled = next(d for d in docs_enabled if d["kind"] == "Application")
+    values_enabled = yaml.safe_load(app_enabled["spec"]["source"]["helm"]["values"])
+    
+    # Assert JVM option is NOT present for either coordinator or worker
+    assert "-Dcom.amazonaws.sdk.disableCertChecking=true" not in values_enabled["coordinator"]["additionalJVMConfig"]
+    assert "-Dcom.amazonaws.sdk.disableCertChecking=true" not in values_enabled["worker"]["additionalJVMConfig"]
+
 
 
 
