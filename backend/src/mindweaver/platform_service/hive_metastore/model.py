@@ -26,6 +26,7 @@ class HiveMetastorePlatform(PlatformBase, table=True):
 
     # Iceberg configuration
     iceberg_enabled: bool = Field(default=True)
+    disable_s3_cert_checking: bool = Field(default=False)
 
     warehouse_dir: str = Field(default="s3a://metastore/warehouse/")
 

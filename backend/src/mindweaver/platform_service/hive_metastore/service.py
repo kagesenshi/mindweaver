@@ -87,6 +87,11 @@ class HiveMetastorePlatformService(PlatformService[HiveMetastorePlatform]):
                 "type": "boolean",
                 "label": "Enable IcebergREST Endpoint",
             },
+            "disable_s3_cert_checking": {
+                "order": 35,
+                "type": "boolean",
+                "label": "Disable S3 Certificate Checking",
+            },
             "warehouse_dir": {"order": 40, "label": "Warehouse Directory"},
         }
 

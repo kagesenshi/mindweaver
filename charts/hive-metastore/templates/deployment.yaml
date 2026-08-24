@@ -47,6 +47,12 @@ spec:
               value: postgres
             - name: IS_RESUME
               value: "false"
+            {{- if .Values.jvmOpts }}
+            - name: JAVA_OPTS
+              value: {{ .Values.jvmOpts | quote }}
+            - name: HADOOP_OPTS
+              value: {{ .Values.jvmOpts | quote }}
+            {{- end }}
           volumeMounts:
             - name: config
               mountPath: /opt/hive/conf

@@ -105,3 +105,6 @@ icebergRest:
       usernamePattern: "(.*)@.*"
       clientId: ""
       clientSecret: ""
+
+# JVM configuration options
+jvmOpts: ""

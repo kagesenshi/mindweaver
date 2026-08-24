@@ -40,6 +40,9 @@ spec:
           enabled: {{ 'true' if iceberg_enabled else 'false' }}
           port: 9001
         warehouseDir: {{ warehouse_dir }}
+        {% if disable_s3_cert_checking %}
+        jvmOpts: "-Dcom.amazonaws.sdk.disableCertChecking=true"
+        {% endif %}
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: {{ namespace }}
