@@ -40,7 +40,6 @@ class TrinoPlatform(PlatformBase, table=True):
     database_source_ids: list[int] = Field(default_factory=list, sa_type=JSONType())
 
     process_forwarded: bool = Field(default=False)
-    disable_s3_cert_checking: bool = Field(default=False)
 
     admin_password: Optional[str] = Field(default=None)
 

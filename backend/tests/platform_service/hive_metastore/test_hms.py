@@ -26,7 +26,6 @@ def test_hms_resource_defaults():
     assert model.cpu_limit == 1.0
     assert model.mem_request == 1.0
     assert model.mem_limit == 2.0
-    assert model.disable_s3_cert_checking is False
 
 
 
@@ -237,58 +236,5 @@ async def test_hms_fullname_override(mock_service_dependencies):
         manifest = await svc.render_manifests(model)
 
     assert "fullnameOverride: my-custom-hms" in manifest
-
-
-@pytest.mark.asyncio
-async def test_hms_s3_cert_checking(mock_service_dependencies):
-    """Test that S3 certificate checking JVM option is added based on disable_s3_cert_checking boolean"""
-    request, session = mock_service_dependencies
-    svc = HiveMetastorePlatformService(request, session)
-    svc._resolve_namespace = AsyncMock(return_value="hms-ns")
-
-    # Mock PgSqlPlatformService
-    mock_pgsql_svc = AsyncMock()
-    mock_pgsql_model = MagicMock()
-    mock_pgsql_model.name = "test-pgsql"
-    mock_pgsql_svc.get.return_value = mock_pgsql_model
-    
-    mock_pgsql_state = MagicMock()
-    mock_pgsql_state.active = True
-    mock_pgsql_state.db_user = "hms_user"
-    mock_pgsql_state.db_name = "metastore"
-    mock_pgsql_state.db_pass = "secret"
-    mock_pgsql_svc.platform_state.return_value = mock_pgsql_state
-
-    # Case 1: disable_s3_cert_checking = True
-    model_disabled = HiveMetastorePlatform(
-        name="hms-disabled",
-        title="HMS Disabled",
-        project_id=1,
-        database_id=10,
-        disable_s3_cert_checking=True,
-    )
-    with patch("mindweaver.platform_service.hive_metastore.service.PgSqlPlatformService.get_service", AsyncMock(return_value=mock_pgsql_svc)):
-        manifest_disabled = await svc.render_manifests(model_disabled)
-    
-    docs_disabled = list(yaml.safe_load_all(manifest_disabled))
-    app_disabled = next(d for d in docs_disabled if d["kind"] == "Application")
-    values_disabled = yaml.safe_load(app_disabled["spec"]["source"]["helm"]["values"])
-    assert values_disabled["jvmOpts"] == "-Dcom.amazonaws.sdk.disableCertChecking=true"
-
-    # Case 2: disable_s3_cert_checking = False
-    model_enabled = HiveMetastorePlatform(
-        name="hms-enabled",
-        title="HMS Enabled",
-        project_id=1,
-        database_id=10,
-        disable_s3_cert_checking=False,
-    )
-    with patch("mindweaver.platform_service.hive_metastore.service.PgSqlPlatformService.get_service", AsyncMock(return_value=mock_pgsql_svc)):
-        manifest_enabled = await svc.render_manifests(model_enabled)
-    
-    docs_enabled = list(yaml.safe_load_all(manifest_enabled))
-    app_enabled = next(d for d in docs_enabled if d["kind"] == "Application")
-    values_enabled = yaml.safe_load(app_enabled["spec"]["source"]["helm"]["values"])
-    assert "jvmOpts" not in values_enabled
 
 

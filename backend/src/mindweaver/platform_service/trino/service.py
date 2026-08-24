@@ -104,11 +104,6 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
                 "step": 0.5,
                 "label": "Memory Limit (Gi)",
             },
-            "disable_s3_cert_checking": {
-                "order": 15,
-                "label": "Disable S3 Certificate Checking",
-                "type": "boolean",
-            },
             "hms_ids": {
                 "order": 20,
                 "label": "Hive Metastores",

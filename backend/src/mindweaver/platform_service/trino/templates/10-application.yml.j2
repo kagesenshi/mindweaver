@@ -121,9 +121,6 @@ spec:
             - "-Djavax.net.ssl.trustStorePassword=changeit"
             - "-Djavax.net.ssl.keyStore=/etc/trino/tls/keystore.jks"
             - "-Djavax.net.ssl.keyStorePassword=changeit"
-            {% if disable_s3_cert_checking %}
-            - "-Dcom.amazonaws.sdk.disableCertChecking=true"
-            {% endif %}
           additionalConfigFiles:
             {% if ldap %}
             ldap.properties: |
@@ -244,9 +241,6 @@ spec:
             - "-Djavax.net.ssl.trustStorePassword=changeit"
             - "-Djavax.net.ssl.keyStore=/etc/trino/tls/keystore.jks"
             - "-Djavax.net.ssl.keyStorePassword=changeit"
-            {% if disable_s3_cert_checking %}
-            - "-Dcom.amazonaws.sdk.disableCertChecking=true"
-            {% endif %}
           additionalVolumes:
             - name: tls-secret
               secret:
