@@ -60,7 +60,7 @@ configuration:
         main:
           repo: ghcr.io/kagesenshi/mindweaver/charts
           chart: hive-metastore
-          version: "0.1.10"
+          version: "0.1.11"
       images:
         main:
           image: ghcr.io/kagesenshi/mindweaver/hive-metastore
