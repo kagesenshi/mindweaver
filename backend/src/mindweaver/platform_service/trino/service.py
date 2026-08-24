@@ -154,7 +154,9 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
         return None
 
     async def template_vars(self, model: TrinoPlatform) -> dict:
-        vars = model.model_dump(exclude=self.redacted_fields())
+        vars = await super().template_vars(model)
+        for f in self.redacted_fields():
+            vars.pop(f, None)
         resolved_img, resolved_tag = await self.resolve_image(
             model, "trino", "trinodb/trino:latest"
         )

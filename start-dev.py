@@ -1,18 +1,21 @@
 import subprocess
 import time
 from pathlib import Path
+import os
 
 here = Path(__file__).parent
 
+fe_env = os.environ.copy()
+fe_env['VITE_API_URL'] = 'http://localhost:8000/api/v1'
+
 fe = subprocess.Popen(
-    ["npm", "run", "dev", "--", "--port", "3000", "--host", "::"], cwd=here / "frontend"
+    ["npm", "run", "dev", "--", "--port", "3000", "--host", "::"], cwd=here / "frontend",
+    env=fe_env
 )
 
 be = subprocess.Popen(
     ["uv", "run", "mindweaver", "run", "--port", "8000", "--bind", "::"], cwd=here / "backend"
 )
-
-import os
 
 worker_env = os.environ.copy()
 worker_env["MINDWEAVER_EMBEDDED_WORKER"] = "false"

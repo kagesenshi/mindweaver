@@ -57,6 +57,7 @@ const CONNECTIVITY_ITEMS = [
     { name: 'SSH Keys', to: '/ssh-keys', icon: Key },
     { name: 'Git Repositories', to: '/git-repos', icon: GitBranch },
     { name: 'Container Registry', to: '/container-registries', icon: Layers },
+    { name: 'Trusted Certificates', to: '/trusted-certs', icon: ShieldCheck },
 ];
 
 

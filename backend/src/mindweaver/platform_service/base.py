@@ -100,7 +100,25 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
 
     async def template_vars(self, model: T) -> dict:
         """returns the variables to be used in the template"""
-        return model.model_dump()
+        vars = model.model_dump()
+        try:
+            import base64
+            from mindweaver.service.trusted_certs.model import TrustedCert
+            stmt = select(TrustedCert).where(TrustedCert.project_id == model.project_id)
+            res = await self.session.exec(stmt)
+            certs = res.all()
+            vars["trusted_certs"] = [
+                {
+                    "name": c.name,
+                    "certificate": c.certificate,
+                    "certificate_b64": base64.b64encode(c.certificate.encode("utf-8")).decode("utf-8")
+                }
+                for c in certs
+            ]
+        except Exception as e:
+            logger.warning(f"Failed to fetch trusted certs for template_vars: {e}")
+            vars["trusted_certs"] = []
+        return vars
 
     async def render_manifests(self, model: T) -> str:
         """renders the manifests from the template directory"""
@@ -120,6 +138,24 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
 
         rendered_manifests = []
         vars = await self.template_vars(model)
+        if "trusted_certs" not in vars:
+            try:
+                import base64
+                from mindweaver.service.trusted_certs.model import TrustedCert
+                stmt = select(TrustedCert).where(TrustedCert.project_id == model.project_id)
+                res = await self.session.exec(stmt)
+                certs = res.all()
+                vars["trusted_certs"] = [
+                    {
+                        "name": c.name,
+                        "certificate": c.certificate,
+                        "certificate_b64": base64.b64encode(c.certificate.encode("utf-8")).decode("utf-8")
+                    }
+                    for c in certs
+                ]
+            except Exception as e:
+                logger.warning(f"Failed to fetch trusted certs in render_manifests: {e}")
+                vars["trusted_certs"] = []
         project = await self.project(model)
         vars["project_name"] = project.name
         vars["project_title"] = sanitize_label_value(project.title)

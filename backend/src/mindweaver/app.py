@@ -32,6 +32,7 @@ from .service.ssh_key import router as ssh_key_router
 from .service.git_repo import router as git_repo_router
 from .service.container_registry import router as container_registry_router
 from .service.stack.service import StackService
+from .service.trusted_certs import router as trusted_certs_router
 
 
 from .fw.model import get_engine, get_session
@@ -248,6 +249,7 @@ app.include_router(ssh_key_router, prefix="/api/v1")
 app.include_router(git_repo_router, prefix="/api/v1")
 app.include_router(container_registry_router, prefix="/api/v1")
 app.include_router(StackService.router(), prefix="/api/v1")
+app.include_router(trusted_certs_router, prefix="/api/v1")
 
 
 app.include_router(db_router, prefix="/api/v1/database-sources")

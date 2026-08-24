@@ -17,6 +17,7 @@ const LdapConfigPage = lazy(() => import('./pages/ldap_config/Page'))
 const SSHKeysPage = lazy(() => import('./pages/ssh_keys/Page'))
 const GitReposPage = lazy(() => import('./pages/git_repos/Page'))
 const ContainerRegistriesPage = lazy(() => import('./pages/container_registries/Page'))
+const TrustedCertsPage = lazy(() => import('./pages/trusted_certs/Page'))
 const HiveMetastorePage = lazy(() => import('./pages/hive_metastore/Page'))
 const TrinoPage = lazy(() => import('./pages/trino/Page'))
 const SupersetPage = lazy(() => import('./pages/superset/Page'))
@@ -77,6 +78,10 @@ const router = createBrowserRouter([
       {
         path: 'container-registries',
         element: <ContainerRegistriesPage />,
+      },
+      {
+        path: 'trusted-certs',
+        element: <TrustedCertsPage />,
       },
       {
         path: 'users',

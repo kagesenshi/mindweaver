@@ -461,12 +461,12 @@ const DynamicForm = ({
             );
         }
 
-        // -- Implicit Textareas (Description, Config, etc) --
         const isTextArea =
             name.includes('description') ||
             name.includes('config') ||
             name.includes('prompt') ||
-            name.includes('sql');
+            name.includes('sql') ||
+            widget.type === 'textarea';
 
         if (isTextArea) {
             return (

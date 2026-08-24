@@ -1058,5 +1058,54 @@ export const useStacks = () => {
 
 export const useUsers = createGenericSourceHook('/users');
 
+export const useTrustedCerts = () => {
+    const [certs, setCerts] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+
+    const fetchCerts = useCallback(async () => {
+        setLoading(true);
+        try {
+            const response = await apiClient.get('/trusted_certs');
+            setCerts(response.data.data || []);
+        } catch (err) {
+            setError(err);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    const createCert = useCallback(async (data) => {
+        const response = await apiClient.post('/trusted_certs', data);
+        await fetchCerts();
+        return response.data;
+    }, [fetchCerts]);
+
+    const updateCert = useCallback(async (id, data) => {
+        const response = await apiClient.put(`/trusted_certs/${id}`, data);
+        await fetchCerts();
+        return response.data;
+    }, [fetchCerts]);
+
+    const deleteCert = useCallback(async (id, confirmName) => {
+        await apiClient.delete(`/trusted_certs/${id}`, {
+            headers: { 'X-RESOURCE-NAME': confirmName }
+        });
+        await new Promise(resolve => setTimeout(resolve, 500));
+        await fetchCerts();
+    }, [fetchCerts]);
+
+    const decodeCert = useCallback(async (id) => {
+        const response = await apiClient.get(`/trusted_certs/${id}/_decode`);
+        return response.data;
+    }, []);
+
+    useEffect(() => {
+        fetchCerts();
+    }, [fetchCerts]);
+
+    return { certs, loading, error, fetchCerts, createCert, updateCert, deleteCert, decodeCert };
+};
+
 
 
