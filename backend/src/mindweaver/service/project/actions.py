@@ -585,7 +585,7 @@ spec:
     spec:
       containers:
         - name: preparer
-          image: openjdk:17-slim
+          image: eclipse-temurin:17-jre
           command:
             - sh
             - -c
