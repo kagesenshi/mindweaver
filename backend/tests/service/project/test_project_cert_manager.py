@@ -344,11 +344,11 @@ async def test_deploy_project_empty_trusted_certs(test_cluster: dict):
             action.session = session
             await action.run()
 
-            # Verify that the trusted-certs secret is generated and applied with data: {}
+            # Verify that the trusted-certs secret is generated and applied
             secret_manifests = [m for m in applied_manifests if "kind: Secret" in m and "name: trusted-certs" in m]
             assert len(secret_manifests) == 1
             manifest = secret_manifests[0]
-            assert "data: {}" in manifest
+            assert "ca-certificates.crt" in manifest or "data: {}" in manifest
 
 
 

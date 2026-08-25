@@ -10,8 +10,14 @@ metadata:
     project: "{{ name }}"
     manager: mindweaver
 type: Opaque
-{% if trusted_certs %}
+{% if ca_certificates_b64 or truststore_b64 or trusted_certs %}
 data:
+  {% if ca_certificates_b64 %}
+  ca-certificates.crt: {{ ca_certificates_b64 }}
+  {% endif %}
+  {% if truststore_b64 %}
+  truststore.jks: {{ truststore_b64 }}
+  {% endif %}
   {% for cert in trusted_certs %}
   {{ cert.name }}.crt: {{ cert.certificate_b64 }}
   {% endfor %}

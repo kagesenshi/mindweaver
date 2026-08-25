@@ -100,17 +100,7 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
 
     def populate_trusted_cert_init_container(self, model: T, vars: dict) -> dict:
         """Injects trusted_cert_init_container variable into the vars dict."""
-        try:
-            import jinja2
-            if "image" not in vars:
-                vars["image"] = getattr(model, "image", "latest")
-            templates_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "resources", "templates")
-            tc_env = jinja2.Environment(loader=jinja2.FileSystemLoader(templates_dir))
-            tc_template = tc_env.get_template("trusted_cert_pod.yml.j2")
-            vars["trusted_cert_init_container"] = tc_template.render(**vars)
-        except Exception as e:
-            logger.warning(f"Failed to render trusted_cert_init_container: {e}")
-            vars["trusted_cert_init_container"] = ""
+        vars["trusted_cert_init_container"] = ""
         return vars
 
     async def template_vars(self, model: T) -> dict:

@@ -75,6 +75,88 @@ def sync_trusted_certs_secret_task(project_id: int):
     run_async(_sync_trusted_certs_secret_task(project_id))
 
 
+def generate_trust_stores(custom_certs_list: list[str], project_ca_cert: str = "") -> tuple[str, bytes]:
+    import os
+    system_bundle = ""
+    paths = [
+        "/etc/ssl/certs/ca-certificates.crt",
+        "/etc/pki/tls/certs/ca-bundle.crt",
+        "/etc/ssl/ca-bundle.pem",
+        "/etc/ssl/cert.pem",
+    ]
+    for p in paths:
+        if os.path.exists(p):
+            try:
+                with open(p, "r") as f:
+                    system_bundle = f.read()
+                break
+            except Exception:
+                continue
+
+    if not system_bundle:
+        try:
+            import certifi
+            with open(certifi.where(), "r") as f:
+                system_bundle = f.read()
+        except Exception:
+            pass
+
+    pem_parts = []
+    if system_bundle:
+        pem_parts.append(system_bundle)
+    if project_ca_cert:
+        pem_parts.append(project_ca_cert)
+    for cert in custom_certs_list:
+        pem_parts.append(cert)
+
+    merged_pem = "\n".join(part.strip() for part in pem_parts if part.strip())
+
+    import datetime
+    from cryptography import x509
+    from cryptography.x509.oid import NameOID
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
+    from cryptography.hazmat.primitives.serialization import pkcs12
+
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    subject = issuer = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "mindweaver-truststore")])
+    dummy_cert = x509.CertificateBuilder().subject_name(
+        subject
+    ).issuer_name(
+        issuer
+    ).public_key(
+        key.public_key()
+    ).serial_number(
+        x509.random_serial_number()
+    ).not_valid_before(
+        datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1)
+    ).not_valid_after(
+        datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=365)
+    ).sign(key, hashes.SHA256())
+
+    ca_certs = []
+    for part in merged_pem.split("-----END CERTIFICATE-----"):
+        part = part.strip()
+        if not part:
+            continue
+        pem_str = part + "\n-----END CERTIFICATE-----"
+        try:
+            ca_cert = x509.load_pem_x509_certificate(pem_str.encode("utf-8"))
+            ca_certs.append(ca_cert)
+        except Exception:
+            continue
+
+    p12_data = pkcs12.serialize_key_and_certificates(
+        name=b"truststore",
+        key=key,
+        cert=dummy_cert,
+        cas=ca_certs,
+        encryption_algorithm=serialization.BestAvailableEncryption(b"changeit")
+    )
+
+    return merged_pem, p12_data
+
+
 async def _sync_trusted_certs_secret_task(project_id: int):
     """Synchronize only the trusted-certs secret to the project's Kubernetes cluster."""
     engine = get_engine()
@@ -101,9 +183,38 @@ async def _sync_trusted_certs_secret_task(project_id: int):
 
             namespace = project.k8s_namespace or project.name
 
+            # Fetch project CA certificate if it exists in Kubernetes
+            project_ca_cert = ""
+            try:
+                from kubernetes import client, config
+                import tempfile
+                if cluster.type == "in-cluster":
+                    config.load_incluster_config()
+                else:
+                    with tempfile.NamedTemporaryFile(mode="w") as kf:
+                        kf.write(cluster.kubeconfig)
+                        kf.flush()
+                        config.load_kube_config(config_file=kf.name)
+                core_api = client.CoreV1Api()
+                ca_secret_name = f"{project.name}-ca-secret"
+                secret_ca = core_api.read_namespaced_secret(ca_secret_name, namespace)
+                if secret_ca and secret_ca.data:
+                    pem_b64 = secret_ca.data.get("ca.crt") or secret_ca.data.get("tls.crt")
+                    if pem_b64:
+                        project_ca_cert = base64.b64decode(pem_b64).decode("utf-8")
+            except Exception as e:
+                logger.warning(f"Could not fetch project CA cert from {project.name}-ca-secret: {e}")
+
             stmt_certs = select(TrustedCert).where(TrustedCert.project_id == project_id)
             res_certs = await session.exec(stmt_certs)
             certs = res_certs.all()
+            
+            custom_certs_list = [c.certificate for c in certs]
+            merged_pem, p12_data = generate_trust_stores(custom_certs_list, project_ca_cert)
+
+            ca_certificates_b64 = base64.b64encode(merged_pem.encode("utf-8")).decode("utf-8")
+            truststore_b64 = base64.b64encode(p12_data).decode("utf-8")
+
             trusted_certs = [
                 {
                     "name": c.name,
@@ -120,6 +231,8 @@ async def _sync_trusted_certs_secret_task(project_id: int):
                 name=project.name,
                 namespace=namespace,
                 trusted_certs=trusted_certs,
+                ca_certificates_b64=ca_certificates_b64,
+                truststore_b64=truststore_b64,
             )
 
             await apply_manifest_to_cluster(cluster, manifest)

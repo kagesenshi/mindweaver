@@ -210,7 +210,7 @@ const ServiceView = ({
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
-            <div className="mw-page-header">
+            <div className="mw-page-header flex items-center justify-between">
                 <div className="flex gap-4 items-center">
                     <button
                         onClick={onBack}
@@ -254,6 +254,16 @@ const ServiceView = ({
                         </div>
                     </div>
                 </div>
+
+                <button
+                    onClick={handleSyncIntegrations}
+                    disabled={isSyncing || !selectedProject.ingress_domain}
+                    className="mw-btn-primary px-6 py-2.5 flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                    id="project-sync-integrations-btn"
+                >
+                    {isSyncing ? <RefreshCw size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+                    {isSyncing ? 'SYNCING...' : 'SYNC INTEGRATIONS'}
+                </button>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-6">
@@ -303,26 +313,12 @@ const ServiceView = ({
                                 <Download size={16} />
                                 DOWNLOAD PEM CERT
                             </button>
-                            <button
-                                onClick={handleSyncIntegrations}
-                                disabled={isSyncing}
-                                className="mw-btn-secondary px-6 py-2.5 flex items-center gap-2"
-                                id="redeploy-gateway-btn"
-                            >
-                                {isSyncing ? <RefreshCw size={16} className="animate-spin" /> : <RefreshCw size={16} />}
-                                SYNC INTEGRATIONS
-                            </button>
                         </div>
                     ) : (
-                        <button
-                            onClick={handleSyncIntegrations}
-                            disabled={isSyncing || !selectedProject.ingress_domain}
-                            className="mw-btn-primary px-6 py-2.5 flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
-                            id="deploy-gateway-btn"
-                        >
-                            {isSyncing ? <RefreshCw size={16} className="animate-spin" /> : <Activity size={16} />}
-                            {isSyncing ? 'SYNCING...' : 'SYNC INTEGRATIONS'}
-                        </button>
+                        <span className="text-sm font-bold bg-slate-500/10 text-slate-500 px-3 py-1.5 rounded-xl border border-slate-500/20 flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-slate-500" />
+                            INACTIVE
+                        </span>
                     )}
                 </div>
 
