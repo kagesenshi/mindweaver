@@ -192,7 +192,10 @@ async def _sync_trusted_certs_secret_task(project_id: int):
             certs = res_certs.all()
             
             custom_certs_list = [c.certificate for c in certs]
-            merged_pem, p12_data = generate_trust_stores(custom_certs_list, project_ca_cert)
+            from mindweaver.service.project.actions import get_trust_store_data
+            merged_pem, p12_data = await get_trust_store_data(
+                cluster, namespace, project.name, custom_certs_list, project_ca_cert
+            )
 
             ca_certificates_b64 = base64.b64encode(merged_pem.encode("utf-8")).decode("utf-8")
             truststore_b64 = base64.b64encode(p12_data).decode("utf-8")

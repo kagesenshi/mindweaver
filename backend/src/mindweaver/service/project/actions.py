@@ -537,6 +537,142 @@ def generate_trust_stores(custom_certs_list: list[str], project_ca_cert: str = "
     return merged_pem, p12_data
 
 
+async def run_kubectl_cmd(cluster, args: list[str]) -> str:
+    kubeconfig_path = None
+    kf = None
+    if cluster.kubeconfig:
+        import tempfile
+        import os
+        kf = tempfile.NamedTemporaryFile(mode="w", delete=False)
+        kf.write(cluster.kubeconfig)
+        kf.flush()
+        kf.close()
+        kubeconfig_path = kf.name
+
+    cmd = ["kubectl"]
+    if kubeconfig_path:
+        cmd.extend(["--kubeconfig", kubeconfig_path])
+    cmd.extend(args)
+
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await proc.communicate()
+        if proc.returncode != 0:
+            logger.warning(f"Kubectl command {args} failed: {stderr.decode().strip()}")
+        return stdout.decode()
+    finally:
+        if kubeconfig_path:
+            import os
+            try:
+                os.unlink(kubeconfig_path)
+            except Exception:
+                pass
+
+async def run_tls_preparer_job(cluster, namespace, project_name) -> tuple[str, str]:
+    job_name = f"{project_name}-tls-preparer"
+    
+    job_yaml = f"""apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {job_name}
+  namespace: {namespace}
+spec:
+  template:
+    spec:
+      containers:
+        - name: preparer
+          image: openjdk:17-slim
+          command:
+            - sh
+            - -c
+            - |
+              cp /tls-secret/truststore.jks /tmp/truststore.jks 2>/dev/null || touch /tmp/truststore.jks
+              if [ -f /etc/ssl/certs/ca-certificates.crt ]; then
+                cp /etc/ssl/certs/ca-certificates.crt /tmp/ca-certificates.crt
+              elif [ -f /etc/pki/tls/certs/ca-bundle.crt ]; then
+                cp /etc/pki/tls/certs/ca-bundle.crt /tmp/ca-certificates.crt
+              else
+                touch /tmp/ca-certificates.crt
+              fi
+              if [ -d /trusted-certs ]; then
+                for cert_file in /trusted-certs/*.crt; do
+                  if [ -f \"$cert_file\" ]; then
+                    alias_name=$(basename \"$cert_file\" .crt)
+                    keytool -delete -alias \"$alias_name\" -keystore /tmp/truststore.jks -storepass changeit -noprompt 2>/dev/null || true
+                    keytool -importcert -alias \"$alias_name\" -file \"$cert_file\" -keystore /tmp/truststore.jks -storepass changeit -noprompt
+                    cat \"$cert_file\" >> /tmp/ca-certificates.crt
+                  fi
+                done
+              fi
+              echo \"===BEGIN_TRUSTSTORE_B64===\"
+              base64 /tmp/truststore.jks | tr -d '\\\\n'
+              echo \"\"
+              echo \"===END_TRUSTSTORE_B64===\"
+              echo \"===BEGIN_CA_CERT_B64===\"
+              base64 /tmp/ca-certificates.crt | tr -d '\\\\n'
+              echo \"\"
+              echo \"===END_CA_CERT_B64===\"
+          volumeMounts:
+            - name: tls-secret
+              mountPath: /tls-secret
+              readOnly: true
+            - name: trusted-certs
+              mountPath: /trusted-certs
+              readOnly: true
+      restartPolicy: Never
+      volumes:
+        - name: tls-secret
+          secret:
+            secretName: {project_name}-tls
+            optional: true
+        - name: trusted-certs
+          secret:
+            secretName: trusted-certs
+            optional: true
+  backoffLimit: 1
+"""
+    await run_kubectl_cmd(cluster, ["delete", "job", job_name, "-n", namespace, "--ignore-not-found"])
+    await apply_manifest_to_cluster(cluster, job_yaml)
+    
+    try:
+        for _ in range(30):
+            out = await run_kubectl_cmd(cluster, ["get", "job", job_name, "-n", namespace, "-o", "jsonpath={.status.succeeded}"])
+            if out.strip() == "1":
+                break
+            await asyncio.sleep(1)
+        
+        logs = await run_kubectl_cmd(cluster, ["logs", "-n", namespace, f"job/{job_name}"])
+        
+        truststore_b64 = ""
+        ca_cert_b64 = ""
+        
+        if "===BEGIN_TRUSTSTORE_B64===" in logs and "===END_TRUSTSTORE_B64===" in logs:
+            truststore_b64 = logs.split("===BEGIN_TRUSTSTORE_B64===")[1].split("===END_TRUSTSTORE_B64===")[0].strip()
+        if "===BEGIN_CA_CERT_B64===" in logs and "===END_CA_CERT_B64===" in logs:
+            ca_cert_b64 = logs.split("===BEGIN_CA_CERT_B64===")[1].split("===END_CA_CERT_B64===")[0].strip()
+            
+        return ca_cert_b64, truststore_b64
+    finally:
+        await run_kubectl_cmd(cluster, ["delete", "job", job_name, "-n", namespace, "--ignore-not-found"])
+
+async def get_trust_store_data(cluster, namespace, project_name, custom_certs_list, project_ca_cert) -> tuple[str, bytes]:
+    try:
+        if cluster and namespace and project_name:
+            ca_b64, ts_b64 = await run_tls_preparer_job(cluster, namespace, project_name)
+            if ca_b64 and ts_b64:
+                import base64
+                return base64.b64decode(ca_b64).decode("utf-8"), base64.b64decode(ts_b64)
+    except Exception as e:
+        logger.warning(f"Failed to generate truststore via k8s job: {e}. Falling back to python generation.")
+    
+    merged_pem, p12_data = generate_trust_stores(custom_certs_list, project_ca_cert)
+    return merged_pem, p12_data
+
+
 @ProjectService.register_action("sync_project_integrations")
 class SyncProjectIntegrationsAction(BaseAction):
     """
@@ -636,7 +772,9 @@ class SyncProjectIntegrationsAction(BaseAction):
             logger.warning(f"Could not fetch project CA cert from {self.model.name}-ca-secret: {e}")
 
         custom_certs_list = [c.certificate for c in certs]
-        merged_pem, p12_data = generate_trust_stores(custom_certs_list, project_ca_cert)
+        merged_pem, p12_data = await get_trust_store_data(
+            cluster, namespace, self.model.name, custom_certs_list, project_ca_cert
+        )
 
         ca_certificates_b64 = base64.b64encode(merged_pem.encode("utf-8")).decode("utf-8")
         truststore_b64 = base64.b64encode(p12_data).decode("utf-8")
