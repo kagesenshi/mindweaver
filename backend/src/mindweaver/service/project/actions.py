@@ -487,6 +487,30 @@ class SyncProjectIntegrationsAction(BaseAction):
                 self.model, namespace, self.model.envoy_gateway_service_type, self.model.envoy_nodeport
             )
 
+        # 2d. Trusted Certificates Secret
+        from mindweaver.service.trusted_certs.model import TrustedCert
+        import base64
+        stmt_certs = select(TrustedCert).where(TrustedCert.project_id == self.model.id)
+        res_certs = await self.session.exec(stmt_certs)
+        certs = res_certs.all()
+        trusted_certs = [
+            {
+                "name": c.name,
+                "certificate": c.certificate,
+                "certificate_b64": base64.b64encode(c.certificate.encode("utf-8")).decode("utf-8")
+            }
+            for c in certs
+        ]
+        
+        trusted_certs_manifest = ""
+        if trusted_certs:
+            trusted_certs_template = env.get_template("03-trusted-certs.yml.j2")
+            trusted_certs_manifest = trusted_certs_template.render(
+                name=self.model.name,
+                namespace=namespace,
+                trusted_certs=trusted_certs,
+            )
+
         # 3. Apply manifests
         kubeconfig_path = None
         temp_kf = None
@@ -530,6 +554,8 @@ class SyncProjectIntegrationsAction(BaseAction):
 
             await run_kubectl(argocd_project_manifest)
             await run_kubectl(issuer_manifest)
+            if trusted_certs_manifest:
+                await run_kubectl(trusted_certs_manifest)
             if gateway_manifest:
                 await run_kubectl(gateway_manifest)
 

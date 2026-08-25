@@ -1,0 +1,18 @@
+# SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
+# SPDX-License-Identifier: AGPLv3+
+
+{% if trusted_certs %}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: trusted-certs
+  namespace: {{ namespace }}
+  labels:
+    project: "{{ name }}"
+    manager: mindweaver
+type: Opaque
+data:
+  {% for cert in trusted_certs %}
+  {{ cert.name }}.crt: {{ cert.certificate_b64 }}
+  {% endfor %}
+{% endif %}
