@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPLv3+
 
 - name: prepare-tls
-  image: "{{ image.rsplit(':', 1)[0] if ':' in image else image }}:{{ image.split(':')[-1] if ':' in image else 'latest' }}"
+  image: "eclipse-temurin:17-jre-alpine"
   command:
     - sh
     - -c
@@ -17,19 +17,21 @@
       cp /tls-secret/keystore.jks /tls/keystore.jks
       
       # Find default JDK cacerts to preserve system trust anchors
-      default_cacerts=""
-      for path in \
-        "$JAVA_HOME/lib/security/cacerts" \
-        "/opt/java/openjdk/lib/security/cacerts" \
-        "/usr/lib/jvm/default-jvm/lib/security/cacerts" \
-        "/usr/lib/jvm/java-17-openjdk/lib/security/cacerts" \
-        "/usr/lib/jvm/java-11-openjdk/lib/security/cacerts" \
-        "/etc/ssl/certs/java/cacerts"; do
-        if [ -f "$path" ]; then
-          default_cacerts="$path"
-          break
-        fi
-      done
+      default_cacerts=$(find /usr /opt /usr/lib/jvm -name cacerts -type f 2>/dev/null | head -n 1)
+      if [ -z "$default_cacerts" ]; then
+        for path in \
+          "$JAVA_HOME/lib/security/cacerts" \
+          "/opt/java/openjdk/lib/security/cacerts" \
+          "/usr/lib/jvm/default-jvm/lib/security/cacerts" \
+          "/usr/lib/jvm/java-17-openjdk/lib/security/cacerts" \
+          "/usr/lib/jvm/java-11-openjdk/lib/security/cacerts" \
+          "/etc/ssl/certs/java/cacerts"; do
+          if [ -f "$path" ]; then
+            default_cacerts="$path"
+            break
+          fi
+        done
+      fi
 
       if [ -n "$default_cacerts" ]; then
         cp "$default_cacerts" /tls/truststore.jks

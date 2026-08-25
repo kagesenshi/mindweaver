@@ -57,6 +57,14 @@ async def decode_certificate(
         
     is_valid = not_before <= now <= not_after
 
+    # Extract SANs
+    sans = []
+    try:
+        ext = cert.extensions.get_extension_for_oid(x509.ExtensionOID.SUBJECT_ALTERNATIVE_NAME)
+        sans = ext.value.get_values_for_type(x509.DNSName)
+    except x509.ExtensionNotFound:
+        pass
+
     return {
         "subject": subject,
         "issuer": issuer,
@@ -66,4 +74,5 @@ async def decode_certificate(
         "serial_number": hex(cert.serial_number),
         "version": cert.version.name if hasattr(cert.version, "name") else str(cert.version),
         "signature_algorithm": cert.signature_algorithm_oid._name or str(cert.signature_algorithm_oid),
+        "sans": sans,
     }

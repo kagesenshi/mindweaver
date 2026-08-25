@@ -120,6 +120,18 @@ const ServiceView = ({
                                 <KeyValueRow label="Country (C)" value={details.subject.countryName} />
                                 <KeyValueRow label="State/Province (ST)" value={details.subject.stateOrProvinceName} />
                                 <KeyValueRow label="Locality (L)" value={details.subject.localityName} />
+                                {details.sans && details.sans.length > 0 && (
+                                    <div className="flex flex-col sm:flex-row py-2.5 border-b border-slate-100 dark:border-slate-800/60 last:border-b-0 text-sm">
+                                        <span className="sm:w-1/3 text-slate-400 font-medium">Subject Alt Names (SANs)</span>
+                                        <span className="flex-1 flex flex-wrap gap-1.5 mt-1 sm:mt-0">
+                                            {details.sans.map((san, index) => (
+                                                <span key={index} className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 rounded font-mono text-xs">
+                                                    {san}
+                                                </span>
+                                            ))}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
