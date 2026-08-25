@@ -515,7 +515,7 @@ async def test_trino_https_rendering(mock_service_dependencies):
     assert "http-server.https.enabled=true" in props
     assert "http-server.https.port=8443" in props
     assert "http-server.https.keystore.path=/etc/trino/tls/keystore.jks" in props
-    assert "http-server.https.truststore.path=/etc/trino/truststore/truststore.jks" in props
+    assert "http-server.https.truststore.path=/etc/trino/tls/truststore.jks" in props
     assert "http-server.https.truststore.key=changeit" in props
     assert "http-server.https.keystore.key=changeit" in props
 
@@ -523,20 +523,22 @@ async def test_trino_https_rendering(mock_service_dependencies):
     assert "https" in values["coordinator"]["additionalExposedPorts"]
     assert values["coordinator"]["additionalExposedPorts"]["https"]["port"] == 8443
 
-    # Verify initContainer is no longer present
-    assert "initContainers" not in values
+    # Verify initContainer is present
+    for role in ["coordinator", "worker"]:
+        init_containers = values["initContainers"][role]
+        assert len(init_containers) == 1
+        assert init_containers[0]["name"] == "prepare-tls"
 
     for role in ["coordinator", "worker"]:
-        # tls-secret and trusted-certs volumes
+        # tls-secret and certs volumes
         volume_names = [v["name"] for v in values[role]["additionalVolumes"]]
         assert "tls-secret" in volume_names
-        assert "trusted-certs" in volume_names
-        assert "certs" not in volume_names
+        assert "certs" in volume_names
+        assert "trusted-certs" not in volume_names
 
         # mount paths verification
         mounts = {m["name"]: m["mountPath"] for m in values[role]["additionalVolumeMounts"]}
-        assert mounts["tls-secret"] == "/etc/trino/tls"
-        assert mounts["trusted-certs"] == "/etc/trino/truststore"
+        assert mounts["certs"] == "/etc/trino/tls"
 
 
 @pytest.mark.asyncio
