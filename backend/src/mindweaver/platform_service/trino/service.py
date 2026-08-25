@@ -401,43 +401,6 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
 
         return vars
 
-    async def render_manifests(self, model: TrinoPlatform) -> str:
-        """
-        Renders the manifests from the template directory, excluding
-        the ranger-sync-job.yaml.j2 template.
-        """
-        if not self.template_directory:
-            raise ValueError(
-                f"template_directory not set for {self.__class__.__name__}"
-            )
-
-        if not os.path.exists(self.template_directory):
-            raise ValueError(
-                f"template_directory {self.template_directory} does not exist"
-            )
-
-        # Load templates
-        env = _get_jinja_env(self.template_directory)
-        templates = env.list_templates()
-
-        rendered_manifests = []
-        vars = await self.template_vars(model)
-
-        for template_name in templates:
-            if not template_name.endswith((".yaml", ".yml", ".yml.j2", ".yaml.j2")):
-                continue
-            template = env.get_template(template_name)
-            rendered = template.render(**vars)
-            rendered_manifests.append(rendered)
-
-        if not rendered_manifests:
-            logger.warning(f"No templates found in {self.template_directory}")
-            return ""
-
-        return "---\n" + "\n---\n".join(rendered_manifests)
-
-
-
 
     async def deploy(self, model: TrinoPlatform):
         """
