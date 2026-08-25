@@ -7,13 +7,19 @@
     - sh
     - -c
     - |
+      echo "=== DEBUG INFO ==="
+      whoami
+      id
+      ls -la /tls || true
+      ls -la /tls-secret || true
+      echo "=== END DEBUG INFO ==="
       cat /tls-secret/tls.key /tls-secret/tls.crt > /tls/tls.pem
       cp /tls-secret/keystore.jks /tls/keystore.jks
       cp /tls-secret/truststore.jks /tls/truststore.jks
       if [ -f /etc/ssl/certs/ca-certificates.crt ]; then
-        cp /etc/ssl/certs/ca-certificates.crt /tls/ca-certificates.crt
+        cat /etc/ssl/certs/ca-certificates.crt > /tls/ca-certificates.crt
       elif [ -f /etc/pki/tls/certs/ca-bundle.crt ]; then
-        cp /etc/pki/tls/certs/ca-bundle.crt /tls/ca-certificates.crt
+        cat /etc/pki/tls/certs/ca-bundle.crt > /tls/ca-certificates.crt
       else
         touch /tls/ca-certificates.crt
       fi
