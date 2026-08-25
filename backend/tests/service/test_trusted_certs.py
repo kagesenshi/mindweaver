@@ -202,3 +202,66 @@ def test_trusted_certs_decode(client: TestClient, test_project):
     assert "version" in data
     assert "signature_algorithm" in data
 
+
+def test_trusted_cert_hooks_trigger_sync(client: TestClient, test_project):
+    """
+    Test that creating, updating, and deleting a TrustedCert triggers the Celery task.
+    """
+    from unittest.mock import patch
+
+    # Mock the Celery task delay method
+    with patch("mindweaver.tasks.project_tasks.sync_trusted_certs_secret_task.delay") as mock_delay:
+        # 1. Create a certificate
+        payload = {
+            "name": "hook-test-ca",
+            "title": "Hook Test CA",
+            "certificate": VALID_CERT,
+            "project_id": test_project["id"],
+        }
+        resp = client.post(
+            "/api/v1/trusted_certs",
+            json=payload,
+            headers={"X-Project-ID": str(test_project["id"])}
+        )
+        assert resp.status_code == 200, resp.text
+        cert_id = resp.json()["data"]["id"]
+        
+        # Verify delay was called with the project ID
+        assert mock_delay.call_count == 1
+        mock_delay.assert_called_with(test_project["id"])
+        
+        mock_delay.reset_mock()
+
+        # 2. Update the certificate
+        update_payload = {
+            "title": "Hook Test CA Updated",
+            "project_id": test_project["id"],
+        }
+        resp = client.put(
+            f"/api/v1/trusted_certs/{cert_id}",
+            json=update_payload,
+            headers={"X-Project-ID": str(test_project["id"])}
+        )
+        assert resp.status_code == 200
+        
+        # Verify delay was called again
+        assert mock_delay.call_count == 1
+        mock_delay.assert_called_with(test_project["id"])
+        
+        mock_delay.reset_mock()
+
+        # 3. Delete the certificate
+        resp = client.delete(
+            f"/api/v1/trusted_certs/{cert_id}",
+            headers={
+                "X-Project-ID": str(test_project["id"]),
+                "X-RESOURCE-NAME": "hook-test-ca",
+            }
+        )
+        assert resp.status_code == 200
+        
+        # Verify delay was called for deletion
+        assert mock_delay.call_count == 1
+        mock_delay.assert_called_with(test_project["id"])
+
+

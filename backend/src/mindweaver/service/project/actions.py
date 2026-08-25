@@ -92,7 +92,7 @@ def _render_gateway_manifests(model, namespace: str, service_type: str = "LoadBa
     templates = sorted(env.list_templates())
     rendered = []
     for template_name in templates:
-        if not template_name.endswith((".yaml", ".yml", ".yml.j2", ".yaml.j2")) or "dex-app" in template_name:
+        if not template_name.endswith((".yaml", ".yml", ".yml.j2", ".yaml.j2")) or "dex-app" in template_name or "03-trusted-certs" in template_name:
             continue
         template = env.get_template(template_name)
         rendered.append(template.render(**vars))
@@ -425,6 +425,52 @@ class InstallDexAction(BaseAction):
                     os.unlink(temp_kf.name)
                 except Exception:
                     pass
+async def apply_manifest_to_cluster(cluster: K8sCluster, manifest: str) -> None:
+    """Apply a Kubernetes manifest to a cluster using kubectl."""
+    if not manifest.strip():
+        return
+    kubeconfig_path = None
+    temp_kf = None
+    temp_m = None
+    try:
+        if cluster.type == K8sClusterType.REMOTE:
+            if not cluster.kubeconfig:
+                raise ValueError(f"Cluster {cluster.name} has no kubeconfig")
+            temp_kf = tempfile.NamedTemporaryFile(mode="w", delete=False)
+            temp_kf.write(cluster.kubeconfig)
+            temp_kf.flush()
+            temp_kf.close()
+            kubeconfig_path = temp_kf.name
+
+        temp_m = tempfile.NamedTemporaryFile(mode="w", delete=False)
+        temp_m.write(manifest)
+        temp_m.flush()
+        temp_m.close()
+
+        cmd = ["kubectl"]
+        if kubeconfig_path:
+            cmd.extend(["--kubeconfig", kubeconfig_path])
+        cmd.extend(["apply", "-f", temp_m.name])
+
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await proc.communicate()
+        if proc.returncode != 0:
+            raise RuntimeError(f"Kubectl command failed: {stderr.decode()}")
+    finally:
+        if temp_m:
+            try:
+                os.unlink(temp_m.name)
+            except Exception:
+                pass
+        if temp_kf:
+            try:
+                os.unlink(temp_kf.name)
+            except Exception:
+                pass
 
 
 @ProjectService.register_action("sync_project_integrations")
@@ -502,67 +548,19 @@ class SyncProjectIntegrationsAction(BaseAction):
             for c in certs
         ]
         
-        trusted_certs_manifest = ""
-        if trusted_certs:
-            trusted_certs_template = env.get_template("03-trusted-certs.yml.j2")
-            trusted_certs_manifest = trusted_certs_template.render(
-                name=self.model.name,
-                namespace=namespace,
-                trusted_certs=trusted_certs,
-            )
+        trusted_certs_template = env.get_template("03-trusted-certs.yml.j2")
+        trusted_certs_manifest = trusted_certs_template.render(
+            name=self.model.name,
+            namespace=namespace,
+            trusted_certs=trusted_certs,
+        )
 
         # 3. Apply manifests
-        kubeconfig_path = None
-        temp_kf = None
-        try:
-            if cluster.type == K8sClusterType.REMOTE:
-                if not cluster.kubeconfig:
-                    raise ValueError(f"Cluster {cluster.name} has no kubeconfig")
-                temp_kf = tempfile.NamedTemporaryFile(mode="w", delete=False)
-                temp_kf.write(cluster.kubeconfig)
-                temp_kf.flush()
-                temp_kf.close()
-                kubeconfig_path = temp_kf.name
+        await apply_manifest_to_cluster(cluster, argocd_project_manifest)
+        await apply_manifest_to_cluster(cluster, issuer_manifest)
+        if trusted_certs_manifest:
+            await apply_manifest_to_cluster(cluster, trusted_certs_manifest)
+        if gateway_manifest:
+            await apply_manifest_to_cluster(cluster, gateway_manifest)
 
-            async def run_kubectl(manifest: str):
-                if not manifest.strip():
-                    return
-                temp_m = None
-                try:
-                    temp_m = tempfile.NamedTemporaryFile(mode="w", delete=False)
-                    temp_m.write(manifest)
-                    temp_m.flush()
-                    temp_m.close()
-                    cmd = ["kubectl"]
-                    if kubeconfig_path:
-                        cmd.extend(["--kubeconfig", kubeconfig_path])
-                    cmd.extend(["apply", "-f", temp_m.name])
-                    proc = await asyncio.create_subprocess_exec(
-                        *cmd,
-                        stdout=asyncio.subprocess.PIPE,
-                        stderr=asyncio.subprocess.PIPE,
-                    )
-                    stdout, stderr = await proc.communicate()
-                    if proc.returncode != 0:
-                        raise RuntimeError(f"Kubectl command failed: {stderr.decode()}")
-                finally:
-                    if temp_m:
-                        try:
-                            os.unlink(temp_m.name)
-                        except Exception:
-                            pass
-
-            await run_kubectl(argocd_project_manifest)
-            await run_kubectl(issuer_manifest)
-            if trusted_certs_manifest:
-                await run_kubectl(trusted_certs_manifest)
-            if gateway_manifest:
-                await run_kubectl(gateway_manifest)
-
-        finally:
-            if temp_kf:
-                try:
-                    os.unlink(temp_kf.name)
-                except Exception:
-                    pass
 

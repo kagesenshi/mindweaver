@@ -3,6 +3,7 @@
 
 from mindweaver.service.base import ProjectScopedService
 from mindweaver.fw.exc import FieldValidationError
+from mindweaver.fw.service import after_create, after_update, after_delete
 from pydantic import ValidationError
 from typing import Any
 
@@ -51,6 +52,24 @@ class TrustedCertService(ProjectScopedService[TrustedCert]):
                 message=message,
             )
         return await super().update(model_id, data)
+
+    @after_create()
+    async def sync_certs_on_create(self, model: TrustedCert):
+        """Sync trusted-certs secret immediately upon creation."""
+        from mindweaver.tasks.project_tasks import sync_trusted_certs_secret_task
+        sync_trusted_certs_secret_task.delay(model.project_id)
+
+    @after_update()
+    async def sync_certs_on_update(self, model: TrustedCert):
+        """Sync trusted-certs secret immediately upon update."""
+        from mindweaver.tasks.project_tasks import sync_trusted_certs_secret_task
+        sync_trusted_certs_secret_task.delay(model.project_id)
+
+    @after_delete()
+    async def sync_certs_on_delete(self, model: TrustedCert):
+        """Sync trusted-certs secret immediately upon deletion."""
+        from mindweaver.tasks.project_tasks import sync_trusted_certs_secret_task
+        sync_trusted_certs_secret_task.delay(model.project_id)
 
     @classmethod
     def widgets(cls) -> dict[str, Any]:

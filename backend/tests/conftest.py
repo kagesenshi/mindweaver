@@ -25,6 +25,8 @@ from mindweaver.config import settings
 
 from mindweaver.app import app
 from mindweaver.service.project import ProjectService
+from mindweaver.celery_app import app as celery_app
+celery_app.conf.task_always_eager = True
 
 
 class Model(NamedBase, table=True):

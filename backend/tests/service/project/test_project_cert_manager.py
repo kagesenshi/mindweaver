@@ -233,3 +233,122 @@ async def test_deploy_project_issuer(test_cluster: dict):
             assert "kubectl" in args
             assert "apply" in args
 
+
+@pytest.mark.asyncio
+async def test_deploy_project_trusted_certs(test_cluster: dict):
+    from mindweaver.service.project.actions import SyncProjectIntegrationsAction
+    from mindweaver.service.project.model import Project
+    from mindweaver.service.trusted_certs.model import TrustedCert
+    from mindweaver.fw.model import get_engine
+    from sqlmodel.ext.asyncio.session import AsyncSession
+    import base64
+
+    project = Project(
+        name="project-trusted-certs-test",
+        title="Project Trusted Certs Test",
+        k8s_cluster_id=test_cluster["id"],
+        ingress_domain="trusted-certs-test.local",
+    )
+
+    engine = get_engine()
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        session.add(project)
+        await session.commit()
+        await session.refresh(project)
+
+        # Create a TrustedCert for the project
+        cert = TrustedCert(
+            name="test-ca",
+            title="Test CA",
+            certificate="-----BEGIN CERTIFICATE-----\nMIIDXTCCAkWgAwIBAgIJAO...\n-----END CERTIFICATE-----",
+            project_id=project.id,
+        )
+        session.add(cert)
+        await session.commit()
+
+        mock_svc = MagicMock()
+        mock_svc.session = session
+        mock_svc.request = MagicMock()
+
+        with patch("asyncio.create_subprocess_exec") as mock_exec:
+            mock_proc = MagicMock()
+            mock_proc.communicate = pytest.importorskip("unittest.mock").AsyncMock(
+                return_value=(b"applied", b"")
+            )
+            mock_proc.returncode = 0
+            mock_exec.return_value = mock_proc
+
+            applied_manifests = []
+            async def mock_subprocess(*args, **kwargs):
+                filepath = args[-1]
+                with open(filepath, "r") as f:
+                    applied_manifests.append(f.read())
+                return mock_proc
+            mock_exec.side_effect = mock_subprocess
+
+            action = SyncProjectIntegrationsAction(project, mock_svc)
+            action.session = session
+            await action.run()
+
+            # Check if any applied manifest contains the trusted-certs Secret
+            secret_manifests = [m for m in applied_manifests if "kind: Secret" in m and "name: trusted-certs" in m]
+            assert len(secret_manifests) == 1
+            manifest = secret_manifests[0]
+            assert "test-ca.crt:" in manifest
+            # Base64 encoded value of the cert
+            b64_val = base64.b64encode(cert.certificate.encode("utf-8")).decode("utf-8")
+            assert b64_val in manifest
+
+
+@pytest.mark.asyncio
+async def test_deploy_project_empty_trusted_certs(test_cluster: dict):
+    from mindweaver.service.project.actions import SyncProjectIntegrationsAction
+    from mindweaver.service.project.model import Project
+    from mindweaver.fw.model import get_engine
+    from sqlmodel.ext.asyncio.session import AsyncSession
+
+    project = Project(
+        name="project-empty-certs-test",
+        title="Project Empty Certs Test",
+        k8s_cluster_id=test_cluster["id"],
+        ingress_domain="empty-certs-test.local",
+    )
+
+    engine = get_engine()
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        session.add(project)
+        await session.commit()
+        await session.refresh(project)
+
+        mock_svc = MagicMock()
+        mock_svc.session = session
+        mock_svc.request = MagicMock()
+
+        with patch("asyncio.create_subprocess_exec") as mock_exec:
+            mock_proc = MagicMock()
+            mock_proc.communicate = pytest.importorskip("unittest.mock").AsyncMock(
+                return_value=(b"applied", b"")
+            )
+            mock_proc.returncode = 0
+            mock_exec.return_value = mock_proc
+
+            applied_manifests = []
+            async def mock_subprocess(*args, **kwargs):
+                filepath = args[-1]
+                with open(filepath, "r") as f:
+                    applied_manifests.append(f.read())
+                return mock_proc
+            mock_exec.side_effect = mock_subprocess
+
+            action = SyncProjectIntegrationsAction(project, mock_svc)
+            action.session = session
+            await action.run()
+
+            # Verify that the trusted-certs secret is generated and applied with data: {}
+            secret_manifests = [m for m in applied_manifests if "kind: Secret" in m and "name: trusted-certs" in m]
+            assert len(secret_manifests) == 1
+            manifest = secret_manifests[0]
+            assert "data: {}" in manifest
+
+
+
