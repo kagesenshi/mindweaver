@@ -113,26 +113,8 @@ def generate_trust_stores(custom_certs_list: list[str], project_ca_cert: str = "
 
     import datetime
     from cryptography import x509
-    from cryptography.x509.oid import NameOID
-    from cryptography.hazmat.primitives import hashes, serialization
-    from cryptography.hazmat.primitives.asymmetric import rsa
+    from cryptography.hazmat.primitives import serialization
     from cryptography.hazmat.primitives.serialization import pkcs12
-
-    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    subject = issuer = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "mindweaver-truststore")])
-    dummy_cert = x509.CertificateBuilder().subject_name(
-        subject
-    ).issuer_name(
-        issuer
-    ).public_key(
-        key.public_key()
-    ).serial_number(
-        x509.random_serial_number()
-    ).not_valid_before(
-        datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1)
-    ).not_valid_after(
-        datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=365)
-    ).sign(key, hashes.SHA256())
 
     ca_certs = []
     for part in merged_pem.split("-----END CERTIFICATE-----"):
@@ -148,8 +130,8 @@ def generate_trust_stores(custom_certs_list: list[str], project_ca_cert: str = "
 
     p12_data = pkcs12.serialize_key_and_certificates(
         name=b"truststore",
-        key=key,
-        cert=dummy_cert,
+        key=None,
+        cert=None,
         cas=ca_certs,
         encryption_algorithm=serialization.BestAvailableEncryption(b"changeit")
     )
