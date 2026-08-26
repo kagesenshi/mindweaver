@@ -24,6 +24,23 @@ RUN apt-get update && apt-get install -y \
     nginx \
     && rm -rf /var/lib/apt/lists/*
 
+# Install Helm and kubectl required by cluster actions
+RUN apt-get update && apt-get install -y curl ca-certificates tar \
+    && cd /tmp \
+    && curl -fsSLO https://get.helm.sh/helm-v3.21.1-linux-amd64.tar.gz \
+    && curl -fsSLO https://get.helm.sh/helm-v3.21.1-linux-amd64.tar.gz.sha256sum \
+    && sha256sum -c helm-v3.21.1-linux-amd64.tar.gz.sha256sum \
+    && tar -xzf helm-v3.21.1-linux-amd64.tar.gz \
+    && install -m 0755 linux-amd64/helm /usr/local/bin/helm \
+    && curl -fsSLo /usr/local/bin/kubectl https://dl.k8s.io/release/v1.36.2/bin/linux/amd64/kubectl \
+    && curl -fsSLo /tmp/kubectl.sha256 https://dl.k8s.io/release/v1.36.2/bin/linux/amd64/kubectl.sha256 \
+    && echo "$(cat /tmp/kubectl.sha256)  /usr/local/bin/kubectl" | sha256sum --check \
+    && chmod 0755 /usr/local/bin/kubectl \
+    && rm -rf /var/lib/apt/lists/* /tmp/linux-amd64 \
+       /tmp/helm-v3.21.1-linux-amd64.tar.gz \
+       /tmp/helm-v3.21.1-linux-amd64.tar.gz.sha256sum \
+       /tmp/kubectl.sha256
+
 # Copy backend configuration
 COPY backend/pyproject.toml backend/uv.lock ./
 
