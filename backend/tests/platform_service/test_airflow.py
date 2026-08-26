@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: AGPLv3+
 
 import pytest
+import yaml
 from unittest.mock import MagicMock, AsyncMock, patch
 from fastapi.testclient import TestClient
 from mindweaver.app import app
@@ -383,6 +384,14 @@ async def test_airflow_load_examples(test_project):
         manifests = await svc.render_manifests(airflow_model_true)
         assert "AIRFLOW__CORE__LOAD_EXAMPLES" in manifests
         assert "value: \"True\"" in manifests
+        app = next(
+            doc
+            for doc in yaml.safe_load_all(manifests)
+            if doc and doc.get("kind") == "Application"
+        )
+        values = yaml.safe_load(app["spec"]["source"]["helm"]["values"])
+        assert values["apiServer"]["service"]["type"] == "NodePort"
+        assert "service" not in values
 
     # 2. Test load_examples is False
     airflow_model_false = AirflowPlatform(
@@ -396,4 +405,38 @@ async def test_airflow_load_examples(test_project):
         manifests = await svc.render_manifests(airflow_model_false)
         assert "AIRFLOW__CORE__LOAD_EXAMPLES" in manifests
         assert "value: \"False\"" in manifests
+
+
+def test_airflow_external_uri_requires_an_allocated_nodeport():
+    from mindweaver.platform_service.airflow.poller import _derive_airflow_uris
+
+    nodes = [{"ipv4": "10.10.101.137", "ipv6": None}]
+
+    assert _derive_airflow_uris("online", "priority-airflow", None, [], nodes) == (
+        None,
+        None,
+    )
+    assert _derive_airflow_uris(
+        "online",
+        "priority-airflow",
+        None,
+        [{"name": "another-service", "port": 8080, "node_port": 30080}],
+        nodes,
+    ) == (None, None)
+    assert _derive_airflow_uris(
+        "online",
+        "priority-airflow",
+        None,
+        [
+            {
+                "name": "priority-airflow-api-server",
+                "port": 8080,
+                "node_port": 31808,
+            }
+        ],
+        nodes,
+    ) == ("http://10.10.101.137:31808", None)
+    assert _derive_airflow_uris(
+        "online", "priority-airflow", "example.com", [], nodes
+    ) == ("https://priority-airflow.example.com", None)
 
