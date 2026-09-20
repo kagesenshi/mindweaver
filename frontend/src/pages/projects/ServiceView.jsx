@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-    Briefcase, Database, Server, Activity, ArrowLeft, Monitor, Users, UserPlus, Edit, Trash2, Shield, RefreshCw, Download, Search, Key, CheckCircle2, AlertCircle, Eye, RefreshCcw, Network
+    Briefcase, Database, Server, Activity, ArrowLeft, Monitor, Users, UserPlus, Edit, Trash2, Shield, RefreshCw, Download, Search, Key, CheckCircle2, AlertCircle, Eye, RefreshCcw, Network, Copy, Check
 } from 'lucide-react';
 import { useProjectLocalUsers } from '../../hooks/useResources';
 import Modal from '../../components/Modal';
@@ -17,13 +17,96 @@ const ServiceView = ({
     onBack,
     projectsHook
 }) => {
-    const { darkMode } = context || {};
-    const { getProjectState, refreshProjectState, getProjectCertManager, getProjectIssuerCert } = projectsHook;
+    const { getProjectState, refreshProjectState, getProjectCertManager, getProjectIssuerCert, getProjectCertDetails, renewProjectCertificate } = projectsHook;
+    const darkMode = context?.darkMode ?? true;
     const [projectState, setProjectState] = useState(null);
     const [certData, setCertData] = useState(null);
     const [selectedCert, setSelectedCert] = useState(null);
     const [isCertModalOpen, setIsCertModalOpen] = useState(false);
+    const [certDetails, setCertDetails] = useState(null);
+    const [loadingCertDetails, setLoadingCertDetails] = useState(false);
+    const [certDetailsError, setCertDetailsError] = useState(null);
+    const [copiedPem, setCopiedPem] = useState(false);
+    const [showPem, setShowPem] = useState(false);
+    const [renewingCertName, setRenewingCertName] = useState(null);
+    const [refreshingCertManager, setRefreshingCertManager] = useState(false);
     const { showSuccess, showError } = useNotification();
+
+    const handleViewCertDetails = async (cert) => {
+        setSelectedCert(cert);
+        setCertDetails(null);
+        setCertDetailsError(null);
+        setShowPem(false);
+        setIsCertModalOpen(true);
+        setLoadingCertDetails(true);
+        try {
+            if (getProjectCertDetails) {
+                const data = await getProjectCertDetails(selectedProjectId, cert.name, cert.namespace);
+                setCertDetails(data);
+            }
+        } catch (e) {
+            console.error("Failed to fetch certificate details:", e);
+            setCertDetailsError(e.response?.data?.detail || "Failed to load certificate details.");
+        } finally {
+            setLoadingCertDetails(false);
+        }
+    };
+
+    const handleCopyPem = (pem) => {
+        if (!pem) return;
+        navigator.clipboard.writeText(pem);
+        setCopiedPem(true);
+        setTimeout(() => setCopiedPem(false), 2000);
+    };
+
+    const handleRenewCert = async (cert) => {
+        if (!renewProjectCertificate || !cert) return;
+        setRenewingCertName(cert.name);
+        try {
+            await renewProjectCertificate(selectedProjectId, cert.name, cert.namespace);
+            showSuccess(`Renewal initiated for certificate '${cert.name}'.`);
+            if (isCertModalOpen && selectedCert?.name === cert.name && getProjectCertDetails) {
+                setTimeout(async () => {
+                    try {
+                        const data = await getProjectCertDetails(selectedProjectId, cert.name, cert.namespace);
+                        setCertDetails(data);
+                    } catch (err) {
+                        console.debug("Error refreshing cert details after renewal:", err);
+                    }
+                }, 2000);
+            }
+            if (getProjectCertManager) {
+                setTimeout(async () => {
+                    try {
+                        const cmData = await getProjectCertManager(selectedProjectId);
+                        setCertData(cmData);
+                    } catch (err) {
+                        console.debug("Error refreshing cert manager data:", err);
+                    }
+                }, 2500);
+            }
+        } catch (e) {
+            console.error("Failed to renew certificate:", e);
+            showError(e.response?.data?.detail || "Failed to trigger certificate renewal.");
+        } finally {
+            setRenewingCertName(null);
+        }
+    };
+
+    const handleRefreshCertManager = async () => {
+        if (!getProjectCertManager || !selectedProjectId) return;
+        setRefreshingCertManager(true);
+        try {
+            const data = await getProjectCertManager(selectedProjectId);
+            setCertData(data);
+            showSuccess("Certificate status & validity refreshed");
+        } catch (err) {
+            console.error("Failed to refresh certificate status:", err);
+            showError("Failed to refresh certificates");
+        } finally {
+            setRefreshingCertManager(false);
+        }
+    };
 
     const handleDownloadCert = async () => {
         try {
@@ -585,6 +668,16 @@ ${projectState.cluster_node_ips?.map((ip, idx) => `    server node${idx + 1} ${i
                                 <p className="text-sm text-slate-500 font-medium uppercase tracking-tight">Active Issuers & Issued Certificates</p>
                             </div>
                         </div>
+                        <button
+                            onClick={handleRefreshCertManager}
+                            disabled={refreshingCertManager}
+                            className="mw-btn-secondary py-1.5 px-3 text-xs flex items-center gap-2"
+                            title="Refresh Certificates & Check Validity"
+                            id="refresh-cert-manager-btn"
+                        >
+                            <RefreshCw size={14} className={refreshingCertManager ? "animate-spin text-indigo-500" : ""} />
+                            REFRESH
+                        </button>
                     </div>
 
                     <div className="space-y-6">
@@ -681,19 +774,39 @@ ${projectState.cluster_node_ips?.map((ip, idx) => `    server node${idx + 1} ${i
                                                                     </div>
                                                                 </div>
                                                                 <div className="flex items-center gap-4">
-                                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${cert.status === 'Ready' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                                                                    <span
+                                                                        title={cert.status_reason || cert.status}
+                                                                        className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                                                                            cert.status === 'Ready'
+                                                                                ? 'bg-green-500/10 text-green-500'
+                                                                                : cert.status === 'Expired'
+                                                                                ? 'bg-amber-500/10 text-amber-500'
+                                                                                : 'bg-red-500/10 text-red-500'
+                                                                        }`}
+                                                                    >
                                                                         {cert.status}
                                                                     </span>
-                                                                    <button
-                                                                        onClick={() => {
-                                                                            setSelectedCert(cert);
-                                                                            setIsCertModalOpen(true);
-                                                                        }}
-                                                                        className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-500 transition-colors"
-                                                                        title="View Details"
-                                                                    >
-                                                                        <Eye size={16} />
-                                                                    </button>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <button
+                                                                            onClick={() => handleViewCertDetails(cert)}
+                                                                            className="mw-btn-secondary py-1 px-2.5 text-xs flex items-center gap-1.5"
+                                                                            title="View Details"
+                                                                            id={`view-cert-details-${cert.name}`}
+                                                                        >
+                                                                            <Eye size={12} />
+                                                                            DETAILS
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => handleRenewCert(cert)}
+                                                                            disabled={renewingCertName === cert.name}
+                                                                            className="mw-btn-secondary py-1 px-2.5 text-xs flex items-center gap-1.5 disabled:opacity-50 text-indigo-500 hover:text-indigo-600 dark:text-indigo-400"
+                                                                            title="Renew Certificate"
+                                                                            id={`renew-cert-${cert.name}`}
+                                                                        >
+                                                                            <RefreshCw size={12} className={renewingCertName === cert.name ? "animate-spin" : ""} />
+                                                                            {renewingCertName === cert.name ? "RENEWING..." : "RENEW"}
+                                                                        </button>
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         ))}
@@ -731,19 +844,39 @@ ${projectState.cluster_node_ips?.map((ip, idx) => `    server node${idx + 1} ${i
                                                                 </div>
                                                             </div>
                                                             <div className="flex items-center gap-4">
-                                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${cert.status === 'Ready' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                                                                <span
+                                                                    title={cert.status_reason || cert.status}
+                                                                    className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                                                                        cert.status === 'Ready'
+                                                                            ? 'bg-green-500/10 text-green-500'
+                                                                            : cert.status === 'Expired'
+                                                                            ? 'bg-amber-500/10 text-amber-500'
+                                                                            : 'bg-red-500/10 text-red-500'
+                                                                    }`}
+                                                                >
                                                                     {cert.status}
                                                                 </span>
-                                                                <button
-                                                                    onClick={() => {
-                                                                        setSelectedCert(cert);
-                                                                        setIsCertModalOpen(true);
-                                                                    }}
-                                                                    className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-500 transition-colors"
-                                                                    title="View Details"
-                                                                >
-                                                                    <Eye size={16} />
-                                                                </button>
+                                                                <div className="flex items-center gap-2">
+                                                                    <button
+                                                                        onClick={() => handleViewCertDetails(cert)}
+                                                                        className="mw-btn-secondary py-1 px-2.5 text-xs flex items-center gap-1.5"
+                                                                        title="View Details"
+                                                                        id={`view-orphan-cert-details-${cert.name}`}
+                                                                    >
+                                                                        <Eye size={12} />
+                                                                        DETAILS
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handleRenewCert(cert)}
+                                                                        disabled={renewingCertName === cert.name}
+                                                                        className="mw-btn-secondary py-1 px-2.5 text-xs flex items-center gap-1.5 disabled:opacity-50 text-indigo-500 hover:text-indigo-600 dark:text-indigo-400"
+                                                                        title="Renew Certificate"
+                                                                        id={`renew-orphan-cert-${cert.name}`}
+                                                                    >
+                                                                        <RefreshCw size={12} className={renewingCertName === cert.name ? "animate-spin" : ""} />
+                                                                        {renewingCertName === cert.name ? "RENEWING..." : "RENEW"}
+                                                                    </button>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     ))}
@@ -764,77 +897,289 @@ ${projectState.cluster_node_ips?.map((ip, idx) => `    server node${idx + 1} ${i
                     onClose={() => {
                         setIsCertModalOpen(false);
                         setSelectedCert(null);
+                        setCertDetails(null);
+                        setCertDetailsError(null);
                     }}
                     title={`Certificate: ${selectedCert.name}`}
-                    maxWidth="max-w-2xl"
+                    maxWidth="max-w-3xl"
                     darkMode={darkMode}
                 >
-                    <div className="space-y-6">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-1">
-                                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Namespace</span>
-                                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{selectedCert.namespace}</p>
+                    {loadingCertDetails ? (
+                        <div className="flex flex-col items-center justify-center py-12 space-y-3">
+                            <RefreshCw size={32} className="animate-spin text-indigo-500" />
+                            <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">
+                                Inspecting certificate & validating against Project CA...
+                            </p>
+                        </div>
+                    ) : certDetailsError ? (
+                        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 flex items-start gap-3 text-sm">
+                            <AlertCircle size={20} className="shrink-0 mt-0.5" />
+                            <div>
+                                <h4 className="font-bold">Error Loading Certificate Details</h4>
+                                <p className="mt-1 text-xs">{certDetailsError}</p>
                             </div>
-                            <div className="space-y-1">
-                                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Secret Name</span>
-                                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 font-mono">{selectedCert.secret_name || 'N/A'}</p>
-                            </div>
-                            <div className="space-y-1">
-                                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Issuer Reference</span>
-                                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                                    {selectedCert.issuer_kind}: {selectedCert.issuer_name}
-                                </p>
-                            </div>
-                            <div className="space-y-1">
-                                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Status</span>
-                                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{selectedCert.status}</p>
-                            </div>
-                            {selectedCert.not_before && (
-                                <div className="space-y-1">
-                                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Not Before</span>
-                                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 font-mono">{new Date(selectedCert.not_before).toLocaleString()}</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-6">
+                            {/* Validation Status Banner */}
+                            {certDetails?.validation && (
+                                <div
+                                    className={`p-4 rounded-2xl border flex items-start justify-between gap-4 ${
+                                        certDetails.validation.is_valid
+                                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300'
+                                            : 'bg-rose-500/10 border-rose-500/30 text-rose-700 dark:text-rose-300'
+                                    }`}
+                                >
+                                    <div className="flex items-start gap-3">
+                                        {certDetails.validation.is_valid ? (
+                                            <CheckCircle2 size={24} className="text-emerald-500 shrink-0 mt-0.5" />
+                                        ) : (
+                                            <AlertCircle size={24} className="text-rose-500 shrink-0 mt-0.5" />
+                                        )}
+                                        <div>
+                                            <h4 className="font-bold text-sm">
+                                                {certDetails.validation.is_valid
+                                                    ? 'Certificate Validated Against Project CA'
+                                                    : 'Certificate Validation Failed'}
+                                            </h4>
+                                            <p className="text-xs mt-1 text-slate-600 dark:text-slate-300 leading-relaxed font-mono">
+                                                {certDetails.validation.message}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        <span
+                                            className={`px-2.5 py-1 text-xs font-bold rounded-lg uppercase tracking-wider ${
+                                                certDetails.validation.is_valid
+                                                    ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+                                                    : 'bg-rose-500/20 text-rose-600 dark:text-rose-400'
+                                            }`}
+                                        >
+                                            {certDetails.validation.status || (certDetails.validation.is_valid ? 'VALID' : 'INVALID')}
+                                        </span>
+                                        <button
+                                            onClick={() => handleRenewCert(selectedCert)}
+                                            disabled={renewingCertName === selectedCert.name}
+                                            className="mw-btn-primary py-1 px-3 text-xs flex items-center gap-1.5"
+                                            id="modal-renew-cert-btn"
+                                            title="Renew Certificate with Project CA"
+                                        >
+                                            <RefreshCw size={12} className={renewingCertName === selectedCert.name ? "animate-spin" : ""} />
+                                            {renewingCertName === selectedCert.name ? "RENEWING..." : "RENEW"}
+                                        </button>
+                                    </div>
                                 </div>
                             )}
-                            {selectedCert.not_after && (
+
+                            {/* Project CA Details */}
+                            {certDetails?.ca && (
+                                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <Shield size={18} className="text-indigo-500" />
+                                            <h4 className="text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                                                Project CA Details
+                                            </h4>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span
+                                                className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${
+                                                    certDetails.ca.is_valid
+                                                        ? 'bg-emerald-500/10 text-emerald-500'
+                                                        : 'bg-rose-500/10 text-rose-500'
+                                                }`}
+                                            >
+                                                {certDetails.ca.is_valid ? 'CA VALID' : 'CA INVALID'}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                                        <div>
+                                            <span className="text-slate-400 uppercase font-bold text-[10px] block">CA Common Name</span>
+                                            <span className="font-semibold text-slate-700 dark:text-slate-200 font-mono">
+                                                {certDetails.ca.subject?.common_name || certDetails.ca.name || 'N/A'}
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <span className="text-slate-400 uppercase font-bold text-[10px] block">CA Secret</span>
+                                            <span className="font-semibold text-slate-700 dark:text-slate-200 font-mono">
+                                                {certDetails.ca.name || 'N/A'}
+                                            </span>
+                                        </div>
+                                        {certDetails.ca.not_before && (
+                                            <div>
+                                                <span className="text-slate-400 uppercase font-bold text-[10px] block">CA Validity Window</span>
+                                                <span className="font-semibold text-slate-700 dark:text-slate-200 font-mono">
+                                                    {new Date(certDetails.ca.not_before).toLocaleDateString()} — {new Date(certDetails.ca.not_after).toLocaleDateString()}
+                                                </span>
+                                            </div>
+                                        )}
+                                        {certDetails.ca.serial_number && (
+                                            <div>
+                                                <span className="text-slate-400 uppercase font-bold text-[10px] block">CA Serial Number</span>
+                                                <span className="font-semibold text-slate-700 dark:text-slate-200 font-mono truncate block" title={certDetails.ca.serial_number}>
+                                                    {certDetails.ca.serial_number}
+                                                </span>
+                                            </div>
+                                        )}
+                                        {certDetails.ca.subject_key_identifier && (
+                                            <div className="sm:col-span-2">
+                                                <span className="text-slate-400 uppercase font-bold text-[10px] block">Subject Key Identifier (SKI)</span>
+                                                <span className="font-mono text-[11px] text-slate-600 dark:text-slate-300 break-all block">
+                                                    {certDetails.ca.subject_key_identifier}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {certDetails.validation?.aki_matches_ski !== null && certDetails.validation?.aki_matches_ski !== undefined && (
+                                        <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800/60 flex items-center justify-between text-xs">
+                                            <span className="text-slate-500 dark:text-slate-400">Authority Key ID Match:</span>
+                                            {certDetails.validation.aki_matches_ski ? (
+                                                <span className="text-emerald-500 font-bold flex items-center gap-1">
+                                                    <CheckCircle2 size={13} /> Matches Project CA SKI
+                                                </span>
+                                            ) : (
+                                                <span className="text-amber-500 font-bold flex items-center gap-1">
+                                                    <AlertCircle size={13} /> Mismatch with Project CA SKI (CA was rotated or reissued)
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Certificate Details */}
+                            <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1">
-                                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Not After (Expiration)</span>
-                                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 font-mono">{new Date(selectedCert.not_after).toLocaleString()}</p>
+                                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Namespace</span>
+                                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 font-mono">{certDetails?.namespace || selectedCert.namespace}</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Secret Name</span>
+                                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 font-mono">{certDetails?.secret_name || selectedCert.secret_name || 'N/A'}</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Issuer Reference</span>
+                                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                        {certDetails?.issuer_ref?.kind || selectedCert.issuer_kind}: {certDetails?.issuer_ref?.name || selectedCert.issuer_name}
+                                    </p>
+                                </div>
+                                <div className="space-y-1">
+                                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Cert-Manager Status</span>
+                                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{selectedCert.status}</p>
+                                </div>
+
+                                {certDetails?.certificate?.subject?.common_name && (
+                                    <div className="space-y-1">
+                                        <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Subject (CN)</span>
+                                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 font-mono">{certDetails.certificate.subject.common_name}</p>
+                                    </div>
+                                )}
+                                {certDetails?.certificate?.signature_algorithm && (
+                                    <div className="space-y-1">
+                                        <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Signature Algorithm</span>
+                                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 font-mono">{certDetails.certificate.signature_algorithm}</p>
+                                    </div>
+                                )}
+
+                                {(certDetails?.certificate?.not_before || selectedCert.not_before) && (
+                                    <div className="space-y-1">
+                                        <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Not Before</span>
+                                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 font-mono">
+                                            {new Date(certDetails?.certificate?.not_before || selectedCert.not_before).toLocaleString()}
+                                        </p>
+                                    </div>
+                                )}
+                                {(certDetails?.certificate?.not_after || selectedCert.not_after) && (
+                                    <div className="space-y-1">
+                                        <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Not After (Expiration)</span>
+                                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 font-mono">
+                                            {new Date(certDetails?.certificate?.not_after || selectedCert.not_after).toLocaleString()}
+                                        </p>
+                                    </div>
+                                )}
+
+                                {certDetails?.certificate?.serial_number && (
+                                    <div className="space-y-1 col-span-2">
+                                        <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Serial Number</span>
+                                        <p className="text-xs font-semibold text-slate-700 dark:text-slate-200 font-mono break-all">{certDetails.certificate.serial_number}</p>
+                                    </div>
+                                )}
+                                {certDetails?.certificate?.authority_key_identifier && (
+                                    <div className="space-y-1 col-span-2">
+                                        <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Authority Key Identifier (AKI)</span>
+                                        <p className="text-xs font-mono text-slate-600 dark:text-slate-300 break-all">{certDetails.certificate.authority_key_identifier}</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* DNS Names */}
+                            {((certDetails?.certificate?.dns_names && certDetails.certificate.dns_names.length > 0) || (selectedCert.dns_names && selectedCert.dns_names.length > 0)) && (
+                                <div className="space-y-2">
+                                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400">DNS Names (Domains)</span>
+                                    <div className="flex flex-wrap gap-2">
+                                        {(certDetails?.certificate?.dns_names || selectedCert.dns_names).map(domain => (
+                                            <span key={domain} className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs font-mono text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                                                {domain}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Conditions */}
+                            {((certDetails?.conditions && certDetails.conditions.length > 0) || (selectedCert.conditions && selectedCert.conditions.length > 0)) && (
+                                <div className="space-y-3">
+                                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Cert-Manager Conditions</span>
+                                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                                        {(certDetails?.conditions || selectedCert.conditions).map((cond, idx) => (
+                                            <div key={idx} className="p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 flex items-start justify-between gap-4 text-xs">
+                                                <div className="space-y-1">
+                                                    <div className="font-bold text-slate-700 dark:text-slate-200">{cond.type}</div>
+                                                    {cond.message && <div className="text-slate-500 font-mono">{cond.message}</div>}
+                                                </div>
+                                                <span className={`font-bold uppercase tracking-wider px-2 py-0.5 rounded ${cond.status === 'True' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                                                    {cond.status}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* PEM Certificate Display */}
+                            {certDetails?.certificate?.pem && (
+                                <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+                                    <div className="flex items-center justify-between">
+                                        <button
+                                            onClick={() => setShowPem(!showPem)}
+                                            className="text-xs font-bold uppercase tracking-wider text-indigo-500 hover:text-indigo-600 transition-colors"
+                                        >
+                                            {showPem ? 'Hide Raw Certificate (PEM)' : 'View Raw Certificate (PEM)'}
+                                        </button>
+                                        <button
+                                            onClick={() => handleCopyPem(certDetails.certificate.pem)}
+                                            className="mw-btn-secondary py-1 px-2.5 text-xs flex items-center gap-1.5"
+                                            title="Copy PEM Certificate"
+                                        >
+                                            {copiedPem ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
+                                            {copiedPem ? 'COPIED' : 'COPY PEM'}
+                                        </button>
+                                    </div>
+                                    {showPem && (
+                                        <textarea
+                                            readOnly
+                                            rows={6}
+                                            value={certDetails.certificate.pem}
+                                            className="w-full text-[11px] font-mono p-3 rounded-xl bg-slate-900 text-slate-200 border border-slate-800 focus:outline-none resize-none"
+                                        />
+                                    )}
                                 </div>
                             )}
                         </div>
-
-                        {selectedCert.dns_names && selectedCert.dns_names.length > 0 && (
-                            <div className="space-y-2">
-                                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">DNS Names (Domains)</span>
-                                <div className="flex flex-wrap gap-2">
-                                    {selectedCert.dns_names.map(domain => (
-                                        <span key={domain} className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs font-mono text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                                            {domain}
-                                        </span>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {selectedCert.conditions && selectedCert.conditions.length > 0 && (
-                            <div className="space-y-3">
-                                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Conditions</span>
-                                <div className="space-y-2 max-h-48 overflow-y-auto">
-                                    {selectedCert.conditions.map((cond, idx) => (
-                                        <div key={idx} className="p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 flex items-start justify-between gap-4 text-xs">
-                                            <div className="space-y-1">
-                                                <div className="font-bold text-slate-700 dark:text-slate-200">{cond.type}</div>
-                                                {cond.message && <div className="text-slate-500 font-mono">{cond.message}</div>}
-                                            </div>
-                                            <span className={`font-bold uppercase tracking-wider px-2 py-0.5 rounded ${cond.status === 'True' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
-                                                {cond.status}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                    </div>
+                    )}
                 </Modal>
             )}
         </div>

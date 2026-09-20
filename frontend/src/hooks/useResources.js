@@ -70,6 +70,21 @@ export const useProjects = () => {
         return response.data;
     }, []);
 
+    const getProjectCertDetails = useCallback(async (id, name, namespace) => {
+        const response = await apiClient.get(`/projects/${id}/_certificate_details`, {
+            params: { name, namespace }
+        });
+        return response.data;
+    }, []);
+
+    const renewProjectCertificate = useCallback(async (id, name, namespace) => {
+        const response = await apiClient.post(`/projects/${id}/_renew_certificate`, {
+            name,
+            namespace
+        });
+        return response.data;
+    }, []);
+
     const deployProjectIssuer = useCallback(async (id) => {
         const response = await apiClient.post(`/projects/${id}/_deploy_issuer`);
         return response.data;
@@ -79,7 +94,7 @@ export const useProjects = () => {
         fetchProjects();
     }, [fetchProjects]);
 
-    return { projects, loading, error, fetchProjects, createProject, updateProject, deleteProject, getProjectState, refreshProjectState, fetchActions, executeAction, getProjectCertManager, getProjectIssuerCert, deployProjectIssuer };
+    return { projects, loading, error, fetchProjects, createProject, updateProject, deleteProject, getProjectState, refreshProjectState, fetchActions, executeAction, getProjectCertManager, getProjectIssuerCert, getProjectCertDetails, renewProjectCertificate, deployProjectIssuer };
 };
 
 

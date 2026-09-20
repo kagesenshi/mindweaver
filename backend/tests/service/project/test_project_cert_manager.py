@@ -1,14 +1,94 @@
 # SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
 # SPDX-License-Identifier: AGPLv3+
 
-import pytest
 import base64
+import datetime
 from unittest.mock import MagicMock, patch, AsyncMock
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.x509.oid import NameOID
 from fastapi.testclient import TestClient
+import pytest
+
+
+def generate_ca(common_name: str = "Test Project CA", days: int = 365, expired: bool = False):
+    """Generate a CA private key and certificate."""
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, common_name)])
+    now = datetime.datetime.now(datetime.timezone.utc)
+    if expired:
+        not_before = now - datetime.timedelta(days=days + 10)
+        not_after = now - datetime.timedelta(days=1)
+    else:
+        not_before = now - datetime.timedelta(days=1)
+        not_after = now + datetime.timedelta(days=days)
+
+    builder = (
+        x509.CertificateBuilder()
+        .subject_name(name)
+        .issuer_name(name)
+        .public_key(key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(not_before)
+        .not_valid_after(not_after)
+        .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
+        .add_extension(x509.SubjectKeyIdentifier.from_public_key(key.public_key()), critical=False)
+    )
+    cert = builder.sign(key, hashes.SHA256())
+    return key, cert
+
+
+def generate_cert(
+    common_name: str,
+    ca_key: rsa.RSAPrivateKey,
+    ca_cert: x509.Certificate,
+    dns_names: list[str] | None = None,
+    days: int = 90,
+    expired: bool = False,
+):
+    """Generate a leaf certificate signed by the given CA."""
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    subject = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, common_name)])
+    now = datetime.datetime.now(datetime.timezone.utc)
+    if expired:
+        not_before = now - datetime.timedelta(days=days + 10)
+        not_after = now - datetime.timedelta(days=1)
+    else:
+        not_before = now - datetime.timedelta(days=1)
+        not_after = now + datetime.timedelta(days=days)
+
+    builder = (
+        x509.CertificateBuilder()
+        .subject_name(subject)
+        .issuer_name(ca_cert.subject)
+        .public_key(key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(not_before)
+        .not_valid_after(not_after)
+        .add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True)
+        .add_extension(x509.SubjectKeyIdentifier.from_public_key(key.public_key()), critical=False)
+        .add_extension(
+            x509.AuthorityKeyIdentifier.from_issuer_public_key(ca_key.public_key()),
+            critical=False,
+        )
+    )
+    if dns_names:
+        san = [x509.DNSName(name) for name in dns_names]
+        builder = builder.add_extension(x509.SubjectAlternativeName(san), critical=False)
+
+    cert = builder.sign(ca_key, hashes.SHA256())
+    return key, cert
 
 
 @pytest.fixture
 def mock_cert_manager_k8s():
+    ca_key, ca_cert = generate_ca("Test Project CA")
+    ca_pem = ca_cert.public_bytes(serialization.Encoding.PEM).decode("utf-8")
+
+    _, leaf_cert = generate_cert("test-cert", ca_key, ca_cert, ["example.com"])
+    leaf_pem = leaf_cert.public_bytes(serialization.Encoding.PEM).decode("utf-8")
+
     with patch(
         "kubernetes.config.load_incluster_config"
     ), patch(
@@ -32,6 +112,9 @@ def mock_cert_manager_k8s():
                         },
                         {
                             "metadata": {"name": f"{namespace}-selfsigned-issuer", "namespace": namespace},
+                            "spec": {
+                                "ca": {"secretName": "test-ca-secret"}
+                            },
                             "status": {
                                 "conditions": [{"type": "Ready", "status": "True"}]
                             },
@@ -85,22 +168,50 @@ def mock_cert_manager_k8s():
         mock_custom.return_value.list_namespaced_custom_object.side_effect = _mock_list_namespaced_custom_object
         mock_custom.return_value.get_namespaced_custom_object.side_effect = _mock_get_namespaced_custom_object
 
+        # Mock secrets
+        ca_secret = MagicMock()
+        ca_secret.metadata.name = "test-ca-secret"
+        ca_secret.data = {
+            "ca.crt": base64.b64encode(ca_pem.encode("utf-8")).decode("utf-8"),
+            "tls.crt": base64.b64encode(ca_pem.encode("utf-8")).decode("utf-8"),
+        }
+
+        cert_secret = MagicMock()
+        cert_secret.metadata.name = "test-cert-secret"
+        cert_secret.data = {
+            "tls.crt": base64.b64encode(leaf_pem.encode("utf-8")).decode("utf-8"),
+        }
+
         # Mock read_namespaced_secret
         def _mock_read_namespaced_secret(name, namespace):
             if name == "test-ca-secret":
-                secret = MagicMock()
-                secret.data = {
-                    "ca.crt": base64.b64encode(b"FAKE_PEM_CERTIFICATE_DATA").decode("utf-8")
-                }
-                return secret
+                return ca_secret
+            elif name == "test-cert-secret":
+                return cert_secret
             raise Exception("SecretNotFound")
 
         mock_core.return_value.read_namespaced_secret.side_effect = _mock_read_namespaced_secret
 
-        yield {"custom": mock_custom, "core": mock_core}
+        def _mock_list_namespaced_secret(namespace):
+            res = MagicMock()
+            res.items = [ca_secret, cert_secret]
+            return res
+
+        mock_core.return_value.list_namespaced_secret.side_effect = _mock_list_namespaced_secret
+
+        yield {
+            "custom": mock_custom,
+            "core": mock_core,
+            "ca_key": ca_key,
+            "ca_cert": ca_cert,
+            "ca_pem": ca_pem,
+            "leaf_cert": leaf_cert,
+            "leaf_pem": leaf_pem,
+        }
 
 
 def test_get_cert_manager_resources(client: TestClient, test_cluster: dict, mock_cert_manager_k8s):
+    """Test retrieving cert manager resources when certificate is valid."""
     # Create project
     project = client.post(
         "/api/v1/projects",
@@ -143,6 +254,128 @@ def test_get_cert_manager_resources(client: TestClient, test_cluster: dict, mock
     assert certs[0]["not_after"] == "2026-12-31T23:59:59Z"
 
 
+def test_get_cert_manager_resources_expired_cert(client: TestClient, test_cluster: dict, mock_cert_manager_k8s):
+    """Test that an expired certificate shows 'Expired' status instead of 'Ready'."""
+    project = client.post(
+        "/api/v1/projects",
+        json={
+            "name": "project-cm-expired",
+            "title": "Project CM Expired",
+            "k8s_cluster_id": test_cluster["id"],
+        },
+    ).json()["data"]
+
+    # Generate expired cert
+    _, expired_cert = generate_cert(
+        "test-cert",
+        mock_cert_manager_k8s["ca_key"],
+        mock_cert_manager_k8s["ca_cert"],
+        ["example.com"],
+        expired=True,
+    )
+    expired_pem = expired_cert.public_bytes(serialization.Encoding.PEM).decode("utf-8")
+
+    expired_secret = MagicMock()
+    expired_secret.metadata.name = "test-cert-secret"
+    expired_secret.data = {
+        "tls.crt": base64.b64encode(expired_pem.encode("utf-8")).decode("utf-8"),
+    }
+
+    ca_secret = MagicMock()
+    ca_secret.metadata.name = "test-ca-secret"
+    ca_secret.data = {
+        "ca.crt": base64.b64encode(mock_cert_manager_k8s["ca_pem"].encode("utf-8")).decode("utf-8"),
+    }
+
+    mock_cert_manager_k8s["core"].return_value.list_namespaced_secret.side_effect = lambda namespace=None, **kwargs: MagicMock(
+        items=[ca_secret, expired_secret]
+    )
+
+    resp = client.get(f"/api/v1/projects/{project['id']}/_cert_manager")
+    assert resp.status_code == 200
+    certs = resp.json()["certificates"]
+    assert len(certs) == 1
+    assert certs[0]["status"] == "Expired"
+    assert certs[0]["status_reason"] is not None
+    assert "expired" in certs[0]["status_reason"].lower()
+
+
+def test_get_cert_manager_resources_invalid_signature(client: TestClient, test_cluster: dict, mock_cert_manager_k8s):
+    """Test that a certificate with an invalid signature/rotated CA shows 'Invalid' status instead of 'Ready'."""
+    project = client.post(
+        "/api/v1/projects",
+        json={
+            "name": "project-cm-invalid-sig",
+            "title": "Project CM Invalid Sig",
+            "k8s_cluster_id": test_cluster["id"],
+        },
+    ).json()["data"]
+
+    # Generate leaf cert with a different/older CA
+    other_ca_key, other_ca_cert = generate_ca("Old Project CA")
+    _, mismatched_cert = generate_cert(
+        "test-cert",
+        other_ca_key,
+        other_ca_cert,
+        ["example.com"],
+    )
+    mismatched_pem = mismatched_cert.public_bytes(serialization.Encoding.PEM).decode("utf-8")
+
+    mismatched_secret = MagicMock()
+    mismatched_secret.metadata.name = "test-cert-secret"
+    mismatched_secret.data = {
+        "tls.crt": base64.b64encode(mismatched_pem.encode("utf-8")).decode("utf-8"),
+    }
+
+    ca_secret = MagicMock()
+    ca_secret.metadata.name = "test-ca-secret"
+    ca_secret.data = {
+        "ca.crt": base64.b64encode(mock_cert_manager_k8s["ca_pem"].encode("utf-8")).decode("utf-8"),
+    }
+
+    mock_cert_manager_k8s["core"].return_value.list_namespaced_secret.side_effect = lambda namespace=None, **kwargs: MagicMock(
+        items=[ca_secret, mismatched_secret]
+    )
+
+    resp = client.get(f"/api/v1/projects/{project['id']}/_cert_manager")
+    assert resp.status_code == 200
+    certs = resp.json()["certificates"]
+    assert len(certs) == 1
+    assert certs[0]["status"] == "Invalid"
+    assert certs[0]["status_reason"] is not None
+
+
+def test_get_cert_manager_resources_missing_secret(client: TestClient, test_cluster: dict, mock_cert_manager_k8s):
+    """Test that a certificate whose secret is missing shows 'Invalid' status."""
+    project = client.post(
+        "/api/v1/projects",
+        json={
+            "name": "project-cm-no-sec",
+            "title": "Project CM No Sec",
+            "k8s_cluster_id": test_cluster["id"],
+        },
+    ).json()["data"]
+
+    # Secret list has only CA, missing test-cert-secret
+    ca_secret = MagicMock()
+    ca_secret.metadata.name = "test-ca-secret"
+    ca_secret.data = {
+        "ca.crt": base64.b64encode(mock_cert_manager_k8s["ca_pem"].encode("utf-8")).decode("utf-8"),
+    }
+
+    mock_cert_manager_k8s["core"].return_value.list_namespaced_secret.side_effect = lambda ns: MagicMock(
+        items=[ca_secret]
+    )
+    mock_cert_manager_k8s["core"].return_value.read_namespaced_secret.side_effect = Exception("NotFound")
+
+    resp = client.get(f"/api/v1/projects/{project['id']}/_cert_manager")
+    assert resp.status_code == 200
+    certs = resp.json()["certificates"]
+    assert len(certs) == 1
+    assert certs[0]["status"] == "Invalid"
+    assert certs[0]["status_reason"] == "Secret missing or empty"
+
+
 def test_get_issuer_ca_cert_success(client: TestClient, test_cluster: dict, mock_cert_manager_k8s):
     project = client.post(
         "/api/v1/projects",
@@ -160,7 +393,7 @@ def test_get_issuer_ca_cert_success(client: TestClient, test_cluster: dict, mock
     )
     assert resp.status_code == 200
     data = resp.json()
-    assert data["pem"] == "FAKE_PEM_CERTIFICATE_DATA"
+    assert data["pem"] == mock_cert_manager_k8s["ca_pem"]
     assert data["filename"] == "project-ca-success-selfsigned-issuer-ca.crt"
 
 
