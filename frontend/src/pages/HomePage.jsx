@@ -19,7 +19,7 @@ import {
     TrendingUp,
     FolderKanban,
 } from 'lucide-react';
-import { usePgSql, useHiveMetastore, useTrino, useSuperset, useAirflow, useKafka, useNifi } from '../hooks/useResources';
+import { usePgSql, useHiveMetastore, useTrino, useSuperset, useAirflow, useKafka, useNifi, useDoris } from '../hooks/useResources';
 import PageLayout from '../components/PageLayout';
 
 const HomePage = () => {
@@ -31,12 +31,14 @@ const HomePage = () => {
     const { platforms: airflowPlatforms, loading: airflowLoading } = useAirflow();
     const { platforms: kafkaPlatforms, loading: kafkaLoading } = useKafka();
     const { platforms: nifiPlatforms, loading: nifiLoading } = useNifi();
+    const { platforms: dorisPlatforms, loading: dorisLoading } = useDoris();
     const navigate = useNavigate();
 
-    const loading = pgsqlLoading || hmsLoading || trinoLoading || supersetLoading || airflowLoading || kafkaLoading || nifiLoading;
+    const loading = pgsqlLoading || hmsLoading || trinoLoading || supersetLoading || airflowLoading || kafkaLoading || nifiLoading || dorisLoading;
 
     const allInstances = [
         ...pgsqlPlatforms.map(p => ({ ...p, type: 'pgsql' })),
+        ...dorisPlatforms.map(p => ({ ...p, type: 'doris' })),
         ...hmsPlatforms.map(p => ({ ...p, type: 'hms' })),
         ...trinoPlatforms.map(p => ({ ...p, type: 'trino' })),
         ...supersetPlatforms.map(p => ({ ...p, type: 'superset' })),
@@ -58,6 +60,7 @@ const HomePage = () => {
 
     const serviceTypes = [
         { key: 'pgsql', label: 'CloudNative PG', icon: Database, route: '/platform/pgsql', color: 'text-blue-500 bg-blue-500/10' },
+        { key: 'doris', label: 'Apache Doris', icon: Database, route: '/platform/doris', color: 'text-cyan-500 bg-cyan-500/10' },
         { key: 'hms', label: 'Hive Metastore', icon: Boxes, route: '/platform/hive-metastore', color: 'text-purple-500 bg-purple-500/10' },
         { key: 'kafka', label: 'Apache Kafka', icon: RefreshCcw, route: '/platform/kafka', color: 'text-amber-500 bg-amber-500/10' },
         { key: 'trino', label: 'Trino Cluster', icon: Wind, route: '/platform/trino', color: 'text-sky-500 bg-sky-500/10' },

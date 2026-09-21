@@ -27,6 +27,7 @@ from .platform_service.superset import router as superset_router
 from .platform_service.airflow import router as airflow_router
 from .platform_service.kafka import router as kafka_router
 from .platform_service.nifi import router as nifi_router
+from .platform_service.doris import router as doris_router
 from .service.name_tracker import router as name_tracker_router
 from .service.ssh_key import router as ssh_key_router
 from .service.git_repo import router as git_repo_router
@@ -242,6 +243,7 @@ app.include_router(superset_router, prefix="/api/v1")
 app.include_router(airflow_router, prefix="/api/v1")
 app.include_router(kafka_router, prefix="/api/v1")
 app.include_router(nifi_router, prefix="/api/v1")
+app.include_router(doris_router, prefix="/api/v1")
 app.include_router(s3_router, prefix="/api/v1")
 app.include_router(ldap_config_router, prefix="/api/v1")
 app.include_router(name_tracker_router, prefix="/api/v1")

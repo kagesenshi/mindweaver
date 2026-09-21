@@ -12,6 +12,7 @@ from mindweaver.platform_service.superset import SupersetPlatformService
 from mindweaver.platform_service.airflow import AirflowPlatformService
 from mindweaver.platform_service.kafka import KafkaPlatformService
 from mindweaver.platform_service.nifi import NifiPlatformService
+from mindweaver.platform_service.doris import DorisPlatformService
 from mindweaver.config import logger, settings
 from typing import Type
 from .base import run_async
@@ -33,6 +34,7 @@ def poll_all_platforms():
         AirflowPlatformService,
         KafkaPlatformService,
         NifiPlatformService,
+        DorisPlatformService,
     ]
 
     for svc_cls in services:
@@ -81,6 +83,7 @@ async def _poll_platform_status(service_class_name: str, platform_id: int):
         "AirflowPlatformService": AirflowPlatformService,
         "KafkaPlatformService": KafkaPlatformService,
         "NifiPlatformService": NifiPlatformService,
+        "DorisPlatformService": DorisPlatformService,
     }
 
     svc_cls = mapping.get(service_class_name)

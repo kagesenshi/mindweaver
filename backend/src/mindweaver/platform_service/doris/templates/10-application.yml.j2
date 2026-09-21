@@ -1,0 +1,79 @@
+# SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
+# SPDX-License-Identifier: AGPLv3+
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ name }}
+  namespace: argocd
+  labels:
+    {% if project_title %}
+    project: "{{ project_title }}"
+    {% endif %}
+    {% if service_title %}
+    service: "{{ service_title }}"
+    {% endif %}
+    manager: mindweaver
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: {{ project_name }}
+  source:
+    repoURL: {{ chart_repo }}
+    chart: {{ chart_name }}
+    targetRevision: {{ chart_version }}
+    helm:
+      values: |
+        dorisCluster:
+          name: {{ name }}
+          authSecretName: {{ name }}-admin-secret
+        feSpec:
+          replicas: {{ fe_replicas }}
+          image:
+            repository: "{{ fe_image }}"
+            tag: "{{ fe_image_tag }}"
+          service:
+            type: NodePort
+          resource:
+            requests:
+              cpu: "{{ fe_cpu_request }}"
+              memory: "{{ fe_mem_request }}Gi"
+            limits:
+              cpu: "{{ fe_cpu_limit }}"
+              memory: "{{ fe_mem_limit }}Gi"
+          persistentVolumeClaim:
+            metaPersistentVolume:
+              storage: "{{ fe_storage_size }}"
+              storageClassName: ""
+            logsPersistentVolume:
+              storageClassName: ""
+        beSpec:
+          replicas: {{ be_replicas }}
+          image:
+            repository: "{{ be_image }}"
+            tag: "{{ be_image_tag }}"
+          service:
+            type: NodePort
+          resource:
+            requests:
+              cpu: "{{ be_cpu_request }}"
+              memory: "{{ be_mem_request }}Gi"
+            limits:
+              cpu: "{{ be_cpu_limit }}"
+              memory: "{{ be_mem_limit }}Gi"
+          persistentVolumeClaim:
+            dataPersistentVolume:
+              storage: "{{ be_storage_size }}"
+              storageClassName: ""
+            logsPersistentVolume:
+              storageClassName: ""
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ namespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - RespectIgnoreDifferences=true

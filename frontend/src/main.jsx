@@ -24,6 +24,7 @@ const SupersetPage = lazy(() => import('./pages/superset/Page'))
 const AirflowPage = lazy(() => import('./pages/airflow/Page'))
 const KafkaPage = lazy(() => import('./pages/kafka/Page'))
 const NifiPage = lazy(() => import('./pages/nifi/Page'))
+const DorisPage = lazy(() => import('./pages/doris/Page'))
 const StacksPage = lazy(() => import('./pages/stacks/Page'))
 const UsersPage = lazy(() => import('./pages/users/Page'))
 
@@ -115,6 +116,10 @@ const router = createBrowserRouter([
       {
         path: 'platform/nifi',
         element: <NifiPage />,
+      },
+      {
+        path: 'platform/doris',
+        element: <DorisPage />,
       },
       {
         path: 'platform/:service',
