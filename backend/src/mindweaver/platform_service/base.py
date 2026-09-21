@@ -19,6 +19,7 @@ from mindweaver.service.project import Project
 from mindweaver.service.k8s_cluster import K8sCluster, K8sClusterType
 from mindweaver.fw.service import after_update, before_delete, before_create, after_create
 from mindweaver.fw.state import BaseState
+from mindweaver.fw.cert_manager import reconcile_manifest_certificates
 import os
 import pydantic
 from sqlalchemy import Column, DateTime, String
@@ -398,6 +399,14 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
                         logger.info(f"Namespace {default_namespace} created")
                     else:
                         raise
+
+            # Reconcile cert-manager certificates to ensure outdated or rotated CA certs are reissued
+            try:
+                reconcile_manifest_certificates(
+                    k8s_client, default_namespace, manifest, core_api=core_v1
+                )
+            except Exception as ce:
+                logger.warning(f"Error reconciling certificates before deployment: {ce}")
 
             for doc in yaml.safe_load_all(manifest):
                 if not doc:

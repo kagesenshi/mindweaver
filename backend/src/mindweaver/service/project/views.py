@@ -20,6 +20,7 @@ from .state import ProjectState
 from mindweaver.service.k8s_cluster import K8sCluster, K8sClusterType
 from mindweaver.service.k8s_cluster.service import K8sClusterService
 from mindweaver.service.project.actions import _get_jinja_env
+from mindweaver.fw.cert_manager import reissue_certificate
 
 logger = logging.getLogger(__name__)
 
@@ -793,43 +794,12 @@ async def renew_project_certificate(
         spec = cert_obj.get("spec", {})
         secret_name = spec.get("secretName")
 
-        # 1. Delete associated secret to force regeneration
-        if secret_name:
-            try:
-                core_api.delete_namespaced_secret(secret_name, cert_namespace)
-                logger.info(f"Deleted secret {secret_name} in {cert_namespace} for certificate {req.name}")
-            except Exception as e:
-                logger.info(f"Secret {secret_name} not found or already deleted: {e}")
-
-        # 2. Delete existing CertificateRequests for this certificate
-        try:
-            cr_list = custom_api.list_namespaced_custom_object(
-                group="cert-manager.io",
-                version="v1",
-                namespace=cert_namespace,
-                plural="certificaterequests",
-            )
-            for cr in cr_list.get("items", []):
-                cr_name = cr["metadata"]["name"]
-                owner_refs = cr.get("metadata", {}).get("ownerReferences", [])
-                is_owner = any(
-                    ref.get("name") == req.name and ref.get("kind") == "Certificate" for ref in owner_refs
-                )
-                cr_cert_name = cr.get("metadata", {}).get("annotations", {}).get("cert-manager.io/certificate-name")
-                if is_owner or cr_cert_name == req.name or cr_name.startswith(f"{req.name}-"):
-                    try:
-                        custom_api.delete_namespaced_custom_object(
-                            group="cert-manager.io",
-                            version="v1",
-                            namespace=cert_namespace,
-                            plural="certificaterequests",
-                            name=cr_name,
-                        )
-                        logger.info(f"Deleted CertificateRequest {cr_name} in {cert_namespace}")
-                    except Exception as ex:
-                        logger.warning(f"Could not delete CertificateRequest {cr_name}: {ex}")
-        except Exception as e:
-            logger.warning(f"Failed to list/clean CertificateRequests for {req.name}: {e}")
+        reissue_certificate(
+            k8s_client=None,
+            namespace=cert_namespace,
+            cert_name=req.name,
+            secret_name=secret_name,
+        )
 
         return {
             "status": "success",
