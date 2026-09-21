@@ -35,7 +35,11 @@ from .service.stack.service import StackService
 from .service.trusted_certs import router as trusted_certs_router
 
 
-from .fw.model import get_engine, get_session
+import asyncio
+from .crypto import _get_fernet_instance
+from .tasks.name_tracker import scan_and_clean_names
+from .fw.model import get_engine
+from sqlmodel.ext.asyncio.session import AsyncSession as SQLModelAsyncSession
 from sqlmodel import select
 
 from fastapi.middleware.cors import CORSMiddleware
@@ -51,15 +55,12 @@ from contextlib import asynccontextmanager
 
 @asynccontextmanager
 async def lifespan(app: fastapi.FastAPI):
-    from mindweaver.crypto import _get_fernet_instance
     _get_fernet_instance()
 
-    import asyncio
-    from mindweaver.tasks.name_tracker import scan_and_clean_names
     asyncio.create_task(scan_and_clean_names())
 
     if settings.default_admin_username and settings.default_admin_password:
-        async for session in get_session(get_engine()):
+        async with SQLModelAsyncSession(get_engine()) as session:
             statement = select(User).where(User.name == settings.default_admin_username)
             result = await session.exec(statement)
             user = result.first()
@@ -76,7 +77,6 @@ async def lifespan(app: fastapi.FastAPI):
                 await session.commit()
                 await session.refresh(user)
                 logger.info(f"Created default admin user: {user.name}")
-            break
     yield
 
 

@@ -15,6 +15,11 @@ class Settings(BaseSettings):
     db_name: str = "mindweaver"
     db_user: str = "postgres"
     db_pass: str = "password"
+    db_pool_size: int = 20
+    db_max_overflow: int = 20
+    db_pool_recycle: int = 1800
+    db_pool_pre_ping: bool = True
+    db_pool_timeout: float = 30.0
     timezone: str = "Asia/Kuala_Lumpur"
     enable_db_reset: bool = False
     enable_test_views: bool = False

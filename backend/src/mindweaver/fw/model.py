@@ -61,10 +61,19 @@ _engine: Optional[SAAsyncEngine] = None
 
 def get_engine() -> SAAsyncEngine:
     global _engine
+    kwargs = {
+        "pool_pre_ping": settings.db_pool_pre_ping,
+        "pool_recycle": settings.db_pool_recycle,
+    }
+    if "sqlite" not in settings.db_async_uri:
+        kwargs["pool_size"] = settings.db_pool_size
+        kwargs["max_overflow"] = settings.db_max_overflow
+        kwargs["pool_timeout"] = settings.db_pool_timeout
+
     if "pytest" in sys.modules:
-        return create_async_engine(settings.db_async_uri)
+        return create_async_engine(settings.db_async_uri, **kwargs)
     if _engine is None:
-        _engine = create_async_engine(settings.db_async_uri)
+        _engine = create_async_engine(settings.db_async_uri, **kwargs)
     return _engine
 
 

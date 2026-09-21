@@ -119,7 +119,13 @@ async def get_superadmin(request: Request, session: AsyncSession) -> Optional[Us
     raise HTTPException(status_code=403, detail="Superadmin privileges required")
 
 
-async def verify_token(request: Request):
+async def verify_token(
+    request: Request,
+    session: AsyncSession,
+):
+    """
+    Verify bearer token for incoming requests unless exempt or auth is disabled.
+    """
     if not settings.enable_auth:
         return
 
@@ -130,11 +136,7 @@ async def verify_token(request: Request):
     if "/api/v1/auth/login" in path or "/api/v1/auth/callback" in path:
         return
 
-
-    # We need a session to verify the user exists
-    async for session in get_session(get_engine()):
-        await get_current_user(request, session)
-        break
+    await get_current_user(request, session)
 
 
 class LoginRequest(BaseModel):

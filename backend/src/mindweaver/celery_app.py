@@ -40,17 +40,28 @@ app.conf.update(
     },
 )
 
-from celery.signals import celeryd_init, beat_init
+from celery.signals import celeryd_init, beat_init, worker_process_init
+from mindweaver.crypto import _get_fernet_instance
+from mindweaver.fw.model import clear_engine
+
 
 @celeryd_init.connect
 def check_fernet_on_worker_init(**kwargs):
-    from mindweaver.crypto import _get_fernet_instance
+    """Verify Fernet encryption key on worker initialization."""
     _get_fernet_instance()
+
 
 @beat_init.connect
 def check_fernet_on_beat_init(**kwargs):
-    from mindweaver.crypto import _get_fernet_instance
+    """Verify Fernet encryption key on beat scheduler initialization."""
     _get_fernet_instance()
+
+
+@worker_process_init.connect
+def clear_engine_on_worker_process_init(**kwargs):
+    """Clear database async engine upon worker process fork to prevent shared connection pool corruption."""
+    clear_engine()
+
 
 if __name__ == "__main__":
     app.start()
