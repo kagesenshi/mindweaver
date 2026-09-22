@@ -2,14 +2,9 @@
 # SPDX-License-Identifier: AGPLv3+
 
 from .model import Base, NamedBase, AsyncSession, get_session, get_engine
-from .service import (
-    Service,
-    before_create,
-    before_update,
-)
 from .hash import get_password_hash, verify_password
 from sqlmodel import Field, Session, select
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, params
 from fastapi.responses import RedirectResponse
 from mindweaver.config import settings
 from typing import Optional, Annotated, Any
@@ -18,11 +13,9 @@ import httpx
 import jwt
 import time
 from urllib.parse import urlencode
-from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field as PydanticField
 import logging
 import random
-
 logger = logging.getLogger(__name__)
 
 
@@ -118,6 +111,9 @@ async def get_superadmin(request: Request, session: AsyncSession) -> Optional[Us
     raise HTTPException(status_code=403, detail="Superadmin privileges required")
 
 
+
+
+
 async def verify_token(
     request: Request,
     session: AsyncSession,
@@ -135,7 +131,9 @@ async def verify_token(
     if "/api/v1/auth/login" in path or "/api/v1/auth/callback" in path:
         return
 
-    await get_current_user(request, session)
+    user = await get_current_user(request, session)
+    if hasattr(request, "state"):
+        request.state.user = user
 
 
 class LoginRequest(BaseModel):
@@ -143,7 +141,7 @@ class LoginRequest(BaseModel):
     password: str
 
 
-class AuthService(Service[User]):
+class AuthService:
     @classmethod
     def model_class(cls) -> type[User]:
         return User
@@ -336,97 +334,65 @@ class AuthService(Service[User]):
 
                 return Token(access_token=app_token, token_type="bearer")
 
-        # Let's try again with clean signature
         @router.get("/me", response_model=User)
         async def me(
             request: Request,
             session: AsyncSession,
             user: User = Depends(get_current_user),
         ):
-            svc = UserService(request, session)
-            return await svc.post_process_model(user)
+            return redact_user(user)
+
+        @router.put("/me", response_model=User)
+        async def update_me(
+            data: UserProfileUpdate,
+            request: Request,
+            session: AsyncSession,
+            user: User = Depends(get_current_user),
+        ):
+            if data.display_name is not None:
+                user.display_name = data.display_name
+            if data.title is not None:
+                user.title = data.title
+
+            session.add(user)
+            await session.commit()
+            await session.refresh(user)
+
+            return redact_user(user)
 
         return router
 
 
-from pydantic import BaseModel, Field
-from .util import redefine_model
+class UserProfileUpdate(BaseModel):
+    display_name: Optional[str] = None
+    title: Optional[str] = None
+
 
 class ChangePasswordRequest(BaseModel):
-    password: str = Field(min_length=8)
+    password: str = PydanticField(min_length=8)
 
 
-class UserService(Service[User]):
-    @classmethod
-    def model_class(cls) -> type[User]:
-        return User
-
-    @classmethod
-    def hashed_fields(cls) -> list[str]:
-        return ["password"]
-
-    @classmethod
-    def immutable_fields(cls) -> list[str]:
-        # User objects usually have mutable names in this context,
-        # but identifier fields like username and email should be fixed.
-        return ["name", "email"]
-
-    @classmethod
-    def updatemodel_class(cls):
-        model_class = cls.model_class()
-        schema_class = cls.schema_class()
-        return redefine_model(
-            f"Update {model_class.__name__}",
-            schema_class,
-            exclude=cls.internal_fields() + ["password"],
-            optional=["__ALL__"],
-        )
-
-    @classmethod
-    def widgets(cls) -> dict[str, Any]:
-        return {
-            "name": {"order": 1, "column_span": 1, "label": "Username"},
-            "display_name": {"order": 2, "column_span": 1},
-            "email": {"order": 3, "column_span": 1},
-            "password": {"type": "password", "order": 4, "column_span": 1},
-            "title": {"order": 5, "column_span": 1},
-            "is_active": {"order": 6, "column_span": 1},
-            "is_superadmin": {"order": 7, "column_span": 1},
-        }
-
-    @classmethod
-    def extra_dependencies(cls):
-        return [Depends(get_superadmin)]
-
-    @classmethod
-    def router(cls) -> APIRouter:
-        router = super().router()
-        return router
-
-
-@UserService.model_view("POST", "/_change_password", dependencies=[])
-async def change_password(
-    id: int,
-    payload: ChangePasswordRequest,
-    session: AsyncSession,
-    current_user: User = Depends(get_current_user),
-):
-    target_user = await session.get(User, id)
-    if not target_user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    # Only superadmin can change other users password. Current user can only change their own password.
-    if not current_user.is_superadmin and current_user.id != target_user.id:
-        raise HTTPException(
-            status_code=403,
-            detail="Not authorized to change this user's password"
-        )
-
-    target_user.password = get_password_hash(payload.password)
-    session.add(target_user)
-    await session.commit()
-    return {"status": "success", "message": "Password changed successfully"}
+def redact_user(user: User) -> User:
+    """Return a copy of user with password redacted."""
+    if not user.password:
+        return user
+    user_dict = user.model_dump()
+    user_dict["password"] = "__REDACTED__"
+    return User.model_validate(user_dict)
 
 
 router = AuthService.router()
-user_router = UserService.router()
+
+
+def __getattr__(name: str):
+    """Fallback to lazy-import user service/router to prevent circular dependencies."""
+    if name == "user_router":
+        from mindweaver.service.user import router
+        return router
+    if name == "UserService":
+        from mindweaver.service.user import UserService
+        return UserService
+    if name == "ChangePasswordRequest":
+        from mindweaver.service.user import ChangePasswordRequest
+        return ChangePasswordRequest
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

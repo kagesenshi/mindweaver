@@ -10,12 +10,12 @@ from .service.ldap_config import router as ldap_config_router
 from .service.project import router as project_router
 from .service.k8s_cluster import router as k8s_cluster_router
 from .service.project_user import router as project_user_router
+from .service.user import router as user_router
 from .datasource_service import (
     db_router,
 )
 from .fw.auth import (
     router as auth_router,
-    user_router,
     verify_token,
     User,
     get_password_hash,

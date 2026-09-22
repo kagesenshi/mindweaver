@@ -20,6 +20,7 @@ from mindweaver.service.k8s_cluster import K8sCluster, K8sClusterType
 from mindweaver.fw.service import after_update, before_delete, before_create, after_create
 from mindweaver.fw.state import BaseState
 from mindweaver.fw.cert_manager import reconcile_manifest_certificates
+from mindweaver.fw.permission import Execute, require
 import os
 import pydantic
 from sqlalchemy import Column, DateTime, String
@@ -558,7 +559,7 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
         @router.post(
             f"{model_path}/_deploy",
             operation_id=f"mw-deploy-{entity_type}",
-            dependencies=cls.extra_dependencies(),
+            dependencies=cls.extra_dependencies() + [require(Execute)],
             tags=path_tags,
         )
         async def deploy(
@@ -572,7 +573,7 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
         @router.post(
             f"{model_path}/_decommission",
             operation_id=f"mw-decommission-{entity_type}",
-            dependencies=cls.extra_dependencies(),
+            dependencies=cls.extra_dependencies() + [require(Execute)],
             tags=path_tags,
         )
         async def decommission(
@@ -598,7 +599,7 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
         @router.post(
             f"{model_path}/_state",
             operation_id=f"mw-update-state-{entity_type}",
-            dependencies=cls.extra_dependencies(),
+            dependencies=cls.extra_dependencies() + [require(Execute)],
             tags=path_tags,
         )
         async def update_state(

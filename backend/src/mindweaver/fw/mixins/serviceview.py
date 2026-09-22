@@ -4,10 +4,11 @@
 import fastapi
 from fastapi import Depends, Header, HTTPException
 import asyncio
-from typing import Annotated, List, Dict, Any, Type
+from typing import Annotated, Any
 from ..schema import ListResult, FormResult, Result, BaseResult
 from ..exc import ModelValidationError
 from ..action import ActionRequest
+from ..permission import Create, Delete, Execute, List, Update, View, require
 
 
 class ServiceViewMixin:
@@ -15,10 +16,10 @@ class ServiceViewMixin:
     Mixin for services that handle custom views.
     """
 
-    _custom_views: List[Dict[str, Any]] = []
+    _custom_views: list[dict[str, Any]] = []
 
     @classmethod
-    def get_custom_views(cls) -> List[Dict[str, Any]]:
+    def get_custom_views(cls) -> list[dict[str, Any]]:
         """Returns all registered custom views for this class and its bases."""
         views = []
         for base in reversed(cls.__mro__):
@@ -86,7 +87,7 @@ class ServiceViewMixin:
 
         for view_spec in cls.get_custom_views():
             func = view_spec["func"]
-            method = view_spec["method"]
+            method = view_spec["method"].upper()
             path = view_spec["path"]
             view_type = view_spec["type"]
             kwargs = dict(view_spec["kwargs"])
@@ -97,7 +98,10 @@ class ServiceViewMixin:
 
             # Use dependencies from service if not provided in kwargs
             if "dependencies" not in kwargs:
-                kwargs["dependencies"] = cls.extra_dependencies()
+                if method in ["POST", "PUT", "PATCH", "DELETE"]:
+                    kwargs["dependencies"] = extra_deps + [require(Execute)]
+                else:
+                    kwargs["dependencies"] = extra_deps + [require(View)]
 
             if view_type == "service":
                 full_path = f"{service_path}{path}"
@@ -109,7 +113,7 @@ class ServiceViewMixin:
         @router.get(
             service_path,
             operation_id=f"mw-list-{entity_type}",
-            dependencies=extra_deps,
+            dependencies=extra_deps + [require(List)],
             tags=path_tags,
         )
         async def list_all(svc: Annotated[cls, Depends(cls.get_service)]) -> ListResult[model_class]:  # type: ignore
@@ -119,7 +123,7 @@ class ServiceViewMixin:
         @router.get(
             f"{service_path}/_create-form",
             operation_id=f"mw-create-form-{entity_type}",
-            dependencies=extra_deps,
+            dependencies=extra_deps + [require(View)],
             tags=path_tags,
         )
         async def get_create_form() -> FormResult:
@@ -137,7 +141,7 @@ class ServiceViewMixin:
             @router.get(
                 f"{service_path}/_edit-form",
                 operation_id=f"mw-edit-form-{entity_type}",
-                dependencies=extra_deps,
+                dependencies=extra_deps + [require(View)],
                 tags=path_tags,
             )
             async def get_edit_form() -> FormResult:
@@ -153,7 +157,7 @@ class ServiceViewMixin:
         @router.post(
             service_path,
             operation_id=f"mw-create-{entity_type}",
-            dependencies=cls.extra_dependencies(),
+            dependencies=extra_deps + [require(Create)],
             tags=path_tags,
         )
         async def create(svc: Annotated[cls, Depends(cls.get_service)], data: CreateModel) -> Result[model_class]:  # type: ignore
@@ -163,7 +167,7 @@ class ServiceViewMixin:
         @router.get(
             model_path,
             operation_id=f"mw-get-{entity_type}",
-            dependencies=cls.extra_dependencies(),
+            dependencies=extra_deps + [require(View)],
             tags=path_tags,
         )
         async def get(
@@ -177,7 +181,7 @@ class ServiceViewMixin:
             @router.put(
                 model_path,
                 operation_id=f"mw-update-{entity_type}",
-                dependencies=cls.extra_dependencies(),
+                dependencies=extra_deps + [require(Update)],
                 tags=path_tags,
             )
             async def update(
@@ -191,7 +195,7 @@ class ServiceViewMixin:
         @router.delete(
             model_path,
             operation_id=f"mw-delete-{entity_type}",
-            dependencies=cls.extra_dependencies(),
+            dependencies=extra_deps + [require(Delete)],
             tags=path_tags,
         )
         async def delete(
@@ -214,7 +218,7 @@ class ServiceViewMixin:
             @router.get(
                 f"{model_path}/_state",
                 operation_id=f"mw-get-state-{entity_type}",
-                dependencies=cls.extra_dependencies(),
+                dependencies=extra_deps + [require(View)],
                 tags=path_tags,
             )
             async def get_state(
@@ -230,7 +234,7 @@ class ServiceViewMixin:
         @router.get(
             f"{model_path}/_actions",
             operation_id=f"mw-list-actions-{entity_type}",
-            dependencies=cls.extra_dependencies(),
+            dependencies=extra_deps + [require(View)],
             tags=path_tags,
         )
         async def list_actions(
@@ -257,7 +261,7 @@ class ServiceViewMixin:
         @router.post(
             f"{model_path}/_actions",
             operation_id=f"mw-execute-action-{entity_type}",
-            dependencies=cls.extra_dependencies(),
+            dependencies=extra_deps + [require(Execute)],
             tags=path_tags,
         )
         async def execute_action(
