@@ -15,7 +15,7 @@ Service-level permissions previously defined a root base class named after the s
 3. **Inheritance & Isolation**:
    - Granting `Manage<Service>` covers all operations (mutating, operational, and viewing).
    - Granting `View<Service>` covers all view-type actions, but strictly excludes `Write`, `Create`, `Update`, `Delete`, and `Execute` actions.
-4. **Aliases and Lookup**: Canonical aliases (e.g. `Project = ManageProject`, `ProjectPermission = ManageProject`) and string names (e.g. `project:manage`, `manage_project`, `project`, `project:view_project`, `view_project`) are maintained in `_NAME_TO_PERMISSION` for uniform resolution.
+4. **Aliases and String Lookup**: Canonical class aliases (e.g. `Project = ManageProject`, `ProjectPermission = ManageProject`) are maintained for backwards compatibility. String lookup in `_NAME_TO_PERMISSION` is handled automatically via `All.__init_subclass__` using the `name` attribute of each permission class (e.g. `project:manage`, `project:view_project`, etc.).
 
 ## Consequences
 

@@ -11,7 +11,6 @@ from mindweaver.fw.permission import (
     Update as FwUpdate,
     Delete as FwDelete,
     Execute as FwExecute,
-    _NAME_TO_PERMISSION,
 )
 
 
@@ -84,8 +83,3 @@ ContainerRegistryUpdate = Update
 ContainerRegistryDelete = Delete
 ContainerRegistryExecute = Execute
 ContainerRegistryTestConnection = TestConnection
-
-# String lookup aliases
-_NAME_TO_PERMISSION["container_registry"] = ManageContainerRegistry
-_NAME_TO_PERMISSION["manage_container_registry"] = ManageContainerRegistry
-_NAME_TO_PERMISSION["view_container_registry"] = ViewContainerRegistry

@@ -59,7 +59,6 @@ from mindweaver.fw.permission import (
     Update as FwUpdate,
     Delete as FwDelete,
     Execute as FwExecute,
-    _NAME_TO_PERMISSION,
 )
 
 
@@ -133,11 +132,6 @@ MyServiceUpdate = Update
 MyServiceDelete = Delete
 MyServiceExecute = Execute
 MyServiceRefresh = Refresh
-
-# String lookup aliases
-_NAME_TO_PERMISSION["myservice"] = ManageMyService
-_NAME_TO_PERMISSION["manage_myservice"] = ManageMyService
-_NAME_TO_PERMISSION["view_myservice"] = ViewMyService
 ```
 
 ---

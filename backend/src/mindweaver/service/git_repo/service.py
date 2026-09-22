@@ -8,10 +8,13 @@ from typing import Any
 from fastapi import HTTPException
 
 from .model import GitRepo, GitRepoConfig
+from . import permission
 
 
 class GitRepoService(ProjectScopedService[GitRepo]):
     """Service for managing external Git repository connections."""
+
+    permissions = permission
 
     @classmethod
     def model_class(cls) -> type[GitRepo]:

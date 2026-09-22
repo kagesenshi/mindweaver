@@ -165,12 +165,9 @@ def test_container_registry_permission_hierarchy():
 
 
 def test_container_registry_permission_string_registration():
-    """Verify that ContainerRegistry permission names are registered in _NAME_TO_PERMISSION."""
+    """Verify that ContainerRegistry permission names are registered in _NAME_TO_PERMISSION via init_subclass."""
     assert _NAME_TO_PERMISSION.get("container_registry:manage") is ManageContainerRegistry
-    assert _NAME_TO_PERMISSION.get("manage_container_registry") is ManageContainerRegistry
-    assert _NAME_TO_PERMISSION.get("container_registry") is ManageContainerRegistry
     assert _NAME_TO_PERMISSION.get("container_registry:view_container_registry") is ViewContainerRegistry
-    assert _NAME_TO_PERMISSION.get("view_container_registry") is ViewContainerRegistry
     assert _NAME_TO_PERMISSION.get("container_registry:read") is Read
     assert _NAME_TO_PERMISSION.get("container_registry:list") is List
     assert _NAME_TO_PERMISSION.get("container_registry:view") is View
@@ -180,6 +177,10 @@ def test_container_registry_permission_string_registration():
     assert _NAME_TO_PERMISSION.get("container_registry:delete") is Delete
     assert _NAME_TO_PERMISSION.get("container_registry:execute") is Execute
     assert _NAME_TO_PERMISSION.get("container_registry:test_connection") is TestConnection
+    # Verify manual aliases are not registered
+    assert "container_registry" not in _NAME_TO_PERMISSION
+    assert "manage_container_registry" not in _NAME_TO_PERMISSION
+    assert "view_container_registry" not in _NAME_TO_PERMISSION
 
 
 def test_container_registry_check_user_permission_rules():

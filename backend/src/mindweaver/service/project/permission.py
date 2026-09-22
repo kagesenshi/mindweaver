@@ -11,7 +11,6 @@ from mindweaver.fw.permission import (
     Update as FwUpdate,
     Delete as FwDelete,
     Execute as FwExecute,
-    _NAME_TO_PERMISSION,
 )
 
 
@@ -114,9 +113,4 @@ ProjectCertManager = CertManager
 ProjectIssuerCert = IssuerCert
 ProjectCertificateDetails = CertificateDetails
 ProjectRenewCertificate = RenewCertificate
-
-# String lookup aliases
-_NAME_TO_PERMISSION["project"] = ManageProject
-_NAME_TO_PERMISSION["manage_project"] = ManageProject
-_NAME_TO_PERMISSION["view_project"] = ViewProject
 

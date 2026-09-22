@@ -192,12 +192,9 @@ def test_project_permission_hierarchy():
 
 
 def test_project_permission_string_registration():
-    """Verify that Project permission names are registered in _NAME_TO_PERMISSION."""
+    """Verify that Project permission names are registered in _NAME_TO_PERMISSION via init_subclass."""
     assert _NAME_TO_PERMISSION.get("project:manage") is ManageProject
-    assert _NAME_TO_PERMISSION.get("manage_project") is ManageProject
-    assert _NAME_TO_PERMISSION.get("project") is ManageProject
     assert _NAME_TO_PERMISSION.get("project:view_project") is ViewProject
-    assert _NAME_TO_PERMISSION.get("view_project") is ViewProject
     assert _NAME_TO_PERMISSION.get("project:read") is Read
     assert _NAME_TO_PERMISSION.get("project:list") is List
     assert _NAME_TO_PERMISSION.get("project:view") is View
@@ -212,6 +209,10 @@ def test_project_permission_string_registration():
     assert _NAME_TO_PERMISSION.get("project:issuer_cert") is IssuerCert
     assert _NAME_TO_PERMISSION.get("project:certificate_details") is CertificateDetails
     assert _NAME_TO_PERMISSION.get("project:renew_certificate") is RenewCertificate
+    # Verify manual aliases are not registered
+    assert "project" not in _NAME_TO_PERMISSION
+    assert "manage_project" not in _NAME_TO_PERMISSION
+    assert "view_project" not in _NAME_TO_PERMISSION
 
 
 def test_project_check_user_permission_rules():
