@@ -6,8 +6,10 @@ from typing import Optional
 from pydantic import BaseModel
 from fastapi import Depends
 from mindweaver.fw.exc import FieldValidationError
+from mindweaver.fw.permission import require
 from mindweaver.crypto import decrypt_password
 from .service import ContainerRegistryService
+from .permission import TestConnection
 
 
 class TestConnectionRequest(BaseModel):
@@ -102,6 +104,7 @@ async def run_oci_login_check(
 @ContainerRegistryService.service_view(
     method="POST",
     path="/_test-connection",
+    dependencies=[require(TestConnection)],
 )
 async def test_connection(
     data: TestConnectionRequest,

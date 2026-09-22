@@ -8,10 +8,13 @@ from typing import Any
 from fastapi import HTTPException
 
 from .model import ContainerRegistry, ContainerRegistryConfig
+from . import permission
 
 
 class ContainerRegistryService(ProjectScopedService[ContainerRegistry]):
     """Service for managing Container Registry connections."""
+
+    permissions = permission
 
     @classmethod
     def model_class(cls) -> type[ContainerRegistry]:
