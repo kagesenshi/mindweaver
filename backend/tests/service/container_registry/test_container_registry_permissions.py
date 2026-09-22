@@ -20,6 +20,8 @@ from mindweaver.fw.permission import (
     _NAME_TO_PERMISSION,
 )
 from mindweaver.service.container_registry.permission import (
+    ManageContainerRegistry,
+    ViewContainerRegistry,
     ContainerRegistry,
     Read,
     List,
@@ -30,6 +32,8 @@ from mindweaver.service.container_registry.permission import (
     Delete,
     Execute,
     TestConnection,
+    ManageContainerRegistryPermission,
+    ViewContainerRegistryPermission,
     ContainerRegistryPermission,
     ContainerRegistryRead,
     ContainerRegistryList,
@@ -105,34 +109,50 @@ def _create_and_login_user(
 
 def test_container_registry_permission_hierarchy():
     """Verify ContainerRegistry permission classes inherit correctly from All, Permission, and fw classes."""
-    assert issubclass(ContainerRegistry, Permission)
-    assert issubclass(ContainerRegistry, All)
+    assert issubclass(ManageContainerRegistry, Permission)
+    assert issubclass(ManageContainerRegistry, All)
 
-    # Read hierarchy
-    assert issubclass(Read, ContainerRegistry)
+    # ViewContainerRegistry hierarchy
+    assert issubclass(ViewContainerRegistry, ManageContainerRegistry)
+    assert issubclass(ViewContainerRegistry, Permission)
+
+    # Read hierarchy (inherits from ViewContainerRegistry and FwRead)
+    assert issubclass(Read, ViewContainerRegistry)
+    assert issubclass(Read, ManageContainerRegistry)
     assert issubclass(Read, FwRead)
     assert issubclass(List, Read)
+    assert issubclass(List, ViewContainerRegistry)
     assert issubclass(List, FwList)
     assert issubclass(View, Read)
+    assert issubclass(View, ViewContainerRegistry)
     assert issubclass(View, FwView)
 
-    # Write hierarchy
-    assert issubclass(Write, ContainerRegistry)
+    # Write hierarchy (inherits from ManageContainerRegistry, NOT ViewContainerRegistry)
+    assert issubclass(Write, ManageContainerRegistry)
+    assert not issubclass(Write, ViewContainerRegistry)
     assert issubclass(Write, FwWrite)
     assert issubclass(Create, Write)
+    assert not issubclass(Create, ViewContainerRegistry)
     assert issubclass(Create, FwCreate)
     assert issubclass(Update, Write)
+    assert not issubclass(Update, ViewContainerRegistry)
     assert issubclass(Update, FwUpdate)
     assert issubclass(Delete, Write)
+    assert not issubclass(Delete, ViewContainerRegistry)
     assert issubclass(Delete, FwDelete)
 
-    # Execute hierarchy
-    assert issubclass(Execute, ContainerRegistry)
+    # Execute hierarchy (inherits from ManageContainerRegistry, NOT ViewContainerRegistry)
+    assert issubclass(Execute, ManageContainerRegistry)
+    assert not issubclass(Execute, ViewContainerRegistry)
     assert issubclass(Execute, FwExecute)
     assert issubclass(TestConnection, Execute)
+    assert not issubclass(TestConnection, ViewContainerRegistry)
 
     # Aliases
-    assert ContainerRegistryPermission is ContainerRegistry
+    assert ManageContainerRegistryPermission is ManageContainerRegistry
+    assert ViewContainerRegistryPermission is ViewContainerRegistry
+    assert ContainerRegistry is ManageContainerRegistry
+    assert ContainerRegistryPermission is ManageContainerRegistry
     assert ContainerRegistryRead is Read
     assert ContainerRegistryList is List
     assert ContainerRegistryView is View
@@ -146,7 +166,11 @@ def test_container_registry_permission_hierarchy():
 
 def test_container_registry_permission_string_registration():
     """Verify that ContainerRegistry permission names are registered in _NAME_TO_PERMISSION."""
-    assert _NAME_TO_PERMISSION.get("container_registry") is ContainerRegistry
+    assert _NAME_TO_PERMISSION.get("container_registry:manage") is ManageContainerRegistry
+    assert _NAME_TO_PERMISSION.get("manage_container_registry") is ManageContainerRegistry
+    assert _NAME_TO_PERMISSION.get("container_registry") is ManageContainerRegistry
+    assert _NAME_TO_PERMISSION.get("container_registry:view_container_registry") is ViewContainerRegistry
+    assert _NAME_TO_PERMISSION.get("view_container_registry") is ViewContainerRegistry
     assert _NAME_TO_PERMISSION.get("container_registry:read") is Read
     assert _NAME_TO_PERMISSION.get("container_registry:list") is List
     assert _NAME_TO_PERMISSION.get("container_registry:view") is View
@@ -162,13 +186,16 @@ def test_container_registry_check_user_permission_rules():
     """Verify check_user_permission evaluates service permissions accurately."""
     # 1. Superadmin has everything
     superadmin = DummyUser(is_superadmin=True)
-    assert check_user_permission(superadmin, ContainerRegistry)
+    assert check_user_permission(superadmin, ManageContainerRegistry)
+    assert check_user_permission(superadmin, ViewContainerRegistry)
     assert check_user_permission(superadmin, List)
     assert check_user_permission(superadmin, Create)
     assert check_user_permission(superadmin, TestConnection)
 
-    # 2. User with ContainerRegistry permission has all container registry actions
-    reg_admin = DummyUser(permissions=[ContainerRegistry])
+    # 2. User with ManageContainerRegistry permission has all container registry actions
+    reg_admin = DummyUser(permissions=[ManageContainerRegistry])
+    assert check_user_permission(reg_admin, ManageContainerRegistry)
+    assert check_user_permission(reg_admin, ViewContainerRegistry)
     assert check_user_permission(reg_admin, List)
     assert check_user_permission(reg_admin, View)
     assert check_user_permission(reg_admin, Create)
@@ -176,7 +203,21 @@ def test_container_registry_check_user_permission_rules():
     assert check_user_permission(reg_admin, Delete)
     assert check_user_permission(reg_admin, TestConnection)
 
-    # 3. User with ContainerRegistryRead has List and View, but not mutating or execute actions
+    # 3. User with ViewContainerRegistry permission has view-type actions ONLY
+    reg_viewer = DummyUser(permissions=[ViewContainerRegistry])
+    assert check_user_permission(reg_viewer, ViewContainerRegistry)
+    assert check_user_permission(reg_viewer, List)
+    assert check_user_permission(reg_viewer, View)
+    # Mutating / operational actions MUST be denied
+    assert not check_user_permission(reg_viewer, ManageContainerRegistry)
+    assert not check_user_permission(reg_viewer, Write)
+    assert not check_user_permission(reg_viewer, Create)
+    assert not check_user_permission(reg_viewer, Update)
+    assert not check_user_permission(reg_viewer, Delete)
+    assert not check_user_permission(reg_viewer, Execute)
+    assert not check_user_permission(reg_viewer, TestConnection)
+
+    # 4. User with ContainerRegistryRead has List and View, but not mutating or execute actions
     reg_reader = DummyUser(permissions=[Read])
     assert check_user_permission(reg_reader, List)
     assert check_user_permission(reg_reader, View)
@@ -185,14 +226,14 @@ def test_container_registry_check_user_permission_rules():
     assert not check_user_permission(reg_reader, Delete)
     assert not check_user_permission(reg_reader, TestConnection)
 
-    # 4. User with ContainerRegistryTestConnection can test connection but cannot do other actions
+    # 5. User with ContainerRegistryTestConnection can test connection but cannot do other actions
     tester = DummyUser(permissions=[TestConnection])
     assert check_user_permission(tester, TestConnection)
     assert not check_user_permission(tester, List)
     assert not check_user_permission(tester, Create)
     assert not check_user_permission(tester, Delete)
 
-    # 5. Default authenticated user (with FwRead) can list and view container registries
+    # 6. Default authenticated user (with FwRead) can list and view container registries
     default_user = DummyUser()
     assert check_user_permission(default_user, List)
     assert check_user_permission(default_user, View)
@@ -290,6 +331,7 @@ def test_container_registry_endpoints_with_granted_permissions(client: TestClien
         admin_headers = _get_superadmin_headers(c)
         proj_id = test_project["id"]
         manager_headers = _create_and_login_user(c, admin_headers, "reg_manager")
+        viewer_headers = _create_and_login_user(c, admin_headers, "reg_viewer")
         tester_headers = _create_and_login_user(c, admin_headers, "conn_tester")
 
         def _mock_perms(custom_perms):
@@ -299,8 +341,8 @@ def test_container_registry_endpoints_with_granted_permissions(client: TestClien
                 return custom_perms
             return _get
 
-        # 1. User with ContainerRegistry permission (full control)
-        with patch("mindweaver.fw.permission.get_user_permissions", side_effect=_mock_perms([ContainerRegistry])):
+        # 1. User with ManageContainerRegistry permission (full control)
+        with patch("mindweaver.fw.permission.get_user_permissions", side_effect=_mock_perms([ManageContainerRegistry])):
             # Can create
             resp = c.post(
                 "/api/v1/container_registries",
@@ -346,7 +388,81 @@ def test_container_registry_endpoints_with_granted_permissions(client: TestClien
             )
             assert resp.status_code == 200
 
-        # 2. User with only TestConnection permission
+        # 2. User with ViewContainerRegistry permission (view-only control)
+        # Create a registry as admin
+        r_resp = c.post(
+            "/api/v1/container_registries",
+            json={
+                "name": "view-reg-target",
+                "title": "View Target",
+                "url": "https://ghcr.io",
+                "username": "u",
+                "password": "p",
+                "project_id": proj_id,
+            },
+            headers={"X-Project-ID": str(proj_id), **admin_headers},
+        )
+        assert r_resp.status_code == 200
+        target_reg_id = r_resp.json()["data"]["id"]
+
+        with patch("mindweaver.fw.permission.get_user_permissions", side_effect=_mock_perms([ViewContainerRegistry])):
+            # Can list
+            resp = c.get(
+                "/api/v1/container_registries",
+                headers={"X-Project-ID": str(proj_id), **viewer_headers},
+            )
+            assert resp.status_code == 200
+
+            # Can view
+            resp = c.get(
+                f"/api/v1/container_registries/{target_reg_id}",
+                headers={"X-Project-ID": str(proj_id), **viewer_headers},
+            )
+            assert resp.status_code == 200
+
+            # CANNOT create
+            resp = c.post(
+                "/api/v1/container_registries",
+                json={
+                    "name": "illegal-reg-viewer",
+                    "title": "Illegal",
+                    "url": "https://ghcr.io",
+                    "username": "u",
+                    "password": "p",
+                    "project_id": proj_id,
+                },
+                headers={"X-Project-ID": str(proj_id), **viewer_headers},
+            )
+            assert resp.status_code == 403
+
+            # CANNOT update
+            resp = c.put(
+                f"/api/v1/container_registries/{target_reg_id}",
+                json={"title": "Updated by viewer"},
+                headers={"X-Project-ID": str(proj_id), **viewer_headers},
+            )
+            assert resp.status_code == 403
+
+            # CANNOT test connection
+            resp = c.post(
+                "/api/v1/container_registries/_test-connection",
+                json={"url": "https://ghcr.io", "username": "u", "password": "p"},
+                headers={"X-Project-ID": str(proj_id), **viewer_headers},
+            )
+            assert resp.status_code == 403
+
+            # CANNOT delete
+            resp = c.delete(
+                f"/api/v1/container_registries/{target_reg_id}",
+                headers={
+                    "X-RESOURCE-NAME": "view-reg-target",
+                    "X-Project-ID": str(proj_id),
+                    **viewer_headers,
+                },
+            )
+            assert resp.status_code == 403
+
+        # 3. User with only TestConnection permission
         with patch("mindweaver.fw.permission.get_user_permissions", side_effect=_mock_perms([TestConnection])):
             # Tester cannot create
             resp = c.post(

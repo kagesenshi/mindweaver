@@ -11,15 +11,21 @@ from mindweaver.fw.permission import (
     Update as FwUpdate,
     Delete as FwDelete,
     Execute as FwExecute,
+    _NAME_TO_PERMISSION,
 )
 
 
-class ContainerRegistry(Permission):
+class ManageContainerRegistry(Permission):
     """Base permission for all operations on Container Registry resources."""
-    name: str = "container_registry"
+    name: str = "container_registry:manage"
 
 
-class Read(ContainerRegistry, FwRead):
+class ViewContainerRegistry(ManageContainerRegistry):
+    """Permission to perform view-only operations on container registries."""
+    name: str = "container_registry:view_container_registry"
+
+
+class Read(ViewContainerRegistry, FwRead):
     """Permission to perform read-only operations on container registries."""
     name: str = "container_registry:read"
 
@@ -34,7 +40,7 @@ class View(Read, FwView):
     name: str = "container_registry:view"
 
 
-class Write(ContainerRegistry, FwWrite):
+class Write(ManageContainerRegistry, FwWrite):
     """Permission to perform mutating operations on container registries."""
     name: str = "container_registry:write"
 
@@ -54,7 +60,7 @@ class Delete(Write, FwDelete):
     name: str = "container_registry:delete"
 
 
-class Execute(ContainerRegistry, FwExecute):
+class Execute(ManageContainerRegistry, FwExecute):
     """Permission to execute actions and operational tasks on container registries."""
     name: str = "container_registry:execute"
 
@@ -65,7 +71,10 @@ class TestConnection(Execute):
 
 
 # Canonical Aliases
-ContainerRegistryPermission = ContainerRegistry
+ManageContainerRegistryPermission = ManageContainerRegistry
+ViewContainerRegistryPermission = ViewContainerRegistry
+ContainerRegistry = ManageContainerRegistry
+ContainerRegistryPermission = ManageContainerRegistry
 ContainerRegistryRead = Read
 ContainerRegistryList = List
 ContainerRegistryView = View
@@ -75,3 +84,8 @@ ContainerRegistryUpdate = Update
 ContainerRegistryDelete = Delete
 ContainerRegistryExecute = Execute
 ContainerRegistryTestConnection = TestConnection
+
+# String lookup aliases
+_NAME_TO_PERMISSION["container_registry"] = ManageContainerRegistry
+_NAME_TO_PERMISSION["manage_container_registry"] = ManageContainerRegistry
+_NAME_TO_PERMISSION["view_container_registry"] = ViewContainerRegistry
