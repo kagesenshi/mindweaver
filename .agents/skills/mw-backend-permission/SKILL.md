@@ -59,15 +59,21 @@ from mindweaver.fw.permission import (
     Update as FwUpdate,
     Delete as FwDelete,
     Execute as FwExecute,
+    _NAME_TO_PERMISSION,
 )
 
 
-class MyService(Permission):
+class ManageMyService(Permission):
     """Base permission for all operations on MyService resources."""
-    name: str = "myservice"
+    name: str = "myservice:manage"
 
 
-class Read(MyService, FwRead):
+class ViewMyService(ManageMyService):
+    """Permission to perform view-only operations on myservice."""
+    name: str = "myservice:view_myservice"
+
+
+class Read(ViewMyService, FwRead):
     """Permission to perform read-only operations on myservice."""
     name: str = "myservice:read"
 
@@ -82,7 +88,7 @@ class View(Read, FwView):
     name: str = "myservice:view"
 
 
-class Write(MyService, FwWrite):
+class Write(ManageMyService, FwWrite):
     """Permission to perform mutating operations on myservice."""
     name: str = "myservice:write"
 
@@ -102,19 +108,22 @@ class Delete(Write, FwDelete):
     name: str = "myservice:delete"
 
 
-class Execute(MyService, FwExecute):
+class Execute(ManageMyService, FwExecute):
     """Permission to execute myservice actions and platform tasks."""
     name: str = "myservice:execute"
 
 
 # Custom views or platform operational permissions
-class Refresh(Execute):
+class Refresh(View):
     """Permission to refresh myservice status."""
     name: str = "myservice:refresh"
 
 
 # Canonical Aliases
-MyServicePermission = MyService
+ManageMyServicePermission = ManageMyService
+ViewMyServicePermission = ViewMyService
+MyService = ManageMyService
+MyServicePermission = ManageMyService
 MyServiceRead = Read
 MyServiceList = List
 MyServiceView = View
@@ -124,6 +133,11 @@ MyServiceUpdate = Update
 MyServiceDelete = Delete
 MyServiceExecute = Execute
 MyServiceRefresh = Refresh
+
+# String lookup aliases
+_NAME_TO_PERMISSION["myservice"] = ManageMyService
+_NAME_TO_PERMISSION["manage_myservice"] = ManageMyService
+_NAME_TO_PERMISSION["view_myservice"] = ViewMyService
 ```
 
 ---

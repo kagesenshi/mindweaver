@@ -20,6 +20,8 @@ from mindweaver.fw.permission import (
     _NAME_TO_PERMISSION,
 )
 from mindweaver.service.project.permission import (
+    ManageProject,
+    ViewProject,
     Project,
     Read,
     List,
@@ -35,6 +37,8 @@ from mindweaver.service.project.permission import (
     IssuerCert,
     CertificateDetails,
     RenewCertificate,
+    ManageProjectPermission,
+    ViewProjectPermission,
     ProjectPermission,
     ProjectRead,
     ProjectList,
@@ -115,41 +119,62 @@ def _create_and_login_user(
 
 def test_project_permission_hierarchy():
     """Verify Project permission classes inherit correctly from All, Permission, and fw classes."""
-    assert issubclass(Project, Permission)
-    assert issubclass(Project, All)
+    assert issubclass(ManageProject, Permission)
+    assert issubclass(ManageProject, All)
 
-    # Read hierarchy
-    assert issubclass(Read, Project)
+    # ViewProject hierarchy
+    assert issubclass(ViewProject, ManageProject)
+    assert issubclass(ViewProject, Permission)
+
+    # Read hierarchy (inherits from ViewProject and FwRead)
+    assert issubclass(Read, ViewProject)
+    assert issubclass(Read, ManageProject)
     assert issubclass(Read, FwRead)
     assert issubclass(List, Read)
+    assert issubclass(List, ViewProject)
     assert issubclass(List, FwList)
     assert issubclass(View, Read)
+    assert issubclass(View, ViewProject)
     assert issubclass(View, FwView)
 
-    # Write hierarchy
-    assert issubclass(Write, Project)
+    # Write hierarchy (inherits from ManageProject, NOT ViewProject)
+    assert issubclass(Write, ManageProject)
+    assert not issubclass(Write, ViewProject)
     assert issubclass(Write, FwWrite)
     assert issubclass(Create, Write)
+    assert not issubclass(Create, ViewProject)
     assert issubclass(Create, FwCreate)
     assert issubclass(Update, Write)
+    assert not issubclass(Update, ViewProject)
     assert issubclass(Update, FwUpdate)
     assert issubclass(Delete, Write)
+    assert not issubclass(Delete, ViewProject)
     assert issubclass(Delete, FwDelete)
 
-    # Execute hierarchy
-    assert issubclass(Execute, Project)
+    # Execute hierarchy (inherits from ManageProject, NOT ViewProject)
+    assert issubclass(Execute, ManageProject)
+    assert not issubclass(Execute, ViewProject)
     assert issubclass(Execute, FwExecute)
-    assert issubclass(Refresh, Execute)
     assert issubclass(RenewCertificate, Execute)
+    assert not issubclass(RenewCertificate, ViewProject)
 
-    # Custom view hierarchy
+    # Custom view hierarchy (all inherit from View -> ViewProject)
+    assert issubclass(Refresh, View)
+    assert issubclass(Refresh, ViewProject)
     assert issubclass(DownloadCert, View)
+    assert issubclass(DownloadCert, ViewProject)
     assert issubclass(CertManager, View)
+    assert issubclass(CertManager, ViewProject)
     assert issubclass(IssuerCert, View)
+    assert issubclass(IssuerCert, ViewProject)
     assert issubclass(CertificateDetails, View)
+    assert issubclass(CertificateDetails, ViewProject)
 
     # Aliases
-    assert ProjectPermission is Project
+    assert ManageProjectPermission is ManageProject
+    assert ViewProjectPermission is ViewProject
+    assert Project is ManageProject
+    assert ProjectPermission is ManageProject
     assert ProjectRead is Read
     assert ProjectList is List
     assert ProjectView is View
@@ -168,7 +193,11 @@ def test_project_permission_hierarchy():
 
 def test_project_permission_string_registration():
     """Verify that Project permission names are registered in _NAME_TO_PERMISSION."""
-    assert _NAME_TO_PERMISSION.get("project") is Project
+    assert _NAME_TO_PERMISSION.get("project:manage") is ManageProject
+    assert _NAME_TO_PERMISSION.get("manage_project") is ManageProject
+    assert _NAME_TO_PERMISSION.get("project") is ManageProject
+    assert _NAME_TO_PERMISSION.get("project:view_project") is ViewProject
+    assert _NAME_TO_PERMISSION.get("view_project") is ViewProject
     assert _NAME_TO_PERMISSION.get("project:read") is Read
     assert _NAME_TO_PERMISSION.get("project:list") is List
     assert _NAME_TO_PERMISSION.get("project:view") is View
@@ -189,45 +218,71 @@ def test_project_check_user_permission_rules():
     """Verify check_user_permission evaluates service permissions accurately."""
     # 1. Superadmin has everything
     superadmin = DummyUser(is_superadmin=True)
-    assert check_user_permission(superadmin, Project)
+    assert check_user_permission(superadmin, ManageProject)
+    assert check_user_permission(superadmin, ViewProject)
     assert check_user_permission(superadmin, List)
     assert check_user_permission(superadmin, Create)
     assert check_user_permission(superadmin, Refresh)
 
-    # 2. User with Project permission has all project actions
-    proj_admin = DummyUser(permissions=[Project])
+    # 2. User with ManageProject permission has all project actions
+    proj_admin = DummyUser(permissions=[ManageProject])
+    assert check_user_permission(proj_admin, ManageProject)
+    assert check_user_permission(proj_admin, ViewProject)
     assert check_user_permission(proj_admin, List)
     assert check_user_permission(proj_admin, View)
     assert check_user_permission(proj_admin, Create)
     assert check_user_permission(proj_admin, Update)
     assert check_user_permission(proj_admin, Delete)
     assert check_user_permission(proj_admin, Refresh)
+    assert check_user_permission(proj_admin, RenewCertificate)
     assert check_user_permission(proj_admin, CertificateDetails)
+    assert check_user_permission(proj_admin, DownloadCert)
 
-    # 3. User with ProjectRead has List and View, but not mutating or execute actions
+    # 3. User with ViewProject permission has view-type actions ONLY
+    proj_viewer = DummyUser(permissions=[ViewProject])
+    assert check_user_permission(proj_viewer, ViewProject)
+    assert check_user_permission(proj_viewer, List)
+    assert check_user_permission(proj_viewer, View)
+    assert check_user_permission(proj_viewer, CertificateDetails)
+    assert check_user_permission(proj_viewer, DownloadCert)
+    assert check_user_permission(proj_viewer, CertManager)
+    assert check_user_permission(proj_viewer, IssuerCert)
+    assert check_user_permission(proj_viewer, Refresh)
+    # Mutating / operational actions MUST be denied
+    assert not check_user_permission(proj_viewer, ManageProject)
+    assert not check_user_permission(proj_viewer, Write)
+    assert not check_user_permission(proj_viewer, Create)
+    assert not check_user_permission(proj_viewer, Update)
+    assert not check_user_permission(proj_viewer, Delete)
+    assert not check_user_permission(proj_viewer, Execute)
+    assert not check_user_permission(proj_viewer, RenewCertificate)
+
+    # 4. User with ProjectRead has List, View, and Refresh, but not mutating or execute actions
     proj_reader = DummyUser(permissions=[Read])
     assert check_user_permission(proj_reader, List)
     assert check_user_permission(proj_reader, View)
     assert check_user_permission(proj_reader, CertificateDetails)
+    assert check_user_permission(proj_reader, Refresh)
     assert not check_user_permission(proj_reader, Create)
     assert not check_user_permission(proj_reader, Update)
     assert not check_user_permission(proj_reader, Delete)
-    assert not check_user_permission(proj_reader, Refresh)
+    assert not check_user_permission(proj_reader, RenewCertificate)
 
-    # 4. User with ProjectRefresh can refresh but cannot do other actions
+    # 5. User with ProjectRefresh can refresh but cannot do other actions
     refresher = DummyUser(permissions=[Refresh])
     assert check_user_permission(refresher, Refresh)
     assert not check_user_permission(refresher, List)
     assert not check_user_permission(refresher, Create)
     assert not check_user_permission(refresher, Delete)
 
-    # 5. Default authenticated user (with FwRead) can list and view projects
+    # 6. Default authenticated user (with FwRead) can list, view, and refresh projects
     default_user = DummyUser()
     assert check_user_permission(default_user, List)
     assert check_user_permission(default_user, View)
     assert check_user_permission(default_user, CertificateDetails)
+    assert check_user_permission(default_user, Refresh)
     assert not check_user_permission(default_user, Create)
-    assert not check_user_permission(default_user, Refresh)
+    assert not check_user_permission(default_user, RenewCertificate)
 
 
 def _create_test_cluster(c: TestClient, admin_headers: dict) -> int:
@@ -295,10 +350,9 @@ def test_project_endpoints_enforce_permissions(client: TestClient):
         )
         assert resp.status_code == 403
 
-        # 7. Regular user cannot trigger refresh custom view
+        # 7. Regular user CAN trigger refresh custom view (since Refresh is a view-type permission)
         resp = c.post(f"/api/v1/projects/{proj_id}/_refresh", headers=reg_headers)
-        assert resp.status_code == 403
-        assert "Permission denied for 'project:refresh'" in resp.text
+        assert resp.status_code == 200
 
 
 def test_project_endpoints_with_granted_permissions(client: TestClient):
@@ -308,6 +362,7 @@ def test_project_endpoints_with_granted_permissions(client: TestClient):
         admin_headers = _get_superadmin_headers(c)
         cluster_id = _create_test_cluster(c, admin_headers)
         manager_headers = _create_and_login_user(c, admin_headers, "proj_manager")
+        viewer_headers = _create_and_login_user(c, admin_headers, "proj_viewer")
         refresher_headers = _create_and_login_user(c, admin_headers, "refresher_user")
 
         def _mock_perms(custom_perms):
@@ -317,8 +372,8 @@ def test_project_endpoints_with_granted_permissions(client: TestClient):
                 return custom_perms
             return _get
 
-        # 1. User with Project permission (full project control)
-        with patch("mindweaver.fw.permission.get_user_permissions", side_effect=_mock_perms([Project])):
+        # 1. User with ManageProject permission (full project control)
+        with patch("mindweaver.fw.permission.get_user_permissions", side_effect=_mock_perms([ManageProject])):
             # Can create project
             resp = c.post(
                 "/api/v1/projects",
@@ -347,7 +402,53 @@ def test_project_endpoints_with_granted_permissions(client: TestClient):
             )
             assert resp.status_code == 200
 
-        # 2. User with only Refresh permission
+        # 2. User with ViewProject permission (view-only control)
+        # Create project as admin
+        p_resp = c.post(
+            "/api/v1/projects",
+            json={"name": "view-target", "title": "View Target", "k8s_cluster_id": cluster_id},
+            headers=admin_headers,
+        )
+        assert p_resp.status_code == 200
+        view_target_id = p_resp.json()["data"]["id"]
+
+        with patch("mindweaver.fw.permission.get_user_permissions", side_effect=_mock_perms([ViewProject])):
+            # Can list projects
+            resp = c.get("/api/v1/projects", headers=viewer_headers)
+            assert resp.status_code == 200
+
+            # Can view project
+            resp = c.get(f"/api/v1/projects/{view_target_id}", headers=viewer_headers)
+            assert resp.status_code == 200
+
+            # CANNOT create project
+            resp = c.post(
+                "/api/v1/projects",
+                json={"name": "illegal-proj", "title": "Illegal", "k8s_cluster_id": cluster_id},
+                headers=viewer_headers,
+            )
+            assert resp.status_code == 403
+
+            # CANNOT update project
+            resp = c.put(
+                f"/api/v1/projects/{view_target_id}",
+                json={"title": "Illegal Update"},
+                headers=viewer_headers,
+            )
+            assert resp.status_code == 403
+
+            # CANNOT delete project
+            resp = c.delete(
+                f"/api/v1/projects/{view_target_id}",
+                headers={"X-RESOURCE-NAME": "view-target", **viewer_headers},
+            )
+            assert resp.status_code == 403
+
+            # CAN refresh project (Refresh is a view type of permission)
+            resp = c.post(f"/api/v1/projects/{view_target_id}/_refresh", headers=viewer_headers)
+            assert resp.status_code == 200
+
+        # 3. User with only Refresh permission
         # Create project as admin
         p_resp = c.post(
             "/api/v1/projects",

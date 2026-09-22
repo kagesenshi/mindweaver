@@ -11,15 +11,21 @@ from mindweaver.fw.permission import (
     Update as FwUpdate,
     Delete as FwDelete,
     Execute as FwExecute,
+    _NAME_TO_PERMISSION,
 )
 
 
-class Project(Permission):
+class ManageProject(Permission):
     """Base permission for all operations on Project resources."""
-    name: str = "project"
+    name: str = "project:manage"
 
 
-class Read(Project, FwRead):
+class ViewProject(ManageProject):
+    """Permission to perform view-only operations on projects."""
+    name: str = "project:view_project"
+
+
+class Read(ViewProject, FwRead):
     """Permission to perform read-only operations on projects."""
     name: str = "project:read"
 
@@ -34,7 +40,7 @@ class View(Read, FwView):
     name: str = "project:view"
 
 
-class Write(Project, FwWrite):
+class Write(ManageProject, FwWrite):
     """Permission to perform mutating operations on projects."""
     name: str = "project:write"
 
@@ -54,12 +60,12 @@ class Delete(Write, FwDelete):
     name: str = "project:delete"
 
 
-class Execute(Project, FwExecute):
+class Execute(ManageProject, FwExecute):
     """Permission to execute project-level actions and tasks."""
     name: str = "project:execute"
 
 
-class Refresh(Execute):
+class Refresh(View):
     """Permission to refresh project status and poll clusters."""
     name: str = "project:refresh"
 
@@ -90,7 +96,10 @@ class RenewCertificate(Execute):
 
 
 # Canonical Aliases
-ProjectPermission = Project
+ManageProjectPermission = ManageProject
+ViewProjectPermission = ViewProject
+Project = ManageProject
+ProjectPermission = ManageProject
 ProjectRead = Read
 ProjectList = List
 ProjectView = View
@@ -105,3 +114,9 @@ ProjectCertManager = CertManager
 ProjectIssuerCert = IssuerCert
 ProjectCertificateDetails = CertificateDetails
 ProjectRenewCertificate = RenewCertificate
+
+# String lookup aliases
+_NAME_TO_PERMISSION["project"] = ManageProject
+_NAME_TO_PERMISSION["manage_project"] = ManageProject
+_NAME_TO_PERMISSION["view_project"] = ViewProject
+
