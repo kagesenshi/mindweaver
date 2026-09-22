@@ -336,7 +336,7 @@ def test_git_repo_endpoints_with_granted_permissions(client: TestClient, test_pr
         tester_headers = _create_and_login_user(c, admin_headers, "conn_tester")
 
         def _mock_perms(custom_perms):
-            def _get(u):
+            def _get(u, *args, **kwargs):
                 if getattr(u, "is_superadmin", False):
                     return [All]
                 return custom_perms

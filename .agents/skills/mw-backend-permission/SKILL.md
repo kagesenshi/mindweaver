@@ -169,22 +169,36 @@ async def refresh_view(id: int, svc: MyServiceService = Depends(MyServiceService
 
 ---
 
-## 4. Programmatic Permission Checking
+## 4. Programmatic Permission Checking & Context
 
-In custom code or Celery tasks, you can check permissions directly:
+Permissions support object-level `context` (such as the target model object):
 
 ```python
 from mindweaver.fw.permission import check_user_permission, has_permission
-from mindweaver.service.project.permission import Refresh
+from mindweaver.service.project.permission import Refresh, ProjectUpdate
 
-# 1. Sync check using user object:
-if not check_user_permission(user, Refresh):
-    raise PermissionError("User lacks refresh permission")
+# 1. Sync check with model context:
+if not check_user_permission(user, ProjectUpdate, context=project_model):
+    raise PermissionError("User lacks update permission on this project")
 
-# 2. Async check from Request:
-if not await has_permission(request, Refresh):
+# 2. Async check from Request with model context:
+# If context is omitted, it automatically falls back to request.state.context or request.state.model
+if not await has_permission(request, Refresh, context=project_model):
     raise HTTPException(status_code=403, detail="Forbidden")
 ```
+
+### Context-Aware Permission Classes
+Permission classes can implement `check_context` to enforce custom object-level rules:
+
+```python
+class ProjectScopedUpdate(Update):
+    @classmethod
+    def check_context(cls, user=None, context=None, request=None) -> bool:
+        if context is None:
+            return True
+        return getattr(context, "project_id", None) in user.allowed_project_ids
+```
+
 
 ---
 

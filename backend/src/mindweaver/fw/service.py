@@ -436,8 +436,13 @@ class Service(
 
     @classmethod
     async def get_model(cls, request: fastapi.Request, db: AsyncSession, id: int) -> S:
+        """Fetch model by id and store in request state as context."""
         svc = await cls.get_service(request, db)
-        return await svc.get(id)
+        model = await svc.get(id)
+        if hasattr(request, "state"):
+            request.state.model = model
+            request.state.context = model
+        return model
 
     @classmethod
     async def get_service(cls, request: fastapi.Request, db: AsyncSession):

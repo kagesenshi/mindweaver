@@ -355,7 +355,7 @@ def test_k8s_cluster_endpoints_with_granted_permissions(client: TestClient):
         executor_headers = _create_and_login_user(c, admin_headers, "cluster_executor")
 
         def _mock_perms(custom_perms):
-            def _get(u):
+            def _get(u, *args, **kwargs):
                 if getattr(u, "is_superadmin", False):
                     return [All]
                 return custom_perms

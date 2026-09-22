@@ -367,7 +367,7 @@ def test_project_endpoints_with_granted_permissions(client: TestClient):
         refresher_headers = _create_and_login_user(c, admin_headers, "refresher_user")
 
         def _mock_perms(custom_perms):
-            def _get(u):
+            def _get(u, *args, **kwargs):
                 if getattr(u, "is_superadmin", False):
                     return [All]
                 return custom_perms
