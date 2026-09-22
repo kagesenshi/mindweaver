@@ -116,7 +116,7 @@ def test_non_admin_create_denied(client: TestClient):
             headers=reg_headers,
         )
         assert resp.status_code == 403
-        assert "Permission denied for 'create'" in resp.text
+        assert "Permission denied for 'project:create'" in resp.text
 
 
 def test_non_admin_update_denied(client: TestClient):
@@ -143,7 +143,7 @@ def test_non_admin_update_denied(client: TestClient):
             headers=reg_headers,
         )
         assert resp.status_code == 403
-        assert "Permission denied for 'update'" in resp.text
+        assert "Permission denied for 'project:update'" in resp.text
 
 
 def test_non_admin_delete_denied(client: TestClient):
@@ -171,7 +171,7 @@ def test_non_admin_delete_denied(client: TestClient):
             headers=delete_headers,
         )
         assert resp.status_code == 403
-        assert "Permission denied for 'delete'" in resp.text
+        assert "Permission denied for 'project:delete'" in resp.text
 
 
 def test_non_admin_execute_denied(client: TestClient):

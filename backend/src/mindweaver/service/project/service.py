@@ -1,14 +1,20 @@
+# SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
+# SPDX-License-Identifier: AGPLv3+
+
 import logging
 from typing import Any
 
 from mindweaver.service import Service, before_create, before_update
 
 from .model import Project
+from . import permission
 
 logger = logging.getLogger(__name__)
 
 
 class ProjectService(Service[Project]):
+    permissions = permission
+
     @classmethod
     def model_class(cls) -> type[Project]:
         return Project

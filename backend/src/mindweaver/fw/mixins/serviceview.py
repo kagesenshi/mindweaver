@@ -8,7 +8,7 @@ from typing import Annotated, Any
 from ..schema import ListResult, FormResult, Result, BaseResult
 from ..exc import ModelValidationError
 from ..action import ActionRequest
-from ..permission import Create, Delete, Execute, List, Update, View, require
+from ..permission import All, Create, Delete, Execute, List, Update, View, require
 
 
 class ServiceViewMixin:
@@ -17,6 +17,28 @@ class ServiceViewMixin:
     """
 
     _custom_views: list[dict[str, Any]] = []
+    permissions: Any = None
+
+    @classmethod
+    def get_permission(cls, action: str) -> type[All]:
+        """
+        Get the permission class for a standard action (list, view, create, update, delete, execute).
+        Resolves from cls.permissions if defined, falling back to base fw.permission classes.
+        """
+        action_title = action.capitalize()
+        if hasattr(cls, "permissions") and cls.permissions is not None:
+            perm = getattr(cls.permissions, action_title, None)
+            if perm is not None and isinstance(perm, type) and issubclass(perm, All):
+                return perm
+        defaults = {
+            "List": List,
+            "View": View,
+            "Create": Create,
+            "Update": Update,
+            "Delete": Delete,
+            "Execute": Execute,
+        }
+        return defaults.get(action_title, All)
 
     @classmethod
     def get_custom_views(cls) -> list[dict[str, Any]]:
@@ -99,9 +121,9 @@ class ServiceViewMixin:
             # Use dependencies from service if not provided in kwargs
             if "dependencies" not in kwargs:
                 if method in ["POST", "PUT", "PATCH", "DELETE"]:
-                    kwargs["dependencies"] = extra_deps + [require(Execute)]
+                    kwargs["dependencies"] = extra_deps + [require(cls.get_permission("execute"))]
                 else:
-                    kwargs["dependencies"] = extra_deps + [require(View)]
+                    kwargs["dependencies"] = extra_deps + [require(cls.get_permission("view"))]
 
             if view_type == "service":
                 full_path = f"{service_path}{path}"
@@ -113,7 +135,7 @@ class ServiceViewMixin:
         @router.get(
             service_path,
             operation_id=f"mw-list-{entity_type}",
-            dependencies=extra_deps + [require(List)],
+            dependencies=extra_deps + [require(cls.get_permission("list"))],
             tags=path_tags,
         )
         async def list_all(svc: Annotated[cls, Depends(cls.get_service)]) -> ListResult[model_class]:  # type: ignore
@@ -123,7 +145,7 @@ class ServiceViewMixin:
         @router.get(
             f"{service_path}/_create-form",
             operation_id=f"mw-create-form-{entity_type}",
-            dependencies=extra_deps + [require(View)],
+            dependencies=extra_deps + [require(cls.get_permission("view"))],
             tags=path_tags,
         )
         async def get_create_form() -> FormResult:
@@ -141,7 +163,7 @@ class ServiceViewMixin:
             @router.get(
                 f"{service_path}/_edit-form",
                 operation_id=f"mw-edit-form-{entity_type}",
-                dependencies=extra_deps + [require(View)],
+                dependencies=extra_deps + [require(cls.get_permission("view"))],
                 tags=path_tags,
             )
             async def get_edit_form() -> FormResult:
@@ -157,7 +179,7 @@ class ServiceViewMixin:
         @router.post(
             service_path,
             operation_id=f"mw-create-{entity_type}",
-            dependencies=extra_deps + [require(Create)],
+            dependencies=extra_deps + [require(cls.get_permission("create"))],
             tags=path_tags,
         )
         async def create(svc: Annotated[cls, Depends(cls.get_service)], data: CreateModel) -> Result[model_class]:  # type: ignore
@@ -167,7 +189,7 @@ class ServiceViewMixin:
         @router.get(
             model_path,
             operation_id=f"mw-get-{entity_type}",
-            dependencies=extra_deps + [require(View)],
+            dependencies=extra_deps + [require(cls.get_permission("view"))],
             tags=path_tags,
         )
         async def get(
@@ -181,7 +203,7 @@ class ServiceViewMixin:
             @router.put(
                 model_path,
                 operation_id=f"mw-update-{entity_type}",
-                dependencies=extra_deps + [require(Update)],
+                dependencies=extra_deps + [require(cls.get_permission("update"))],
                 tags=path_tags,
             )
             async def update(
@@ -195,7 +217,7 @@ class ServiceViewMixin:
         @router.delete(
             model_path,
             operation_id=f"mw-delete-{entity_type}",
-            dependencies=extra_deps + [require(Delete)],
+            dependencies=extra_deps + [require(cls.get_permission("delete"))],
             tags=path_tags,
         )
         async def delete(
@@ -218,7 +240,7 @@ class ServiceViewMixin:
             @router.get(
                 f"{model_path}/_state",
                 operation_id=f"mw-get-state-{entity_type}",
-                dependencies=extra_deps + [require(View)],
+                dependencies=extra_deps + [require(cls.get_permission("view"))],
                 tags=path_tags,
             )
             async def get_state(
@@ -234,7 +256,7 @@ class ServiceViewMixin:
         @router.get(
             f"{model_path}/_actions",
             operation_id=f"mw-list-actions-{entity_type}",
-            dependencies=extra_deps + [require(View)],
+            dependencies=extra_deps + [require(cls.get_permission("view"))],
             tags=path_tags,
         )
         async def list_actions(
@@ -261,7 +283,7 @@ class ServiceViewMixin:
         @router.post(
             f"{model_path}/_actions",
             operation_id=f"mw-execute-action-{entity_type}",
-            dependencies=extra_deps + [require(Execute)],
+            dependencies=extra_deps + [require(cls.get_permission("execute"))],
             tags=path_tags,
         )
         async def execute_action(

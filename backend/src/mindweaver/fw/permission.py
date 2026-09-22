@@ -9,14 +9,26 @@ from mindweaver.fw.model import AsyncSession, get_engine
 from mindweaver.fw.auth import User, get_current_user
 
 
+_NAME_TO_PERMISSION: dict[str, type["All"]] = {}
+
+
 class All:
     """Root permission class that all permissions inherit from."""
     name: str = "all"
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        perm_name = getattr(cls, "name", None)
+        if perm_name:
+            _NAME_TO_PERMISSION[perm_name.lower()] = cls
 
     @classmethod
     def get_name(cls) -> str:
         """Return the lowercase name of the permission."""
         return getattr(cls, "name", cls.__name__.lower())
+
+
+_NAME_TO_PERMISSION["all"] = All
 
 
 class Permission(All):
@@ -66,21 +78,7 @@ class Execute(Permission):
 
 # Aliases
 Admin = All
-
-
-_NAME_TO_PERMISSION: dict[str, type[All]] = {
-    "all": All,
-    "admin": Admin,
-    "permission": Permission,
-    "read": Read,
-    "list": List,
-    "view": View,
-    "write": Write,
-    "create": Create,
-    "update": Update,
-    "delete": Delete,
-    "execute": Execute,
-}
+_NAME_TO_PERMISSION["admin"] = Admin
 
 
 def _check_single_permission(granted: type[All], required: type[All]) -> bool:

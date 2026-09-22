@@ -21,6 +21,15 @@ from mindweaver.service.k8s_cluster import K8sCluster, K8sClusterType
 from mindweaver.service.k8s_cluster.service import K8sClusterService
 from mindweaver.service.project.actions import _get_jinja_env
 from mindweaver.fw.cert_manager import reissue_certificate
+from mindweaver.fw.permission import require
+from .permission import (
+    Refresh,
+    DownloadCert,
+    CertManager,
+    IssuerCert,
+    CertificateDetails,
+    RenewCertificate,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +37,7 @@ logger = logging.getLogger(__name__)
 ProjectService.with_state()(ProjectState)
 
 
-@ProjectService.model_view("POST", "/_refresh")
+@ProjectService.model_view("POST", "/_refresh", dependencies=[require(Refresh)])
 async def refresh_project_status_view(
     id: int, svc: ProjectService = Depends(ProjectService.get_service)
 ):
@@ -42,7 +51,7 @@ async def refresh_project_status_view(
     return {"status": "success"}
 
 
-@ProjectService.model_view("GET", "/_download-haproxy-cert")
+@ProjectService.model_view("GET", "/_download-haproxy-cert", dependencies=[require(DownloadCert)])
 async def download_haproxy_cert_view(
     id: int, svc: ProjectService = Depends(ProjectService.get_service)
 ):
@@ -107,7 +116,7 @@ async def download_haproxy_cert_view(
     )
 
 
-@ProjectService.model_view("GET", "/_cert_manager")
+@ProjectService.model_view("GET", "/_cert_manager", dependencies=[require(CertManager)])
 async def get_project_cert_manager_resources(
     id: int, svc: ProjectService = Depends(ProjectService.get_service)
 ):
@@ -316,7 +325,7 @@ async def get_project_cert_manager_resources(
     return await asyncio.to_thread(_get_resources)
 
 
-@ProjectService.model_view("GET", "/_issuer_cert")
+@ProjectService.model_view("GET", "/_issuer_cert", dependencies=[require(IssuerCert)])
 async def get_project_issuer_ca_cert(
     id: int,
     name: str,
@@ -503,7 +512,7 @@ def _parse_x509_cert(cert: x509.Certificate, raw_pem: str) -> dict:
     }
 
 
-@ProjectService.model_view("GET", "/_certificate_details")
+@ProjectService.model_view("GET", "/_certificate_details", dependencies=[require(CertificateDetails)])
 async def get_project_certificate_details(
     id: int,
     name: str,
@@ -746,7 +755,7 @@ class RenewCertificateRequest(BaseModel):
     namespace: str | None = None
 
 
-@ProjectService.model_view("POST", "/_renew_certificate")
+@ProjectService.model_view("POST", "/_renew_certificate", dependencies=[require(RenewCertificate)])
 async def renew_project_certificate(
     id: int,
     req: RenewCertificateRequest,
