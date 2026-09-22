@@ -113,6 +113,7 @@ def test_user_management_crud(client: TestClient):
         assert response.status_code == 200
         user_data = response.json()["data"]
         user_id = user_data["id"]
+        assert "picture" not in user_data
         assert user_data["password"] == "__REDACTED__"
 
         # List users
@@ -121,6 +122,7 @@ def test_user_management_crud(client: TestClient):
         users = response.json()["data"]
         assert any(u["name"] == "newuser" for u in users)
         for u in users:
+            assert "picture" not in u
             assert u["password"] == "__REDACTED__"
 
         # Update user
@@ -130,11 +132,13 @@ def test_user_management_crud(client: TestClient):
             headers=headers,
         )
         assert response.status_code == 200
+        assert "picture" not in response.json()["data"]
         assert response.json()["data"]["password"] == "__REDACTED__"
 
         # Get individual user
         response = c.get(f"/api/v1/users/{user_id}", headers=headers)
         assert response.status_code == 200
+        assert "picture" not in response.json()["data"]
         assert response.json()["data"]["password"] == "__REDACTED__"
 
         # Delete user

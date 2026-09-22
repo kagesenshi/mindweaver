@@ -33,7 +33,6 @@ class User(NamedBase, table=True):
     email: Optional[str] = Field(index=True, unique=True, default=None)
     password: Optional[str] = Field(default=None, nullable=True)
     display_name: Optional[str] = Field(default=None, nullable=True)
-    picture: Optional[str] = Field(default=None, nullable=True)
     is_active: bool = Field(default=True)
     is_superadmin: bool = Field(default=False)
 
@@ -310,7 +309,6 @@ class AuthService(Service[User]):
                         title=user_display_name,
                         email=email,
                         display_name=user_display_name,
-                        picture=payload.get("picture"),
                     )
                     session.add(user)
                     await session.commit()
@@ -392,9 +390,8 @@ class UserService(Service[User]):
             "email": {"order": 3, "column_span": 1},
             "password": {"type": "password", "order": 4, "column_span": 1},
             "title": {"order": 5, "column_span": 1},
-            "picture": {"order": 6, "column_span": 1},
-            "is_active": {"order": 7, "column_span": 1},
-            "is_superadmin": {"order": 8, "column_span": 1},
+            "is_active": {"order": 6, "column_span": 1},
+            "is_superadmin": {"order": 7, "column_span": 1},
         }
 
     @classmethod
