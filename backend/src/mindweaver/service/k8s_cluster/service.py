@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
+# SPDX-License-Identifier: AGPLv3+
+
 import asyncio
 import logging
 import tempfile
@@ -9,14 +12,28 @@ from sqlmodel import select
 from mindweaver.service import Service
 from mindweaver.fw.model import ts_now
 from .model import K8sCluster, K8sClusterStatus, K8sClusterType
+from . import permission
 
 logger = logging.getLogger(__name__)
 
 
 class K8sClusterService(Service[K8sCluster]):
+    permissions = permission
+
     @classmethod
     def model_class(cls) -> type[K8sCluster]:
         return K8sCluster
+
+    async def delete(self, model_id: int):
+        """Delete cluster and its associated status record."""
+        stmt = select(K8sClusterStatus).where(
+            K8sClusterStatus.k8s_cluster_id == model_id
+        )
+        result = await self.session.exec(stmt)
+        status_model = result.one_or_none()
+        if status_model:
+            await self.session.delete(status_model)
+        await super().delete(model_id)
 
     async def poll_status(self, model: K8sCluster):
         """Poll cluster status and update K8sClusterStatus"""
