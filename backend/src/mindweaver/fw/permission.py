@@ -1,12 +1,12 @@
 # SPDX-FileCopyrightText: Copyright © 2026 Mohd Izhar Firdaus Bin Ismail
 # SPDX-License-Identifier: AGPLv3+
 
-from typing import Any, Optional, Type
+from typing import Optional, Type
 from fastapi import Depends, HTTPException, Request, params
 from sqlmodel.ext.asyncio.session import AsyncSession as SQLModelAsyncSession
 from mindweaver.config import settings
 from mindweaver.fw.model import AsyncSession, get_engine
-from mindweaver.fw.auth import get_current_user
+from mindweaver.fw.auth import User, get_current_user
 
 
 class All:
@@ -95,7 +95,7 @@ def _check_single_permission(granted: type[All], required: type[All]) -> bool:
     return False
 
 
-def get_user_permissions(user: Any) -> list[type[All]]:
+def get_user_permissions(user: User) -> list[type[All]]:
     """
     Get the list of granted permission classes for a user.
     - Superadmin users receive root All (covers all permissions).
@@ -127,7 +127,7 @@ def get_user_permissions(user: Any) -> list[type[All]]:
 
 
 def check_user_permission(
-    user: Any, perm: type[All] | str, request: Request | None = None
+    user: Optional[User], perm: type[All] | str, request: Request | None = None
 ) -> bool:
     """
     Evaluate if user has the requested permission using class inheritance.
@@ -163,7 +163,7 @@ def check_user_permission(
 async def has_permission(
     request: Request,
     perm: type[All] | str,
-    user: Any = None,
+    user: Optional[User] = None,
     session: Optional[AsyncSession] = None,
 ) -> bool:
     """
