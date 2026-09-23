@@ -13,9 +13,11 @@ from mindweaver.fw.exc import FieldValidationError
 
 
 from .model import S3Storage, S3Config
+from . import permission
 
 
 class S3StorageService(ProjectScopedService[S3Storage]):
+    permissions = permission
 
     @classmethod
     def model_class(cls) -> type[S3Storage]:

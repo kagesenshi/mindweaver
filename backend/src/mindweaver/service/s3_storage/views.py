@@ -12,7 +12,9 @@ from botocore.exceptions import ClientError, NoCredentialsError
 from mindweaver.config import settings
 from mindweaver.crypto import decrypt_password, EncryptionError
 from mindweaver.fw.exc import FieldValidationError, MindWeaverError
+from mindweaver.fw.permission import require
 from .service import S3StorageService, S3Storage
+from .permission import TestConnection, FsRead, FsWrite
 
 
 def _list_objects_sync(s3_client, bucket: str, prefix: str):
@@ -92,6 +94,7 @@ if settings.enable_test_views:
     method="GET",
     path="/_fs",
     operation_id=f"mw-fs-{S3StorageService.entity_type()}",
+    dependencies=[require(FsRead)],
 )
 async def fs_ops(
     svc: Annotated[S3StorageService, Depends(S3StorageService.get_service)],
@@ -102,6 +105,9 @@ async def fs_ops(
     prefix: str = "",
     key: Optional[str] = None,
 ):
+    """
+    Handle read-only S3 filesystem operations (list buckets, list objects, download file).
+    """
     region = model.region
     access_key = model.access_key
     secret_key = None
@@ -194,6 +200,7 @@ async def fs_ops(
     method="POST",
     path="/_fs",
     operation_id=f"mw-fs-post-{S3StorageService.entity_type()}",
+    dependencies=[require(FsWrite)],
 )
 async def fs_ops_post(
     svc: Annotated[S3StorageService, Depends(S3StorageService.get_service)],
@@ -204,6 +211,9 @@ async def fs_ops_post(
     key: Optional[str] = None,
     file: Optional[UploadFile] = File(None),
 ) -> dict[str, Any]:
+    """
+    Handle mutating S3 filesystem operations (upload file, delete file).
+    """
     region = model.region
     access_key = model.access_key
     secret_key = None
@@ -277,12 +287,13 @@ async def fs_ops_post(
             status_code=400, detail=f"S3 Error ({error_code}): {str(e)}"
         )
     except Exception as e:
-        raise HTTPException(status=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @S3StorageService.service_view(
     method="POST",
     path="/_test-connection",
+    dependencies=[require(TestConnection)],
 )
 async def test_connection(
     data: TestConnectionRequest,
