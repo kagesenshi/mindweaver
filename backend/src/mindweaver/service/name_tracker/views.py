@@ -3,12 +3,15 @@
 
 from fastapi import Depends
 from typing import Annotated
+from mindweaver.fw.permission import require
 from .service import NameTrackerService
+from .permission import CheckAvailability
 
 
 @NameTrackerService.service_view(
     method="GET",
     path="/_check-availability",
+    dependencies=[require(CheckAvailability)],
 )
 async def check_availability_view(
     name: str,

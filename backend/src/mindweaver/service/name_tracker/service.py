@@ -5,12 +5,15 @@ import logging
 from sqlmodel import select
 from mindweaver.fw.service import Service
 from .model import NameTracker
+from . import permission
 
 logger = logging.getLogger(__name__)
 
 
 class NameTrackerService(Service[NameTracker]):
     """Service for managing NameTracker data and checking name availability."""
+
+    permissions = permission
 
     @classmethod
     def model_class(cls) -> type[NameTracker]:
