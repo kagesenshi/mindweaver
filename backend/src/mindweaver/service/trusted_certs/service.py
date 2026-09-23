@@ -8,10 +8,13 @@ from pydantic import ValidationError
 from typing import Any
 
 from .model import TrustedCert, TrustedCertConfig
+from . import permission
 
 
 class TrustedCertService(ProjectScopedService[TrustedCert]):
     """Service for managing trusted certificates."""
+
+    permissions = permission
 
     @classmethod
     def model_class(cls) -> type[TrustedCert]:

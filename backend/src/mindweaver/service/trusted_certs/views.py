@@ -4,11 +4,17 @@
 from fastapi import Depends, HTTPException
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
-from .service import TrustedCertService
 import datetime
+from mindweaver.fw.permission import require
+from .service import TrustedCertService
+from .permission import Decode
 
 
-@TrustedCertService.model_view("GET", "/_decode")
+@TrustedCertService.model_view(
+    "GET",
+    "/_decode",
+    dependencies=[require(Decode)],
+)
 async def decode_certificate(
     id: int,
     svc: TrustedCertService = Depends(TrustedCertService.get_service),
