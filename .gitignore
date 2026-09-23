@@ -16,3 +16,4 @@ values*.yml
 charts/mindweaver/charts/*.tgz
 ext_src/
 ranger-*.tgz
+backend/logs
