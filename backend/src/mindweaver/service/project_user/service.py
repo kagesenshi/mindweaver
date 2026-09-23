@@ -9,6 +9,7 @@ from mindweaver.fw.service import Service, before_create, before_update
 from mindweaver.fw.exc import FieldValidationError
 from mindweaver.service.base import x_project_id
 from .model import ProjectLocalUser, ProjectLocalUserSchema
+from . import permission
 
 
 def generate_hashes(password: str) -> dict[str, str]:
@@ -33,6 +34,8 @@ class ProjectLocalUserService(Service[ProjectLocalUser]):
     """
     Service class managing project-scoped local users.
     """
+
+    permissions = permission
 
     @classmethod
     def model_class(cls) -> type[ProjectLocalUser]:
