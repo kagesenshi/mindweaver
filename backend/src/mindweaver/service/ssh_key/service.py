@@ -10,10 +10,13 @@ from cryptography.hazmat.primitives import serialization
 from pydantic import ValidationError
 
 from .model import SSHKey, SSHKeyConfig
+from . import permission
 
 
 class SSHKeyService(ProjectScopedService[SSHKey]):
     """Service for managing SSH Key pairs."""
+
+    permissions = permission
 
     @classmethod
     def model_class(cls) -> type[SSHKey]:
