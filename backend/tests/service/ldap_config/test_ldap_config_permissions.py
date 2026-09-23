@@ -19,10 +19,10 @@ from mindweaver.fw.permission import (
     check_user_permission,
     _NAME_TO_PERMISSION,
 )
-from mindweaver.service.git_repo.permission import (
+from mindweaver.service.ldap_config.permission import (
     Manage,
-    ManageGitRepo,
-    GitRepo,
+    ManageLdapConfig,
+    LdapConfig,
     Read,
     List,
     View,
@@ -32,17 +32,17 @@ from mindweaver.service.git_repo.permission import (
     Delete,
     Execute,
     TestConnection,
-    ManageGitRepoPermission,
-    GitRepoPermission,
-    GitRepoRead,
-    GitRepoList,
-    GitRepoView,
-    GitRepoWrite,
-    GitRepoCreate,
-    GitRepoUpdate,
-    GitRepoDelete,
-    GitRepoExecute,
-    GitRepoTestConnection,
+    ManageLdapConfigPermission,
+    LdapConfigPermission,
+    LdapConfigRead,
+    LdapConfigList,
+    LdapConfigView,
+    LdapConfigWrite,
+    LdapConfigCreate,
+    LdapConfigUpdate,
+    LdapConfigDelete,
+    LdapConfigExecute,
+    LdapConfigTestConnection,
 )
 
 
@@ -107,8 +107,8 @@ def _create_and_login_user(
     return {"Authorization": f"Bearer {token}"}
 
 
-def test_git_repo_permission_hierarchy():
-    """Verify GitRepo permission classes inherit correctly from All, Permission, and fw classes."""
+def test_ldap_config_permission_hierarchy():
+    """Verify LdapConfig permission classes inherit correctly from All, Permission, and fw classes."""
     assert issubclass(Manage, Permission)
     assert issubclass(Manage, All)
 
@@ -144,40 +144,40 @@ def test_git_repo_permission_hierarchy():
     assert not issubclass(TestConnection, Read)
 
     # Aliases
-    assert ManageGitRepo is Manage
-    assert ManageGitRepoPermission is Manage
-    assert GitRepo is Manage
-    assert GitRepoPermission is Manage
-    assert GitRepoRead is Read
-    assert GitRepoList is List
-    assert GitRepoView is View
-    assert GitRepoWrite is Write
-    assert GitRepoCreate is Create
-    assert GitRepoUpdate is Update
-    assert GitRepoDelete is Delete
-    assert GitRepoExecute is Execute
-    assert GitRepoTestConnection is TestConnection
+    assert ManageLdapConfig is Manage
+    assert ManageLdapConfigPermission is Manage
+    assert LdapConfig is Manage
+    assert LdapConfigPermission is Manage
+    assert LdapConfigRead is Read
+    assert LdapConfigList is List
+    assert LdapConfigView is View
+    assert LdapConfigWrite is Write
+    assert LdapConfigCreate is Create
+    assert LdapConfigUpdate is Update
+    assert LdapConfigDelete is Delete
+    assert LdapConfigExecute is Execute
+    assert LdapConfigTestConnection is TestConnection
 
 
-def test_git_repo_permission_string_registration():
-    """Verify that GitRepo permission names are registered in _NAME_TO_PERMISSION via init_subclass."""
-    assert _NAME_TO_PERMISSION.get("git_repo:manage") is Manage
-    assert _NAME_TO_PERMISSION.get("git_repo:read") is Read
-    assert _NAME_TO_PERMISSION.get("git_repo:list") is List
-    assert _NAME_TO_PERMISSION.get("git_repo:view") is View
-    assert _NAME_TO_PERMISSION.get("git_repo:write") is Write
-    assert _NAME_TO_PERMISSION.get("git_repo:create") is Create
-    assert _NAME_TO_PERMISSION.get("git_repo:update") is Update
-    assert _NAME_TO_PERMISSION.get("git_repo:delete") is Delete
-    assert _NAME_TO_PERMISSION.get("git_repo:execute") is Execute
-    assert _NAME_TO_PERMISSION.get("git_repo:test_connection") is TestConnection
-    # Verify removed view_git_repo is not registered
-    assert "git_repo:view_git_repo" not in _NAME_TO_PERMISSION
-    assert "git_repo" not in _NAME_TO_PERMISSION
-    assert "manage_git_repo" not in _NAME_TO_PERMISSION
+def test_ldap_config_permission_string_registration():
+    """Verify that LdapConfig permission names are registered in _NAME_TO_PERMISSION via init_subclass."""
+    assert _NAME_TO_PERMISSION.get("ldap_config:manage") is Manage
+    assert _NAME_TO_PERMISSION.get("ldap_config:read") is Read
+    assert _NAME_TO_PERMISSION.get("ldap_config:list") is List
+    assert _NAME_TO_PERMISSION.get("ldap_config:view") is View
+    assert _NAME_TO_PERMISSION.get("ldap_config:write") is Write
+    assert _NAME_TO_PERMISSION.get("ldap_config:create") is Create
+    assert _NAME_TO_PERMISSION.get("ldap_config:update") is Update
+    assert _NAME_TO_PERMISSION.get("ldap_config:delete") is Delete
+    assert _NAME_TO_PERMISSION.get("ldap_config:execute") is Execute
+    assert _NAME_TO_PERMISSION.get("ldap_config:test_connection") is TestConnection
+    # Verify manual aliases are not registered
+    assert "ldap_config" not in _NAME_TO_PERMISSION
+    assert "manage_ldap_config" not in _NAME_TO_PERMISSION
+    assert "view_ldap_config" not in _NAME_TO_PERMISSION
 
 
-def test_git_repo_check_user_permission_rules():
+def test_ldap_config_check_user_permission_rules():
     """Verify check_user_permission evaluates service permissions accurately."""
     # 1. Superadmin has everything
     superadmin = DummyUser(is_superadmin=True)
@@ -187,38 +187,38 @@ def test_git_repo_check_user_permission_rules():
     assert check_user_permission(superadmin, Create)
     assert check_user_permission(superadmin, TestConnection)
 
-    # 2. User with Manage permission has all git repo actions
-    repo_admin = DummyUser(permissions=[Manage])
-    assert check_user_permission(repo_admin, Manage)
-    assert check_user_permission(repo_admin, Read)
-    assert check_user_permission(repo_admin, List)
-    assert check_user_permission(repo_admin, View)
-    assert check_user_permission(repo_admin, Create)
-    assert check_user_permission(repo_admin, Update)
-    assert check_user_permission(repo_admin, Delete)
-    assert check_user_permission(repo_admin, TestConnection)
+    # 2. User with Manage permission has all ldap config actions
+    ldap_admin = DummyUser(permissions=[Manage])
+    assert check_user_permission(ldap_admin, Manage)
+    assert check_user_permission(ldap_admin, Read)
+    assert check_user_permission(ldap_admin, List)
+    assert check_user_permission(ldap_admin, View)
+    assert check_user_permission(ldap_admin, Create)
+    assert check_user_permission(ldap_admin, Update)
+    assert check_user_permission(ldap_admin, Delete)
+    assert check_user_permission(ldap_admin, TestConnection)
 
-    # 3. User with GitRepoRead has List and View, but not mutating or execute actions
-    repo_reader = DummyUser(permissions=[Read])
-    assert check_user_permission(repo_reader, Read)
-    assert check_user_permission(repo_reader, List)
-    assert check_user_permission(repo_reader, View)
-    assert not check_user_permission(repo_reader, Manage)
-    assert not check_user_permission(repo_reader, Write)
-    assert not check_user_permission(repo_reader, Create)
-    assert not check_user_permission(repo_reader, Update)
-    assert not check_user_permission(repo_reader, Delete)
-    assert not check_user_permission(repo_reader, Execute)
-    assert not check_user_permission(repo_reader, TestConnection)
+    # 3. User with LdapConfigRead has List and View, but not mutating or execute actions
+    ldap_reader = DummyUser(permissions=[Read])
+    assert check_user_permission(ldap_reader, Read)
+    assert check_user_permission(ldap_reader, List)
+    assert check_user_permission(ldap_reader, View)
+    assert not check_user_permission(ldap_reader, Manage)
+    assert not check_user_permission(ldap_reader, Write)
+    assert not check_user_permission(ldap_reader, Create)
+    assert not check_user_permission(ldap_reader, Update)
+    assert not check_user_permission(ldap_reader, Delete)
+    assert not check_user_permission(ldap_reader, Execute)
+    assert not check_user_permission(ldap_reader, TestConnection)
 
-    # 4. User with GitRepoTestConnection can test connection but cannot do other actions
+    # 4. User with LdapConfigTestConnection can test connection but cannot do other actions
     tester = DummyUser(permissions=[TestConnection])
     assert check_user_permission(tester, TestConnection)
     assert not check_user_permission(tester, List)
     assert not check_user_permission(tester, Create)
     assert not check_user_permission(tester, Delete)
 
-    # 5. Default authenticated user (with FwRead) can list and view git repos
+    # 5. Default authenticated user (with FwRead) can list and view ldap configs
     default_user = DummyUser()
     assert check_user_permission(default_user, List)
     assert check_user_permission(default_user, View)
@@ -226,73 +226,72 @@ def test_git_repo_check_user_permission_rules():
     assert not check_user_permission(default_user, TestConnection)
 
 
-def test_git_repo_endpoints_enforce_permissions(client: TestClient, test_project):
-    """Verify git repo endpoints enforce permissions via HTTP API."""
+def test_ldap_config_endpoints_enforce_permissions(client: TestClient, test_project):
+    """Verify ldap config endpoints enforce permissions via HTTP API."""
     settings.enable_auth = True
     with client as c:
         admin_headers = _get_superadmin_headers(c)
-        reg_headers = _create_and_login_user(c, admin_headers, "regular_alice")
+        reg_headers = _create_and_login_user(c, admin_headers, "regular_eve")
         proj_id = test_project["id"]
 
-        # 1. Regular user cannot create git repo
+        ldap_payload = {
+            "name": "test-ldap-perm",
+            "title": "Test Perm LDAP",
+            "server_url": "ldap://ldap.example.com",
+            "bind_dn": "cn=admin,dc=example,dc=com",
+            "bind_password": "supersecretpassword",
+            "user_search_base": "ou=users,dc=example,dc=com",
+            "user_search_filter": "(uid={0})",
+            "username_attr": "uid",
+            "verify_ssl": True,
+            "project_id": proj_id,
+        }
+
+        # 1. Regular user cannot create ldap config
         resp = c.post(
-            "/api/v1/git_repos",
-            json={
-                "name": "test-repo-perm",
-                "title": "Test Perm Git Repo",
-                "url": "https://github.com/my-org/my-repo.git",
-                "username": "user",
-                "password": "pwd",
-                "project_id": proj_id,
-            },
+            "/api/v1/ldap_configs",
+            json=ldap_payload,
             headers={"X-Project-ID": str(proj_id), **reg_headers},
         )
         assert resp.status_code == 403
         assert "Permission denied" in resp.text
 
-        # 2. Superadmin can create git repo
+        # 2. Superadmin can create ldap config
         resp = c.post(
-            "/api/v1/git_repos",
-            json={
-                "name": "test-repo-perm",
-                "title": "Test Perm Git Repo",
-                "url": "https://github.com/my-org/my-repo.git",
-                "username": "user",
-                "password": "pwd",
-                "project_id": proj_id,
-            },
+            "/api/v1/ldap_configs",
+            json=ldap_payload,
             headers={"X-Project-ID": str(proj_id), **admin_headers},
         )
         assert resp.status_code == 200, resp.text
-        repo_id = resp.json()["data"]["id"]
+        config_id = resp.json()["data"]["id"]
 
-        # 3. Regular user can view git repo
+        # 3. Regular user can view ldap config
         resp = c.get(
-            f"/api/v1/git_repos/{repo_id}",
+            f"/api/v1/ldap_configs/{config_id}",
             headers={"X-Project-ID": str(proj_id), **reg_headers},
         )
         assert resp.status_code == 200
 
-        # 4. Regular user can list git repos
+        # 4. Regular user can list ldap configs
         resp = c.get(
-            "/api/v1/git_repos",
+            "/api/v1/ldap_configs",
             headers={"X-Project-ID": str(proj_id), **reg_headers},
         )
         assert resp.status_code == 200
 
-        # 5. Regular user cannot update git repo
+        # 5. Regular user cannot update ldap config
         resp = c.put(
-            f"/api/v1/git_repos/{repo_id}",
+            f"/api/v1/ldap_configs/{config_id}",
             json={"title": "Updated Title"},
             headers={"X-Project-ID": str(proj_id), **reg_headers},
         )
         assert resp.status_code == 403
 
-        # 6. Regular user cannot delete git repo
+        # 6. Regular user cannot delete ldap config
         resp = c.delete(
-            f"/api/v1/git_repos/{repo_id}",
+            f"/api/v1/ldap_configs/{config_id}",
             headers={
-                "X-RESOURCE-NAME": "test-repo-perm",
+                "X-RESOURCE-NAME": "test-ldap-perm",
                 "X-Project-ID": str(proj_id),
                 **reg_headers,
             },
@@ -301,22 +300,22 @@ def test_git_repo_endpoints_enforce_permissions(client: TestClient, test_project
 
         # 7. Regular user cannot trigger test connection
         resp = c.post(
-            "/api/v1/git_repos/_test-connection",
-            json={"url": "https://github.com/my-org/my-repo.git"},
+            "/api/v1/ldap_configs/_test-connection",
+            json={"server_url": "ldap://ldap.example.com"},
             headers={"X-Project-ID": str(proj_id), **reg_headers},
         )
         assert resp.status_code == 403
-        assert "Permission denied for 'git_repo:test_connection'" in resp.text
+        assert "Permission denied for 'ldap_config:test_connection'" in resp.text
 
 
-def test_git_repo_endpoints_with_granted_permissions(client: TestClient, test_project):
+def test_ldap_config_endpoints_with_granted_permissions(client: TestClient, test_project):
     """Verify users with granted service permissions can access allowed endpoints."""
     settings.enable_auth = True
     with client as c:
         admin_headers = _get_superadmin_headers(c)
         proj_id = test_project["id"]
-        manager_headers = _create_and_login_user(c, admin_headers, "repo_manager")
-        reader_headers = _create_and_login_user(c, admin_headers, "repo_reader")
+        manager_headers = _create_and_login_user(c, admin_headers, "ldap_manager")
+        reader_headers = _create_and_login_user(c, admin_headers, "ldap_reader")
         tester_headers = _create_and_login_user(c, admin_headers, "conn_tester")
 
         def _mock_perms(custom_perms):
@@ -330,13 +329,14 @@ def test_git_repo_endpoints_with_granted_permissions(client: TestClient, test_pr
         with patch("mindweaver.fw.permission.get_user_permissions", side_effect=_mock_perms([Manage])):
             # Can create
             resp = c.post(
-                "/api/v1/git_repos",
+                "/api/v1/ldap_configs",
                 json={
-                    "name": "mgr-repo",
-                    "title": "Mgr Git Repo",
-                    "url": "https://github.com/org/mgr.git",
-                    "username": "u",
-                    "password": "p",
+                    "name": "mgr-ldap",
+                    "title": "Mgr LDAP",
+                    "server_url": "ldap://ldap.example.com",
+                    "user_search_base": "ou=users,dc=example,dc=com",
+                    "user_search_filter": "(uid={0})",
+                    "username_attr": "uid",
                     "project_id": proj_id,
                 },
                 headers={"X-Project-ID": str(proj_id), **manager_headers},
@@ -346,17 +346,18 @@ def test_git_repo_endpoints_with_granted_permissions(client: TestClient, test_pr
 
             # Can update
             resp = c.put(
-                f"/api/v1/git_repos/{created_id}",
-                json={"title": "Updated Mgr Git Repo"},
+                f"/api/v1/ldap_configs/{created_id}",
+                json={"title": "Updated Mgr LDAP"},
                 headers={"X-Project-ID": str(proj_id), **manager_headers},
             )
             assert resp.status_code == 200
 
             # Can test connection
-            with patch("mindweaver.service.git_repo.views.run_git_ls_remote", AsyncMock(return_value=(True, "OK"))):
+            with patch("ldap3.Server"), patch("ldap3.Connection") as mock_conn:
+                mock_conn.return_value.bind.return_value = True
                 resp = c.post(
-                    "/api/v1/git_repos/_test-connection",
-                    json={"url": "https://github.com/org/mgr.git"},
+                    "/api/v1/ldap_configs/_test-connection",
+                    json={"server_url": "ldap://ldap.example.com", "storage_id": created_id},
                     headers={"X-Project-ID": str(proj_id), **manager_headers},
                 )
                 assert resp.status_code == 200
@@ -364,9 +365,9 @@ def test_git_repo_endpoints_with_granted_permissions(client: TestClient, test_pr
 
             # Can delete
             resp = c.delete(
-                f"/api/v1/git_repos/{created_id}",
+                f"/api/v1/ldap_configs/{created_id}",
                 headers={
-                    "X-RESOURCE-NAME": "mgr-repo",
+                    "X-RESOURCE-NAME": "mgr-ldap",
                     "X-Project-ID": str(proj_id),
                     **manager_headers,
                 },
@@ -374,46 +375,48 @@ def test_git_repo_endpoints_with_granted_permissions(client: TestClient, test_pr
             assert resp.status_code == 200
 
         # 2. User with Read permission (read-only control)
-        # Create a repo as admin
+        # Create an ldap config as admin
         r_resp = c.post(
-            "/api/v1/git_repos",
+            "/api/v1/ldap_configs",
             json={
-                "name": "view-repo-target",
+                "name": "view-ldap-target",
                 "title": "View Target",
-                "url": "https://github.com/org/target.git",
-                "username": "u",
-                "password": "p",
+                "server_url": "ldap://ldap.example.com",
+                "user_search_base": "ou=users,dc=example,dc=com",
+                "user_search_filter": "(uid={0})",
+                "username_attr": "uid",
                 "project_id": proj_id,
             },
             headers={"X-Project-ID": str(proj_id), **admin_headers},
         )
         assert r_resp.status_code == 200
-        target_repo_id = r_resp.json()["data"]["id"]
+        target_id = r_resp.json()["data"]["id"]
 
         with patch("mindweaver.fw.permission.get_user_permissions", side_effect=_mock_perms([Read])):
             # Can list
             resp = c.get(
-                "/api/v1/git_repos",
+                "/api/v1/ldap_configs",
                 headers={"X-Project-ID": str(proj_id), **reader_headers},
             )
             assert resp.status_code == 200
 
             # Can view
             resp = c.get(
-                f"/api/v1/git_repos/{target_repo_id}",
+                f"/api/v1/ldap_configs/{target_id}",
                 headers={"X-Project-ID": str(proj_id), **reader_headers},
             )
             assert resp.status_code == 200
 
             # CANNOT create
             resp = c.post(
-                "/api/v1/git_repos",
+                "/api/v1/ldap_configs",
                 json={
-                    "name": "illegal-repo-viewer",
+                    "name": "illegal-ldap-viewer",
                     "title": "Illegal",
-                    "url": "https://github.com/org/illegal.git",
-                    "username": "u",
-                    "password": "p",
+                    "server_url": "ldap://ldap.example.com",
+                    "user_search_base": "ou=users,dc=example,dc=com",
+                    "user_search_filter": "(uid={0})",
+                    "username_attr": "uid",
                     "project_id": proj_id,
                 },
                 headers={"X-Project-ID": str(proj_id), **reader_headers},
@@ -422,7 +425,7 @@ def test_git_repo_endpoints_with_granted_permissions(client: TestClient, test_pr
 
             # CANNOT update
             resp = c.put(
-                f"/api/v1/git_repos/{target_repo_id}",
+                f"/api/v1/ldap_configs/{target_id}",
                 json={"title": "Updated by viewer"},
                 headers={"X-Project-ID": str(proj_id), **reader_headers},
             )
@@ -430,17 +433,17 @@ def test_git_repo_endpoints_with_granted_permissions(client: TestClient, test_pr
 
             # CANNOT test connection
             resp = c.post(
-                "/api/v1/git_repos/_test-connection",
-                json={"url": "https://github.com/org/target.git"},
+                "/api/v1/ldap_configs/_test-connection",
+                json={"server_url": "ldap://ldap.example.com"},
                 headers={"X-Project-ID": str(proj_id), **reader_headers},
             )
             assert resp.status_code == 403
 
             # CANNOT delete
             resp = c.delete(
-                f"/api/v1/git_repos/{target_repo_id}",
+                f"/api/v1/ldap_configs/{target_id}",
                 headers={
-                    "X-RESOURCE-NAME": "view-repo-target",
+                    "X-RESOURCE-NAME": "view-ldap-target",
                     "X-Project-ID": str(proj_id),
                     **reader_headers,
                 },
@@ -451,13 +454,14 @@ def test_git_repo_endpoints_with_granted_permissions(client: TestClient, test_pr
         with patch("mindweaver.fw.permission.get_user_permissions", side_effect=_mock_perms([TestConnection])):
             # Tester cannot create
             resp = c.post(
-                "/api/v1/git_repos",
+                "/api/v1/ldap_configs",
                 json={
-                    "name": "illegal-repo-tester",
+                    "name": "illegal-ldap-tester",
                     "title": "Illegal",
-                    "url": "https://github.com/org/illegal.git",
-                    "username": "u",
-                    "password": "p",
+                    "server_url": "ldap://ldap.example.com",
+                    "user_search_base": "ou=users,dc=example,dc=com",
+                    "user_search_filter": "(uid={0})",
+                    "username_attr": "uid",
                     "project_id": proj_id,
                 },
                 headers={"X-Project-ID": str(proj_id), **tester_headers},
@@ -465,10 +469,11 @@ def test_git_repo_endpoints_with_granted_permissions(client: TestClient, test_pr
             assert resp.status_code == 403
 
             # Tester CAN test connection
-            with patch("mindweaver.service.git_repo.views.run_git_ls_remote", AsyncMock(return_value=(True, "OK"))):
+            with patch("ldap3.Server"), patch("ldap3.Connection") as mock_conn:
+                mock_conn.return_value.bind.return_value = True
                 resp = c.post(
-                    "/api/v1/git_repos/_test-connection",
-                    json={"url": "https://github.com/org/test.git"},
+                    "/api/v1/ldap_configs/_test-connection",
+                    json={"server_url": "ldap://ldap.example.com", "storage_id": target_id},
                     headers={"X-Project-ID": str(proj_id), **tester_headers},
                 )
                 assert resp.status_code == 200

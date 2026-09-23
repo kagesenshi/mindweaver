@@ -14,17 +14,12 @@ from mindweaver.fw.permission import (
 )
 
 
-class ManageContainerRegistry(Permission):
+class Manage(Permission):
     """Base permission for all operations on Container Registry resources."""
     name: str = "container_registry:manage"
 
 
-class ViewContainerRegistry(ManageContainerRegistry):
-    """Permission to perform view-only operations on container registries."""
-    name: str = "container_registry:view_container_registry"
-
-
-class Read(ViewContainerRegistry, FwRead):
+class Read(Manage, FwRead):
     """Permission to perform read-only operations on container registries."""
     name: str = "container_registry:read"
 
@@ -39,7 +34,7 @@ class View(Read, FwView):
     name: str = "container_registry:view"
 
 
-class Write(ManageContainerRegistry, FwWrite):
+class Write(Manage, FwWrite):
     """Permission to perform mutating operations on container registries."""
     name: str = "container_registry:write"
 
@@ -59,7 +54,7 @@ class Delete(Write, FwDelete):
     name: str = "container_registry:delete"
 
 
-class Execute(ManageContainerRegistry, FwExecute):
+class Execute(Manage, FwExecute):
     """Permission to execute actions and operational tasks on container registries."""
     name: str = "container_registry:execute"
 
@@ -70,10 +65,10 @@ class TestConnection(Execute):
 
 
 # Canonical Aliases
-ManageContainerRegistryPermission = ManageContainerRegistry
-ViewContainerRegistryPermission = ViewContainerRegistry
-ContainerRegistry = ManageContainerRegistry
-ContainerRegistryPermission = ManageContainerRegistry
+ManageContainerRegistry = Manage
+ManageContainerRegistryPermission = Manage
+ContainerRegistry = Manage
+ContainerRegistryPermission = Manage
 ContainerRegistryRead = Read
 ContainerRegistryList = List
 ContainerRegistryView = View

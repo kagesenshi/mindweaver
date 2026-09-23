@@ -14,17 +14,12 @@ from mindweaver.fw.permission import (
 )
 
 
-class ManageGitRepo(Permission):
+class Manage(Permission):
     """Base permission for all operations on Git repository resources."""
     name: str = "git_repo:manage"
 
 
-class ViewGitRepo(ManageGitRepo):
-    """Permission to perform view-only operations on git repositories."""
-    name: str = "git_repo:view_git_repo"
-
-
-class Read(ViewGitRepo, FwRead):
+class Read(Manage, FwRead):
     """Permission to perform read-only operations on git repositories."""
     name: str = "git_repo:read"
 
@@ -39,7 +34,7 @@ class View(Read, FwView):
     name: str = "git_repo:view"
 
 
-class Write(ManageGitRepo, FwWrite):
+class Write(Manage, FwWrite):
     """Permission to perform mutating operations on git repositories."""
     name: str = "git_repo:write"
 
@@ -59,7 +54,7 @@ class Delete(Write, FwDelete):
     name: str = "git_repo:delete"
 
 
-class Execute(ManageGitRepo, FwExecute):
+class Execute(Manage, FwExecute):
     """Permission to execute actions and operational tasks on git repositories."""
     name: str = "git_repo:execute"
 
@@ -70,10 +65,10 @@ class TestConnection(Execute):
 
 
 # Canonical Aliases
-ManageGitRepoPermission = ManageGitRepo
-ViewGitRepoPermission = ViewGitRepo
-GitRepo = ManageGitRepo
-GitRepoPermission = ManageGitRepo
+ManageGitRepo = Manage
+ManageGitRepoPermission = Manage
+GitRepo = Manage
+GitRepoPermission = Manage
 GitRepoRead = Read
 GitRepoList = List
 GitRepoView = View

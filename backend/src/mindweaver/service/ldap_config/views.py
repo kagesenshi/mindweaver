@@ -9,7 +9,9 @@ from pydantic import BaseModel
 from mindweaver.config import settings
 from mindweaver.crypto import decrypt_password, EncryptionError
 from mindweaver.fw.exc import FieldValidationError, MindWeaverError
+from mindweaver.fw.permission import require
 from .service import LdapConfigService, LdapConfig
+from .permission import TestConnection
 
 
 class VerifyEncryptedRequest(BaseModel):
@@ -42,6 +44,7 @@ if settings.enable_test_views:
 @LdapConfigService.service_view(
     method="POST",
     path="/_test-connection",
+    dependencies=[require(TestConnection)],
 )
 async def test_connection(
     data: TestConnectionRequest,

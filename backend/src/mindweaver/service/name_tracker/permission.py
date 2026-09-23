@@ -14,17 +14,12 @@ from mindweaver.fw.permission import (
 )
 
 
-class ManageNameTracker(Permission):
+class Manage(Permission):
     """Base permission for all operations on Name Tracker resources."""
     name: str = "name_tracker:manage"
 
 
-class ViewNameTracker(ManageNameTracker):
-    """Permission to perform view-only operations on name tracker."""
-    name: str = "name_tracker:view_name_tracker"
-
-
-class Read(ViewNameTracker, FwRead):
+class Read(Manage, FwRead):
     """Permission to perform read-only operations on name tracker."""
     name: str = "name_tracker:read"
 
@@ -39,7 +34,7 @@ class View(Read, FwView):
     name: str = "name_tracker:view"
 
 
-class Write(ManageNameTracker, FwWrite):
+class Write(Manage, FwWrite):
     """Permission to perform mutating operations on name tracker."""
     name: str = "name_tracker:write"
 
@@ -59,7 +54,7 @@ class Delete(Write, FwDelete):
     name: str = "name_tracker:delete"
 
 
-class Execute(ManageNameTracker, FwExecute):
+class Execute(Manage, FwExecute):
     """Permission to execute actions on name tracker."""
     name: str = "name_tracker:execute"
 
@@ -70,10 +65,10 @@ class CheckAvailability(View):
 
 
 # Canonical Aliases
-ManageNameTrackerPermission = ManageNameTracker
-ViewNameTrackerPermission = ViewNameTracker
-NameTracker = ManageNameTracker
-NameTrackerPermission = ManageNameTracker
+ManageNameTracker = Manage
+ManageNameTrackerPermission = Manage
+NameTracker = Manage
+NameTrackerPermission = Manage
 NameTrackerRead = Read
 NameTrackerList = List
 NameTrackerView = View

@@ -20,8 +20,7 @@ from mindweaver.fw.permission import (
     _NAME_TO_PERMISSION,
 )
 from mindweaver.service.name_tracker.permission import (
-    ManageNameTracker,
-    ViewNameTracker,
+    Manage,
     NameTracker,
     Read,
     List,
@@ -33,7 +32,7 @@ from mindweaver.service.name_tracker.permission import (
     Execute,
     CheckAvailability,
     ManageNameTrackerPermission,
-    ViewNameTrackerPermission,
+    ManageNameTracker,
     NameTrackerPermission,
     NameTrackerRead,
     NameTrackerList,
@@ -110,56 +109,50 @@ def _create_and_login_user(
 
 def test_name_tracker_permission_hierarchy():
     """Verify NameTracker permission classes inherit correctly from All, Permission, and fw classes."""
-    assert issubclass(ManageNameTracker, Permission)
-    assert issubclass(ManageNameTracker, All)
+    assert issubclass(Manage, Permission)
+    assert issubclass(Manage, All)
 
-    # ViewNameTracker hierarchy
-    assert issubclass(ViewNameTracker, ManageNameTracker)
-    assert issubclass(ViewNameTracker, Permission)
-
-    # Read hierarchy (inherits from ViewNameTracker and FwRead)
-    assert issubclass(Read, ViewNameTracker)
-    assert issubclass(Read, ManageNameTracker)
+    # Read hierarchy (inherits from Manage and FwRead)
+    assert issubclass(Read, Manage)
     assert issubclass(Read, FwRead)
     assert issubclass(List, Read)
-    assert issubclass(List, ViewNameTracker)
+    assert issubclass(List, Manage)
     assert issubclass(List, FwList)
     assert issubclass(View, Read)
-    assert issubclass(View, ViewNameTracker)
+    assert issubclass(View, Manage)
     assert issubclass(View, FwView)
 
     # CheckAvailability hierarchy (inherits from View)
     assert issubclass(CheckAvailability, View)
     assert issubclass(CheckAvailability, Read)
-    assert issubclass(CheckAvailability, ViewNameTracker)
-    assert issubclass(CheckAvailability, ManageNameTracker)
+    assert issubclass(CheckAvailability, Manage)
     assert issubclass(CheckAvailability, FwRead)
     assert issubclass(CheckAvailability, FwView)
 
-    # Write hierarchy (inherits from ManageNameTracker, NOT ViewNameTracker)
-    assert issubclass(Write, ManageNameTracker)
-    assert not issubclass(Write, ViewNameTracker)
+    # Write hierarchy (inherits from Manage)
+    assert issubclass(Write, Manage)
+    assert not issubclass(Write, Read)
     assert issubclass(Write, FwWrite)
     assert issubclass(Create, Write)
-    assert not issubclass(Create, ViewNameTracker)
+    assert not issubclass(Create, Read)
     assert issubclass(Create, FwCreate)
     assert issubclass(Update, Write)
-    assert not issubclass(Update, ViewNameTracker)
+    assert not issubclass(Update, Read)
     assert issubclass(Update, FwUpdate)
     assert issubclass(Delete, Write)
-    assert not issubclass(Delete, ViewNameTracker)
+    assert not issubclass(Delete, Read)
     assert issubclass(Delete, FwDelete)
 
-    # Execute hierarchy (inherits from ManageNameTracker, NOT ViewNameTracker)
-    assert issubclass(Execute, ManageNameTracker)
-    assert not issubclass(Execute, ViewNameTracker)
+    # Execute hierarchy (inherits from Manage)
+    assert issubclass(Execute, Manage)
+    assert not issubclass(Execute, Read)
     assert issubclass(Execute, FwExecute)
 
     # Aliases
-    assert ManageNameTrackerPermission is ManageNameTracker
-    assert ViewNameTrackerPermission is ViewNameTracker
-    assert NameTracker is ManageNameTracker
-    assert NameTrackerPermission is ManageNameTracker
+    assert ManageNameTracker is Manage
+    assert ManageNameTrackerPermission is Manage
+    assert NameTracker is Manage
+    assert NameTrackerPermission is Manage
     assert NameTrackerRead is Read
     assert NameTrackerList is List
     assert NameTrackerView is View
@@ -173,8 +166,7 @@ def test_name_tracker_permission_hierarchy():
 
 def test_name_tracker_permission_string_registration():
     """Verify that NameTracker permission names are registered in _NAME_TO_PERMISSION via init_subclass."""
-    assert _NAME_TO_PERMISSION.get("name_tracker:manage") is ManageNameTracker
-    assert _NAME_TO_PERMISSION.get("name_tracker:view_name_tracker") is ViewNameTracker
+    assert _NAME_TO_PERMISSION.get("name_tracker:manage") is Manage
     assert _NAME_TO_PERMISSION.get("name_tracker:read") is Read
     assert _NAME_TO_PERMISSION.get("name_tracker:list") is List
     assert _NAME_TO_PERMISSION.get("name_tracker:view") is View
@@ -184,26 +176,26 @@ def test_name_tracker_permission_string_registration():
     assert _NAME_TO_PERMISSION.get("name_tracker:delete") is Delete
     assert _NAME_TO_PERMISSION.get("name_tracker:execute") is Execute
     assert _NAME_TO_PERMISSION.get("name_tracker:check_availability") is CheckAvailability
-    # Verify manual aliases are not registered
+    # Verify removed view_name_tracker is not registered
+    assert "name_tracker:view_name_tracker" not in _NAME_TO_PERMISSION
     assert "name_tracker" not in _NAME_TO_PERMISSION
     assert "manage_name_tracker" not in _NAME_TO_PERMISSION
-    assert "view_name_tracker" not in _NAME_TO_PERMISSION
 
 
 def test_name_tracker_check_user_permission_rules():
     """Verify check_user_permission evaluates service permissions accurately."""
     # 1. Superadmin has everything
     superadmin = DummyUser(is_superadmin=True)
-    assert check_user_permission(superadmin, ManageNameTracker)
-    assert check_user_permission(superadmin, ViewNameTracker)
+    assert check_user_permission(superadmin, Manage)
+    assert check_user_permission(superadmin, Read)
     assert check_user_permission(superadmin, List)
     assert check_user_permission(superadmin, Create)
     assert check_user_permission(superadmin, CheckAvailability)
 
-    # 2. User with ManageNameTracker permission has all name tracker actions
-    tracker_admin = DummyUser(permissions=[ManageNameTracker])
-    assert check_user_permission(tracker_admin, ManageNameTracker)
-    assert check_user_permission(tracker_admin, ViewNameTracker)
+    # 2. User with Manage permission has all name tracker actions
+    tracker_admin = DummyUser(permissions=[Manage])
+    assert check_user_permission(tracker_admin, Manage)
+    assert check_user_permission(tracker_admin, Read)
     assert check_user_permission(tracker_admin, List)
     assert check_user_permission(tracker_admin, View)
     assert check_user_permission(tracker_admin, Create)
@@ -211,37 +203,27 @@ def test_name_tracker_check_user_permission_rules():
     assert check_user_permission(tracker_admin, Delete)
     assert check_user_permission(tracker_admin, CheckAvailability)
 
-    # 3. User with ViewNameTracker permission has view-type actions ONLY
-    tracker_viewer = DummyUser(permissions=[ViewNameTracker])
-    assert check_user_permission(tracker_viewer, ViewNameTracker)
-    assert check_user_permission(tracker_viewer, List)
-    assert check_user_permission(tracker_viewer, View)
-    assert check_user_permission(tracker_viewer, CheckAvailability)
-    # Mutating / operational actions MUST be denied
-    assert not check_user_permission(tracker_viewer, ManageNameTracker)
-    assert not check_user_permission(tracker_viewer, Write)
-    assert not check_user_permission(tracker_viewer, Create)
-    assert not check_user_permission(tracker_viewer, Update)
-    assert not check_user_permission(tracker_viewer, Delete)
-    assert not check_user_permission(tracker_viewer, Execute)
-
-    # 4. User with NameTrackerRead has List, View, and CheckAvailability, but not mutating actions
+    # 3. User with NameTrackerRead has List, View, and CheckAvailability, but not mutating actions
     tracker_reader = DummyUser(permissions=[Read])
+    assert check_user_permission(tracker_reader, Read)
     assert check_user_permission(tracker_reader, List)
     assert check_user_permission(tracker_reader, View)
     assert check_user_permission(tracker_reader, CheckAvailability)
+    assert not check_user_permission(tracker_reader, Manage)
+    assert not check_user_permission(tracker_reader, Write)
     assert not check_user_permission(tracker_reader, Create)
     assert not check_user_permission(tracker_reader, Update)
     assert not check_user_permission(tracker_reader, Delete)
+    assert not check_user_permission(tracker_reader, Execute)
 
-    # 5. User with CheckAvailability can check availability but cannot do other actions
+    # 4. User with CheckAvailability can check availability but cannot do other actions
     checker = DummyUser(permissions=[CheckAvailability])
     assert check_user_permission(checker, CheckAvailability)
     assert not check_user_permission(checker, List)
     assert not check_user_permission(checker, Create)
     assert not check_user_permission(checker, Delete)
 
-    # 6. Default authenticated user (with FwRead) can list, view, and check availability
+    # 5. Default authenticated user (with FwRead) can list, view, and check availability
     default_user = DummyUser()
     assert check_user_permission(default_user, List)
     assert check_user_permission(default_user, View)
@@ -328,7 +310,7 @@ def test_name_tracker_endpoints_with_granted_permissions(client: TestClient):
     with client as c:
         admin_headers = _get_superadmin_headers(c)
         manager_headers = _create_and_login_user(c, admin_headers, "tracker_manager")
-        viewer_headers = _create_and_login_user(c, admin_headers, "tracker_viewer")
+        reader_headers = _create_and_login_user(c, admin_headers, "tracker_reader")
         checker_headers = _create_and_login_user(c, admin_headers, "avail_checker")
 
         def _mock_perms(custom_perms):
@@ -338,8 +320,8 @@ def test_name_tracker_endpoints_with_granted_permissions(client: TestClient):
                 return custom_perms
             return _get
 
-        # 1. User with ManageNameTracker permission (full control)
-        with patch("mindweaver.fw.permission.get_user_permissions", side_effect=_mock_perms([ManageNameTracker])):
+        # 1. User with Manage permission (full control)
+        with patch("mindweaver.fw.permission.get_user_permissions", side_effect=_mock_perms([Manage])):
             # Can create
             resp = c.post(
                 "/api/v1/name-tracker",
@@ -378,7 +360,7 @@ def test_name_tracker_endpoints_with_granted_permissions(client: TestClient):
             )
             assert resp.status_code == 200
 
-        # 2. User with ViewNameTracker permission (view-only control)
+        # 2. User with Read permission (read-only control)
         # Create an entry as admin
         r_resp = c.post(
             "/api/v1/name-tracker",
@@ -391,25 +373,25 @@ def test_name_tracker_endpoints_with_granted_permissions(client: TestClient):
         assert r_resp.status_code == 200
         target_id = r_resp.json()["data"]["id"]
 
-        with patch("mindweaver.fw.permission.get_user_permissions", side_effect=_mock_perms([ViewNameTracker])):
+        with patch("mindweaver.fw.permission.get_user_permissions", side_effect=_mock_perms([Read])):
             # Can list
             resp = c.get(
                 "/api/v1/name-tracker",
-                headers=viewer_headers,
+                headers=reader_headers,
             )
             assert resp.status_code == 200
 
             # Can view
             resp = c.get(
                 f"/api/v1/name-tracker/{target_id}",
-                headers=viewer_headers,
+                headers=reader_headers,
             )
             assert resp.status_code == 200
 
             # Can check availability
             resp = c.get(
                 "/api/v1/name-tracker/_check-availability?name=view-target-item",
-                headers=viewer_headers,
+                headers=reader_headers,
             )
             assert resp.status_code == 200
             assert resp.json()["available"] is False
@@ -421,7 +403,7 @@ def test_name_tracker_endpoints_with_granted_permissions(client: TestClient):
                     "name": "illegal-tracker-item",
                     "module": "illegal_mod",
                 },
-                headers=viewer_headers,
+                headers=reader_headers,
             )
             assert resp.status_code == 403
 
@@ -429,7 +411,7 @@ def test_name_tracker_endpoints_with_granted_permissions(client: TestClient):
             resp = c.put(
                 f"/api/v1/name-tracker/{target_id}",
                 json={"module": "updated_by_viewer"},
-                headers=viewer_headers,
+                headers=reader_headers,
             )
             assert resp.status_code == 403
 
@@ -438,7 +420,7 @@ def test_name_tracker_endpoints_with_granted_permissions(client: TestClient):
                 f"/api/v1/name-tracker/{target_id}",
                 headers={
                     "X-RESOURCE-NAME": "view-target-item",
-                    **viewer_headers,
+                    **reader_headers,
                 },
             )
             assert resp.status_code == 403

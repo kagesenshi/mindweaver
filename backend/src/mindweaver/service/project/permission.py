@@ -14,17 +14,12 @@ from mindweaver.fw.permission import (
 )
 
 
-class ManageProject(Permission):
+class Manage(Permission):
     """Base permission for all operations on Project resources."""
     name: str = "project:manage"
 
 
-class ViewProject(ManageProject):
-    """Permission to perform view-only operations on projects."""
-    name: str = "project:view_project"
-
-
-class Read(ViewProject, FwRead):
+class Read(Manage, FwRead):
     """Permission to perform read-only operations on projects."""
     name: str = "project:read"
 
@@ -39,7 +34,7 @@ class View(Read, FwView):
     name: str = "project:view"
 
 
-class Write(ManageProject, FwWrite):
+class Write(Manage, FwWrite):
     """Permission to perform mutating operations on projects."""
     name: str = "project:write"
 
@@ -59,7 +54,7 @@ class Delete(Write, FwDelete):
     name: str = "project:delete"
 
 
-class Execute(ManageProject, FwExecute):
+class Execute(Manage, FwExecute):
     """Permission to execute project-level actions and tasks."""
     name: str = "project:execute"
 
@@ -95,10 +90,10 @@ class RenewCertificate(Execute):
 
 
 # Canonical Aliases
-ManageProjectPermission = ManageProject
-ViewProjectPermission = ViewProject
-Project = ManageProject
-ProjectPermission = ManageProject
+ManageProject = Manage
+ManageProjectPermission = Manage
+Project = Manage
+ProjectPermission = Manage
 ProjectRead = Read
 ProjectList = List
 ProjectView = View
@@ -113,4 +108,3 @@ ProjectCertManager = CertManager
 ProjectIssuerCert = IssuerCert
 ProjectCertificateDetails = CertificateDetails
 ProjectRenewCertificate = RenewCertificate
-

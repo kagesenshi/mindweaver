@@ -62,17 +62,12 @@ from mindweaver.fw.permission import (
 )
 
 
-class ManageMyService(Permission):
+class Manage(Permission):
     """Base permission for all operations on MyService resources."""
     name: str = "myservice:manage"
 
 
-class ViewMyService(ManageMyService):
-    """Permission to perform view-only operations on myservice."""
-    name: str = "myservice:view_myservice"
-
-
-class Read(ViewMyService, FwRead):
+class Read(Manage, FwRead):
     """Permission to perform read-only operations on myservice."""
     name: str = "myservice:read"
 
@@ -87,7 +82,7 @@ class View(Read, FwView):
     name: str = "myservice:view"
 
 
-class Write(ManageMyService, FwWrite):
+class Write(Manage, FwWrite):
     """Permission to perform mutating operations on myservice."""
     name: str = "myservice:write"
 
@@ -107,7 +102,7 @@ class Delete(Write, FwDelete):
     name: str = "myservice:delete"
 
 
-class Execute(ManageMyService, FwExecute):
+class Execute(Manage, FwExecute):
     """Permission to execute myservice actions and platform tasks."""
     name: str = "myservice:execute"
 
@@ -119,10 +114,10 @@ class Refresh(View):
 
 
 # Canonical Aliases
-ManageMyServicePermission = ManageMyService
-ViewMyServicePermission = ViewMyService
-MyService = ManageMyService
-MyServicePermission = ManageMyService
+ManageMyService = Manage
+ManageMyServicePermission = Manage
+MyService = Manage
+MyServicePermission = Manage
 MyServiceRead = Read
 MyServiceList = List
 MyServiceView = View

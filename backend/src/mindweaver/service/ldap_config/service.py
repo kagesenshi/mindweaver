@@ -9,9 +9,12 @@ from mindweaver.fw.exc import FieldValidationError
 from typing import Any
 
 from .model import LdapConfig, LdapConfigSchema
+from . import permission
 
 
 class LdapConfigService(ProjectScopedService[LdapConfig]):
+
+    permissions = permission
 
     @classmethod
     def model_class(cls) -> type[LdapConfig]:

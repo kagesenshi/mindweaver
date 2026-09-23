@@ -14,17 +14,12 @@ from mindweaver.fw.permission import (
 )
 
 
-class ManageK8sCluster(Permission):
+class Manage(Permission):
     """Base permission for all operations on Kubernetes Cluster resources."""
     name: str = "k8s_cluster:manage"
 
 
-class ViewK8sCluster(ManageK8sCluster):
-    """Permission to perform view-only operations on k8s clusters."""
-    name: str = "k8s_cluster:view_k8s_cluster"
-
-
-class Read(ViewK8sCluster, FwRead):
+class Read(Manage, FwRead):
     """Permission to perform read-only operations on k8s clusters."""
     name: str = "k8s_cluster:read"
 
@@ -39,7 +34,7 @@ class View(Read, FwView):
     name: str = "k8s_cluster:view"
 
 
-class Write(ManageK8sCluster, FwWrite):
+class Write(Manage, FwWrite):
     """Permission to perform mutating operations on k8s clusters."""
     name: str = "k8s_cluster:write"
 
@@ -59,7 +54,7 @@ class Delete(Write, FwDelete):
     name: str = "k8s_cluster:delete"
 
 
-class Execute(ManageK8sCluster, FwExecute):
+class Execute(Manage, FwExecute):
     """Permission to execute k8s cluster actions and tasks."""
     name: str = "k8s_cluster:execute"
 
@@ -70,10 +65,10 @@ class Refresh(View):
 
 
 # Canonical Aliases
-ManageK8sClusterPermission = ManageK8sCluster
-ViewK8sClusterPermission = ViewK8sCluster
-K8sCluster = ManageK8sCluster
-K8sClusterPermission = ManageK8sCluster
+ManageK8sCluster = Manage
+ManageK8sClusterPermission = Manage
+K8sCluster = Manage
+K8sClusterPermission = Manage
 K8sClusterRead = Read
 K8sClusterList = List
 K8sClusterView = View
