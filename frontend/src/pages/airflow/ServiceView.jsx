@@ -93,7 +93,6 @@ const ServiceView = ({
         }
 
         const ports = [];
-        let isIngressUsed = false;
         const ingressDomain = platformState?.extra_data?.ingress_domain;
 
         if (airflowUriObj && ingressDomain && airflowUriObj.hostname.endsWith(ingressDomain)) {
@@ -103,7 +102,6 @@ const ServiceView = ({
                 port: airflowUriObj.port ? parseInt(airflowUriObj.port) : (airflowUriObj.protocol === 'https:' ? 443 : 80),
                 scheme: airflowUriObj.protocol.replace(':', '')
             });
-            isIngressUsed = true;
         }
 
         const httpPort = platformState?.node_ports?.find(np => np.port === 8080);
@@ -112,12 +110,6 @@ const ServiceView = ({
                 label: 'Airflow Web UI (NodePort)',
                 node_port: httpPort.node_port,
                 scheme: airflowUriObj ? airflowUriObj.protocol.replace(':', '') : 'http'
-            });
-        } else if (!isIngressUsed && airflowUriObj) {
-            ports.push({
-                label: 'Airflow Web UI (NodePort)',
-                node_port: airflowUriObj.port ? parseInt(airflowUriObj.port) : 8080,
-                scheme: airflowUriObj.protocol.replace(':', '')
             });
         }
 

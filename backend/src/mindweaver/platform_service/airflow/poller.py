@@ -13,6 +13,39 @@ from .service import AirflowPlatformService
 logger = logging.getLogger(__name__)
 
 
+def _derive_airflow_uris(
+    status, service_name, ingress_domain, node_ports, cluster_nodes
+):
+    if status != "online":
+        return None, None
+
+    if ingress_domain:
+        return f"https://{service_name}.{ingress_domain}", None
+
+    airflow_np = next(
+        (
+            port
+            for port in node_ports
+            if port.get("name") == f"{service_name}-api-server"
+            and port.get("port") == 8080
+            and port.get("node_port")
+        ),
+        None,
+    )
+    if not airflow_np:
+        return None, None
+
+    node_v4 = next((node for node in cluster_nodes if node.get("ipv4")), None)
+    node_v6 = next((node for node in cluster_nodes if node.get("ipv6")), None)
+    ipv4_uri = (
+        f"http://{node_v4['ipv4']}:{airflow_np['node_port']}" if node_v4 else None
+    )
+    ipv6_uri = (
+        f"http://[{node_v6['ipv6']}]:{airflow_np['node_port']}" if node_v6 else None
+    )
+    return ipv4_uri, ipv6_uri
+
+
 @AirflowPlatformService.register_poller()
 class AirflowPoller:
     """Poller for Airflow platform service."""
@@ -166,44 +199,13 @@ class AirflowPoller:
         state.admin_user = "admin"
         state.admin_password = decrypt_password(self.model.admin_password)
 
-        # Derive Airflow URI
-        if status == "online":
-            if project.ingress_domain:
-                state.airflow_uri = f"https://{self.model.name}.{project.ingress_domain}"
-                state.airflow_uri_ipv6 = None
-            elif cluster_nodes:
-                airflow_np = next(
-                    (np for np in node_ports if np["name"] == self.model.name), None
-                )
-                if airflow_np:
-                    node_v4 = next((n for n in cluster_nodes if n["ipv4"]), None)
-                    if node_v4:
-                        state.airflow_uri = (
-                            f"http://{node_v4['ipv4']}:{airflow_np['node_port']}"
-                        )
-                    else:
-                        state.airflow_uri = None
-
-                    node_v6 = next((n for n in cluster_nodes if n["ipv6"]), None)
-                    if node_v6:
-                        state.airflow_uri_ipv6 = (
-                            f"http://[{node_v6['ipv6']}]:{airflow_np['node_port']}"
-                        )
-                    else:
-                        state.airflow_uri_ipv6 = None
-                else:
-                    state.airflow_uri = (
-                        f"http://{self.model.name}.{namespace}.svc.cluster.local:8080"
-                    )
-                    state.airflow_uri_ipv6 = None
-            else:
-                state.airflow_uri = (
-                    f"http://{self.model.name}.{namespace}.svc.cluster.local:8080"
-                )
-                state.airflow_uri_ipv6 = None
-        else:
-            state.airflow_uri = None
-            state.airflow_uri_ipv6 = None
+        state.airflow_uri, state.airflow_uri_ipv6 = _derive_airflow_uris(
+            status,
+            self.model.name,
+            project.ingress_domain,
+            node_ports,
+            cluster_nodes,
+        )
 
         state.last_heartbeat = ts_now()
         await self.service.session.flush()

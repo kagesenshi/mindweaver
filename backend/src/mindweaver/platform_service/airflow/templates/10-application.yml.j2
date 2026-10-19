@@ -52,6 +52,8 @@ spec:
         apiSecretKey: "{{ webserver_secret_key }}"
 
         apiServer:
+          service:
+            type: NodePort
           resources:
             requests:
               cpu: {{ cpu_request }}
@@ -239,9 +241,6 @@ spec:
 
         ingress:
           enabled: false
-
-        service:
-          type: NodePort
 
         extraEnv: |
           - name: AIRFLOW__CORE__LOAD_EXAMPLES
