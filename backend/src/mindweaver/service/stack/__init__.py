@@ -3,5 +3,8 @@
 
 from .model import Stack
 from .service import StackService
+from . import permission
 
-__all__ = ["Stack", "StackService"]
+router = StackService.router()
+
+__all__ = ["Stack", "StackService", "permission", "router"]

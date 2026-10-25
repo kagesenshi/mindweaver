@@ -32,7 +32,7 @@ from .service.name_tracker import router as name_tracker_router
 from .service.ssh_key import router as ssh_key_router
 from .service.git_repo import router as git_repo_router
 from .service.container_registry import router as container_registry_router
-from .service.stack.service import StackService
+from .service.stack import router as stack_router
 from .service.trusted_certs import router as trusted_certs_router
 
 
@@ -250,7 +250,7 @@ app.include_router(name_tracker_router, prefix="/api/v1")
 app.include_router(ssh_key_router, prefix="/api/v1")
 app.include_router(git_repo_router, prefix="/api/v1")
 app.include_router(container_registry_router, prefix="/api/v1")
-app.include_router(StackService.router(), prefix="/api/v1")
+app.include_router(stack_router, prefix="/api/v1")
 app.include_router(trusted_certs_router, prefix="/api/v1")
 
 

@@ -3,11 +3,14 @@
 
 from typing import Any
 from mindweaver.fw.service import Service
+from . import permission
 from .model import Stack
 
 
 class StackService(Service[Stack]):
     """Service for managing platform deployment stacks."""
+
+    permissions = permission
 
     @classmethod
     def model_class(cls) -> type[Stack]:
