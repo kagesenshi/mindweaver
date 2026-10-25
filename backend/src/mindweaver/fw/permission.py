@@ -8,7 +8,8 @@ from fastapi import Depends, HTTPException, Request, params
 from sqlmodel.ext.asyncio.session import AsyncSession as SQLModelAsyncSession
 from mindweaver.config import settings
 from mindweaver.fw.model import AsyncSession, Base, get_engine
-from mindweaver.fw.auth import User, get_current_user
+from mindweaver.fw.auth.model import User
+from mindweaver.fw.auth.service import get_current_user
 
 
 _NAME_TO_PERMISSION: dict[str, type["All"]] = {}
