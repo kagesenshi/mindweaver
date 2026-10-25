@@ -12,7 +12,7 @@ const ServiceView = ({
     initialTab = 'connect',
     trino
 }) => {
-    const { getPlatformState, refreshPlatformState, updatePlatformState, fetchPlatforms } = trino;
+    const { getPlatformState, refreshPlatformState, updatePlatformState, fetchPlatforms, deletePlatform } = trino;
     const [platformState, setPlatformState] = useState(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -70,6 +70,17 @@ const ServiceView = ({
             showError(`Failed to decommission: ${err.message}`);
             const original = await getPlatformState(selectedPlatformId);
             setPlatformState(original);
+        }
+    };
+
+    const handleDelete = async (name) => {
+        if (!selectedPlatformId) return;
+        try {
+            await deletePlatform(selectedPlatformId, name);
+            showSuccess('Trino cluster deleted successfully');
+            if (onBack) onBack();
+        } catch (err) {
+            showError(`Failed to delete cluster: ${err.message}`);
         }
     };
 
@@ -171,6 +182,9 @@ const ServiceView = ({
             isRefreshing={isRefreshing}
             onToggleActive={toggleActive}
             onDecommission={handleDecommission}
+            onDelete={handleDelete}
+            deleteModalTitle="Delete Trino Cluster"
+            deleteWarningText="Permanently delete this Trino cluster, all catalogs, and associated resources. The cluster must be decommissioned before it can be deleted. This action cannot be undone."
             icon={Server}
             iconClassName="text-cyan-500"
             entityPath="/platform/trino"

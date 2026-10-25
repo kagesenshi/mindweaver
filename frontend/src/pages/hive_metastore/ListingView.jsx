@@ -9,7 +9,7 @@ const ListingView = ({
     hms,
     onSelectPlatform
 }) => {
-    const { platforms, loading, fetchPlatforms, getPlatformState, deletePlatform } = hms;
+    const { platforms, loading, fetchPlatforms, getPlatformState } = hms;
 
     const renderSubtitle = (platform, state) => (
         <div className="flex items-center gap-4">
@@ -51,7 +51,6 @@ const ListingView = ({
             items={platforms}
             loading={loading}
             fetchItems={fetchPlatforms}
-            deleteItem={deletePlatform}
             getItemState={getPlatformState}
             onSelectItem={(platform) => onSelectPlatform(platform.id, 'connect')}
             onEditItem={(platform) => onSelectPlatform(platform.id, 'configure')}
@@ -69,10 +68,6 @@ const ListingView = ({
             }}
             renderSubtitle={renderSubtitle}
             renderBadges={renderBadges}
-            deleteModalConfig={{
-                title: "Delete Hive Metastore",
-                message: "Are you sure you want to decommission this Hive Metastore? This will permanently delete the metadata and associated resources."
-            }}
             darkMode={darkMode}
             selectedProject={selectedProject}
         />

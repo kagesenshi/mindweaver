@@ -9,7 +9,7 @@ import GenericListingView from '../../components/GenericListingView';
 import { cn } from '../../utils/cn';
 
 const ListingView = ({ darkMode, selectedProject, onSelectPlatform, doris }) => {
-    const { platforms, loading, fetchPlatforms, getPlatformState, deletePlatform } = doris;
+    const { platforms, loading, fetchPlatforms, getPlatformState } = doris;
 
     const renderSubtitle = (platform, state) => (
         <div className="flex items-center gap-4">
@@ -51,7 +51,6 @@ const ListingView = ({ darkMode, selectedProject, onSelectPlatform, doris }) => 
             items={platforms}
             loading={loading}
             fetchItems={fetchPlatforms}
-            deleteItem={deletePlatform}
             getItemState={getPlatformState}
             onSelectItem={(platform) => onSelectPlatform(platform.id, 'connect')}
             onEditItem={(platform) => onSelectPlatform(platform.id, 'configure')}
@@ -69,10 +68,6 @@ const ListingView = ({ darkMode, selectedProject, onSelectPlatform, doris }) => 
             }}
             renderSubtitle={renderSubtitle}
             renderBadges={renderBadges}
-            deleteModalConfig={{
-                title: "Delete Doris Cluster",
-                message: "Are you sure you want to delete this Doris cluster? This will permanently remove all FE/BE nodes and associated storage."
-            }}
             darkMode={darkMode}
             selectedProject={selectedProject}
         />

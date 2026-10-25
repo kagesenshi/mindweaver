@@ -35,6 +35,11 @@ const PlatformServiceView = ({
     isRefreshing,
     onToggleActive,
     onDecommission,
+    onDelete,
+    deleteTitle = "Delete Cluster",
+    deleteWarningText = "Permanently delete this cluster and all associated configurations. The cluster must be decommissioned before it can be deleted. This action cannot be undone.",
+    deleteModalTitle = "Confirm Deletion",
+    deleteButtonText = "DELETE CLUSTER",
     availableActions = [],
     isExecutingAction,
     onExecuteAction,
@@ -50,6 +55,7 @@ const PlatformServiceView = ({
 }) => {
     const [activeTab, setActiveTab] = useState(initialTab);
     const [isDecommissionModalOpen, setIsDecommissionModalOpen] = useState(false);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
@@ -237,6 +243,29 @@ const PlatformServiceView = ({
                                         DECOMMISSION CLUSTER
                                     </button>
                                 </div>
+
+                                {onDelete && (
+                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pt-6 border-t border-rose-500/10">
+                                        <div className="space-y-1">
+                                            <h5 className="text-lg font-bold text-slate-900 dark:text-white">{deleteTitle}</h5>
+                                            <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xl">
+                                                {deleteWarningText}
+                                            </p>
+                                        </div>
+                                        <button
+                                            onClick={() => setIsDeleteModalOpen(true)}
+                                            disabled={platformState?.active}
+                                            className={cn(
+                                                "px-8 py-3 rounded-xl font-bold text-sm transition-all border shrink-0",
+                                                !platformState?.active
+                                                    ? "bg-rose-500 text-white hover:bg-rose-600 border-rose-600 shadow-lg shadow-rose-500/20"
+                                                    : "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                                            )}
+                                        >
+                                            {deleteButtonText}
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -252,6 +281,20 @@ const PlatformServiceView = ({
                     title="Confirm Decommissioning"
                     message={decommissionWarningText}
                     confirmText="DECOMMISSION"
+                    icon={Icon}
+                    variant="danger"
+                />
+            )}
+            {isDeleteModalOpen && (
+                <ResourceConfirmModal
+                    isOpen={isDeleteModalOpen}
+                    onClose={() => setIsDeleteModalOpen(false)}
+                    onConfirm={(name) => onDelete(name || selectedPlatform?.name)}
+                    resourceName={selectedPlatform?.name}
+                    darkMode={darkMode}
+                    title={deleteModalTitle}
+                    message={deleteWarningText}
+                    confirmText="DELETE"
                     icon={Icon}
                     variant="danger"
                 />

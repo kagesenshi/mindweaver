@@ -12,7 +12,7 @@ const ServiceView = ({
     initialTab = 'connect',
     pgsql
 }) => {
-    const { getPlatformState, refreshPlatformState, updatePlatformState, fetchPlatforms, fetchActions, executeAction } = pgsql;
+    const { getPlatformState, refreshPlatformState, updatePlatformState, fetchPlatforms, fetchActions, executeAction, deletePlatform } = pgsql;
     const [platformState, setPlatformState] = useState(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [availableActions, setAvailableActions] = useState([]);
@@ -83,6 +83,17 @@ const ServiceView = ({
             showError(`Failed to decommission cluster: ${err.message}`);
             const original = await getPlatformState(selectedPlatformId);
             setPlatformState(original);
+        }
+    };
+
+    const handleDelete = async (name) => {
+        if (!selectedPlatformId) return;
+        try {
+            await deletePlatform(selectedPlatformId, name);
+            showSuccess('PostgreSQL cluster deleted successfully');
+            if (onBack) onBack();
+        } catch (err) {
+            showError(`Failed to delete cluster: ${err.message}`);
         }
     };
 
@@ -161,6 +172,9 @@ const ServiceView = ({
             isRefreshing={isRefreshing}
             onToggleActive={toggleActive}
             onDecommission={handleDecommission}
+            onDelete={handleDelete}
+            deleteModalTitle="Delete PostgreSQL Cluster"
+            deleteWarningText="Permanently delete this PostgreSQL cluster and all associated database data. The cluster must be decommissioned before it can be deleted. This action cannot be undone."
             availableActions={availableActions}
             isExecutingAction={isExecutingAction}
             onExecuteAction={handleExecuteAction}

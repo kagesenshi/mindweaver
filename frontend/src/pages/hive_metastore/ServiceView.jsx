@@ -12,7 +12,7 @@ const ServiceView = ({
     initialTab = 'connect',
     hms
 }) => {
-    const { getPlatformState, refreshPlatformState, updatePlatformState, fetchPlatforms } = hms;
+    const { getPlatformState, refreshPlatformState, updatePlatformState, fetchPlatforms, deletePlatform } = hms;
     const [platformState, setPlatformState] = useState(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -73,6 +73,17 @@ const ServiceView = ({
         }
     };
 
+    const handleDelete = async (name) => {
+        if (!selectedPlatformId) return;
+        try {
+            await deletePlatform(selectedPlatformId, name);
+            showSuccess('Hive Metastore cluster deleted successfully');
+            if (onBack) onBack();
+        } catch (err) {
+            showError(`Failed to delete cluster: ${err.message}`);
+        }
+    };
+
     const renderConnectTab = () => {
         const endpoints = [];
         if (selectedPlatform && platformState?.extra_data?.namespace) {
@@ -94,7 +105,7 @@ const ServiceView = ({
         return (
             <div className="space-y-6">
                 {endpoints.length > 0 && (
-                    <InternalNetworkAccessBlock
+                    <InternalNetworkAccessBlock 
                         darkMode={darkMode}
                         icon={Boxes}
                         endpoints={endpoints}
@@ -116,6 +127,9 @@ const ServiceView = ({
             isRefreshing={isRefreshing}
             onToggleActive={toggleActive}
             onDecommission={handleDecommission}
+            onDelete={handleDelete}
+            deleteModalTitle="Delete Hive Metastore Cluster"
+            deleteWarningText="Permanently delete this Hive Metastore cluster and all associated configurations. The cluster must be decommissioned before it can be deleted. This action cannot be undone."
             icon={Boxes}
             iconClassName="text-indigo-400"
             entityPath="/platform/hive-metastore"

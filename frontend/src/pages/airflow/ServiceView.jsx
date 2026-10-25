@@ -12,7 +12,7 @@ const ServiceView = ({
     initialTab = 'connect',
     airflow
 }) => {
-    const { getPlatformState, refreshPlatformState, updatePlatformState, fetchPlatforms } = airflow;
+    const { getPlatformState, refreshPlatformState, updatePlatformState, fetchPlatforms, deletePlatform } = airflow;
     const [platformState, setPlatformState] = useState(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -70,6 +70,17 @@ const ServiceView = ({
             showError(`Failed to decommission: ${err.message}`);
             const original = await getPlatformState(selectedPlatformId);
             setPlatformState(original);
+        }
+    };
+
+    const handleDelete = async (name) => {
+        if (!selectedPlatformId) return;
+        try {
+            await deletePlatform(selectedPlatformId, name);
+            showSuccess('Airflow instance deleted successfully');
+            if (onBack) onBack();
+        } catch (err) {
+            showError(`Failed to delete instance: ${err.message}`);
         }
     };
 
@@ -166,6 +177,11 @@ const ServiceView = ({
             isRefreshing={isRefreshing}
             onToggleActive={toggleActive}
             onDecommission={handleDecommission}
+            onDelete={handleDelete}
+            deleteTitle="Delete Instance"
+            deleteButtonText="DELETE INSTANCE"
+            deleteModalTitle="Delete Airflow Instance"
+            deleteWarningText="Permanently delete this Airflow instance and all associated configurations. The instance must be decommissioned before it can be deleted. This action cannot be undone."
             icon={Activity}
             iconClassName="text-cyan-500"
             entityPath="/platform/airflow"

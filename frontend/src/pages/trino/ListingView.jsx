@@ -4,7 +4,7 @@ import GenericListingView from '../../components/GenericListingView';
 import { cn } from '../../utils/cn';
 
 const ListingView = ({ darkMode, selectedProject, onSelectPlatform, trino }) => {
-    const { platforms, loading, fetchPlatforms, getPlatformState, deletePlatform } = trino;
+    const { platforms, loading, fetchPlatforms, getPlatformState } = trino;
 
     const renderSubtitle = (platform, state) => (
         <div className="flex items-center gap-4">
@@ -46,7 +46,6 @@ const ListingView = ({ darkMode, selectedProject, onSelectPlatform, trino }) => 
             items={platforms}
             loading={loading}
             fetchItems={fetchPlatforms}
-            deleteItem={deletePlatform}
             getItemState={getPlatformState}
             onSelectItem={(platform) => onSelectPlatform(platform.id, 'connect')}
             onEditItem={(platform) => onSelectPlatform(platform.id, 'configure')}
@@ -64,10 +63,6 @@ const ListingView = ({ darkMode, selectedProject, onSelectPlatform, trino }) => 
             }}
             renderSubtitle={renderSubtitle}
             renderBadges={renderBadges}
-            deleteModalConfig={{
-                title: "Delete Trino Cluster",
-                message: "Are you sure you want to delete this Trino cluster? This will permanently remove all catalogs and associated resources."
-            }}
             darkMode={darkMode}
             selectedProject={selectedProject}
         />

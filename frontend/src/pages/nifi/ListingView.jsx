@@ -15,7 +15,7 @@ const ListingView = ({
     nifi,
     onSelectPlatform
 }) => {
-    const { platforms, loading, fetchPlatforms, getPlatformState, deletePlatform } = nifi;
+    const { platforms, loading, fetchPlatforms, getPlatformState } = nifi;
 
     const renderSubtitle = (platform, state) => (
         <div className="flex items-center gap-4">
@@ -64,7 +64,6 @@ const ListingView = ({
             items={platforms}
             loading={loading}
             fetchItems={fetchPlatforms}
-            deleteItem={deletePlatform}
             getItemState={getPlatformState}
             onSelectItem={(platform) => onSelectPlatform(platform.id, 'connect')}
             onEditItem={(platform) => onSelectPlatform(platform.id, 'configure')}
@@ -82,10 +81,6 @@ const ListingView = ({
             }}
             renderSubtitle={renderSubtitle}
             renderBadges={renderBadges}
-            deleteModalConfig={{
-                title: "Delete Apache NiFi",
-                message: "Are you sure you want to decommission this Apache NiFi cluster? This will permanently delete the metadata and associated resources. Ensure no services depend on this cluster before proceeding."
-            }}
             darkMode={darkMode}
             selectedProject={selectedProject}
         />

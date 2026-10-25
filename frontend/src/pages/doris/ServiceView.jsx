@@ -17,7 +17,7 @@ const ServiceView = ({
     initialTab = 'connect',
     doris
 }) => {
-    const { getPlatformState, refreshPlatformState, updatePlatformState, fetchPlatforms } = doris;
+    const { getPlatformState, refreshPlatformState, updatePlatformState, fetchPlatforms, deletePlatform } = doris;
     const [platformState, setPlatformState] = useState(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -75,6 +75,17 @@ const ServiceView = ({
             showError(`Failed to decommission: ${err.message}`);
             const original = await getPlatformState(selectedPlatformId);
             setPlatformState(original);
+        }
+    };
+
+    const handleDelete = async (name) => {
+        if (!selectedPlatformId) return;
+        try {
+            await deletePlatform(selectedPlatformId, name);
+            showSuccess('Doris cluster deleted successfully');
+            if (onBack) onBack();
+        } catch (err) {
+            showError(`Failed to delete cluster: ${err.message}`);
         }
     };
 
@@ -175,6 +186,9 @@ const ServiceView = ({
             isRefreshing={isRefreshing}
             onToggleActive={toggleActive}
             onDecommission={handleDecommission}
+            onDelete={handleDelete}
+            deleteModalTitle="Delete Doris Cluster"
+            deleteWarningText="Permanently delete this Doris cluster, all FE/BE nodes, and associated storage. The cluster must be decommissioned before it can be deleted. This action cannot be undone."
             icon={Database}
             iconClassName="text-cyan-400"
             entityPath="/platform/doris"

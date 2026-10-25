@@ -4,7 +4,7 @@ import GenericListingView from '../../components/GenericListingView';
 import { cn } from '../../utils/cn';
 
 const ListingView = ({ darkMode, selectedProject, onSelectPlatform, superset }) => {
-    const { platforms, loading, fetchPlatforms, getPlatformState, deletePlatform } = superset;
+    const { platforms, loading, fetchPlatforms, getPlatformState } = superset;
 
     const renderSubtitle = (platform, state) => (
         <div className="flex items-center gap-4">
@@ -46,7 +46,6 @@ const ListingView = ({ darkMode, selectedProject, onSelectPlatform, superset }) 
             items={platforms}
             loading={loading}
             fetchItems={fetchPlatforms}
-            deleteItem={deletePlatform}
             getItemState={getPlatformState}
             onSelectItem={(platform) => onSelectPlatform(platform.id, 'connect')}
             onEditItem={(platform) => onSelectPlatform(platform.id, 'configure')}
@@ -64,10 +63,6 @@ const ListingView = ({ darkMode, selectedProject, onSelectPlatform, superset }) 
             }}
             renderSubtitle={renderSubtitle}
             renderBadges={renderBadges}
-            deleteModalConfig={{
-                title: "Delete Superset Instance",
-                message: "Are you sure you want to delete this Superset instance? This will permanently remove all associated resources."
-            }}
             darkMode={darkMode}
             selectedProject={selectedProject}
         />

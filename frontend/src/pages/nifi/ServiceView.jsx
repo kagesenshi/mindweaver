@@ -18,7 +18,7 @@ const ServiceView = ({
     initialTab = 'connect',
     nifi
 }) => {
-    const { getPlatformState, refreshPlatformState, updatePlatformState, fetchPlatforms } = nifi;
+    const { getPlatformState, refreshPlatformState, updatePlatformState, fetchPlatforms, deletePlatform } = nifi;
     const [platformState, setPlatformState] = useState(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -76,6 +76,17 @@ const ServiceView = ({
             showError(`Failed to decommission: ${err.message}`);
             const original = await getPlatformState(selectedPlatformId);
             setPlatformState(original);
+        }
+    };
+
+    const handleDelete = async (name) => {
+        if (!selectedPlatformId) return;
+        try {
+            await deletePlatform(selectedPlatformId, name);
+            showSuccess('NiFi cluster deleted successfully');
+            if (onBack) onBack();
+        } catch (err) {
+            showError(`Failed to delete cluster: ${err.message}`);
         }
     };
 
@@ -166,6 +177,9 @@ const ServiceView = ({
             isRefreshing={isRefreshing}
             onToggleActive={toggleActive}
             onDecommission={handleDecommission}
+            onDelete={handleDelete}
+            deleteModalTitle="Delete Apache NiFi"
+            deleteWarningText="Permanently delete this Apache NiFi cluster, all flow configurations, and associated resources. The cluster must be decommissioned before it can be deleted. This action cannot be undone."
             icon={Network}
             iconClassName="text-orange-400"
             entityPath="/platform/nifi"

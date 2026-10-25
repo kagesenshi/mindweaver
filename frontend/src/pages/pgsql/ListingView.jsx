@@ -9,7 +9,7 @@ const ListingView = ({
     pgsql,
     onSelectPlatform
 }) => {
-    const { platforms, loading, fetchPlatforms, getPlatformState, deletePlatform } = pgsql;
+    const { platforms, loading, fetchPlatforms, getPlatformState } = pgsql;
 
     const renderSubtitle = (platform, state) => (
         <div className="flex items-center gap-4">
@@ -51,7 +51,6 @@ const ListingView = ({
             items={platforms}
             loading={loading}
             fetchItems={fetchPlatforms}
-            deleteItem={deletePlatform}
             getItemState={getPlatformState}
             onSelectItem={(platform) => onSelectPlatform(platform.id, 'connect')}
             onEditItem={(platform) => onSelectPlatform(platform.id, 'configure')}
@@ -69,10 +68,6 @@ const ListingView = ({
             }}
             renderSubtitle={renderSubtitle}
             renderBadges={renderBadges}
-            deleteModalConfig={{
-                title: "Delete PostgreSQL Cluster",
-                message: "Are you sure you want to delete this PostgreSQL cluster? This will permanently remove all data and associated resources."
-            }}
             darkMode={darkMode}
             selectedProject={selectedProject}
         />
