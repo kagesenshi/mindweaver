@@ -13,7 +13,10 @@ from mindweaver.fw.model import AsyncSession
 def mock_service_dependencies():
     request = MagicMock(spec=Request)
     session = MagicMock(spec=AsyncSession)
-    session.exec = AsyncMock()
+    mock_exec_result = MagicMock()
+    mock_exec_result.all.return_value = []
+    mock_exec_result.first.return_value = None
+    session.exec = AsyncMock(return_value=mock_exec_result)
     session.flush = AsyncMock()
     return request, session
 

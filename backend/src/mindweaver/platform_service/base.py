@@ -21,8 +21,11 @@ from mindweaver.fw.service import after_update, before_delete, before_create, af
 from mindweaver.fw.state import BaseState
 from mindweaver.fw.cert_manager import reconcile_manifest_certificates
 from mindweaver.fw.permission import Execute, require
+import base64
+import inspect
 import os
 import pydantic
+from mindweaver.service.trusted_certs.model import TrustedCert
 from sqlalchemy import Column, DateTime, String
 from sqlalchemy_utils import JSONType
 from sqlmodel import Field, select
@@ -115,26 +118,37 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
             vars["trusted_cert_init_container"] = ""
         return vars
 
-    async def template_vars(self, model: T) -> dict:
-        """returns the variables to be used in the template"""
-        vars = model.model_dump()
+    async def _fetch_trusted_certs(self, model: T) -> list[dict[str, Any]]:
+        """Fetch trusted certificates for the model's project."""
         try:
-            import base64
-            from mindweaver.service.trusted_certs.model import TrustedCert
             stmt = select(TrustedCert).where(TrustedCert.project_id == model.project_id)
             res = await self.session.exec(stmt)
-            certs = res.all()
-            vars["trusted_certs"] = [
+            if res is not None and hasattr(res, "all"):
+                certs = res.all()
+                if inspect.iscoroutine(certs):
+                    certs.close()
+                    certs = []
+            elif inspect.iscoroutine(res):
+                res.close()
+                certs = []
+            else:
+                certs = []
+            return [
                 {
                     "name": c.name,
                     "certificate": c.certificate,
-                    "certificate_b64": base64.b64encode(c.certificate.encode("utf-8")).decode("utf-8")
+                    "certificate_b64": base64.b64encode(c.certificate.encode("utf-8")).decode("utf-8"),
                 }
                 for c in certs
             ]
         except Exception as e:
-            logger.warning(f"Failed to fetch trusted certs for template_vars: {e}")
-            vars["trusted_certs"] = []
+            logger.warning(f"Failed to fetch trusted certs: {e}")
+            return []
+
+    async def template_vars(self, model: T) -> dict:
+        """returns the variables to be used in the template"""
+        vars = model.model_dump()
+        vars["trusted_certs"] = await self._fetch_trusted_certs(model)
         self.populate_trusted_cert_init_container(model, vars)
         return vars
 
@@ -157,23 +171,7 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
         rendered_manifests = []
         vars = await self.template_vars(model)
         if "trusted_certs" not in vars:
-            try:
-                import base64
-                from mindweaver.service.trusted_certs.model import TrustedCert
-                stmt = select(TrustedCert).where(TrustedCert.project_id == model.project_id)
-                res = await self.session.exec(stmt)
-                certs = res.all()
-                vars["trusted_certs"] = [
-                    {
-                        "name": c.name,
-                        "certificate": c.certificate,
-                        "certificate_b64": base64.b64encode(c.certificate.encode("utf-8")).decode("utf-8")
-                    }
-                    for c in certs
-                ]
-            except Exception as e:
-                logger.warning(f"Failed to fetch trusted certs in render_manifests: {e}")
-                vars["trusted_certs"] = []
+            vars["trusted_certs"] = await self._fetch_trusted_certs(model)
         self.populate_trusted_cert_init_container(model, vars)
         project = await self.project(model)
         vars["project_name"] = project.name

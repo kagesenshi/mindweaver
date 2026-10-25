@@ -217,6 +217,10 @@ async def test_airflow_template_vars_git_sync(client: TestClient, test_project):
     mock_request = MagicMock()
     mock_request.headers = {"X-Project-Id": str(test_project["id"])}
     mock_session = AsyncMock()
+    mock_exec_result = MagicMock()
+    mock_exec_result.all.return_value = []
+    mock_exec_result.first.return_value = None
+    mock_session.exec = AsyncMock(return_value=mock_exec_result)
 
     # Create mock pgsql service, pgsql platform, pgsql state, project
     mock_pgsql = PgSqlPlatform(id=1, name="my-pgsql", project_id=test_project["id"])
@@ -346,6 +350,10 @@ async def test_airflow_load_examples(test_project):
     mock_request = MagicMock()
     mock_request.headers = {"X-Project-Id": str(test_project["id"])}
     mock_session = AsyncMock()
+    mock_exec_result = MagicMock()
+    mock_exec_result.all.return_value = []
+    mock_exec_result.first.return_value = None
+    mock_session.exec = AsyncMock(return_value=mock_exec_result)
 
     mock_pgsql = PgSqlPlatform(id=1, name="my-pgsql", project_id=test_project["id"])
     mock_pgsql_state = PgSqlPlatformState(
