@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Terminal, RefreshCcw, Zap, AlertCircle, Loader2, Activity } from 'lucide-react';
+import { Terminal, RefreshCcw, Zap, AlertCircle, Loader2, Activity, Clock, Copy, Check } from 'lucide-react';
 import { cn } from '../utils/cn';
 import DynamicForm from './DynamicForm';
 import ResourceConfirmModal from './ResourceConfirmModal';
 import PageLayout from './PageLayout';
 import Drawer from './Drawer';
+import Modal from './Modal';
 
 const StatusBadge = ({ status }) => {
     const styles = {
@@ -56,40 +57,60 @@ const PlatformServiceView = ({
     const [activeTab, setActiveTab] = useState(initialTab);
     const [isDecommissionModalOpen, setIsDecommissionModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+    const [copied, setCopied] = useState(false);
+
+    const formatTimestamp = (ts) => {
+        if (!ts) return null;
+        try {
+            const d = new Date(ts);
+            if (isNaN(d.getTime())) return String(ts);
+            return d.toLocaleString();
+        } catch {
+            return String(ts);
+        }
+    };
+
+    const statusTimestamp = platformState?.last_heartbeat || platformState?.modified || platformState?.created;
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
             <div className="mw-page-header">
-                <div className="flex gap-4 items-center">
-                    <div className={cn("mw-icon-box w-16 h-16", iconClassName)}>
+                <div className="flex gap-4 items-center min-w-0">
+                    <div className={cn("mw-icon-box w-16 h-16 shrink-0", iconClassName)}>
                         {Icon && <Icon size={32} />}
                     </div>
-                    <div>
+                    <div className="min-w-0">
                         <div className="flex items-center gap-3">
                             <h2 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white">{selectedPlatform.title}</h2>
                             <StatusBadge status={platformState?.status || (platformState?.active ? 'active' : 'stopped')} />
                         </div>
-                        <div className="flex items-center gap-4 mt-2">
-                            <span className="flex items-center gap-1.5 text-sm text-slate-400">
+                        <div className="flex flex-wrap items-center gap-4 mt-2">
+                            <span className="flex items-center gap-1.5 text-sm text-slate-400 shrink-0">
                                 Instance ID: <span className="text-slate-500 font-mono font-bold uppercase tracking-tight">{selectedPlatform.id}</span>
                             </span>
-                            <span className="flex items-center gap-1.5 text-sm text-slate-500 font-mono">
+                            <span className="flex items-center gap-1.5 text-sm text-slate-500 font-mono shrink-0">
                                 <Terminal size={14} /> {selectedPlatform.image}
                             </span>
                             {platformState?.message && (
-                                <span className="flex items-center gap-1.5 text-sm text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsStatusModalOpen(true)}
+                                    className="flex items-center gap-1.5 text-sm text-slate-400 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 px-2.5 py-0.5 rounded transition-colors cursor-pointer max-w-xs sm:max-w-sm md:max-w-md min-w-0 text-left border border-transparent hover:border-slate-300 dark:hover:border-slate-700"
+                                    title="Click to view status details"
+                                >
                                     {platformState.status === 'pending' ? (
-                                        <Loader2 size={14} className="text-blue-500 animate-spin" />
+                                        <Loader2 size={14} className="text-blue-500 animate-spin shrink-0" />
                                     ) : (
-                                        <Activity size={14} className="text-blue-500" />
+                                        <Activity size={14} className="text-blue-500 shrink-0" />
                                     )}
-                                    <span>{platformState.message}</span>
-                                </span>
+                                    <span className="truncate min-w-0">{platformState.message}</span>
+                                </button>
                             )}
                         </div>
                     </div>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex gap-3 shrink-0">
                     {availableActions.length > 0 && (
                         <Drawer
                             darkMode={darkMode}
@@ -299,6 +320,67 @@ const PlatformServiceView = ({
                     icon={Icon}
                     variant="danger"
                 />
+            )}
+            {isStatusModalOpen && (
+                <Modal
+                    isOpen={isStatusModalOpen}
+                    onClose={() => setIsStatusModalOpen(false)}
+                    title="Service Status Details"
+                    maxWidth="max-w-2xl"
+                >
+                    <div className="space-y-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-800">
+                            <div className="flex items-center gap-3">
+                                <StatusBadge status={platformState?.status || (platformState?.active ? 'active' : 'stopped')} />
+                                <span className="text-sm font-semibold text-slate-800 dark:text-white">
+                                    {selectedPlatform.title}
+                                </span>
+                            </div>
+                            {statusTimestamp && (
+                                <div className="flex items-center gap-1.5 text-xs text-slate-500 font-mono">
+                                    <Clock size={14} className="text-slate-400 shrink-0" />
+                                    <span>Time set: {formatTimestamp(statusTimestamp)}</span>
+                                </div>
+                            )}
+                        </div>
+
+                        <div>
+                            <div className="flex items-center justify-between mb-2">
+                                <label className="text-xs uppercase tracking-wider font-semibold text-slate-500">
+                                    Message
+                                </label>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (platformState?.message) {
+                                            navigator.clipboard.writeText(platformState.message);
+                                            setCopied(true);
+                                            setTimeout(() => setCopied(false), 2000);
+                                        }
+                                    }}
+                                    className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+                                    title="Copy message"
+                                >
+                                    {copied ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
+                                    <span>{copied ? 'Copied' : 'Copy'}</span>
+                                </button>
+                            </div>
+                            <div className="p-4 bg-slate-900 text-slate-100 rounded-xl font-mono text-sm border border-slate-800 whitespace-pre-wrap break-words max-h-96 overflow-y-auto selection:bg-blue-500 selection:text-white">
+                                {platformState?.message}
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end gap-3 pt-2">
+                            <button
+                                type="button"
+                                onClick={() => setIsStatusModalOpen(false)}
+                                className="mw-btn-secondary px-5 py-2 text-sm"
+                            >
+                                CLOSE
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
             )}
         </div >
     );
