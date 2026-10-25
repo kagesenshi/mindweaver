@@ -275,7 +275,7 @@ const PlatformServiceView = ({
                 <ResourceConfirmModal
                     isOpen={isDecommissionModalOpen}
                     onClose={() => setIsDecommissionModalOpen(false)}
-                    onConfirm={() => onDecommission(selectedPlatform?.name)}
+                    onConfirm={(name, options) => onDecommission(name || selectedPlatform?.name, options)}
                     resourceName={selectedPlatform?.name}
                     darkMode={darkMode}
                     title="Confirm Decommissioning"
@@ -283,6 +283,7 @@ const PlatformServiceView = ({
                     confirmText="DECOMMISSION"
                     icon={Icon}
                     variant="danger"
+                    showForceOption={true}
                 />
             )}
             {isDeleteModalOpen && (

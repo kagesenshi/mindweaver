@@ -63,11 +63,30 @@ def _get_jinja_env(template_directory: str) -> j2.Environment:
     return env
 
 
+class PlatformDecommissionPayload(pydantic.BaseModel):
+    force: bool = False
+
+    @pydantic.field_validator("force", mode="before")
+    @classmethod
+    def _parse_force(cls, v):
+        if isinstance(v, str):
+            return v.lower() in ("true", "1", "yes", "t")
+        return bool(v)
+
+
 class PlatformStateUpdate(pydantic.BaseModel):
     status: Optional[Literal["online", "offline", "pending", "error"]] = None
     active: Optional[bool] = None
     message: Optional[str] = None
     extra_data: Optional[dict[str, Any]] = None
+    force: bool = False
+
+    @pydantic.field_validator("force", mode="before")
+    @classmethod
+    def _parse_force(cls, v):
+        if isinstance(v, str):
+            return v.lower() in ("true", "1", "yes", "t")
+        return bool(v)
 
 
 class PlatformBase(ProjectScopedNamedBase):
@@ -219,7 +238,7 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
 
     _decommissioning: bool = False
 
-    async def decommission(self, model: T):
+    async def decommission(self, model: T, force: bool = False):
         """used to remove the applied components"""
         self._decommissioning = True
         try:
@@ -228,16 +247,69 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
             self._decommissioning = False
 
         if not full_manifest:
+            await self.clear_state(model)
             return
 
-        # Get kubeconfig
-        kubeconfig = await self.kubeconfig(model)
+        cluster_unreachable = False
+        unreachable_reason = ""
+        project = await self.project(model)
+        if project and project.k8s_cluster_id:
+            stmt_c = select(K8sClusterStatus).where(
+                K8sClusterStatus.k8s_cluster_id == project.k8s_cluster_id
+            )
+            cluster_status = (await self.session.exec(stmt_c)).one_or_none()
+            if cluster_status and cluster_status.status == "error":
+                cluster_unreachable = True
+                unreachable_reason = (
+                    cluster_status.message or "Kubernetes cluster is unreachable"
+                )
 
-        # Get Namespace
-        namespace = await self._resolve_namespace(model)
+        if cluster_unreachable:
+            if not force:
+                raise ModelValidationError(
+                    message=f"Kubernetes cluster is unreachable: {unreachable_reason}"
+                )
+            else:
+                logger.warning(
+                    f"Cluster for {model.name} is unreachable ({unreachable_reason}), but force=True is set. Decommissioning anyway."
+                )
+                await self.clear_state(model)
+                return
 
-        # Decommission from cluster
-        await self._decommission_from_cluster(kubeconfig, full_manifest, namespace)
+        try:
+            # Get kubeconfig
+            kubeconfig = await self.kubeconfig(model)
+
+            # Get Namespace
+            namespace = await self._resolve_namespace(model)
+
+            # Decommission from cluster
+            await self._decommission_from_cluster(kubeconfig, full_manifest, namespace)
+        except Exception as e:
+            if not force:
+                logger.error(f"Failed to decommission {model.name}: {e}")
+                err_str = str(e)
+                if any(
+                    term in err_str.lower()
+                    for term in [
+                        "unreachable",
+                        "connection refused",
+                        "connecttimeout",
+                        "timed out",
+                        "failed to establish a new connection",
+                        "max retries exceeded",
+                    ]
+                ):
+                    raise ModelValidationError(
+                        message=f"Kubernetes cluster is unreachable: {err_str}"
+                    )
+                raise ModelValidationError(
+                    message=f"Failed to decommission from Kubernetes cluster: {err_str}"
+                )
+            else:
+                logger.warning(
+                    f"Failed to delete resources from cluster for {model.name}, but force=True: {e}"
+                )
 
         # Clear state
         await self.clear_state(model)
@@ -348,6 +420,10 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
         Poll the status of the platform from Kubernetes.
         Delegates to the registered poller if available.
         """
+        state = await self.platform_state(model)
+        if state and not state.active:
+            return
+
         try:
             project = await self.project(model)
             if project and project.k8s_cluster_id:
@@ -656,6 +732,7 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
         async def decommission(
             svc: Annotated[cls, Depends(cls.get_service)],  # type: ignore
             model: Annotated[model_class, Depends(cls.get_model)],  # type: ignore
+            payload: Optional[PlatformDecommissionPayload] = fastapi.Body(default=None),
             x_resource_name: Annotated[
                 Optional[str], fastapi.Header(alias="X-RESOURCE-NAME")
             ] = None,
@@ -669,7 +746,8 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
                     message=f"X-RESOURCE-NAME header '{x_resource_name}' does not match resource name '{model.name}'."
                 )
 
-            await svc.decommission(model)
+            force = bool(payload.force) if payload else False
+            await svc.decommission(model, force=force)
             await svc.poll_status(model)
             return {"status": "success"}
 
@@ -698,6 +776,8 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
             if update.active is not None:
                 if update.active:
                     await svc.deploy(model)
+                    await svc.poll_status(model)
+                    state.active = True
                 else:
                     x_resource_name = request.headers.get("X-RESOURCE-NAME")
                     if not x_resource_name:
@@ -708,9 +788,8 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
                         raise ModelValidationError(
                             message=f"X-RESOURCE-NAME header '{x_resource_name}' does not match resource name '{model.name}'."
                         )
-                    await svc.decommission(model)
-                await svc.poll_status(model)
-                state.active = update.active
+                    await svc.decommission(model, force=bool(update.force))
+                    state = await svc.platform_state(model)
             if update.message is not None:
                 state.message = update.message
             if update.extra_data is not None:

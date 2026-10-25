@@ -163,9 +163,12 @@ class NifiPlatformService(PlatformService[NifiPlatform]):
         return vars
 
 
-    async def decommission(self, model: NifiPlatform):
+    async def decommission(self, model: NifiPlatform, force: bool = False):
         """Decommissions the NiFi cluster and cleans up its CA secret."""
-        await super().decommission(model)
+        if force:
+            await super().decommission(model, force=force)
+        else:
+            await super().decommission(model)
 
         kubeconfig = await self.kubeconfig(model)
         namespace = await self._resolve_namespace(model)

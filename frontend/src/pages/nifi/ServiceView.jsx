@@ -65,15 +65,39 @@ const ServiceView = ({
         }
     };
 
-    const handleDecommission = async (name) => {
+    const handleDecommission = async (name, options = {}) => {
         if (!selectedPlatformId) return;
-        setPlatformState({ ...platformState, active: false, status: 'offline', message: 'Decommissioning...' });
+        const force = Boolean(options?.force);
+        setPlatformState({
+            ...platformState,
+            active: false,
+            status: 'offline',
+            message: force ? 'Force decommissioning...' : 'Decommissioning...'
+        });
         try {
-            const response = await updatePlatformState(selectedPlatformId, { active: false }, { 'X-RESOURCE-NAME': name });
+            const response = await updatePlatformState(
+                selectedPlatformId,
+                { active: false, force },
+                { 'X-RESOURCE-NAME': name }
+            );
             if (response) setPlatformState(response);
+            showSuccess(force ? 'NiFi cluster force-decommissioned successfully' : 'NiFi cluster decommissioned successfully');
             await handleRefresh();
         } catch (err) {
-            showError(`Failed to decommission: ${err.message}`);
+            let errorMsg = err.message;
+            if (err.response?.data?.detail) {
+                const detail = err.response.data.detail;
+                if (Array.isArray(detail) && detail.length > 0) {
+                    errorMsg = detail[0].msg || errorMsg;
+                } else if (typeof detail === 'string') {
+                    errorMsg = detail;
+                }
+            } else if (err.response?.data?.message) {
+                errorMsg = err.response.data.message;
+            }
+            if (err.response?.status !== 422) {
+                showError(`Failed to decommission: ${errorMsg}`);
+            }
             const original = await getPlatformState(selectedPlatformId);
             setPlatformState(original);
         }

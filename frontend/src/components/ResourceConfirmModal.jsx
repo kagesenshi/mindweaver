@@ -14,15 +14,20 @@ const ResourceConfirmModal = ({
     confirmText = "CONFIRM",
     // eslint-disable-next-line no-unused-vars
     icon: IconComponent = AlertTriangle,
-    variant = "danger" // "danger" or "warning"
+    variant = "danger", // "danger" or "warning"
+    showForceOption = false,
+    forceOptionLabel = "Force decommission (ignore cluster errors)",
+    forceOptionDescription = "Mark as decommissioned even if the Kubernetes cluster is unreachable or resource deletion fails."
 }) => {
     const [inputValue, setInputValue] = useState('');
     const [isBusy, setIsBusy] = useState(false);
+    const [isForce, setIsForce] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
             setInputValue('');
             setIsBusy(false);
+            setIsForce(false);
         }
     }, [isOpen]);
 
@@ -32,7 +37,7 @@ const ResourceConfirmModal = ({
         if (isMatch && !isBusy) {
             setIsBusy(true);
             try {
-                await onConfirm(inputValue);
+                await onConfirm(inputValue, { force: isForce });
                 onClose();
             } finally {
                 setIsBusy(false);
@@ -108,6 +113,40 @@ const ResourceConfirmModal = ({
                     </div>
                 </div>
 
+                {showForceOption && (
+                    <div className="px-6">
+                        <label
+                            htmlFor="force-decommission-checkbox"
+                            className={cn(
+                                "flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all",
+                                isForce
+                                    ? (darkMode
+                                        ? "bg-amber-500/10 border-amber-500/30 text-amber-300"
+                                        : "bg-amber-50 border-amber-200 text-amber-900")
+                                    : (darkMode
+                                        ? "bg-slate-900/40 border-slate-800 text-slate-300 hover:border-slate-700"
+                                        : "bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300")
+                            )}
+                        >
+                            <input
+                                id="force-decommission-checkbox"
+                                type="checkbox"
+                                checked={isForce}
+                                onChange={(e) => setIsForce(e.target.checked)}
+                                className="mt-1 h-4 w-4 rounded border-slate-300 text-rose-600 focus:ring-rose-500 cursor-pointer"
+                            />
+                            <div className="space-y-1 text-left select-none">
+                                <span className="text-xs font-bold uppercase tracking-wider block">
+                                    {forceOptionLabel}
+                                </span>
+                                <span className="text-xs text-slate-500 dark:text-slate-400 block leading-relaxed">
+                                    {forceOptionDescription}
+                                </span>
+                            </div>
+                        </label>
+                    </div>
+                )}
+
                 <div className="flex flex-col gap-3 pt-4 px-6">
                     <button
                         onClick={handleConfirm}
@@ -120,7 +159,7 @@ const ResourceConfirmModal = ({
                         )}
                     >
                         {isBusy ? <Loader2 size={20} className="animate-spin" /> : null}
-                        {isBusy ? 'WAITING...' : confirmText}
+                        {isBusy ? 'WAITING...' : (isForce ? `FORCE ${confirmText}` : confirmText)}
                     </button>
                     <button
                         onClick={onClose}
