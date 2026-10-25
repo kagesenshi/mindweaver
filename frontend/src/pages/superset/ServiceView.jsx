@@ -104,7 +104,20 @@ const ServiceView = ({
             showSuccess('Superset instance deleted successfully');
             if (onBack) onBack();
         } catch (err) {
-            showError(`Failed to delete instance: ${err.message}`);
+            let errorMsg = err.message;
+            if (err.response?.data?.detail) {
+                const detail = err.response.data.detail;
+                if (Array.isArray(detail) && detail.length > 0) {
+                    errorMsg = detail[0].msg || errorMsg;
+                } else if (typeof detail === 'string') {
+                    errorMsg = detail;
+                }
+            } else if (err.response?.data?.message) {
+                errorMsg = err.response.data.message;
+            }
+            if (err.response?.status !== 422) {
+                showError(`Failed to delete instance: ${errorMsg}`);
+            }
         }
     };
 

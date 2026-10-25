@@ -292,7 +292,10 @@ class Service(
             await hook(self, model)
 
         await self.session.delete(model)
-        await self.session.flush()
+        try:
+            await self.session.flush()
+        except saexc.IntegrityError as e:
+            self._handle_integrity_error(e, action="delete")
 
         # Execute after_delete hooks
         for hook in self._after_delete_hooks:
@@ -372,7 +375,10 @@ class Service(
                                 )
         return data
 
-    def _handle_integrity_error(self, e: saexc.IntegrityError):
+    def _handle_integrity_error(
+        self, e: saexc.IntegrityError, action: Optional[str] = None
+    ):
+        """Handle database integrity error and raise appropriate ModelValidationError."""
         msg = str(e.orig)
 
         # Postgres (asyncpg) / SQLite generic handling
@@ -422,6 +428,25 @@ class Service(
             or "ForeignKeyViolationError" in msg
             or "violates foreign key constraint" in msg
         ):
+            if "is still referenced from table" in msg or action == "delete":
+                match = re.search(r'is still referenced from table "(.*?)"', msg)
+                if match:
+                    table_name = match.group(1)
+                    if table_name in SERVICE_REGISTRY:
+                        entity = getattr(
+                            SERVICE_REGISTRY[table_name].model_class(),
+                            "__name__",
+                            table_name,
+                        )
+                        raise ModelValidationError(
+                            message=f"Cannot delete: resource is still referenced by {entity} ('{table_name}')"
+                        )
+                    raise ModelValidationError(
+                        message=f"Cannot delete: resource is still referenced by table '{table_name}'"
+                    )
+                raise ModelValidationError(
+                    message="Cannot delete: resource is still referenced by other resources"
+                )
             raise ModelValidationError(message="Referenced record does not exist")
 
         # Fallback to a cleaner version of the raw message
