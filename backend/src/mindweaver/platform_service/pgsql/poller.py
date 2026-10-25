@@ -39,6 +39,7 @@ class PgSQLPoller:
                     kf.write(kubeconfig)
                     kf.flush()
                     k8s_client = config.new_client_from_config(config_file=kf.name)
+            k8s_client.configuration.request_timeout = 10
 
             custom_api = client.CustomObjectsApi(k8s_client)
             core_v1 = client.CoreV1Api(k8s_client)
@@ -81,15 +82,17 @@ class PgSQLPoller:
                             message = "Provisioning resources"
                         except Exception:
                             status = "error"
-                            message = f"Failed to fetch cluster status: {str(e)}"
+                            message = f"Cluster is unreachable: {str(e)}"
+                            return status, message, {}, [], [], None
                 else:
                     status = "error"
-                    message = f"Failed to fetch cluster status: {str(e)}"
+                    message = f"Cluster is unreachable: {str(e)}"
+                    return status, message, {}, [], [], None
                 status_data = {}
             except Exception as e:
                 status = "error"
-                message = f"Failed to fetch cluster status: {str(e)}"
-                status_data = {}
+                message = f"Cluster is unreachable: {str(e)}"
+                return status, message, {}, [], [], None
 
             # 2. Fetch NodePort status if any
             node_ports = []

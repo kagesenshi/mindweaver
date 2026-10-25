@@ -91,7 +91,7 @@ class ProjectState(BaseState):
         dex_version = None
         ingress_ports = []
         envoy_gateway_service_type = self.model.envoy_gateway_service_type
-        if self.model.k8s_cluster_id and self.model.k8s_namespace:
+        if self.model.k8s_cluster_id and self.model.k8s_namespace and status_data.get("status") != "error":
             from mindweaver.service.k8s_cluster import K8sCluster, K8sClusterType
             stmt_c = select(K8sCluster).where(K8sCluster.id == self.model.k8s_cluster_id)
             res_c = await self.svc.session.exec(stmt_c)
@@ -103,17 +103,19 @@ class ProjectState(BaseState):
 
                 def _get_dex_status():
                     try:
+                        conf = client.Configuration()
                         if cluster_model.type == K8sClusterType.IN_CLUSTER:
-                            config.load_incluster_config()
+                            config.load_incluster_config(client_configuration=conf)
                         else:
                             if not cluster_model.kubeconfig:
                                 return False, None, []
                             with tempfile.NamedTemporaryFile(mode="w") as kf:
                                 kf.write(cluster_model.kubeconfig)
                                 kf.flush()
-                                config.load_kube_config(config_file=kf.name)
-                        
-                        core_v1 = client.CoreV1Api()
+                                config.load_kube_config(config_file=kf.name, client_configuration=conf)
+                        conf.request_timeout = 5
+                        k8s_client = client.ApiClient(conf)
+                        core_v1 = client.CoreV1Api(k8s_client)
                         
                         ports_info = []
                         try:

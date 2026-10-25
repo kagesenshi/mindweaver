@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPLv3+
 
 from mindweaver.celery_app import app
-from mindweaver.fw.model import get_engine
+from mindweaver.fw.model import get_engine, ts_now
 from sqlmodel.ext.asyncio.session import AsyncSession
 from mindweaver.platform_service.base import PlatformService
 from mindweaver.platform_service.pgsql import PgSqlPlatformService
@@ -42,7 +42,6 @@ def poll_all_platforms():
 
 
 async def _trigger_service_polling(svc_cls: Type[PlatformService]):
-    from mindweaver.fw.model import ts_now
     engine = get_engine()
     async with AsyncSession(engine) as session:
         # Mock request since some service methods might expect it
@@ -109,3 +108,14 @@ async def _poll_platform_status(service_class_name: str, platform_id: int):
             logger.error(
                 f"Error polling {service_class_name} instance {platform_id}: {e}"
             )
+            try:
+                state = await svc.platform_state(platform_id)
+                if state:
+                    state.status = "error"
+                    state.message = f"Cluster is unreachable: {str(e)}"
+                    state.last_heartbeat = ts_now()
+                    await session.commit()
+            except Exception as se:
+                logger.error(
+                    f"Failed to record error state for {service_class_name} {platform_id}: {se}"
+                )

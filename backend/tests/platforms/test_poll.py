@@ -102,3 +102,74 @@ async def test_pgsql_poll_status(postgresql_proc, test_project):
             assert "Instances: 3/3" in state.message
             assert state.node_ports[0]["node_port"] == 30432
             assert state.last_heartbeat is not None
+
+
+@pytest.mark.asyncio
+async def test_pgsql_poll_status_cluster_unreachable(postgresql_proc, test_project):
+    """Test that when k8s cluster is unreachable, poll_status marks platform as error."""
+    settings.db_host = postgresql_proc.host
+    settings.db_port = postgresql_proc.port
+    settings.db_name = postgresql_proc.dbname
+    settings.db_user = postgresql_proc.user
+    settings.db_pass = postgresql_proc.password
+    settings.fernet_key = "EFw4cCjDgHhGuZAGlwXmQhXg134ZdHjb9SeqcszWeSU="
+
+    engine = create_async_engine(settings.db_async_uri)
+
+    async with AsyncSession(engine) as session:
+        project_id = test_project["id"]
+        cluster = K8sCluster(
+            name="test-cluster-unreach",
+            title="Test Cluster Unreachable",
+            type=K8sClusterType.REMOTE,
+            kubeconfig="apiVersion: v1\nkind: Config",
+        )
+        session.add(cluster)
+        await session.flush()
+
+        from mindweaver.service.project import Project
+        db_project = await session.get(Project, project_id)
+        db_project.k8s_cluster_id = cluster.id
+        session.add(db_project)
+        await session.commit()
+
+        platform = PgSqlPlatform(
+            name="test-pg-unreach",
+            title="Test PG Unreach",
+            project_id=project_id,
+        )
+        session.add(platform)
+        await session.flush()
+        platform_id = platform.id
+        await session.commit()
+
+        # Pre-populate state as online
+        state = PgSqlPlatformState(
+            platform_id=platform_id,
+            status="online",
+            active=True,
+            message="Running",
+        )
+        session.add(state)
+        await session.commit()
+
+        # Mock custom api failing with connection error
+        with patch("kubernetes.client.CustomObjectsApi") as mock_custom_api, \
+             patch("kubernetes.config.new_client_from_config"):
+            mock_custom_api.return_value.get_namespaced_custom_object.side_effect = Exception("Connection timed out")
+
+            class MockRequest:
+                headers = {}
+
+            svc = PgSqlPlatformService(MockRequest(), session)
+            model = await session.get(PgSqlPlatform, platform_id)
+            await svc.poll_status(model)
+
+            stmt = select(PgSqlPlatformState).where(
+                PgSqlPlatformState.platform_id == platform_id
+            )
+            res = await session.exec(stmt)
+            updated_state = res.one()
+
+            assert updated_state.status == "error"
+            assert "unreachable" in updated_state.message.lower()

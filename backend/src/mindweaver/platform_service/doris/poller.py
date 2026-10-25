@@ -36,6 +36,7 @@ class DorisPoller:
                     kf.write(kubeconfig)
                     kf.flush()
                     k8s_client = config.new_client_from_config(config_file=kf.name)
+            k8s_client.configuration.request_timeout = 10
 
             custom_api = client.CustomObjectsApi(k8s_client)
             core_v1 = client.CoreV1Api(k8s_client)
@@ -72,7 +73,7 @@ class DorisPoller:
                     message = "Decommissioned"
                 else:
                     status = "error"
-                    message = f"Failed to fetch ArgoCD status: {str(e)}"
+                    message = f"Cluster is unreachable: {str(e)}"
                 return status, message, {}, [], []
 
             # 2. Fetch Pod Status for FE and BE

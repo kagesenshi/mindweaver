@@ -50,18 +50,21 @@ class K8sClusterService(Service[K8sCluster]):
                 return version
 
             def _get_k8s_info():
+                conf = client.Configuration()
                 if model.type == K8sClusterType.IN_CLUSTER:
-                    config.load_incluster_config()
+                    config.load_incluster_config(client_configuration=conf)
                 else:
                     if not model.kubeconfig:
                         raise ValueError(f"Cluster {model.name} has no kubeconfig")
                     with tempfile.NamedTemporaryFile(mode="w") as kf:
                         kf.write(model.kubeconfig)
                         kf.flush()
-                        config.load_kube_config(config_file=kf.name)
+                        config.load_kube_config(config_file=kf.name, client_configuration=conf)
 
-                core_v1 = client.CoreV1Api()
-                version_api = client.VersionApi()
+                conf.request_timeout = 10
+                k8s_client = client.ApiClient(conf)
+                core_v1 = client.CoreV1Api(k8s_client)
+                version_api = client.VersionApi(k8s_client)
 
                 # Get Version
                 ver = version_api.get_code()
@@ -405,8 +408,26 @@ class K8sClusterService(Service[K8sCluster]):
                 status_model = K8sClusterStatus(k8s_cluster_id=model.id)
                 self.session.add(status_model)
             status_model.status = "error"
-            status_model.message = str(e)
+            status_model.message = f"Cluster is unreachable: {str(e)}"
             status_model.last_update = ts_now()
+            status_model.node_count = 0
+            status_model.nodes_status = {}
+            status_model.node_ips = []
+            status_model.cpu_total = 0.0
+            status_model.ram_total = 0.0
+            status_model.argocd_installed = False
+            status_model.cert_manager_installed = False
+            status_model.cnpg_installed = False
+            status_model.envoy_gateway_installed = False
+            status_model.kafka_operator_installed = False
+            status_model.nifikop_installed = False
+            status_model.doris_operator_installed = False
+
+            # Workaround circular import: PlatformService imports k8s_cluster
+            from mindweaver.platform_service.base import PlatformService
+            await PlatformService.mark_cluster_services_unreachable(
+                self.session, model.id, model.name, str(e)
+            )
 
         await self.session.flush()
 

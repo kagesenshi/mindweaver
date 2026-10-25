@@ -191,6 +191,89 @@ def test_poll_k8s_cluster_status(client: TestClient, mock_k8s):
     assert data["nifikop_version"] == "v1.17.0"
 
 
+def test_poll_k8s_cluster_unreachable_cascades_to_services(client: TestClient, test_project):
+    """Test that when a cluster is unreachable, cluster state and its active platform services are marked error."""
+    cluster_id = test_project["k8s_cluster_id"]
+    project_id = test_project["id"]
+
+    # Create an active platform service under this project
+    resp_plat = client.post(
+        "/api/v1/platform/pgsql",
+        json={
+            "name": "test-pg-cascade",
+            "title": "Test PG Cascade",
+            "project_id": project_id,
+            "instances": 1,
+            "storage_size": "1Gi",
+        },
+        headers={"X-Project-Id": str(project_id)},
+    )
+    assert resp_plat.status_code == 200, resp_plat.json()
+    platform_id = resp_plat.json()["data"]["id"]
+
+    valid_kubeconfig = (
+        "apiVersion: v1\n"
+        "clusters:\n"
+        "- cluster:\n"
+        "    server: https://127.0.0.1:6443\n"
+        "  name: default-cluster\n"
+        "contexts:\n"
+        "- context:\n"
+        "    cluster: default-cluster\n"
+        "    user: default-user\n"
+        "  name: default-context\n"
+        "current-context: default-context\n"
+        "kind: Config\n"
+        "preferences: {}\n"
+        "users:\n"
+        "- name: default-user\n"
+        "  user:\n"
+        "    token: fake-token\n"
+    )
+    client.put(
+        f"/api/v1/k8s_clusters/{cluster_id}",
+        json={"kubeconfig": valid_kubeconfig},
+    )
+
+    # Set initial state to active online with deploy and poll_status mocked
+    with patch("mindweaver.platform_service.base.PlatformService.deploy", return_value=None), \
+         patch("mindweaver.platform_service.base.PlatformService.poll_status", return_value=None):
+        resp_init = client.post(
+            f"/api/v1/platform/pgsql/{platform_id}/_state",
+            json={"status": "online", "active": True, "message": "Cluster is running"},
+            headers={"X-Project-Id": str(project_id)},
+        )
+        assert resp_init.status_code == 200
+        assert resp_init.json()["status"] == "online"
+
+    # Mock unreachable Kubernetes cluster
+    with patch("kubernetes.client.VersionApi") as mock_ver, \
+         patch("kubernetes.client.CoreV1Api") as mock_core:
+        mock_ver.return_value.get_code.side_effect = Exception("Connection refused: cluster is down")
+
+        # Trigger refresh on cluster
+        resp = client.post(f"/api/v1/k8s_clusters/{cluster_id}/_refresh")
+        assert resp.status_code == 200
+
+    # Verify cluster state is error with unreachable message and cleared node count
+    resp_state = client.get(f"/api/v1/k8s_clusters/{cluster_id}/_state")
+    assert resp_state.status_code == 200
+    cluster_state = resp_state.json()
+    assert cluster_state["status"] == "error"
+    assert "unreachable" in cluster_state["message"].lower()
+    assert cluster_state["node_count"] == 0
+
+    # Verify platform service state was cascaded to error with unreachable message
+    resp_pstate2 = client.get(
+        f"/api/v1/platform/pgsql/{platform_id}/_state",
+        headers={"X-Project-Id": str(project_id)},
+    )
+    assert resp_pstate2.status_code == 200
+    pstate2 = resp_pstate2.json()
+    assert pstate2["status"] == "error"
+    assert "unreachable" in pstate2["message"].lower()
+
+
 @pytest.mark.asyncio
 async def test_install_argocd():
     from mindweaver.service.k8s_cluster.service import K8sClusterService
@@ -355,7 +438,7 @@ def test_poll_k8s_cluster_error(client: TestClient):
         resp_state = client.get(f"/api/v1/k8s_clusters/{p1['id']}/_state")
         data = resp_state.json()
         assert data["status"] == "error"
-        assert data["message"] == "K8S Error"
+        assert data["message"] == "Cluster is unreachable: K8S Error"
 
 
 def test_install_argocd_action_triggers_task(client: TestClient):

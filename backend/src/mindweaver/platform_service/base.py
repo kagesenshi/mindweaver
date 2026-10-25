@@ -12,11 +12,11 @@ import kubernetes
 from kubernetes import client, config, utils, dynamic
 import logging
 from mindweaver.fw.util import format_k8s_resource, sanitize_label_value
-from mindweaver.fw.model import Base
+from mindweaver.fw.model import Base, ts_now
 from mindweaver.fw.exc import ModelValidationError
 from mindweaver.service.base import ProjectScopedNamedBase, ProjectScopedService
 from mindweaver.service.project import Project
-from mindweaver.service.k8s_cluster import K8sCluster, K8sClusterType
+from mindweaver.service.k8s_cluster import K8sCluster, K8sClusterType, K8sClusterStatus
 from mindweaver.fw.service import after_update, before_delete, before_create, after_create
 from mindweaver.fw.state import BaseState
 from mindweaver.fw.cert_manager import reconcile_manifest_certificates
@@ -82,12 +82,15 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
 
     template_directory: str | None = None
     state_model: type[PlatformStateBase] | None = None
+    _registered_services: list[type["PlatformService"]] = []
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
         if abc.ABC not in cls.__bases__:
             if cls.state_model is None:
                 raise TypeError(f"Class {cls.__name__} must define state_model")
+            if cls not in PlatformService._registered_services:
+                PlatformService._registered_services.append(cls)
 
     async def platform_state(self, model: T | int) -> PlatformStateBase | None:
         """
@@ -288,16 +291,92 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
 
         return decorator
 
+    @classmethod
+    async def mark_cluster_services_unreachable(
+        cls,
+        session: AsyncSession,
+        cluster_id: int,
+        cluster_name: str,
+        error_message: str,
+    ):
+        """Marks all active platform services in projects associated with the cluster as unreachable error."""
+        stmt_projects = select(Project.id).where(Project.k8s_cluster_id == cluster_id)
+        project_ids = list((await session.exec(stmt_projects)).all())
+        if not project_ids:
+            return
+
+        for svc_cls in cls._registered_services:
+            if not svc_cls.state_model:
+                continue
+            model_cls = svc_cls.model_class()
+            state_cls = svc_cls.state_model
+            stmt = (
+                select(state_cls)
+                .join(model_cls, model_cls.id == state_cls.platform_id)
+                .where(model_cls.project_id.in_(project_ids))
+                .where(state_cls.active == True)
+            )
+            states = (await session.exec(stmt)).all()
+            for state in states:
+                state.status = "error"
+                state.message = f"Cluster '{cluster_name}' is unreachable: {error_message}"
+                state.last_heartbeat = ts_now()
+                state.node_ports = []
+                state.cluster_nodes = []
+                for url_attr in [
+                    "kafka_url",
+                    "kafka_url_ipv6",
+                    "airflow_url",
+                    "airflow_url_ipv6",
+                    "trino_uri",
+                    "trino_uri_ipv6",
+                    "nifi_url",
+                    "nifi_url_ipv6",
+                    "superset_url",
+                    "superset_url_ipv6",
+                    "fe_url",
+                    "fe_url_ipv6",
+                    "hms_uri",
+                    "hms_uri_ipv6",
+                ]:
+                    if hasattr(state, url_attr):
+                        setattr(state, url_attr, None)
+        await session.flush()
+
     async def poll_status(self, model: T):
         """
         Poll the status of the platform from Kubernetes.
         Delegates to the registered poller if available.
         """
-        if self._poller_class:
-            poller = self._poller_class(self, model)
-            await poller.poll()
-        else:
-            pass
+        try:
+            project = await self.project(model)
+            if project and project.k8s_cluster_id:
+                stmt_c = select(K8sClusterStatus).where(
+                    K8sClusterStatus.k8s_cluster_id == project.k8s_cluster_id
+                )
+                cluster_status = (await self.session.exec(stmt_c)).one_or_none()
+                if cluster_status and cluster_status.status == "error":
+                    state = await self.platform_state(model)
+                    if state:
+                        state.status = "error"
+                        state.message = cluster_status.message or "Kubernetes cluster is unreachable"
+                        state.last_heartbeat = ts_now()
+                        await self.session.flush()
+                    return
+
+            if self._poller_class:
+                poller = self._poller_class(self, model)
+                await poller.poll()
+        except Exception as e:
+            logger.error(
+                f"Error polling {self.__class__.__name__} for {model.name}: {e}"
+            )
+            state = await self.platform_state(model)
+            if state:
+                state.status = "error"
+                state.message = f"Cluster is unreachable: {str(e)}"
+                state.last_heartbeat = ts_now()
+                await self.session.flush()
 
     @before_create()
     async def _validate_name_availability(self, data: T):
