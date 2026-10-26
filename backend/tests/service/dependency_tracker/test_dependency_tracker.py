@@ -228,8 +228,8 @@ def test_deploy_creates_dependency_and_prevents_decommission(client: TestClient,
     assert decom_pg2.status_code == 200, decom_pg2.text
 
 
-def test_force_decommission_succeeds_despite_dependent(client: TestClient, test_project):
-    """Test that decommissioning a dependency with force=True succeeds even if dependent is active."""
+def test_force_decommission_fails_when_dependent_is_active(client: TestClient, test_project):
+    """Test that decommissioning a dependency with force=True fails if dependent is still deployed/running."""
     # Create and deploy PostgreSQL
     pgsql_data = {
         "name": "pg-force-test",
@@ -269,13 +269,86 @@ def test_force_decommission_succeeds_despite_dependent(client: TestClient, test_
         headers={"X-Project-Id": str(test_project["id"])},
     )
 
-    # Decommission PostgreSQL with force=True
+    # Attempt to decommission PostgreSQL with force=True -> MUST FAIL (422)
     decom_force = client.post(
         f"/api/v1/platform/pgsql/{pg_id}/_decommission",
         json={"force": True},
         headers={
             "X-Project-Id": str(test_project["id"]),
             "X-RESOURCE-NAME": "pg-force-test",
+        },
+    )
+    assert decom_force.status_code == 422, decom_force.text
+    assert "hms-force-test" in decom_force.text or "hive_metastore" in decom_force.text
+
+    # Decommission HMS first
+    decom_hms = client.post(
+        f"/api/v1/platform/hive-metastore/{hms_id}/_decommission",
+        headers={
+            "X-Project-Id": str(test_project["id"]),
+            "X-RESOURCE-NAME": "hms-force-test",
+        },
+    )
+    assert decom_hms.status_code == 200, decom_hms.text
+
+    # Now decommission PostgreSQL with force=True -> MUST SUCCEED (200)
+    decom_force_ok = client.post(
+        f"/api/v1/platform/pgsql/{pg_id}/_decommission",
+        json={"force": True},
+        headers={
+            "X-Project-Id": str(test_project["id"]),
+            "X-RESOURCE-NAME": "pg-force-test",
+        },
+    )
+    assert decom_force_ok.status_code == 200, decom_force_ok.text
+
+
+def test_force_decommission_succeeds_when_dependent_is_not_active(client: TestClient, test_project):
+    """Test that decommissioning with force=True succeeds if dependent service in tracker is not active."""
+    # Create and deploy PostgreSQL
+    pgsql_data = {
+        "name": "pg-inactive-dep-test",
+        "title": "PG Inactive Dep Test",
+        "project_id": test_project["id"],
+        "instances": 1,
+        "storage_size": "1Gi",
+    }
+    resp = client.post(
+        "/api/v1/platform/pgsql",
+        json=pgsql_data,
+        headers={"X-Project-Id": str(test_project["id"])},
+    )
+    pg_id = resp.json()["data"]["id"]
+    pg_uuid = resp.json()["data"]["uuid"]
+
+    client.post(
+        f"/api/v1/platform/pgsql/{pg_id}/_deploy",
+        headers={"X-Project-Id": str(test_project["id"])},
+    )
+
+    # Manually add a tracker entry pointing to an inactive/non-existent service
+    fake_entry = {
+        "service_uuid": "00000000-0000-0000-0000-000000000099",
+        "service_name": "ghost-service",
+        "service_type": "hive_metastore",
+        "dependency_uuid": pg_uuid,
+        "dependency_name": "pg-inactive-dep-test",
+        "dependency_type": "pgsql",
+        "relationship": "database_id",
+    }
+    tracker_create = client.post(
+        "/api/v1/dependency-tracker",
+        json=fake_entry,
+    )
+    assert tracker_create.status_code == 200
+
+    # Decommission PostgreSQL with force=True -> should SUCCEED since ghost service is not active
+    decom_force = client.post(
+        f"/api/v1/platform/pgsql/{pg_id}/_decommission",
+        json={"force": True},
+        headers={
+            "X-Project-Id": str(test_project["id"]),
+            "X-RESOURCE-NAME": "pg-inactive-dep-test",
         },
     )
     assert decom_force.status_code == 200, decom_force.text

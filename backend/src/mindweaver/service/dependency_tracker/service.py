@@ -35,6 +35,67 @@ class DependencyTrackerService(Service[DependencyTracker]):
         result = await self.session.exec(stmt)
         return list(result.all())
 
+    def _find_service_by_type(self, service_type: str) -> Optional[type[Service]]:
+        """Find the service class matching a service_type."""
+        for svc_cls in SERVICE_REGISTRY.values():
+            if hasattr(svc_cls, "service_type"):
+                if svc_cls.service_type() == service_type:
+                    return svc_cls
+        return None
+
+    async def is_service_active(
+        self, service_uuid: str, service_type: Optional[str] = None
+    ) -> bool:
+        """
+        Determine if the service identified by service_uuid is currently deployed/running.
+        Checks the platform state table for active == True.
+        """
+        target_svc_cls = None
+        if service_type:
+            target_svc_cls = self._find_service_by_type(service_type)
+
+        candidate_classes = (
+            [target_svc_cls] if target_svc_cls else list(SERVICE_REGISTRY.values())
+        )
+
+        for svc_cls in candidate_classes:
+            if not svc_cls:
+                continue
+            model_cls = getattr(svc_cls, "model_class", lambda: None)()
+            if model_cls is None or not hasattr(model_cls, "uuid"):
+                continue
+            stmt = select(model_cls).where(model_cls.uuid == str(service_uuid))
+            model = (await self.session.exec(stmt)).first()
+            if not model:
+                continue
+
+            state_cls = getattr(svc_cls, "state_model", None)
+            if not state_cls:
+                return False
+
+            stmt_state = select(state_cls).where(state_cls.platform_id == model.id)
+            state = (await self.session.exec(stmt_state)).first()
+            return bool(state and getattr(state, "active", False) is True)
+
+        return False
+
+    async def get_active_dependents(self, model_uuid: str) -> list[DependencyTracker]:
+        """
+        Return all dependency entries that depend on the given service UUID
+        where the dependent service is currently deployed/running (active == True).
+        """
+        dependents = await self.get_dependents(model_uuid)
+        if not dependents:
+            return []
+
+        active_dependents: list[DependencyTracker] = []
+        for dep in dependents:
+            is_active = await self.is_service_active(dep.service_uuid, dep.service_type)
+            if is_active:
+                active_dependents.append(dep)
+
+        return active_dependents
+
     async def get_dependencies(self, model_uuid: str) -> list[DependencyTracker]:
         """Return all dependency entries where the given service UUID is the source."""
         stmt = select(DependencyTracker).where(

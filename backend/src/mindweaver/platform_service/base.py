@@ -335,7 +335,7 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
     ):
         """Ensure no active services depend on this platform service before decommissioning."""
         dep_svc = DependencyTrackerService(self.request, self.session)
-        dependents = await dep_svc.get_dependents(str(model.uuid))
+        dependents = await dep_svc.get_active_dependents(str(model.uuid))
         if dependents:
             names = [f"'{d.service_name}' ({d.service_type})" for d in dependents]
             names_str = ", ".join(names)
@@ -343,12 +343,7 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
                 f"Cannot decommission {model.name}: dependent service(s) {names_str} "
                 "are not decommissioned yet."
             )
-            if not force:
-                raise ModelValidationError(message=msg)
-            else:
-                logger.warning(
-                    f"{msg} However, force=True is set. Proceeding with decommissioning."
-                )
+            raise ModelValidationError(message=msg)
 
     async def _clear_dependencies_on_decommission(self, model: T):
         """Clear dependencies this service has on other services upon decommissioning."""

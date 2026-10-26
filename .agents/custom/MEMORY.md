@@ -11,3 +11,7 @@ Symptoms of stale JKS secrets:
 - `"failed to decode x509 certificate from PEM"` (cascading error)
 
 Fix: `kubectl delete secret {nifi-name}-{nodeId}-server-certificate -n {namespace}`
+
+## Force Decommission vs Active Service Dependencies (2026-10-26)
+
+Force decommission (`force=True`) is intended to bypass Kubernetes cluster communication issues (unreachable cluster or cluster resource deletion errors), but it MUST NOT bypass the dependency check when there are still active/deployed running services depending on this service. Decommissioning a dependency while consumers are still running orphans the consumers and prevents them from rendering manifests or decommissioning cleanly. Only when dependent services are inactive (`active=False`) or already decommissioned should decommissioning proceed.
