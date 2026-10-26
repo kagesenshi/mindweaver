@@ -227,9 +227,10 @@ class ServiceViewMixin:
                 str | None, Header(alias="X-RESOURCE-NAME")
             ] = None,
         ) -> BaseResult:  # type: ignore
-            if x_resource_name != model.name:
+            model_name = getattr(model, "name", None)
+            if model_name is not None and x_resource_name != model_name:
                 raise ModelValidationError(
-                    message=f"To delete this resource, the header 'X-RESOURCE-NAME' must match the resource name ('{model.name}')"
+                    message=f"To delete this resource, the header 'X-RESOURCE-NAME' must match the resource name ('{model_name}')"
                 )
             await svc.delete(model.id)
             return {"status": "success"}

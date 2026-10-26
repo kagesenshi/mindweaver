@@ -157,6 +157,17 @@ class Service(
         model_class = cls.model_class()
         return camel_to_snake(model_class.__name__)
 
+    @classmethod
+    def service_type(cls) -> str:
+        """Returns the type/kind identifier of the service."""
+        path = cls.service_path().strip("/")
+        if path.startswith("platform/"):
+            path = path[len("platform/"):]
+        s = path.replace("-", "_")
+        if s.endswith("s") and s not in ("doris", "redis", "status"):
+            s = s[:-1]
+        return s
+
     def __init__(self, request: fastapi.Request, session: AsyncSession):
         self.request = request
         self.session = session

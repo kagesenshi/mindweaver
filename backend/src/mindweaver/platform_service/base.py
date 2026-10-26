@@ -26,9 +26,11 @@ import inspect
 import os
 import pydantic
 from mindweaver.service.trusted_certs.model import TrustedCert
+from mindweaver.service.name_tracker.model import NameTracker
+from mindweaver.service.dependency_tracker import DependencyTracker, DependencyTrackerService
 from sqlalchemy import Column, DateTime, String
 from sqlalchemy_utils import JSONType
-from sqlmodel import Field, select
+from sqlmodel import Field, select, delete
 from sqlmodel.ext.asyncio.session import AsyncSession
 import tempfile
 from typing import Annotated, Any, Callable, Literal, Optional, TypeVar
@@ -236,10 +238,21 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
                 self.session.add(state)
             state.active = True
 
+        # Track service dependencies
+        await self._track_dependencies_on_deploy(model)
+
+    async def _track_dependencies_on_deploy(self, model: T):
+        """Track service dependencies in DependencyTracker upon deployment/commissioning."""
+        dep_svc = DependencyTrackerService(self.request, self.session)
+        await dep_svc.track_service_dependencies(self, model)
+
     _decommissioning: bool = False
 
     async def decommission(self, model: T, force: bool = False):
         """used to remove the applied components"""
+        # Validate that no active dependent services depend on this service
+        await self._validate_dependencies_before_decommission(model, force=force)
+
         self._decommissioning = True
         try:
             full_manifest = await self.render_manifests(model)
@@ -313,6 +326,34 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
 
         # Clear state
         await self.clear_state(model)
+
+        # Clear dependencies this service has on other services
+        await self._clear_dependencies_on_decommission(model)
+
+    async def _validate_dependencies_before_decommission(
+        self, model: T, force: bool = False
+    ):
+        """Ensure no active services depend on this platform service before decommissioning."""
+        dep_svc = DependencyTrackerService(self.request, self.session)
+        dependents = await dep_svc.get_dependents(str(model.uuid))
+        if dependents:
+            names = [f"'{d.service_name}' ({d.service_type})" for d in dependents]
+            names_str = ", ".join(names)
+            msg = (
+                f"Cannot decommission {model.name}: dependent service(s) {names_str} "
+                "are not decommissioned yet."
+            )
+            if not force:
+                raise ModelValidationError(message=msg)
+            else:
+                logger.warning(
+                    f"{msg} However, force=True is set. Proceeding with decommissioning."
+                )
+
+    async def _clear_dependencies_on_decommission(self, model: T):
+        """Clear dependencies this service has on other services upon decommissioning."""
+        dep_svc = DependencyTrackerService(self.request, self.session)
+        await dep_svc.clear_dependencies(str(model.uuid))
 
     async def clear_state(self, model: T):
         """Used to clear the platform state after decommission"""
@@ -457,7 +498,6 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
     @before_create()
     async def _validate_name_availability(self, data: T):
         """Ensure the name is not already in use in the NameTracker"""
-        from mindweaver.service.name_tracker.model import NameTracker
         stmt = select(NameTracker).where(NameTracker.name == data.name)
         result = await self.session.exec(stmt)
         if result.first():
@@ -468,8 +508,6 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
     @after_create()
     async def _track_name_on_create(self, model: T):
         """Automatically insert new infrastructure component names into the tracker"""
-        from mindweaver.service.name_tracker.model import NameTracker
-        from mindweaver.fw.model import ts_now
         stmt = select(NameTracker).where(NameTracker.name == model.name)
         result = await self.session.exec(stmt)
         tracker = result.first()
@@ -498,6 +536,14 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
             await self.session.delete(state)
             await self.session.flush()
             logger.info(f"Deleted platform state for {model.name}")
+
+        # Clean up any dependency records involving this model
+        stmt_del = delete(DependencyTracker).where(
+            (DependencyTracker.service_uuid == str(model.uuid))
+            | (DependencyTracker.dependency_uuid == str(model.uuid))
+        )
+        await self.session.exec(stmt_del)
+        await self.session.flush()
 
     @after_update()
     async def _redeploy_on_update(self, model: T):
