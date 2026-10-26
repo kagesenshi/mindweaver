@@ -207,10 +207,9 @@ class PgSQLPoller:
             self.service.session.add(state)
 
         if not state.active:
-            # If decommissioned/inactive, only update if it fully transitions to offline
-            if status == "offline":
-                state.status = "offline"
-                state.message = message
+            state.status = "offline"
+            state.message = "Decommissioned"
+            await self.service.session.flush()
             return
 
         state.status = status

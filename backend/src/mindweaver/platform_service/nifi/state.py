@@ -6,4 +6,11 @@ from mindweaver.platform_service.base import DefaultPlatformState
 
 class NifiState(DefaultPlatformState):
     """Custom state handler for NiFi Platform Service."""
-    pass
+
+    async def clear(self):
+        """Clears NiFi URI."""
+        state = await self.svc.platform_state(self.model)
+        if state:
+            state.nifi_uri = None
+        await super().clear()
+

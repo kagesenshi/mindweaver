@@ -15,3 +15,14 @@ class SupersetState(DefaultPlatformState):
             return {}
         
         return state_dict
+
+    async def clear(self):
+        """Clears Superset URI and credentials."""
+        state = await self.svc.platform_state(self.model)
+        if state:
+            state.superset_uri = None
+            state.superset_uri_ipv6 = None
+            state.admin_user = None
+            state.admin_password = None
+        await super().clear()
+

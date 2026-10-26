@@ -26,4 +26,12 @@ class TrinoState(DefaultPlatformState):
 
         return state_dict
 
+    async def clear(self):
+        """Clears Trino URI."""
+        state = await self.svc.platform_state(self.model)
+        if state:
+            state.trino_uri = None
+        await super().clear()
+
+
 

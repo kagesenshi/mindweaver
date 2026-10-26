@@ -356,19 +356,11 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
         await dep_svc.clear_dependencies(str(model.uuid))
 
     async def clear_state(self, model: T):
-        """Used to clear the platform state after decommission"""
-        state = await self.platform_state(model)
-        if not state:
-            return
-
-        state.status = "offline"
-        state.message = "Decommissioned"
-        state.node_ports = []
-        state.cluster_nodes = []
-        state.extra_data = {}
-        state.active = False
-
-        await self.session.refresh(model)
+        """Used to clear the platform state after decommission."""
+        state_class = self.get_state_class()
+        if state_class:
+            state_instance = state_class(model, self)
+            await state_instance.clear()
 
     async def list_active_platforms(self) -> list[T]:
         """Returns a list of active platforms for polling."""
@@ -463,6 +455,9 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
         """
         state = await self.platform_state(model)
         if state and not state.active:
+            state.status = "offline"
+            state.message = "Decommissioned"
+            await self.session.flush()
             return
 
         try:
@@ -794,7 +789,6 @@ class PlatformService(ProjectScopedService[T], abc.ABC):
 
             force = bool(payload.force) if payload else False
             await svc.decommission(model, force=force)
-            await svc.poll_status(model)
             return {"status": "success"}
 
         @router.post(
@@ -1023,3 +1017,24 @@ class DefaultPlatformState(BaseState):
         if not state:
             return {}
         return state
+
+    async def clear(self):
+        """Clears base platform state attributes on decommission."""
+        state = await self.svc.platform_state(self.model)
+        if not state:
+            if not getattr(self.svc, "state_model", None):
+                return
+            state = self.svc.state_model(platform_id=self.model.id)
+
+        state.status = "offline"
+        state.message = "Decommissioned"
+        state.node_ports = []
+        state.cluster_nodes = []
+        state.extra_data = {}
+        state.active = False
+
+        if self.session:
+            self.session.add(state)
+            await self.session.flush()
+            await self.session.refresh(state)
+

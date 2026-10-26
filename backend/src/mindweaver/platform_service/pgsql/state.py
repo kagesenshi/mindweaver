@@ -23,3 +23,14 @@ class PgSqlState(DefaultPlatformState):
             except Exception:
                 pass
         return state_dict
+
+    async def clear(self):
+        """Clears PostgreSQL platform credentials and connection state."""
+        state = await self.svc.platform_state(self.model)
+        if state:
+            state.db_user = None
+            state.db_pass = None
+            state.db_name = None
+            state.db_ca_crt = None
+        await super().clear()
+

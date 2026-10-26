@@ -147,9 +147,10 @@ class HiveMetastorePoller:
             state = self.service.state_model(platform_id=self.model.id)
             self.service.session.add(state)
 
-        if not state.active and status == "offline":
+        if not state.active:
             state.status = "offline"
-            state.message = message
+            state.message = "Decommissioned"
+            await self.service.session.flush()
             return
 
         state.status = status

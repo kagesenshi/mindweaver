@@ -13,3 +13,12 @@ class HiveMetastoreState(DefaultPlatformState):
         
         # Add any additional state processing here if needed
         return state_dict
+
+    async def clear(self):
+        """Clears Hive Metastore endpoints."""
+        state = await self.svc.platform_state(self.model)
+        if state:
+            state.hms_uri = None
+            state.iceberg_uri = None
+        await super().clear()
+

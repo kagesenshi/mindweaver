@@ -28,3 +28,14 @@ class DorisState(DefaultPlatformState):
         state_dict["admin_password"] = admin_pass
 
         return state_dict
+
+    async def clear(self):
+        """Clears Doris query endpoints and credentials."""
+        state = await self.svc.platform_state(self.model)
+        if state:
+            state.query_uri = None
+            state.fe_http_uri = None
+            state.admin_user = None
+            state.admin_password = None
+        await super().clear()
+

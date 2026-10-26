@@ -18,3 +18,12 @@ class BaseState(abc.ABC):
     async def get(self) -> dict[str, Any] | Any:
         """Returns the state of the model."""
         pass
+
+    async def clear(self) -> None:
+        """Clears the state of the model.
+
+        Base implementation is a no-op; subclasses should override
+        to reset state when decommissioning or clearing state.
+        """
+        pass
+

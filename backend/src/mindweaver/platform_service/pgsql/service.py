@@ -148,18 +148,6 @@ class PgSqlPlatformService(PlatformService[PgSqlPlatform]):
         return vars
 
 
-    async def clear_state(self, model: PgSqlPlatform):
-        """Clears the PostgreSQL platform state."""
-        state: PgSqlPlatformState = await self.platform_state(model)
-        if not state:
-            return
-
-        state.db_user = None
-        state.db_pass = None
-        state.db_name = None
-        state.db_ca_crt = None
-
-        await super().clear_state(model)
 
 PgSqlPlatformService.with_state()(PgSqlState)
 router = PgSqlPlatformService.router()
