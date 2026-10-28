@@ -217,7 +217,7 @@ async def test_superset_template_rendering(mock_service_dependencies):
         assert len(vars["datasources"]) == 2
         
         ds_pg = next(ds for ds in vars["datasources"] if ds["database_name"] == "mypsql")
-        assert "postgresql+asyncpg://usr:pass@pg-host:5432/mydb" in ds_pg["sqlalchemy_uri"]
+        assert "postgresql+psycopg2://usr:pass@pg-host:5432/mydb" in ds_pg["sqlalchemy_uri"]
 
         ds_trino = next(ds for ds in vars["datasources"] if ds["database_name"] == "mytrino")
         assert "trino://admin@mytrino.trino-ns.svc.cluster.local:8443" in ds_trino["sqlalchemy_uri"]
@@ -247,7 +247,7 @@ async def test_superset_template_rendering(mock_service_dependencies):
         assert "/etc/ssl/certs/mindweaver-ca.crt" in mounts
         assert "/etc/superset/trino-certs/tls.crt" in mounts
         assert "/etc/superset/trino-certs/tls.key" in mounts
-        assert values["supersetNode"]["connections"]["db_type"] == "postgresql+asyncpg"
+        assert values["supersetNode"]["connections"]["db_type"] == "postgresql+psycopg2"
         
         # Verify initscript database auto-cleanup exists in rendered helm values
         assert "initscript" in values["init"]
@@ -501,4 +501,87 @@ async def test_superset_load_examples(mock_service_dependencies):
         app_doc = next(d for d in docs if d["kind"] == "Application")
         values = yaml.safe_load(app_doc["spec"]["source"]["helm"]["values"])
         assert values["init"]["loadExamples"] is False
+
+
+@pytest.mark.asyncio
+async def test_superset_datasource_trino_and_optional_fields(mock_service_dependencies):
+    """Test that DatabaseSource with engine trino and optional/missing fields renders cleanly without literal None strings."""
+    request, session = mock_service_dependencies
+    svc = SupersetPlatformService(request, session)
+
+    model = SupersetPlatform(
+        name="test-superset-trino-ds",
+        title="Test Superset Trino DS",
+        project_id=1,
+        platform_pgsql_id=1,
+        database_source_ids=[10, 11],
+    )
+
+    # Mock PostgreSQL
+    mock_pgsql_svc = MagicMock()
+    mock_pgsql_model = MagicMock()
+    mock_pgsql_model.name = "my-db"
+    mock_pgsql_svc.get = AsyncMock(return_value=mock_pgsql_model)
+    mock_pgsql_state = MagicMock()
+    mock_pgsql_state.active = True
+    mock_pgsql_state.db_user = "app"
+    mock_pgsql_state.db_name = "app"
+    mock_pgsql_state.db_pass = "pass"
+    mock_pgsql_state.extra_data = {"pgbouncer_host": "my-db-pooler-rw.superset-ns.svc.cluster.local"}
+    mock_pgsql_svc.platform_state = AsyncMock(return_value=mock_pgsql_state)
+    mock_pgsql_svc._resolve_namespace = AsyncMock(return_value="superset-ns")
+
+    # Mock DatabaseSourceService with 2 sources:
+    # 1. Trino without password or database (catalog)
+    # 2. PostgreSQL with credentials
+    mock_ds_svc = MagicMock()
+
+    ds_trino = MagicMock()
+    ds_trino.id = 10
+    ds_trino.name = "trino-ds"
+    ds_trino.engine = "trino"
+    ds_trino.host = "trino-host"
+    ds_trino.port = 8443
+    ds_trino.database = None
+    ds_trino.login = "admin"
+    ds_trino.password = None
+
+    ds_pg = MagicMock()
+    ds_pg.id = 11
+    ds_pg.name = "pg-ds"
+    ds_pg.engine = "postgresql"
+    ds_pg.host = "pg-host"
+    ds_pg.port = 5432
+    ds_pg.database = "pgdb"
+    ds_pg.login = "pguser"
+    ds_pg.password = "pgpass"
+
+    async def get_ds(ds_id):
+        return ds_trino if ds_id == 10 else ds_pg
+
+    mock_ds_svc.get = AsyncMock(side_effect=get_ds)
+
+    with patch("mindweaver.platform_service.superset.service.PgSqlPlatformService") as mock_pg_class, \
+         patch("mindweaver.platform_service.superset.service.DatabaseSourceService") as mock_ds_class, \
+         patch("mindweaver.platform_service.superset.service.decrypt_password", side_effect=lambda x: x):
+
+        mock_pg_class.get_service = AsyncMock(return_value=mock_pgsql_svc)
+        mock_ds_class.get_service = AsyncMock(return_value=mock_ds_svc)
+
+        mock_project = MagicMock()
+        mock_project.ldap_config_id = None
+        mock_project.ingress_domain = None
+        mock_project.name = "myproject"
+        svc.project = AsyncMock(return_value=mock_project)
+
+        vars = await svc.template_vars(model)
+        assert len(vars["datasources"]) == 2
+
+        trino_entry = next(d for d in vars["datasources"] if d["database_name"] == "trino-ds")
+        assert "None" not in trino_entry["sqlalchemy_uri"]
+        assert trino_entry["sqlalchemy_uri"] == "trino://admin@trino-host:8443"
+
+        pg_entry = next(d for d in vars["datasources"] if d["database_name"] == "pg-ds")
+        assert pg_entry["sqlalchemy_uri"] == "postgresql+psycopg2://pguser:pgpass@pg-host:5432/pgdb"
+
 

@@ -9,6 +9,7 @@ import base64
 from typing import Any, Optional
 from kubernetes import client, config
 from pydantic import ValidationError
+from sqlalchemy.engine import URL
 
 from mindweaver.fw.exc import FieldValidationError
 from mindweaver.platform_service.base import PlatformService
@@ -203,8 +204,17 @@ class SupersetPlatformService(PlatformService[SupersetPlatform]):
                 ds = await ds_svc.get(ds_id)
                 engine = ds.engine
                 if engine == "postgresql":
-                    engine = "postgresql+asyncpg"
-                sqlalchemy_uri = f"{engine}://{ds.login}:{decrypt_password(ds.password) if ds.password else ''}@{ds.host}:{ds.port}/{ds.database}"
+                    engine = "postgresql+psycopg2"
+                url_kwargs = {
+                    "drivername": engine,
+                    "username": ds.login,
+                    "password": decrypt_password(ds.password) if ds.password else None,
+                    "host": ds.host,
+                    "port": ds.port,
+                    "database": ds.database,
+                }
+                url_kwargs = {k: v for k, v in url_kwargs.items() if v is not None}
+                sqlalchemy_uri = URL.create(**url_kwargs).render_as_string(hide_password=False)
                 datasources.append(
                     {
                         "database_name": ds.name,
