@@ -45,6 +45,11 @@
       else
         touch /tls/ca-certificates.crt
       fi
+      if [ -f /tls-secret/ca.crt ]; then
+        keytool -delete -alias mindweaver-ca -keystore /tls/truststore.jks -storepass changeit -noprompt || true
+        keytool -importcert -alias mindweaver-ca -file /tls-secret/ca.crt -keystore /tls/truststore.jks -storepass changeit -noprompt
+        cat /tls-secret/ca.crt >> /tls/ca-certificates.crt
+      fi
       if [ -d /trusted-certs ]; then
         for cert_file in /trusted-certs/*.crt; do
           if [ -f "$cert_file" ]; then

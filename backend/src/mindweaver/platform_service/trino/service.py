@@ -380,18 +380,34 @@ class TrinoPlatformService(PlatformService[TrinoPlatform]):
             # Copy to avoid mutating the original dict/list in-place if it is stored in model
             impersonation_rules = list(impersonation_rules)
 
+        # Normalize impersonation rules to snake_case (Trino FileBasedSystemAccessControl standard)
+        normalized_impersonation_rules = []
+        for rule in impersonation_rules:
+            if isinstance(rule, dict):
+                norm_rule = dict(rule)
+                if "originalUser" in norm_rule and "original_user" not in norm_rule:
+                    norm_rule["original_user"] = norm_rule.pop("originalUser")
+                if "newUser" in norm_rule and "new_user" not in norm_rule:
+                    norm_rule["new_user"] = norm_rule.pop("newUser")
+                normalized_impersonation_rules.append(norm_rule)
+            else:
+                normalized_impersonation_rules.append(rule)
+        impersonation_rules = normalized_impersonation_rules
+
         automated_rule = {
-            "originalUser": f"CN=.*\\.{vars['namespace']}\\.svc\\.cluster\\.local",
-            "newUser": ".*",
-            "allow": True
+            "original_user": r"CN=.*\.svc\.cluster\.local",
+            "new_user": ".*",
+            "allow": True,
         }
 
         # Check if automated rule is already present in impersonation_rules
-        is_already_present = False
-        for rule in impersonation_rules:
-            if isinstance(rule, dict) and rule.get("originalUser") == automated_rule["originalUser"] and rule.get("newUser") == automated_rule["newUser"] and rule.get("allow") == automated_rule["allow"]:
-                is_already_present = True
-                break
+        is_already_present = any(
+            isinstance(rule, dict)
+            and rule.get("original_user") == automated_rule["original_user"]
+            and rule.get("new_user") == automated_rule["new_user"]
+            and rule.get("allow") == automated_rule["allow"]
+            for rule in impersonation_rules
+        )
 
         if not is_already_present:
             impersonation_rules.append(automated_rule)

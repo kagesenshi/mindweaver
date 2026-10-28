@@ -214,7 +214,9 @@ async def test_trino_template_rendering(mock_service_dependencies):
     assert "access-control.name=file" in values["coordinator"]["additionalConfigFiles"]["access-control.properties"]
     import json
     rules = json.loads(values["coordinator"]["additionalConfigFiles"]["rules.json"])
-    assert rules["impersonation"][0]["originalUser"] == "CN=.*\\.trino-ns\\.svc\\.cluster\\.local"
+    assert rules["impersonation"][0]["original_user"] == "CN=.*\\.svc\\.cluster\\.local"
+    assert rules["impersonation"][0]["new_user"] == ".*"
+    assert rules["impersonation"][0]["allow"] is True
 
     # Verify the additional HTTPS NodePort service is present in the docs
     https_svc = next(d for d in docs if d["kind"] == "Service" and d["metadata"]["name"] == "trino-test-https-nodeport")
@@ -542,6 +544,14 @@ async def test_trino_https_rendering(mock_service_dependencies):
         # mount paths verification
         mounts = {m["name"]: m["mountPath"] for m in values[role]["additionalVolumeMounts"]}
         assert mounts["certs"] == "/etc/trino/tls"
+
+    # Verify coordinator JVM trustStore uses /etc/trino/tls/truststore.jks
+    assert "-Djavax.net.ssl.trustStore=/etc/trino/tls/truststore.jks" in values["coordinator"]["additionalJVMConfig"]
+    assert "-Djavax.net.ssl.trustStore=/etc/trino/tls/truststore.jks" in values["worker"]["additionalJVMConfig"]
+
+    # Verify ca.crt is imported into truststore in prepare-tls initContainer
+    prepare_tls_cmd = values["initContainers"]["coordinator"][0]["command"][2]
+    assert "keytool -importcert -alias mindweaver-ca -file /tls-secret/ca.crt -keystore /tls/truststore.jks" in prepare_tls_cmd
 
 
 @pytest.mark.asyncio
@@ -907,7 +917,9 @@ async def test_trino_configurable_rules(mock_service_dependencies):
     assert rules["catalogs"][0]["catalog"] == "mysql"
     # Assert automated impersonation rule is appended
     assert len(rules["impersonation"]) == 1
-    assert rules["impersonation"][0]["originalUser"] == "CN=.*\\.trino-ns\\.svc\\.cluster\\.local"
+    assert rules["impersonation"][0]["original_user"] == "CN=.*\\.svc\\.cluster\\.local"
+    assert rules["impersonation"][0]["new_user"] == ".*"
+    assert rules["impersonation"][0]["allow"] is True
 
 
 
