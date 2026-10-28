@@ -405,3 +405,12 @@ async def test_airflow_load_examples(test_project):
         assert "AIRFLOW__CORE__LOAD_EXAMPLES" in manifests
         assert "value: \"False\"" in manifests
 
+
+def test_airflow_widgets():
+    """Test that Airflow widgets are correctly configured, particularly foreign key relationships."""
+    widgets = AirflowPlatformService.widgets()
+    assert "git_repo_id" in widgets
+    assert widgets["git_repo_id"]["type"] == "relationship"
+    assert widgets["git_repo_id"]["endpoint"] == "/api/v1/git_repos"
+    assert widgets["git_repo_id"]["field"] == "id"
+

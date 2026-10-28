@@ -99,7 +99,7 @@ class AirflowPlatformService(PlatformService[AirflowPlatform]):
                 "label": "DAGs Git Repository",
                 "type": "relationship",
                 "endpoint": "/api/v1/git_repos",
-                "field": "name",
+                "field": "id",
             },
             "dags_git_branch": {
                 "order": 17,
@@ -320,7 +320,6 @@ class AirflowPlatformService(PlatformService[AirflowPlatform]):
                 endpoint = endpoint.rstrip("/")
                 vars["s3_endpoint"] = endpoint
                 vars["s3_endpoint_url"] = s3_storage.endpoint_url
-
         return vars
 
     async def deploy(self, model: AirflowPlatform):
@@ -331,9 +330,7 @@ class AirflowPlatformService(PlatformService[AirflowPlatform]):
             self.session.add(model)
             await self.session.flush()
         await super().deploy(model)
-        if model.oidc_enabled:
-            from mindweaver.tasks.project_tasks import install_dex_project_task
-            install_dex_project_task.delay(model.project_id)
+
 router = AirflowPlatformService.router()
 
 # Register the poller class
