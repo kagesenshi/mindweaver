@@ -11,9 +11,9 @@ from typing import Optional, Any
 
 class SupersetRoleMapping(BaseModel):
     """
-    Mapping of LDAP group DN or OIDC group to Superset role.
+    Mapping of LDAP group DN to Superset role.
     """
-    entity: str = Field(description="LDAP group DN (e.g. cn=group,ou=groups,dc=example,dc=com) or OIDC group name")
+    entity: str = Field(description="LDAP group DN (e.g. cn=group,ou=groups,dc=example,dc=com)")
     role: str
 
     @field_validator("role")
@@ -38,9 +38,6 @@ class SupersetPlatform(PlatformBase, table=True):
     # SUPERSET_SECRET_KEY for flask-session and encryption
     superset_secret_key: str = Field(default_factory=lambda: secrets.token_urlsafe(32))
 
-    # OIDC Login Configuration
-    oidc_enabled: bool = Field(default=False)
-    oidc_client_secret: str = Field(default_factory=lambda: secrets.token_urlsafe(32))
     sqllab_enabled: bool = Field(default=True)
     load_examples: bool = Field(default=False)
 
@@ -52,11 +49,11 @@ class SupersetPlatform(PlatformBase, table=True):
     database_source_ids: list[int] = Field(default_factory=list, sa_type=JSONType())
     trino_ids: list[int] = Field(default_factory=list, sa_type=JSONType())
 
-    # Auth Role Mapping (OIDC/LDAP to Superset)
+    # Auth Role Mapping (LDAP to Superset)
     auth_role_mapping: list[dict] = Field(
         default_factory=list,
         sa_type=JSONType(),
-        description="Mapping of LDAP group DNs (e.g. cn=group,ou=groups,dc=example,dc=com) or OIDC groups to Superset roles."
+        description="Mapping of LDAP group DNs (e.g. cn=group,ou=groups,dc=example,dc=com) to Superset roles."
     )
 
     # Resource configuration

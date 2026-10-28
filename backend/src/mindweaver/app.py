@@ -196,8 +196,6 @@ async def health():
 async def feature_flags():
     return {
         "oidc_enabled": settings.oidc_issuer is not None,
-        "enable_superset_oidc": settings.enable_superset_oidc,
-        "enable_airflow_oidc": settings.enable_airflow_oidc,
         "enable_dex": settings.enable_dex,
     }
 

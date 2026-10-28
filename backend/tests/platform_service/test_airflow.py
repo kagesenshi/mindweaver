@@ -323,20 +323,16 @@ async def test_airflow_template_vars_git_sync(client: TestClient, test_project):
         assert vars_res["ssh_key"]["public_key"] == "ssh-rsa-pubkey"
 
 
-def test_airflow_feature_flag_schema_filtering(monkeypatch):
-    """Test that airflow schema filters out OIDC fields when feature flag is False"""
-    from mindweaver.config import settings
-    # 1. When ENABLE_AIRFLOW_OIDC is False
-    monkeypatch.setattr(settings, "enable_airflow_oidc", False)
+def test_airflow_no_oidc_fields():
+    """Test that Airflow platform model, schema, widgets, and fields have no OIDC references."""
     schema = AirflowPlatformService.schema_class()
     assert "oidc_enabled" not in schema.model_fields
     assert "oidc_client_secret" not in schema.model_fields
-
-    # 2. When ENABLE_AIRFLOW_OIDC is True
-    monkeypatch.setattr(settings, "enable_airflow_oidc", True)
-    schema = AirflowPlatformService.schema_class()
-    assert "oidc_enabled" in schema.model_fields
-    assert "oidc_client_secret" in schema.model_fields
+    assert "oidc_enabled" not in AirflowPlatform.model_fields
+    assert "oidc_client_secret" not in AirflowPlatform.model_fields
+    assert "oidc_client_secret" not in AirflowPlatformService.redacted_fields()
+    assert "oidc_client_secret" not in AirflowPlatformService.internal_fields()
+    assert "oidc_enabled" not in AirflowPlatformService.widgets()
 
 
 @pytest.mark.asyncio
@@ -413,4 +409,5 @@ def test_airflow_widgets():
     assert widgets["git_repo_id"]["type"] == "relationship"
     assert widgets["git_repo_id"]["endpoint"] == "/api/v1/git_repos"
     assert widgets["git_repo_id"]["field"] == "id"
+    assert "oidc_enabled" not in widgets
 

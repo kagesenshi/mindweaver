@@ -164,117 +164,6 @@ spec:
             AUTH_LDAP_ALLOW_LOCAL_DB = True
             PERMANENT_SESSION_LIFETIME = 1800
           {% endif %}
-          {% if oidc_enabled %}
-          oidc: |
-            from flask_appbuilder.security.manager import AUTH_OAUTH
-            AUTH_TYPE = AUTH_OAUTH
-            AUTH_USER_REGISTRATION = True
-            AUTH_USER_REGISTRATION_ROLE = "Alpha"
-            ENABLE_PROXY_FIX = True
-            
-            OAUTH_PROVIDERS = [
-                {
-                    'name': 'dex',
-                    'token_key': 'access_token',
-                    'icon': 'fa-key',
-                    'save_token': True,
-                    'remote_app': {
-                        'client_id': '{{ oidc_client_id }}',
-                        'client_secret': '{{ oidc_client_secret }}',
-                        'api_base_url': '{{ oidc_internal_issuer }}/',
-                        'access_token_url': '{{ oidc_internal_issuer }}/token',
-                        'authorize_url': '{{ oidc_external_issuer }}/auth',
-                        'client_kwargs': {
-                            'scope': 'openid email profile groups'
-                        },
-                        'jwks_uri': '{{ oidc_internal_issuer }}/keys',
-                    }
-                }
-            ]
-
-            from superset.security import SupersetSecurityManager
-
-            class CustomSecurityManager(SupersetSecurityManager):
-                def update_user_auth_stat(self, user, success=True):
-                    if success and user:
-                        try:
-                            {% if sqllab_enabled %}
-                            sql_lab_role = self.find_role("sql_lab")
-                            if sql_lab_role and sql_lab_role not in user.roles:
-                                user.roles.append(sql_lab_role)
-                                try:
-                                    self.session.commit()
-                                except AttributeError:
-                                    from superset import db
-                                    db.session.commit()
-                            {% endif %}
-                        except Exception as e:
-                            import logging
-                            logging.error(f"Failed to auto-assign sql_lab role: {e}")
-                    super().update_user_auth_stat(user, success)
-
-                def oauth_user_info(self, provider, response=None):
-                    if provider == 'dex':
-                        remote_app = self.oauth_remotes.get(provider)
-                        if remote_app and response:
-                            # 1. Try using already parsed userinfo in response
-                            data = response.get('userinfo')
-                            if data:
-                                return {
-                                    'username': data.get('preferred_username') or data.get('email') or data.get('sub'),
-                                    'name': data.get('name'),
-                                    'email': data.get('email'),
-                                    'first_name': data.get('given_name') or data.get('name') or '',
-                                    'last_name': data.get('family_name') or '',
-                                    'role_keys': data.get('groups', []),
-                                }
-
-                            # 2. Try parsing OIDC ID token
-                            try:
-                                from flask import session
-                                nonce = session.get(f"_{provider}_authlib_nonce_")
-                                data = remote_app.parse_id_token(response, nonce=nonce)
-                                if data:
-                                    return {
-                                        'username': data.get('preferred_username') or data.get('email') or data.get('sub'),
-                                        'name': data.get('name'),
-                                        'email': data.get('email'),
-                                        'first_name': data.get('given_name') or data.get('name') or '',
-                                        'last_name': data.get('family_name') or '',
-                                        'role_keys': data.get('groups', []),
-                                    }
-                            except Exception as e:
-                                import logging
-                                logging.warning(f"Failed to parse OIDC ID token: {e}")
-
-                            # 3. Fallback to userinfo endpoint with explicit token
-                            try:
-                                me = remote_app.get('userinfo', token=response)
-                                if me and me.status_code == 200:
-                                    data = me.json()
-                                    return {
-                                        'username': data.get('preferred_username') or data.get('email') or data.get('sub'),
-                                        'name': data.get('name'),
-                                        'email': data.get('email'),
-                                        'first_name': data.get('given_name') or data.get('name') or '',
-                                        'last_name': data.get('family_name') or '',
-                                        'role_keys': data.get('groups', []),
-                                    }
-                            except Exception as e:
-                                import logging
-                                logging.error(f"Failed to fetch userinfo from Dex: {e}")
-                    return super().oauth_user_info(provider, response)
-
-            CUSTOM_SECURITY_MANAGER = CustomSecurityManager
-
-            import trino.auth
-            ALLOWED_EXTRA_AUTHENTICATIONS = {
-                "trino": {
-                    "jwt": trino.auth.JWTAuthentication,
-                    "certificate": trino.auth.CertificateAuthentication
-                }
-            }
-          {% endif %}
           {% if auth_role_mapping %}
           role_mapping: |
             AUTH_ROLES_MAPPING = {
@@ -285,13 +174,13 @@ spec:
 
             AUTH_ROLES_SYNC_AT_LOGIN = True
           {% endif %}
-          {% if ldap or oidc_enabled %}
+          {% if ldap %}
           bootstrap_overrides: |
-            from flask_appbuilder.security.manager import AUTH_LDAP, AUTH_OAUTH
+            from flask_appbuilder.security.manager import AUTH_LDAP
 
             def common_bootstrap_overrides(bootstrap_data: dict) -> dict:
                 conf = bootstrap_data.get("conf", {})
-                if conf.get("AUTH_TYPE") in (AUTH_LDAP, AUTH_OAUTH):
+                if conf.get("AUTH_TYPE") == AUTH_LDAP:
                     return {
                         **bootstrap_data,
                         "conf": {

@@ -10,8 +10,6 @@ from typing import Any, Optional
 from kubernetes import client, config
 
 from mindweaver.platform_service.base import PlatformService
-from mindweaver.fw.model import ts_now, NamedBase
-from mindweaver.fw.service import redefine_model
 from mindweaver.platform_service.pgsql.service import PgSqlPlatformService
 from mindweaver.service.ldap_config.service import LdapConfigService
 from mindweaver.service.s3_storage.service import S3StorageService
@@ -27,21 +25,6 @@ class AirflowPlatformService(PlatformService[AirflowPlatform]):
     state_model: type[AirflowPlatformState] = AirflowPlatformState
 
     @classmethod
-    def schema_class(cls) -> type[NamedBase]:
-        """
-        Provide custom schema class, filtering out OIDC fields if they are disabled.
-        """
-        from mindweaver.config import settings
-        exclude_fields = []
-        if not settings.enable_airflow_oidc:
-            exclude_fields.extend(["oidc_enabled", "oidc_client_secret"])
-        return redefine_model(
-            f"{cls.model_class().__name__}Schema",
-            cls.model_class(),
-            exclude=exclude_fields
-        )
-
-    @classmethod
     def model_class(cls) -> type[AirflowPlatform]:
         return AirflowPlatform
 
@@ -51,11 +34,11 @@ class AirflowPlatformService(PlatformService[AirflowPlatform]):
 
     @classmethod
     def internal_fields(cls) -> list[str]:
-        return super().internal_fields() + ["admin_password", "fernet_key", "webserver_secret_key", "oidc_client_secret"]
+        return super().internal_fields() + ["admin_password", "fernet_key", "webserver_secret_key"]
 
     @classmethod
     def redacted_fields(cls) -> list[str]:
-        return ["admin_password", "fernet_key", "webserver_secret_key", "oidc_client_secret"]
+        return ["admin_password", "fernet_key", "webserver_secret_key"]
 
     @classmethod
     def widgets(cls) -> dict[str, Any]:
@@ -146,11 +129,6 @@ class AirflowPlatformService(PlatformService[AirflowPlatform]):
                 "label": "Auth Role Mapping",
                 "type": "auth-role-mapping",
                 "roles": ["Admin", "User", "Op", "Viewer", "Public"],
-            },
-            "oidc_enabled": {
-                "order": 26,
-                "label": "Enable OIDC Authentication",
-                "type": "boolean",
             },
         }
 
@@ -244,17 +222,7 @@ class AirflowPlatformService(PlatformService[AirflowPlatform]):
                 merged_mapping[entity].append(role)
         vars["auth_role_mapping"] = merged_mapping
 
-        # 5. OIDC config
-        vars["oidc_enabled"] = model.oidc_enabled
-        vars["oidc_client_id"] = model.name
-        vars["oidc_client_secret"] = vars.get("oidc_client_secret", "")
-        vars["oidc_internal_issuer"] = f"http://{project.name}-dex.{vars['namespace']}.svc.cluster.local:5556/dex"
-        if vars["ingress_domain"]:
-            vars["oidc_external_issuer"] = f"https://dex.{vars['ingress_domain']}/dex"
-        else:
-            vars["oidc_external_issuer"] = vars["oidc_internal_issuer"]
-
-        # 6. DAGs git-sync config
+        # 5. DAGs git-sync config
         vars["dags_git_sync_enabled"] = model.dags_git_sync_enabled
         vars["dags_git_branch"] = model.dags_git_branch
         vars["dags_git_subpath"] = model.dags_git_subpath

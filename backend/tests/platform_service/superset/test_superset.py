@@ -34,9 +34,6 @@ def test_superset_resource_defaults():
     assert model.cpu_limit == 2.0
     assert model.mem_request == 2.0
     assert model.mem_limit == 4.0
-    assert model.oidc_enabled is False
-
-    assert model.oidc_client_secret is not None
     assert model.sqllab_enabled is True
 
 
@@ -284,40 +281,14 @@ async def test_superset_template_rendering(mock_service_dependencies):
         assert route_doc["spec"]["rules"][0]["backendRefs"][0]["name"] == "superset-test"
         assert route_doc["spec"]["rules"][0]["backendRefs"][0]["port"] == 8088
 
-        # 1.3 Verify with oidc_enabled = True
-        model.oidc_enabled = True
-        model.oidc_client_secret = "test-oidc-secret"
-        vars_oidc = await svc.template_vars(model)
-        manifest_oidc = await svc.render_manifests(model)
-        docs_oidc = [d for d in yaml.safe_load_all(manifest_oidc) if d is not None]
-        app_doc_oidc = next(d for d in docs_oidc if d["kind"] == "Application")
-        values_oidc = yaml.safe_load(app_doc_oidc["spec"]["source"]["helm"]["values"])
-        
-        assert "AUTH_OAUTH" in values_oidc["configOverrides"]["oidc"]
-        assert "OAUTH_PROVIDERS" in values_oidc["configOverrides"]["oidc"]
-        assert "CustomSecurityManager" in values_oidc["configOverrides"]["oidc"]
-        assert "https://dex.132.home.kagesenshi.org/dex/auth" in values_oidc["configOverrides"]["oidc"]
-        assert "http://myproject-dex.superset-ns.svc.cluster.local:5556/dex/token" in values_oidc["configOverrides"]["oidc"]
-        assert "ENABLE_PROXY_FIX = True" in values_oidc["configOverrides"]["oidc"]
-        assert "import trino.auth" in values_oidc["configOverrides"]["oidc"]
-        assert "ALLOWED_EXTRA_AUTHENTICATIONS" in values_oidc["configOverrides"]["oidc"]
-        # sql_lab role auto-assignment should be rendered because sqllab_enabled is True by default
-        assert 'self.find_role("sql_lab")' in values_oidc["configOverrides"]["oidc"]
-
-        # 1.4 Verify behavior when sqllab_enabled = False
+        # 1.3 Verify behavior when sqllab_enabled = False
         model.sqllab_enabled = False
         vars_no_sqllab = await svc.template_vars(model)
         assert "sql_lab" not in vars_no_sqllab["auth_role_mapping"]["user@mindweaver.io"]
 
-        manifest_no_sqllab = await svc.render_manifests(model)
-        docs_no_sqllab = [d for d in yaml.safe_load_all(manifest_no_sqllab) if d is not None]
-        app_doc_no_sqllab = next(d for d in docs_no_sqllab if d["kind"] == "Application")
-        values_no_sqllab = yaml.safe_load(app_doc_no_sqllab["spec"]["source"]["helm"]["values"])
-        assert 'self.find_role("sql_lab")' not in values_no_sqllab["configOverrides"]["oidc"]
-
-        # Verify Trino datasource has extra connecting args when OIDC is enabled
-        assert "import_datasources.yaml" in values_oidc["extraConfigs"]
-        datasources_yaml = yaml.safe_load(values_oidc["extraConfigs"]["import_datasources.yaml"])
+        # Verify Trino datasource has extra connecting args
+        assert "import_datasources.yaml" in values["extraConfigs"]
+        datasources_yaml = yaml.safe_load(values["extraConfigs"]["import_datasources.yaml"])
         trino_ds = next(ds for ds in datasources_yaml["databases"] if ds["database_name"] == "mytrino")
         assert trino_ds.get("impersonate_user") is True
         assert "extra" in trino_ds
@@ -447,20 +418,9 @@ async def test_superset_state_view(mock_service_dependencies):
     assert state["extra_data"]["namespace"] == "test-ns"
 
 
-def test_superset_feature_flag_schema_filtering(monkeypatch):
-    """Test that superset schema filters out OIDC fields when feature flag is False"""
-    from mindweaver.config import settings
-    # 1. When ENABLE_SUPERSET_OIDC is False
-    monkeypatch.setattr(settings, "enable_superset_oidc", False)
+def test_superset_no_oidc_fields():
+    """Test that Superset platform model, schema, widgets, and fields have no OIDC references."""
     schema = SupersetPlatformService.schema_class()
-    assert "oidc_enabled" not in schema.model_fields
-    assert "oidc_client_secret" not in schema.model_fields
-
-    # 2. When ENABLE_SUPERSET_OIDC is True
-    monkeypatch.setattr(settings, "enable_superset_oidc", True)
-    schema = SupersetPlatformService.schema_class()
-    assert "oidc_enabled" in schema.model_fields
-    assert "oidc_client_secret" in schema.model_fields
 
 
 @pytest.mark.asyncio

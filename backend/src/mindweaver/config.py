@@ -27,8 +27,6 @@ class Settings(BaseSettings):
     fernet_key: str | None = None
     jwt_secret: str = "unsafe-jwt-secret-key-that-is-at-least-32-bytes-long"
 
-    enable_superset_oidc: bool = False
-    enable_airflow_oidc: bool = False
     enable_dex: bool = False
 
     celery_broker_url: str = "redis://localhost:6379/0"
