@@ -34,11 +34,16 @@ class AirflowPlatformService(PlatformService[AirflowPlatform]):
 
     @classmethod
     def internal_fields(cls) -> list[str]:
-        return super().internal_fields() + ["admin_password", "fernet_key", "webserver_secret_key"]
+        return super().internal_fields() + [
+            "admin_password",
+            "fernet_key",
+            "webserver_secret_key",
+            "redis_password",
+        ]
 
     @classmethod
     def redacted_fields(cls) -> list[str]:
-        return ["admin_password", "fernet_key", "webserver_secret_key"]
+        return ["admin_password", "fernet_key", "webserver_secret_key", "redis_password"]
 
     @classmethod
     def widgets(cls) -> dict[str, Any]:
@@ -261,8 +266,8 @@ class AirflowPlatformService(PlatformService[AirflowPlatform]):
 
         # 8. Redis (Celery broker)
         vars["redis_enabled"] = model.redis_enabled
-        redis_password = secrets.token_urlsafe(10)
-        vars["redis_password"] = redis_password
+        if not vars.get("redis_password"):
+            vars["redis_password"] = secrets.token_urlsafe(16)
 
         # 9. S3 Storage for remote logging
         s3_enabled = bool(model.s3_storage_id and model.logs_s3_bucket)

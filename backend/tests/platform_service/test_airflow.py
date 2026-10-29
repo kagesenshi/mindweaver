@@ -97,6 +97,7 @@ def test_airflow_platform_crud(client: TestClient, test_project):
     )
     resp.raise_for_status()
     assert resp.json()["data"]["git_repo_id"] == git_repo_id
+    assert resp.json()["data"]["redis_password"] == "__REDACTED__"
 
     # 4. Update
     update_data = {
@@ -410,4 +411,69 @@ def test_airflow_widgets():
     assert widgets["git_repo_id"]["endpoint"] == "/api/v1/git_repos"
     assert widgets["git_repo_id"]["field"] == "id"
     assert "oidc_enabled" not in widgets
+    assert "redis_password" not in widgets
+
+
+def test_airflow_redis_password_field_configuration():
+    """Test that redis_password is registered as an internal, encrypted, redacted field."""
+    assert "redis_password" in AirflowPlatform.model_fields
+    assert "redis_password" in AirflowPlatformService.internal_fields()
+    assert "redis_password" in AirflowPlatformService.redacted_fields()
+
+
+@pytest.mark.asyncio
+async def test_airflow_redis_password_persistence_in_template_vars(test_project):
+    """Test that redis_password remains consistent across template_vars invocations."""
+    from mindweaver.platform_service.pgsql.model import PgSqlPlatform, PgSqlPlatformState
+    from mindweaver.platform_service.pgsql.service import PgSqlPlatformService
+    from mindweaver.service.project.model import Project
+
+    mock_request = MagicMock()
+    mock_request.headers = {"X-Project-Id": str(test_project["id"])}
+    mock_session = AsyncMock()
+
+    mock_project = Project(
+        id=test_project["id"],
+        name="test-project",
+        title="Test Project",
+        k8s_cluster_id=test_project["k8s_cluster_id"],
+        ingress_domain="apps.example.com",
+    )
+    mock_pgsql = PgSqlPlatform(id=1, name="my-pgsql", project_id=test_project["id"])
+    mock_pgsql_state = PgSqlPlatformState(
+        platform_id=1,
+        active=True,
+        db_user="app",
+        db_name="app",
+        db_pass=encrypt_password("secret_pass"),
+    )
+
+    svc = AirflowPlatformService(mock_request, mock_session)
+    svc.project = AsyncMock(return_value=mock_project)
+    svc._resolve_namespace = AsyncMock(return_value="test-project")
+
+    mock_pgsql_svc = MagicMock()
+    mock_pgsql_svc.get = AsyncMock(return_value=mock_pgsql)
+    mock_pgsql_svc.platform_state = AsyncMock(return_value=mock_pgsql_state)
+    mock_pgsql_svc._resolve_namespace = AsyncMock(return_value="test-project")
+
+    async def get_service_mock(req, sess):
+        return mock_pgsql_svc
+
+    fixed_pass = "my-stable-redis-pwd-12345"
+    airflow_model = AirflowPlatform(
+        name="test-airflow-redis",
+        title="Test Airflow Redis",
+        project_id=test_project["id"],
+        platform_pgsql_id=1,
+        redis_password=encrypt_password(fixed_pass),
+    )
+
+    with patch.object(PgSqlPlatformService, "get_service", new=get_service_mock):
+        vars1 = await svc.template_vars(airflow_model)
+        vars2 = await svc.template_vars(airflow_model)
+        assert vars1["redis_password"] == fixed_pass
+        assert vars2["redis_password"] == fixed_pass
+        assert vars1["redis_password"] == vars2["redis_password"]
+
 

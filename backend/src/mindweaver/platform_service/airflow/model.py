@@ -49,6 +49,8 @@ class AirflowPlatform(PlatformBase, table=True):
     fernet_key: str = Field(default_factory=lambda: secrets.token_urlsafe(32))
     # Webserver secret key for Airflow 3+ JWT signing
     webserver_secret_key: str = Field(default_factory=lambda: secrets.token_urlsafe(32))
+    # Redis broker password for Celery executor
+    redis_password: str = Field(default_factory=lambda: secrets.token_urlsafe(16))
 
     # PostgreSQL dependency (mandatory for Airflow metadata)
     platform_pgsql_id: int = Field(foreign_key="mw_pgsql_platform.id")
